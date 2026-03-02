@@ -104,6 +104,7 @@ model Game {
 
   @@index([tournamentId, startTime])
   @@index([status])
+  @@unique([tournamentId, homeTeamId, awayTeamId, startTime])
 }
 
 model Standing {

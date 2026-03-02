@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "generatedAt": "2026-03-02T22:58:00+10:00",
+  "tournaments": [
+    {
+      "year": 2024,
+      "name": "FD Alumni Basketball Tournament",
+      "status": "completed",
+      "startDate": "2024-06-28T00:00:00.000Z",
+      "endDate": "2024-07-19T23:59:59.000Z",
+      "notes": "SOURCE: fdalumni.com 2024 upcoming alumni events"
+    },
+    {
+      "year": 2025,
+      "name": "FD Alumni Basketball Tournament",
+      "status": "completed",
+      "startDate": "2025-06-28T00:00:00.000Z",
+      "endDate": "2025-07-18T23:59:59.000Z",
+      "notes": "SOURCE: GuamTime 2025 event + GSPN closeout (championship Jul 18)"
+    }
+  ],
+  "games2025Sample": [
+    { "date": "2025-06-30", "home": "2020", "away": "2021", "homeScore": 62, "awayScore": 57, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-06-30", "home": "2024", "away": "2012", "homeScore": 54, "awayScore": 47, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-06-30", "home": "99/01/03", "away": "1998", "homeScore": 54, "awayScore": 41, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-01", "home": "96/97", "away": "84/85", "homeScore": 66, "awayScore": 37, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-01", "home": "2006", "away": "2007", "homeScore": 65, "awayScore": 44, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-01", "home": "2025", "away": "2023", "homeScore": null, "awayScore": null, "status": "final", "confidence": "partial" },
+    { "date": "2025-07-02", "home": "79/80", "away": "1988", "homeScore": 35, "awayScore": 26, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-02", "home": "1991", "away": "1989", "homeScore": 43, "awayScore": 33, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-02", "home": "2013", "away": "2025", "homeScore": 70, "awayScore": 63, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-03", "home": "82/86/87/92", "away": "1975", "homeScore": 32, "awayScore": 20, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-03", "home": "1998", "away": "430-5", "homeScore": 65, "awayScore": 49, "status": "final", "confidence": "confirmed" },
+    { "date": "2025-07-03", "home": "18/19", "away": "2014", "homeScore": 76, "awayScore": 50, "status": "final", "confidence": "confirmed" }
+  ],
+  "sourceLinks": [
+    "https://fdalumni.com/2024upcomingalumnievents/",
+    "https://events.guamtime.net/event/fd-alumni-basketball-tournament-2025",
+    "https://www.guamsportsnetwork.com/2024/fd-alumni-hoops-its-that-time-again/",
+    "https://www.guamsportsnetwork.com/2025/results-from-this-weeks-fd-alumni-hoops-tourney/",
+    "https://www.guamsportsnetwork.com/2025/fd-alumni-tourney-coming-to-a-close/"
+  ]
+}
