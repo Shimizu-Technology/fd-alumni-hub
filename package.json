@@ -1,0 +1,12 @@
+{
+  "name": "fd-alumni-hub",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm --workspace @fd/web run dev",
+    "build": "npm --workspace @fd/web run build",
+    "lint": "npm --workspace @fd/web run lint"
+  }
+}

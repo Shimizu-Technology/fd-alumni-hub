@@ -25,3 +25,9 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 - Postgres (or Supabase) for schedule/standings content
 - Admin auth for score/schedule updates
 
+
+
+## App Scaffold
+- Next.js app lives in `apps/web`
+- Run dev: `npm run dev` (from repo root)
+- Build: `npm run build`
