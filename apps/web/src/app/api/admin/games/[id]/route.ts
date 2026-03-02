@@ -15,6 +15,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     ticketUrl?: string | null
   }
 
+  if (body.status === 'final') {
+    const hasScores = Number.isInteger(body.homeScore) && Number.isInteger(body.awayScore)
+    if (!hasScores) {
+      return NextResponse.json({ error: 'Final games require integer home/away scores' }, { status: 400 })
+    }
+  }
+
   const game = await db.game.update({
     where: { id },
     data: {

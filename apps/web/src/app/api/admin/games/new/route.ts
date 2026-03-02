@@ -17,6 +17,20 @@ export async function POST(request: Request) {
   if (!body.tournamentId || !body.homeTeamId || !body.awayTeamId || !body.startTime) {
     return NextResponse.json({ error: 'tournamentId, homeTeamId, awayTeamId, startTime required' }, { status: 400 })
   }
+  if (body.homeTeamId === body.awayTeamId) {
+    return NextResponse.json({ error: 'home and away teams must be different' }, { status: 400 })
+  }
+
+  const tournament = await db.tournament.findUnique({ where: { id: body.tournamentId } })
+  if (!tournament) return NextResponse.json({ error: 'invalid tournamentId' }, { status: 400 })
+
+  const [home, away] = await Promise.all([
+    db.team.findUnique({ where: { id: body.homeTeamId } }),
+    db.team.findUnique({ where: { id: body.awayTeamId } }),
+  ])
+  if (!home || !away || home.tournamentId !== body.tournamentId || away.tournamentId !== body.tournamentId) {
+    return NextResponse.json({ error: 'teams must belong to tournament' }, { status: 400 })
+  }
 
   const game = await db.game.create({
     data: {

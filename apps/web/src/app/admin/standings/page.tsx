@@ -34,7 +34,7 @@ export default async function AdminStandingsPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-neutral-100/70 text-left text-neutral-700">
             <tr>
-              <th className="px-4 py-3">Team</th><th className="px-3 py-3 text-right">W</th><th className="px-3 py-3 text-right">L</th><th className="px-3 py-3 text-right">PF</th><th className="px-3 py-3 text-right">PA</th>
+              <th className="px-4 py-3">Team</th><th className="px-3 py-3 text-right">W</th><th className="px-3 py-3 text-right">L</th><th className="px-3 py-3 text-right">PF</th><th className="px-3 py-3 text-right">PA</th><th className="px-3 py-3 text-right">Diff</th>
             </tr>
           </thead>
           <tbody>
@@ -45,6 +45,7 @@ export default async function AdminStandingsPage() {
                 <td className="px-3 py-2 text-right">{s.losses}</td>
                 <td className="px-3 py-2 text-right">{s.pointsFor}</td>
                 <td className="px-3 py-2 text-right">{s.pointsAgainst}</td>
+                <td className="px-3 py-2 text-right">{(s.pointsFor - s.pointsAgainst) > 0 ? `+${s.pointsFor - s.pointsAgainst}` : s.pointsFor - s.pointsAgainst}</td>
               </tr>
             ))}
           </tbody>
