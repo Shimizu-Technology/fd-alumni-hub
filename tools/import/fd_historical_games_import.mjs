@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { parse } from 'csv-parse/sync'
-import { PrismaClient } from '../../apps/web/node_modules/@prisma/client/index.js'
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
