@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/authz'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
+import { NewsCreateForm } from '@/components/admin/news-create-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ export default async function AdminNewsPage() {
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>Admin · News</h1>
         <p className="text-sm text-neutral-600">Edit existing article links via API (UI CRUD next slice).</p>
       </div>
+      <NewsCreateForm tournamentId={tournament.id} />
       <div className="space-y-2">
         {articles.map((a) => (
           <div key={a.id} className="rounded-lg border bg-white p-3" style={{ borderColor: 'var(--border-subtle)' }}>

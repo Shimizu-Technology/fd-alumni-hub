@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/authz'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
+import { SponsorCreateForm } from '@/components/admin/sponsor-create-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,7 @@ export default async function AdminSponsorsPage() {
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>Admin · Sponsors</h1>
         <p className="text-sm text-neutral-600">Edit sponsors via API patch endpoint (full CRUD UI next slice).</p>
       </div>
+      <SponsorCreateForm tournamentId={tournament.id} />
       <div className="space-y-2">
         {sponsors.map((s) => (
           <div key={s.id} className="rounded-lg border bg-white p-3" style={{ borderColor: 'var(--border-subtle)' }}>
