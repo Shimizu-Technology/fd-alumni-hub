@@ -4,6 +4,7 @@ import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
 import { SponsorCreateForm } from '@/components/admin/sponsor-create-form'
+import { AdminSponsorsList } from '@/components/admin/sponsors-list'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,14 +25,7 @@ export default async function AdminSponsorsPage() {
         <p className="text-sm text-neutral-600">Edit sponsors via API patch endpoint (full CRUD UI next slice).</p>
       </div>
       <SponsorCreateForm tournamentId={tournament.id} />
-      <div className="space-y-2">
-        {sponsors.map((s) => (
-          <div key={s.id} className="rounded-lg border bg-white p-3" style={{ borderColor: 'var(--border-subtle)' }}>
-            <p className="font-medium">{s.name}</p>
-            <p className="text-xs text-neutral-500">tier: {s.tier ?? 'n/a'} · active: {s.active ? 'yes' : 'no'}</p>
-          </div>
-        ))}
-      </div>
+      <AdminSponsorsList initialSponsors={sponsors as any} />
     </section>
   )
 }

@@ -4,6 +4,7 @@ import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
 import { NewsCreateForm } from '@/components/admin/news-create-form'
+import { AdminNewsList } from '@/components/admin/news-list'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,14 +25,7 @@ export default async function AdminNewsPage() {
         <p className="text-sm text-neutral-600">Edit existing article links via API (UI CRUD next slice).</p>
       </div>
       <NewsCreateForm tournamentId={tournament.id} />
-      <div className="space-y-2">
-        {articles.map((a) => (
-          <div key={a.id} className="rounded-lg border bg-white p-3" style={{ borderColor: 'var(--border-subtle)' }}>
-            <p className="font-medium">{a.title}</p>
-            <p className="text-xs text-neutral-500">{a.source} · {a.publishedAt ? new Date(a.publishedAt).toLocaleDateString('en-US') : 'No date'}</p>
-          </div>
-        ))}
-      </div>
+      <AdminNewsList initialArticles={articles as any} />
     </section>
   )
 }

@@ -49,6 +49,23 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
     }
   }
 
+
+
+  const archive = async (game: GameRow) => {
+    if (!confirm('Archive/delete this game?')) return
+    setSavingId(game.id)
+    try {
+      const res = await fetch(`/api/admin/games/${game.id}/archive`, { method: 'POST' })
+      if (!res.ok) throw new Error('Archive failed')
+      setMsg('Archived')
+      router.refresh()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Archive failed')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
   return (
     <div className="space-y-3">
       {msg ? <p className="text-xs text-neutral-600">{msg}</p> : null}
@@ -70,6 +87,7 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
           <button onClick={() => save(g)} disabled={savingId === g.id} className="mt-3 rounded-lg px-3 py-2 text-sm text-white" style={{ background: 'var(--fd-maroon)' }}>
             {savingId === g.id ? 'Saving...' : 'Save'}
           </button>
+          <button onClick={() => archive(g)} disabled={savingId===g.id} className="ml-2 rounded-lg border px-3 py-2 text-sm text-red-600" style={{ borderColor: 'var(--border-subtle)' }}>Archive</button>
         </div>
       ))}
     </div>
