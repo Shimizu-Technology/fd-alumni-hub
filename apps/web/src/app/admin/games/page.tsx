@@ -4,6 +4,7 @@ import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
 import { GameEditor } from '@/components/admin/game-editor'
+import { GameCreateForm } from '@/components/admin/game-create-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,11 @@ export default async function AdminGamesPage() {
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>Admin · Games</h1>
         <p className="text-sm text-neutral-600">{tournament.name} {tournament.year}</p>
       </div>
+      <GameCreateForm tournamentId={tournament.id} teams={games.reduce((acc: {id: string; displayName: string}[], g: any) => {
+        if (!acc.find((t) => t.id === g.homeTeam.id)) acc.push({ id: g.homeTeam.id, displayName: g.homeTeam.displayName })
+        if (!acc.find((t) => t.id === g.awayTeam.id)) acc.push({ id: g.awayTeam.id, displayName: g.awayTeam.displayName })
+        return acc
+      }, [])} />
       <GameEditor initialGames={games as any} />
     </section>
   )

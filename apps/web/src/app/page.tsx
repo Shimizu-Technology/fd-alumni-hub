@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { getHomeFeed } from '@/lib/services/public-feed'
 import { QuickCard } from '@/components/quick-card'
+import { LiveUpdates } from '@/components/live-updates'
 
 export default async function Home() {
   const { tournament, todayGames, liveGames, latestNews } = await getHomeFeed()
@@ -29,6 +30,8 @@ export default async function Home() {
         <QuickCard title="Updates" value={String(latestNews.length)} />
         <QuickCard title="Status" value={tournament ? tournament.status.toUpperCase() : 'NO DATA'} />
       </div>
+
+      <LiveUpdates items={latestNews as any} />
     </section>
   )
 }
