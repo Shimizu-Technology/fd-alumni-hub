@@ -81,3 +81,8 @@ Per Shimizu frontend guide (non-generic fonts):
   --info: #2B6CB0;
 }
 ```
+
+
+## Implementation Assets
+- `design/tokens.css`
+- `design/tailwind.theme.snippet.ts`
