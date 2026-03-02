@@ -31,3 +31,18 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 - Next.js app lives in `apps/web`
 - Run dev: `npm run dev` (from repo root)
 - Build: `npm run build`
+
+
+## Auth + Data Foundation
+- Clerk auth integrated in Next app
+- Invite-only whitelist for admin/staff (`AdminWhitelist`, `AppUser`)
+- Prisma + Postgres configured
+
+### Setup
+1. Copy `apps/web/.env.example` to `apps/web/.env.local`
+2. Fill Clerk + DB values
+3. Run `cd apps/web && npx prisma migrate dev --name init_auth`
+4. Start app: `npm run dev`
+
+### Bootstrap first admin
+`POST /api/admin/bootstrap-whitelist` with header `x-bootstrap-secret` and JSON `{ "email": "you@example.com" }`
