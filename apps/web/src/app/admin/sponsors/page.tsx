@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { requireStaff } from '@/lib/authz'
+import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
 
@@ -16,6 +17,7 @@ export default async function AdminSponsorsPage() {
 
   return (
     <section className="space-y-4">
+      <AdminNav />
       <div className="rounded-xl border bg-white p-5" style={{ borderColor: 'var(--border-subtle)' }}>
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>Admin · Sponsors</h1>
         <p className="text-sm text-neutral-600">Edit sponsors via API patch endpoint (full CRUD UI next slice).</p>
