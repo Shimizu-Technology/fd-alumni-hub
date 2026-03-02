@@ -1,5 +1,15 @@
 'use client'
 
+
+function isValidUrl(value: string) {
+  if (!value) return true
+  try {
+    const u = new URL(value)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -14,6 +24,11 @@ export function SponsorCreateForm({ tournamentId }: { tournamentId: string }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMsg(null)
+    if (!isValidUrl(targetUrl) || !isValidUrl(logoUrl)) {
+      setMsg('Please provide valid URL(s)')
+      return
+    }
+
     const res = await fetch('/api/admin/sponsors/new', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

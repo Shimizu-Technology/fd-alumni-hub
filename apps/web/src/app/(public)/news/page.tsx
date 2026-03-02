@@ -18,7 +18,7 @@ export default async function NewsPage() {
       <div className="space-y-3">
         {latestNews.length === 0 ? (
           <div className="rounded-xl border bg-white p-6 text-sm text-neutral-600" style={{ borderColor: 'var(--border-subtle)' }}>
-            No articles yet. Add links from admin.
+            No news links yet. Add article links in Admin / News.
           </div>
         ) : latestNews.map((item) => (
           <article key={item.id} className="rounded-xl border bg-white p-4" style={{ borderColor: 'var(--border-subtle)' }}>

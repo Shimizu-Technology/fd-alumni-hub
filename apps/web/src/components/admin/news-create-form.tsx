@@ -1,5 +1,15 @@
 'use client'
 
+
+function isValidUrl(value: string) {
+  if (!value) return true
+  try {
+    const u = new URL(value)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -14,6 +24,11 @@ export function NewsCreateForm({ tournamentId }: { tournamentId: string }) {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMsg(null)
+    if (!isValidUrl(url)) {
+      setMsg('Please provide a valid URL')
+      return
+    }
+
     const res = await fetch('/api/admin/articles/new', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -15,7 +15,7 @@ export default async function WatchPage() {
       <div className="border-b px-4 py-3 text-sm font-semibold" style={{ borderColor: 'var(--border-subtle)' }}>{title}</div>
       <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
         {list.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-neutral-500">No games in this section yet.</p>
+          <p className="px-4 py-4 text-sm text-neutral-500">No stream-linked games in this section yet.</p>
         ) : list.map((g) => (
           <div key={g.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>

@@ -1,5 +1,15 @@
 'use client'
 
+
+function isValidUrl(value: string) {
+  if (!value) return true
+  try {
+    const u = new URL(value)
+    return u.protocol === 'http:' || u.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -27,6 +37,12 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
 
   const save = async (game: GameRow) => {
     setSavingId(game.id)
+    if (!isValidUrl(game.streamUrl ?? '') || !isValidUrl(game.ticketUrl ?? '')) {
+      setMsg('Please provide valid stream/ticket URL(s)')
+      setSavingId(null)
+      return
+    }
+
     try {
       const res = await fetch(`/api/admin/games/${game.id}`, {
         method: 'PATCH',
@@ -54,6 +70,12 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
   const archive = async (game: GameRow) => {
     if (!confirm('Archive/delete this game?')) return
     setSavingId(game.id)
+    if (!isValidUrl(game.streamUrl ?? '') || !isValidUrl(game.ticketUrl ?? '')) {
+      setMsg('Please provide valid stream/ticket URL(s)')
+      setSavingId(null)
+      return
+    }
+
     try {
       const res = await fetch(`/api/admin/games/${game.id}/archive`, { method: 'POST' })
       if (!res.ok) throw new Error('Archive failed')
