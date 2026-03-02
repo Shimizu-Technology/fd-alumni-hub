@@ -15,6 +15,7 @@ Single source of truth for:
 Spreadsheet-simple UX first. Add advanced stats/automation later.
 
 ## Docs
+- `docs/BRAND-DESIGN-TOKENS.md` — FD-aligned palette, typography, and UX guardrails
 - `docs/IA-V1.md` — page map + UX flow
 - `docs/DATA-MODEL-V1.md` — core entities for MVP
 - `docs/OUTREACH-DRAFTS.md` — collaboration messages for Zay/GSPN/GuamTime
