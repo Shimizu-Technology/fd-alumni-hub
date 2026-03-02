@@ -46,3 +46,18 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 
 ### Bootstrap first admin
 `POST /api/admin/bootstrap-whitelist` with header `x-bootstrap-secret` and JSON `{ "email": "you@example.com" }`
+
+## Next Actions (Foundation Complete)
+1. Configure `apps/web/.env.local`
+2. Run DB migration: `cd apps/web && npx prisma migrate dev --name init_foundation`
+3. Seed sample data: `cd apps/web && npx prisma db seed`
+4. Bootstrap first admin whitelist:
+   - `curl -X POST http://localhost:3000/api/admin/bootstrap-whitelist \
+      -H "Content-Type: application/json" \
+      -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>" \
+      -d '{"email":"you@example.com"}'`
+5. Sign in via Clerk and visit `/admin`
+
+### Foundation APIs
+- Public: `/api/public/home`, `/api/public/schedule`, `/api/public/standings`
+- Admin: `/api/admin/tournaments`, `/api/admin/games`, `/api/admin/standings`, `/api/admin/articles`, `/api/admin/sponsors`

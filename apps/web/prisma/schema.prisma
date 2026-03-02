@@ -12,22 +12,144 @@ enum AppRole {
   staff
 }
 
+enum TournamentStatus {
+  upcoming
+  live
+  completed
+}
+
+enum GameStatus {
+  scheduled
+  live
+  final
+}
+
 model AppUser {
-  id          String   @id @default(cuid())
-  clerkId     String   @unique
-  email       String   @unique
-  role        AppRole  @default(staff)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  role      AppRole  @default(staff)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AdminWhitelist {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  role        AppRole  @default(staff)
-  isActive    Boolean  @default(true)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      AppRole  @default(staff)
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tournament {
+  id        String           @id @default(cuid())
+  name      String
+  year      Int
+  startDate DateTime
+  endDate   DateTime
+  status    TournamentStatus @default(upcoming)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  teams     Team[]
+  games     Game[]
+  standings Standing[]
+  articles  ArticleLink[]
+  sponsors  Sponsor[]
+
+  @@unique([year, name])
+  @@index([year, status])
+}
+
+model Team {
+  id              String   @id @default(cuid())
+  tournamentId    String
+  classYearLabel  String
+  displayName     String
+  division        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeGames  Game[]     @relation("HomeTeam")
+  awayGames  Game[]     @relation("AwayTeam")
+  standings  Standing[]
+
+  @@index([tournamentId, division])
+  @@unique([tournamentId, displayName])
+}
+
+model Game {
+  id           String     @id @default(cuid())
+  tournamentId String
+  homeTeamId   String
+  awayTeamId   String
+  startTime    DateTime
+  venue        String?
+  status       GameStatus @default(scheduled)
+  homeScore    Int?
+  awayScore    Int?
+  streamUrl    String?
+  ticketUrl    String?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  homeTeam   Team       @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam   Team       @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
+
+  @@index([tournamentId, startTime])
+  @@index([status])
+}
+
+model Standing {
+  id             String   @id @default(cuid())
+  tournamentId   String
+  teamId         String
+  wins           Int      @default(0)
+  losses         Int      @default(0)
+  pointsFor      Int      @default(0)
+  pointsAgainst  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, teamId])
+  @@index([tournamentId, wins, losses])
+}
+
+model ArticleLink {
+  id           String   @id @default(cuid())
+  tournamentId String
+  title        String
+  source       String
+  url          String
+  publishedAt  DateTime?
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, publishedAt])
+}
+
+model Sponsor {
+  id           String   @id @default(cuid())
+  tournamentId String
+  name         String
+  logoUrl      String?
+  targetUrl    String?
+  tier         String?
+  active       Boolean  @default(true)
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, active, position])
 }
