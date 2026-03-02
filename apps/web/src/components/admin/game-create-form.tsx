@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 type TeamOption = { id: string; displayName: string }
 
@@ -16,6 +17,7 @@ export function GameCreateForm({
   const [startTime, setStartTime] = useState('')
   const [venue, setVenue] = useState('FD Jungle')
   const [msg, setMsg] = useState<string | null>(null)
+  const router = useRouter()
 
   const valid = useMemo(
     () => homeTeamId && awayTeamId && homeTeamId !== awayTeamId && startTime,
@@ -42,7 +44,8 @@ export function GameCreateForm({
       return
     }
 
-    setMsg('Created. Refresh page to see latest.')
+    setMsg('Created successfully')
+    router.refresh()
     setHomeTeamId('')
     setAwayTeamId('')
     setStartTime('')

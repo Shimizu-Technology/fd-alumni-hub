@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export function SponsorCreateForm({ tournamentId }: { tournamentId: string }) {
   const [name, setName] = useState('')
@@ -8,6 +9,7 @@ export function SponsorCreateForm({ tournamentId }: { tournamentId: string }) {
   const [targetUrl, setTargetUrl] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
+  const router = useRouter()
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,7 +24,8 @@ export function SponsorCreateForm({ tournamentId }: { tournamentId: string }) {
       setMsg(data?.error || 'Failed')
       return
     }
-    setMsg('Created. Refresh page to see latest.')
+    setMsg('Created successfully')
+    router.refresh()
     setName('')
     setTier('')
     setTargetUrl('')

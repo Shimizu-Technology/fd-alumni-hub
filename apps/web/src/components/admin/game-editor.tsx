@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 type GameRow = {
   id: string
@@ -17,6 +18,8 @@ type GameRow = {
 export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
   const [games, setGames] = useState(initialGames)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const router = useRouter()
 
   const updateGame = (id: string, patch: Partial<GameRow>) => {
     setGames((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)))
@@ -36,7 +39,11 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
           ticketUrl: game.ticketUrl,
         }),
       })
-      if (!res.ok) throw new Error('save failed')
+      if (!res.ok) throw new Error('Save failed')
+      setMsg('Saved')
+      router.refresh()
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSavingId(null)
     }
@@ -44,6 +51,7 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
 
   return (
     <div className="space-y-3">
+      {msg ? <p className="text-xs text-neutral-600">{msg}</p> : null}
       {games.map((g) => (
         <div key={g.id} className="rounded-xl border bg-white p-4" style={{ borderColor: 'var(--border-subtle)' }}>
           <p className="font-medium">{g.awayTeam.displayName} vs {g.homeTeam.displayName}</p>
