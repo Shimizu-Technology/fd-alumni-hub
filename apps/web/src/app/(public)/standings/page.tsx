@@ -37,10 +37,12 @@ function DivisionTabs({
   activeDivisions,
   currentFilter,
   basePath,
+  tournamentId,
 }: {
   activeDivisions: string[]
   currentFilter: string | null
   basePath: string
+  tournamentId: string | null
 }) {
   if (activeDivisions.length < 2) return null
 
@@ -51,7 +53,7 @@ function DivisionTabs({
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by division">
       <Link
-        href={basePath}
+        href={`${basePath}${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : ''}`}
         role="tab"
         aria-selected={!currentFilter}
         className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
@@ -68,7 +70,7 @@ function DivisionTabs({
         return (
           <Link
             key={div.id}
-            href={`${basePath}?division=${encodeURIComponent(div.id)}`}
+            href={`${basePath}?${(() => { const p = new URLSearchParams(); p.set('division', div.id); if (tournamentId) p.set('tournamentId', tournamentId); return p.toString() })()}`}
             role="tab"
             aria-selected={isActive}
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
@@ -90,12 +92,13 @@ function DivisionTabs({
 export default async function StandingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ division?: string }>
+  searchParams: Promise<{ division?: string; tournamentId?: string }>
 }) {
   const params = await searchParams
   const divisionFilter = params.division ?? null
+  const tournamentId = params.tournamentId ?? null
 
-  const { tournament, standings, divisions, scoreCoverage } = await getStandings(undefined, divisionFilter)
+  const { tournament, standings, divisions, scoreCoverage } = await getStandings(tournamentId ?? undefined, divisionFilter)
   const typedStandings = standings as StandingRow[]
 
   const activeDiv = divisionFilter ? getDivision(divisionFilter) : undefined
@@ -119,6 +122,7 @@ export default async function StandingsPage({
           activeDivisions={divisions}
           currentFilter={divisionFilter}
           basePath="/standings"
+          tournamentId={tournamentId}
         />
 
         <div className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--neutral-600)' }}>
