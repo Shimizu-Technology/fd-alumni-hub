@@ -9,6 +9,9 @@ export async function POST(_: Request, context: { params: Promise<{ id: string }
   const { id } = await context.params
   const item = await db.contentIngestItem.findUnique({ where: { id } })
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (item.status !== 'pending') {
+    return NextResponse.json({ error: 'Item already processed' }, { status: 400 })
+  }
 
   let importedToId: string | null = null
 
