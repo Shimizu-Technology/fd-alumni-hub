@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
-
-function isValidHttpUrl(value: string | null | undefined) {
-  if (!value) return true
-  try {
-    const u = new URL(value)
-    return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
+import { isValidHttpUrl } from '@/lib/url'
 
 export async function POST(request: Request) {
   const staff = await requireStaff()
