@@ -59,6 +59,7 @@ model Tournament {
   standings Standing[]
   articles  ArticleLink[]
   sponsors  Sponsor[]
+  media     MediaAsset[]
 
   @@unique([year, name])
   @@index([year, status])
@@ -160,4 +161,22 @@ model Sponsor {
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId, active, position])
+}
+
+model MediaAsset {
+  id           String   @id @default(cuid())
+  tournamentId String
+  source       String
+  title        String
+  imageUrl     String
+  articleUrl   String?
+  caption      String?
+  tags         String?
+  takenAt      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, source, takenAt])
 }
