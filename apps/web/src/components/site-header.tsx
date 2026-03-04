@@ -10,6 +10,7 @@ const links = [
   { label: 'Watch', href: '/watch' },
   { label: 'News', href: '/news' },
   { label: 'History', href: '/history' },
+  { label: 'Gallery', href: '/gallery' },
   { label: 'Sponsors', href: '/sponsors' },
 ] as const
 
