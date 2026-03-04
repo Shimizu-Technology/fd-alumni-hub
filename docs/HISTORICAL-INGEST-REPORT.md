@@ -1,23 +1,24 @@
 # Historical Content Ingestion Report
 
-**Generated:** 2026-03-05T00:15:00.000Z
+**Generated:** 2026-03-05T00:30:00.000Z
 **Scope:** FD Alumni Hub - Multi-year historical content acquisition
 
 ---
 
 ## Executive Summary
 
-This report documents a comprehensive historical content acquisition sweep for the FD Alumni Hub, covering tournament coverage from 2014-2025.
+This report documents a comprehensive historical content acquisition sweep for the FD Alumni Hub, covering tournament coverage from 2008-2025.
 
 ### Totals
 
 | Metric | Count |
 |--------|-------|
-| **Total Articles** | 51 |
+| **Total Articles** | 54 |
 | **Total Media Assets** | 92 |
-| **Queue Approved** | 84 |
+| **Queue Approved** | 87 |
 | **Queue Pending** | 0 |
 | **Queue Rejected** | 13 |
+| **Years Covered** | 11 (excl. 2016/2020) |
 
 ---
 
@@ -33,8 +34,9 @@ This report documents a comprehensive historical content acquisition sweep for t
 | 2019 | 3 | 13 | ✅ Complete |
 | 2018 | 4 | 5 | ✅ Complete |
 | 2017 | 5 | 9 | ✅ Complete (+6 jersey retirement photos) |
-| 2015 | 7 | 11 | ✅ Complete |
+| 2015 | 7 | 16 | ✅ Complete |
 | 2014 | 9 | 9 | ✅ Complete |
+| **2008** | **3** | — | ✅ **NEW** (PostGuam source) |
 
 ---
 
@@ -46,6 +48,8 @@ This report documents a comprehensive historical content acquisition sweep for t
 |--------|-------|
 | guamsportsnetwork.com | 2 |
 | GSPN | 45 |
+| PostGuam | 3 |
+| GuamPDN | 1 |
 
 ### Media by Source
 
@@ -410,3 +414,66 @@ Continue autonomous archive enhancement to improve FD Alumni historical data qua
 
 *Report updated by autonomous archive enhancement system*
 
+
+
+---
+
+## Last 10% Archival Recovery Pass (2026-03-05)
+
+### Objective
+Aggressive final sweep to maximize recoverable content from public sources beyond GSPN coverage.
+
+### Techniques Applied
+1. **Wayback Machine** - Searched for dead 2016/2017 URLs
+2. **Social Media Discovery** - Facebook, Instagram, YouTube searches
+3. **Cross-Source Search** - PostGuam, GuamPDN, fdalumni.com
+4. **CDN Pattern Recovery** - Alternate image URL patterns
+
+### Major Discovery: 2008 Tournament (PostGuam)
+
+Previously uncovered in GSPN-focused sweeps, the 2008 tournament was discovered via **PostGuam.com** archives:
+
+| Article | Date | Key Content |
+|---------|------|-------------|
+| Tournament Announcement | 2008-07-04 | Hosted by Class of 1998 |
+| Day 5 Recap | 2008-07-09 | '99/'97 vs '01 (49-43) |
+| Semifinals | 2008-07-25 | '99/'97 vs '02 (44-35), '95 vs '79/'80 (36-32) |
+
+### Score Data Extracted (2008)
+
+| Matchup | Score |
+|---------|-------|
+| '99/'97 vs '01 | 49-43 |
+| '99/'97 vs '02 (semis) | 44-35 |
+| '95 vs '79/'80 (semis) | 36-32 |
+| Class of '98 vs Class of '89 | 68-58 |
+| Class of '02 vs Class of '05 | 58-39 |
+
+### Key Players (2008)
+- Shane Ngata ('99/'97), E.J. Calvo ('95), Shaun Perez ('02)
+- Vince Quitugua ('98) - 36-point game
+- Corey Diaz ('99/'97)
+
+### Blocked Recovery Attempts
+| Target | Status | Reason |
+|--------|--------|--------|
+| 2016 Championship | ❌ | Content never published or deleted |
+| 2017 Championship Article | ❌ | Deleted from GSPN, no Wayback |
+| YouTube FD Alumni Videos | ❌ | Only generic content found |
+| Facebook/Instagram Posts | ⚠️ | Requires FDMSAA partnership |
+
+### Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Articles | 51 | 54 | +3 |
+| Years Covered | 10 | 11 | +1 |
+| Sources | 4 | 5 | +1 (PostGuam) |
+
+### Scripts Created
+- `scripts/last-mile-recovery.ts` - Recovery automation
+
+See `docs/LAST-MILE-RECOVERY-REPORT.md` for full details.
+
+---
+
+*Report updated by FD Alumni Hub Last-Mile Recovery System*

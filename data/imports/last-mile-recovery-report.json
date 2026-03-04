@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-03-05T00:25:00.000Z",
+  "imported": 3,
+  "skipped": 0,
+  "blockedRecoveries": 4,
+  "scoreHintsExtracted": 6,
+  "newYearsCovered": [2008],
+  "newSources": ["postguam.com"],
+  "recoveredContent": [
+    {
+      "url": "https://www.postguam.com/sports/local/fdms-alumni-basketball-tournament-begins-tomorrow/article_9aeccdf9-1071-52c5-b595-4bb65084c9de.html",
+      "title": "FDMS Alumni Basketball Tournament Begins Tomorrow",
+      "source": "postguam.com",
+      "year": 2008,
+      "notes": "2008 tournament announcement - hosted by Class of 1998"
+    },
+    {
+      "url": "https://www.postguam.com/sports/local/99-97-survives-against-01-49-43/article_da3c3bf6-dd59-5811-bd64-0509848c6384.html",
+      "title": "'99/'97 Survives Against '01, 49-43",
+      "source": "postguam.com",
+      "year": 2008,
+      "notes": "2008 Day 5 recap with multiple scores"
+    },
+    {
+      "url": "https://www.postguam.com/sports/local/99-97-downs-02-44-35-95-set-to-challenge-99-97-for-title/article_d0c41798-5f84-5448-97d0-5d8c7aa60330.html",
+      "title": "'99/'97 Downs '02, 44-35: '95 Set to Challenge '99/'97 for Title",
+      "source": "postguam.com",
+      "year": 2008,
+      "notes": "2008 semifinals recap"
+    }
+  ],
+  "blockedAttempts": [
+    {
+      "target": "2016 FD Alumni Championship",
+      "conclusion": "Source-side issue - content does not exist in any accessible archive"
+    },
+    {
+      "target": "YouTube FD Alumni specific videos",
+      "conclusion": "No specific FD Alumni game videos exist on YouTube"
+    },
+    {
+      "target": "Facebook/Instagram FD Alumni posts",
+      "conclusion": "Requires manual extraction or FDMSAA partnership"
+    },
+    {
+      "target": "2017 Championship Article",
+      "conclusion": "Content existed but was removed; no archive available"
+    }
+  ],
+  "scoreHints": [
+    { "year": 2008, "matchup": "'99/'97 vs '01", "score": "49-43" },
+    { "year": 2008, "matchup": "'99/'97 vs '02 (semis)", "score": "44-35" },
+    { "year": 2008, "matchup": "'95 vs '79/'80 (semis)", "score": "36-32" },
+    { "year": 2008, "matchup": "Class of '98 vs Class of '89", "score": "68-58" },
+    { "year": 2008, "matchup": "Class of '02 vs Class of '05", "score": "58-39" },
+    { "year": 2008, "matchup": "'99/'97 vs '95 (championship)", "score": "TBD - requires additional research" }
+  ]
+}
