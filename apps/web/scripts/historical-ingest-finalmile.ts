@@ -11,7 +11,7 @@
  * Generated: 2026-03-04
  */
 
-import { PrismaClient, IngestKind, IngestStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
 
@@ -402,8 +402,8 @@ async function runFinalMileSweep(): Promise<IngestStats> {
     }
 
     // Determine status and kind
-    const status: IngestStatus = content.confidence === 'confirmed' ? 'approved' : 'pending'
-    const kind: IngestKind = content.kind === 'media' ? 'media' : 'article'
+    const status: 'approved' | 'pending' = content.confidence === 'confirmed' ? 'approved' : 'pending'
+    const kind: 'media' | 'article' = content.kind === 'media' ? 'media' : 'article'
 
     // Create ingest item for tracking
     await db.contentIngestItem.create({

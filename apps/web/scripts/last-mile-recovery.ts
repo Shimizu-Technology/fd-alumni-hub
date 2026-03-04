@@ -9,7 +9,7 @@
  * Run: npx tsx scripts/last-mile-recovery.ts
  */
 
-import { PrismaClient, IngestKind, IngestStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
 
@@ -150,8 +150,8 @@ async function main() {
         url: content.url,
         title: content.title,
         source: content.source,
-        kind: content.kind === 'article' ? IngestKind.article : IngestKind.media,
-        status: IngestStatus.approved,
+        kind: content.kind === 'article' ? 'article' : 'media',
+        status: 'approved',
         confidence: content.confidence === 'confirmed' ? 'high' : 'medium',
         notes: `[Last-mile recovery: ${content.recoveryMethod}] ${content.notes || ''}`,
         tournamentId: tournament2008.id,

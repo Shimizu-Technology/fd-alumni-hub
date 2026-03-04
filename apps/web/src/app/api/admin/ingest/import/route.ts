@@ -59,6 +59,11 @@ export async function POST(request: Request) {
   const rows = parsed.rows
   if (!rows.length) return NextResponse.json({ error: 'no rows supplied' }, { status: 400 })
 
+  const MAX_ROWS = 500
+  if (rows.length > MAX_ROWS) {
+    return NextResponse.json({ error: `Too many rows. Max ${MAX_ROWS} per import.` }, { status: 400 })
+  }
+
   let queued = 0
   let skipped = 0
   const errors: string[] = []
@@ -83,9 +88,14 @@ export async function POST(request: Request) {
       continue
     }
 
-    if (!isValidHttpUrl(url) || !isValidHttpUrl(imageUrl)) {
+    if (!isValidHttpUrl(url)) {
       skipped++
-      errors.push(`Invalid URL fields for title: ${title}`)
+      errors.push(`Invalid url for title: ${title}`)
+      continue
+    }
+    if (imageUrl && !isValidHttpUrl(imageUrl)) {
+      skipped++
+      errors.push(`Invalid image_url for title: ${title}`)
       continue
     }
 
@@ -95,23 +105,36 @@ export async function POST(request: Request) {
       continue
     }
 
-    await db.contentIngestItem.create({
-      data: {
-        tournamentId: body.tournamentId,
-        kind: kind === 'media' ? 'media' : 'article',
-        status: 'pending',
-        source,
-        title,
-        url,
-        imageUrl: imageUrl || null,
-        excerpt: row.excerpt || null,
-        confidence: row.confidence || 'review-required',
-        notes: row.notes || 'partner-import',
-      },
-    })
-    existingUrls.add(url)
-    queued++
+    try {
+      await db.contentIngestItem.create({
+        data: {
+          tournamentId: body.tournamentId,
+          kind: kind === 'media' ? 'media' : 'article',
+          status: 'pending',
+          source,
+          title,
+          url,
+          imageUrl: imageUrl || null,
+          excerpt: row.excerpt || null,
+          confidence: row.confidence || 'review-required',
+          notes: row.notes || 'partner-import',
+        },
+      })
+      existingUrls.add(url)
+      queued++
+    } catch (err) {
+      skipped++
+      errors.push(`Failed to create item for "${title}": ${err instanceof Error ? err.message : 'unknown error'}`)
+    }
   }
 
-  return NextResponse.json({ queued, skipped, errors: errors.slice(0, 30) })
+  const MAX_ERRORS = 30
+  const truncated = errors.length > MAX_ERRORS
+  return NextResponse.json({
+    queued,
+    skipped,
+    errors: errors.slice(0, MAX_ERRORS),
+    totalErrors: errors.length,
+    errorsTruncated: truncated,
+  })
 }

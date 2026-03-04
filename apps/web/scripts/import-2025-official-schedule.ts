@@ -265,12 +265,12 @@ async function upsertGame(tournamentId: string, g: ParsedGame) {
     },
   })
 
-  const baseData: Prisma.GameUncheckedCreateInput = {
+  const baseData = {
     tournamentId,
     homeTeamId: home.id,
     awayTeamId: away.id,
     startTime,
-    status: existing?.status === 'final' ? 'final' : 'scheduled',
+    status: (existing?.status === 'final' ? 'final' : 'scheduled') as 'final' | 'scheduled',
     venue: 'FD Jungle',
     division,
     bracketCode: g.bracketCode ?? null,

@@ -10,12 +10,14 @@ media,Clutch,Sample Video,https://youtube.com/watch?v=abc123,https://i.ytimg.com
 export function IngestImportForm({ tournamentId }: { tournamentId: string }) {
   const [csv, setCsv] = useState(TEMPLATE)
   const [msg, setMsg] = useState<string | null>(null)
+  const [errorPreview, setErrorPreview] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const router = useRouter()
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setMsg(null)
+    setErrorPreview([])
     setBusy(true)
     try {
       const res = await fetch('/api/admin/ingest/import', {
@@ -32,8 +34,10 @@ export function IngestImportForm({ tournamentId }: { tournamentId: string }) {
         setMsg(data?.error || 'Import failed')
         return
       }
-      const errorMsg = data.errors?.length ? ` | Errors: ${data.errors.join('; ')}` : ''
-      setMsg(`Queued: ${data.queued}, Skipped: ${data.skipped}${errorMsg}`)
+      const totalErrors = Number(data.totalErrors || 0)
+      const truncated = Boolean(data.errorsTruncated)
+      setMsg(`Queued: ${data.queued}, Skipped: ${data.skipped}${totalErrors ? `, Errors: ${totalErrors}${truncated ? ' (truncated)' : ''}` : ''}`)
+      setErrorPreview(Array.isArray(data.errors) ? data.errors.slice(0, 3) : [])
       router.refresh()
     } finally {
       setBusy(false)
@@ -53,6 +57,13 @@ export function IngestImportForm({ tournamentId }: { tournamentId: string }) {
         </button>
         {msg ? <p className="text-xs text-neutral-600">{msg}</p> : null}
       </div>
+      {errorPreview.length > 0 ? (
+        <ul className="list-disc pl-5 text-xs text-amber-700 space-y-1">
+          {errorPreview.map((e, i) => (
+            <li key={`${i}-${e.slice(0, 24)}`}>{e}</li>
+          ))}
+        </ul>
+      ) : null}
     </form>
   )
 }

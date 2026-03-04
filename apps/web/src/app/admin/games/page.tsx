@@ -52,7 +52,7 @@ export default async function AdminGamesPage() {
         <p className="text-sm text-neutral-600 mb-3">{tournament.name} {tournament.year}</p>
         {/* Division summary */}
         <div className="flex flex-wrap gap-2">
-          {Object.entries(divCounts).map(([divId, count]) => {
+          {(Object.entries(divCounts) as Array<[string, number]>).map(([divId, count]) => {
             const div = getDivision(divId)
             return (
               <span

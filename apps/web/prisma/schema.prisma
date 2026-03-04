@@ -158,6 +158,26 @@ model ContentIngestItem {
   @@index([source, status])
 }
 
+model AdminWhitelist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("admin")
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppUser {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  role      String   @default("admin")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum TournamentStatus {
   upcoming
   live
