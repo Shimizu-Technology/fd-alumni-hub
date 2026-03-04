@@ -20,7 +20,7 @@ export default async function NewsPage() {
           <div className="rounded-xl border bg-white p-6 text-sm text-neutral-600" style={{ borderColor: 'var(--border-subtle)' }}>
             No news links yet. Add article links in Admin / News.
           </div>
-        ) : latestNews.map((item) => (
+        ) : latestNews.map((item: { id: string; source: string; title: string; publishedAt: Date | null; url: string }) => (
           <article key={item.id} className="rounded-xl border bg-white p-4" style={{ borderColor: 'var(--border-subtle)' }}>
             <p className="text-xs uppercase tracking-wide text-neutral-500">{item.source}</p>
             <h2 className="mt-1 text-lg font-semibold">{item.title}</h2>
