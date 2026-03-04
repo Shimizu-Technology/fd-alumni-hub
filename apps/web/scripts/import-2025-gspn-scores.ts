@@ -71,8 +71,25 @@ async function main() {
   const t = await prisma.tournament.findFirst({ where: { year: TOURNAMENT_YEAR, name: TOURNAMENT_NAME } })
   if (!t) throw new Error('Tournament not found')
 
+  // Pre-flight: identify duplicate matchups that could cause false matches
+  const allGames = await prisma.game.findMany({
+    where: { tournamentId: t.id },
+    include: { homeTeam: true, awayTeam: true },
+  })
+  const matchupCounts = new Map<string, number>()
+  for (const g of allGames) {
+    const key = [g.homeTeam.classYearLabel, g.awayTeam.classYearLabel].sort().join(' vs ')
+    matchupCounts.set(key, (matchupCounts.get(key) ?? 0) + 1)
+  }
+  const duplicateMatchups = [...matchupCounts.entries()].filter(([, count]) => count > 1).map(([k]) => k)
+  if (duplicateMatchups.length > 0) {
+    console.log('⚠️  DUPLICATE MATCHUPS DETECTED (fallback matching disabled for these):')
+    duplicateMatchups.forEach(m => console.log(`   - ${m}`))
+  }
+
   let updated = 0
   const misses: string[] = []
+  const fallbackUsed: string[] = []
 
   for (const r of rows) {
     try {
@@ -93,8 +110,21 @@ async function main() {
         },
       })
 
+      let usedFallback = false
       // Fallback when article date is off: pick unique matchup in tournament
+      // SAFETY: Only use fallback if teams play exactly once (no ambiguity)
       if (!game) {
+        const matchupKey = [r.winner, r.loser].sort().join(' vs ')
+        const isDuplicate = duplicateMatchups.some(d => 
+          d === matchupKey || d.includes(r.winner) && d.includes(r.loser)
+        )
+        
+        if (isDuplicate) {
+          // Skip fallback for duplicate matchups - require exact date match
+          misses.push(`${r.date}: ${r.winner} vs ${r.loser} (date mismatch, duplicate matchup - manual review required)`)
+          continue
+        }
+        
         const candidates = await prisma.game.findMany({
           where: {
             tournamentId: t.id,
@@ -105,7 +135,12 @@ async function main() {
           },
           orderBy: { startTime: 'asc' },
         })
-        if (candidates.length === 1) game = candidates[0]
+        if (candidates.length === 1) {
+          game = candidates[0]
+          usedFallback = true
+          const actualDate = game.startTime.toISOString().split('T')[0]
+          fallbackUsed.push(`${r.winner} vs ${r.loser}: article=${r.date}, actual=${actualDate}`)
+        }
       }
 
       if (!game) {
@@ -122,13 +157,17 @@ async function main() {
         awayScore = winnerIsHome ? r.loserScore : r.winnerScore
       }
 
+      const confidenceNote = usedFallback 
+        ? `confidence=fallback(article_date=${r.date})`
+        : 'confidence=confirmed'
+      
       await prisma.game.update({
         where: { id: game.id },
         data: {
           status: 'final',
           homeScore,
           awayScore,
-          notes: `${game.notes ?? ''} | source=${r.source} | confidence=confirmed`.trim(),
+          notes: `${game.notes ?? ''} | source=${r.source} | ${confidenceNote}`.trim(),
         },
       })
       updated++
@@ -181,9 +220,15 @@ async function main() {
   console.log({
     updated,
     misses,
+    fallbackUsed,
     coverage: `${scoredGames}/${totalGames}`,
     standingsTeams: map.size,
   })
+
+  if (fallbackUsed.length > 0) {
+    console.log('\n⚠️  FALLBACK MATCHING USED (article date != game date):')
+    fallbackUsed.forEach(f => console.log(`   - ${f}`))
+  }
 }
 
 main()
