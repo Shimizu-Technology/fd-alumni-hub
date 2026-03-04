@@ -1,33 +1,225 @@
 @import "tailwindcss";
 
+/* ── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --background: var(--bg-page);
-  --foreground: var(--neutral-900);
+  /* Brand */
+  --fd-maroon: #7b1632;
+  --fd-maroon-dark: #5a1025;
+  --fd-maroon-deeper: #3d0a18;
+  --fd-gold: #d9b26f;
+  --fd-gold-light: #f0d9a8;
+  --fd-gold-muted: #b8904a;
+  --fd-ink: #12131a;
+
+  /* Neutral (warm-tinted) */
+  --neutral-950: #0c0d10;
+  --neutral-900: #17181b;
+  --neutral-800: #25272e;
+  --neutral-700: #3a3d47;
+  --neutral-600: #525663;
+  --neutral-500: #6d727d;
+  --neutral-400: #9197a5;
+  --neutral-300: #c2c8d4;
+  --neutral-200: #dde1eb;
+  --neutral-150: #e8ecf2;
+  --neutral-100: #f1f4f9;
+  --neutral-50: #f8fafc;
+
+  /* Status */
+  --status-live: #e0243e;
+  --status-live-bg: #fff0f2;
+  --status-upcoming: var(--fd-maroon);
+  --status-upcoming-bg: #fdf3f5;
+  --status-final: #485063;
+  --status-final-bg: #f3f4f7;
+
+  /* Surface */
+  --bg-page: #f4f6fb;
+  --bg-card: #ffffff;
+  --bg-card-subtle: #f9fafd;
+  --border-subtle: #e2e6f0;
+  --border-strong: #cdd1dc;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 4px 16px -4px rgba(0,0,0,0.10), 0 2px 6px -2px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 28px -6px rgba(0,0,0,0.14), 0 3px 8px -3px rgba(0,0,0,0.08);
+  --shadow-maroon: 0 4px 20px -4px rgba(123,22,50,0.25);
+
+  /* Header */
+  --header-bg: #3d0a18;
+  --header-border: rgba(255,255,255,0.06);
+  --header-text: #f0e8ec;
+  --header-text-muted: rgba(240,232,236,0.6);
+
+  /* Card */
+  --card-radius: 0.75rem;
+  --card-radius-lg: 1rem;
+
+  /* Animation */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-* {
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(123, 22, 50, 0.08), transparent),
-    radial-gradient(900px 400px at 90% -20%, rgba(78, 116, 255, 0.08), transparent),
-    var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist), Arial, Helvetica, sans-serif;
+  background: var(--bg-page);
+  background-image:
+    radial-gradient(1400px 600px at 5% -15%, rgba(123, 22, 50, 0.07) 0%, transparent 70%),
+    radial-gradient(800px 500px at 95% -10%, rgba(123, 22, 50, 0.04) 0%, transparent 70%);
+  background-attachment: fixed;
+  color: var(--neutral-900);
+  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-sora), var(--font-geist), Arial, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--font-sora), var(--font-geist), ui-sans-serif, sans-serif;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 a, button {
-  transition: all 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: all 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── Focus visible ─────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--fd-maroon);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Footer nav ────────────────────────────────────────────── */
+.footer-nav-link {
+  color: rgba(240,232,236,0.6);
+}
+.footer-nav-link:hover {
+  color: #fff;
+}
+
+/* ── Shimmer skeleton ──────────────────────────────────────── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--neutral-150);
+  border-radius: 0.5rem;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s linear infinite;
+}
+
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* ── Status badges ────────────────────────────────────────── */
+.badge-live {
+  background: var(--status-live-bg);
+  color: var(--status-live);
+  font-weight: 600;
+}
+.badge-upcoming {
+  background: var(--status-upcoming-bg);
+  color: var(--status-upcoming);
+  font-weight: 500;
+}
+.badge-final {
+  background: var(--status-final-bg);
+  color: var(--status-final);
+  font-weight: 500;
+}
+
+/* ── Live dot ─────────────────────────────────────────────── */
+.live-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--status-live);
+  animation: pulse-dot 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+/* ── Fade-up animation ─────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Stagger delays ─────────────────────────────────────────── */
+.delay-75  { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-225 { animation-delay: 225ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-375 { animation-delay: 375ms; }
+
+/* ── Mobile nav ────────────────────────────────────────────── */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 5, 8, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.nav-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(85vw, 300px);
+  background: var(--header-bg);
+  z-index: 51;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+.nav-drawer.open {
+  transform: translateX(0);
 }

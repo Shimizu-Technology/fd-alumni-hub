@@ -1,19 +1,64 @@
 :root {
+  /* ── Brand Colors ──────────────────────────────────────── */
   --fd-maroon: #7b1632;
+  --fd-maroon-dark: #5a1025;
+  --fd-maroon-deeper: #3d0a18;
   --fd-gold: #d9b26f;
-  --fd-ink: #17181b;
+  --fd-gold-light: #f0d9a8;
+  --fd-gold-muted: #b8904a;
+  --fd-ink: #12131a;
 
+  /* ── Neutral Scale (warm-tinted) ───────────────────────── */
+  --neutral-950: #0c0d10;
   --neutral-900: #17181b;
-  --neutral-700: #3f4248;
+  --neutral-800: #25272e;
+  --neutral-700: #3a3d47;
+  --neutral-600: #525663;
   --neutral-500: #6d727d;
-  --neutral-300: #d7dbe2;
-  --neutral-100: #f4f6fa;
+  --neutral-400: #9197a5;
+  --neutral-300: #c2c8d4;
+  --neutral-200: #dde1eb;
+  --neutral-150: #e8ecf2;
+  --neutral-100: #f1f4f9;
+  --neutral-50: #f8fafc;
 
-  --status-live: #cf2f4b;
-  --status-upcoming: #7b1632;
+  /* ── Status ────────────────────────────────────────────── */
+  --status-live: #e0243e;
+  --status-live-bg: #fff0f2;
+  --status-upcoming: var(--fd-maroon);
+  --status-upcoming-bg: #fdf3f5;
   --status-final: #485063;
+  --status-final-bg: #f3f4f7;
 
-  --bg-page: #f6f7fb;
+  /* ── Surface ────────────────────────────────────────────── */
+  --bg-page: #f4f6fb;
   --bg-card: #ffffff;
-  --border-subtle: #e6e9f0;
+  --bg-card-elevated: #ffffff;
+  --bg-card-subtle: #f9fafd;
+  --border-subtle: #e2e6f0;
+  --border-strong: #cdd1dc;
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 4px 16px -4px rgba(0,0,0,0.10), 0 2px 6px -2px rgba(0,0,0,0.06);
+  --shadow-hover: 0 8px 28px -6px rgba(0,0,0,0.14), 0 3px 8px -3px rgba(0,0,0,0.08);
+  --shadow-maroon: 0 4px 20px -4px rgba(123,22,50,0.25);
+
+  /* ── Header ──────────────────────────────────────────────── */
+  --header-bg: #3d0a18;
+  --header-border: rgba(255,255,255,0.06);
+  --header-text: #f0e8ec;
+  --header-text-muted: rgba(240,232,236,0.6);
+
+  /* ── Spacing ─────────────────────────────────────────────── */
+  --section-gap: 1.5rem;
+  --card-radius: 1rem;
+  --card-radius-lg: 1.25rem;
+
+  /* ── Animation ────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur-normal: 250ms;
+  --dur-slow: 400ms;
 }
