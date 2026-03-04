@@ -6,7 +6,7 @@ type MediaItem = {
   articleUrl: string | null
   caption: string | null
   tags: string | null
-  takenAt: string | null
+  takenAt: Date | string | null
 }
 
 export function AdminMediaList({ items }: { items: MediaItem[] }) {

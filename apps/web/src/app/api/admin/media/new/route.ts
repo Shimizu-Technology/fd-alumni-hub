@@ -26,6 +26,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid URL fields (http/https only)' }, { status: 400 })
   }
 
+  const parsedTakenAt = body.takenAt ? new Date(body.takenAt) : null
+  if (parsedTakenAt && Number.isNaN(parsedTakenAt.getTime())) {
+    return NextResponse.json({ error: 'Invalid takenAt date' }, { status: 400 })
+  }
+
   const media = await db.mediaAsset.create({
     data: {
       tournamentId: body.tournamentId,
@@ -35,7 +40,7 @@ export async function POST(request: Request) {
       articleUrl: body.articleUrl || null,
       caption: body.caption || null,
       tags: body.tags || null,
-      takenAt: body.takenAt ? new Date(body.takenAt) : null,
+      takenAt: parsedTakenAt,
     },
   })
 

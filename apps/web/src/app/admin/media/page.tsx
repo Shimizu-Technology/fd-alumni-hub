@@ -29,7 +29,7 @@ export default async function AdminMediaPage() {
         <p className="text-sm text-neutral-600">Manage gallery images by year/source. Add Clutch, GSPN, GuamPDN historical media assets.</p>
       </div>
       <MediaCreateForm tournamentId={tournament.id} />
-      <AdminMediaList items={media as any} />
+      <AdminMediaList items={media} />
     </section>
   )
 }
