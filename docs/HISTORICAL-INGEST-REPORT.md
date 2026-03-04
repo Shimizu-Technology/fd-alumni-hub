@@ -15,8 +15,8 @@ This report documents a comprehensive historical content acquisition sweep for t
 |--------|-------|
 | **Total Articles** | 47 |
 | **Total Media Assets** | 74 |
-| **Queue Approved** | 56 |
-| **Queue Pending** | 1 |
+| **Queue Approved** | 57 |
+| **Queue Pending** | 0 |
 | **Queue Rejected** | 13 |
 
 ---
@@ -170,7 +170,7 @@ This report documents a comprehensive historical content acquisition sweep for t
 
 Exported to: `docs/exports/historical-ingest-pending.csv`
 
-Items requiring manual review: 1
+Items requiring manual review: 0
 
 ---
 
@@ -180,6 +180,51 @@ Items requiring manual review: 1
 - Created historical ingestion scripts: `historical-ingest.ts`, `historical-ingest-pass2.ts`
 - All content items tracked in `ContentIngestItem` table with confidence labels
 - Build verified successful before commit
+
+---
+
+## Deep-Pass Research (2026-03-04)
+
+### Objective
+Increase high-confidence real content coverage beyond initial ingest, prioritizing Clutch YouTube, GSPN video/archive links, and unresolved year gaps.
+
+### Research Conducted
+1. **2014 Pending Item Verification**
+   - URL `https://www.guamsportsnetwork.com/2014/fd-alumni-basketball-tournament/` verified
+   - Redirects to valid 2014 scoreboard page
+   - Status: ✅ **Approved**
+
+2. **Clutch YouTube Deep Search**
+   - Searched for specific FD Alumni videos on Clutch Guam channel
+   - Found: Index pages only (rejected per policy)
+   - Generic "Final Score" videos not FD Alumni-specific
+   - Status: ❌ **No new content found**
+
+3. **GSPN Archive Investigation**
+   - Searched for 2016 championship articles
+   - Multiple URL patterns tested - all return 404
+   - Search results reference 2016 as a team, not tournament year
+   - Status: ❌ **2016 tournament data unavailable**
+
+4. **GuamPDN Search**
+   - Found year-end recap article mentioning FD Alumni
+   - Limited direct tournament coverage
+   - Status: ⚠️ **Secondary source only**
+
+5. **Wayback Machine**
+   - Searched for archived GSPN content from 2016
+   - No relevant snapshots found
+   - Status: ❌ **No archived content**
+
+### Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Queue Approved | 56 | 57 | +1 |
+| Queue Pending | 1 | 0 | -1 |
+| Queue Rejected | 13 | 13 | 0 |
+
+### Conclusion
+Deep research confirmed that the 2016 tournament gap is a **source-side issue** - either the tournament wasn't held, coverage was never published online, or articles were deleted. No additional high-confidence content was identified. See `docs/HISTORICAL-GAP-REPORT.md` for detailed gap analysis.
 
 ---
 
