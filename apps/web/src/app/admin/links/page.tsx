@@ -47,6 +47,21 @@ export default async function AdminLinksPage() {
             📺 {missingStream} games missing stream link
           </div>
         </div>
+        {/* Partner Integration Help */}
+        <div className="mt-4 rounded-lg border p-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--neutral-50)' }}>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--fd-maroon)' }}>
+            🤝 Partner Integration Quick Guide
+          </p>
+          <ul className="text-xs space-y-1.5" style={{ color: 'var(--neutral-600)' }}>
+            <li>• <strong>GuamTime (Tickets):</strong> Use Bulk Fill to apply ticket URLs by filtering a division/phase first</li>
+            <li>• <strong>Clutch (Streams):</strong> Same workflow — filter, then bulk apply stream URLs</li>
+            <li>• <strong>Per-game edits:</strong> Scroll down and edit individual game URLs directly</li>
+            <li>• <strong>Save:</strong> Changes are highlighted with a maroon border. Click &quot;Save All Changes&quot; when done</li>
+          </ul>
+          <p className="text-[10px] mt-2" style={{ color: 'var(--neutral-400)' }}>
+            Need CSVs for partners? See <code>docs/exports/</code> or run <code>npm run partner-package</code>
+          </p>
+        </div>
       </div>
       <BulkLinkEditor initialGames={games as any} />
     </section>

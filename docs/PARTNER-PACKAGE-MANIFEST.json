@@ -1,14 +1,25 @@
 {
-  "generatedAt": "2026-03-04T11:08:04.237Z",
-  "version": "v2",
+  "generatedAt": "2026-03-04T12:01:09.918Z",
+  "version": "v3",
+  "status": "partner-demo-ready",
   "reports": [
     "SCORE-COVERAGE-REPORT.md",
     "LINK-COVERAGE-REPORT.md",
-    "CONTENT-SUMMARY.md"
+    "CONTENT-SUMMARY.md",
+    "QA-SMOKE-CHECK-REPORT.md",
+    "PARTNER-DEMO-STATUS.md"
+  ],
+  "checklists": [
+    "PARTNER-SHARE-CHECKLIST.md",
+    "CONTENT-PARTNER-FORMAT.md"
   ],
   "exports": [
     "exports/missing-scores.csv",
     "exports/missing-ticket-links.csv",
     "exports/missing-stream-links.csv"
-  ]
+  ],
+  "scripts": {
+    "partner-package": "npm run partner-package",
+    "qa-check": "npm run qa-check"
+  }
 }
