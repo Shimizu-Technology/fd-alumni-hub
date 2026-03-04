@@ -7,81 +7,42 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum AppRole {
-  admin
-  staff
-}
-
-enum TournamentStatus {
-  upcoming
-  live
-  completed
-}
-
-enum GameStatus {
-  scheduled
-  live
-  final
-}
-
-model AppUser {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
-  role      AppRole  @default(staff)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AdminWhitelist {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  role      AppRole  @default(staff)
-  isActive  Boolean  @default(true)
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model Tournament {
-  id        String           @id @default(cuid())
+  id        String              @id @default(cuid())
   name      String
   year      Int
   startDate DateTime
   endDate   DateTime
-  status    TournamentStatus @default(upcoming)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  teams     Team[]
-  games     Game[]
-  standings Standing[]
+  status    TournamentStatus    @default(upcoming)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
   articles  ArticleLink[]
-  sponsors  Sponsor[]
-  media     MediaAsset[]
   ingest    ContentIngestItem[]
+  games     Game[]
+  media     MediaAsset[]
+  sponsors  Sponsor[]
+  standings Standing[]
+  teams     Team[]
 
   @@unique([year, name])
   @@index([year, status])
 }
 
 model Team {
-  id              String   @id @default(cuid())
-  tournamentId    String
-  classYearLabel  String
-  displayName     String
-  division        String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String     @id @default(cuid())
+  tournamentId   String
+  classYearLabel String
+  displayName    String
+  division       String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  awayGames      Game[]     @relation("AwayTeam")
+  homeGames      Game[]     @relation("HomeTeam")
+  standings      Standing[]
+  tournament     Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  homeGames  Game[]     @relation("HomeTeam")
-  awayGames  Game[]     @relation("AwayTeam")
-  standings  Standing[]
-
-  @@index([tournamentId, division])
-  @@unique([tournamentId, displayName])
+  @@unique([tournamentId, displayName], map: "Team_tournament_displayName_key")
+  @@index([tournamentId, division], map: "Team_tournament_division_idx")
 }
 
 model Game {
@@ -97,75 +58,70 @@ model Game {
   streamUrl    String?
   ticketUrl    String?
   notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   /// Division this game belongs to (e.g. "Maroon", "Gold", "Platinum"). Null = derive from teams.
   division     String?
   /// Bracket stage code for playoffs. Examples: MP, WMP, GP, WGP, PP, WPP, QF, SF, F
   bracketCode  String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  awayTeam     Team       @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeTeam     Team       @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  homeTeam   Team       @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
-  awayTeam   Team       @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
-
-  @@index([tournamentId, startTime])
-  @@index([tournamentId, division])
   @@index([status])
-  @@unique([tournamentId, homeTeamId, awayTeamId, startTime])
+  @@index([tournamentId, division], map: "Game_tournament_division_idx")
+  @@index([tournamentId, startTime], map: "Game_tournament_startTime_idx")
 }
 
 model Standing {
-  id             String   @id @default(cuid())
-  tournamentId   String
-  teamId         String
-  wins           Int      @default(0)
-  losses         Int      @default(0)
-  pointsFor      Int      @default(0)
-  pointsAgainst  Int      @default(0)
-  updatedAt      DateTime @updatedAt
+  id            String     @id @default(cuid())
+  tournamentId  String
+  teamId        String
+  wins          Int        @default(0)
+  losses        Int        @default(0)
+  pointsFor     Int        @default(0)
+  pointsAgainst Int        @default(0)
+  updatedAt     DateTime   @updatedAt
+  team          Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
-
-  @@unique([tournamentId, teamId])
-  @@index([tournamentId, wins, losses])
+  @@unique([tournamentId, teamId], map: "Standing_tournament_team_key")
+  @@index([tournamentId, wins, losses], map: "Standing_tournament_wins_losses_idx")
 }
 
 model ArticleLink {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   tournamentId String
   title        String
   source       String
   url          String
+  publishedAt  DateTime?
+  createdAt    DateTime   @default(now())
   imageUrl     String?
   excerpt      String?
-  publishedAt  DateTime?
-  createdAt    DateTime @default(now())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-
-  @@index([tournamentId, publishedAt])
+  @@index([tournamentId, publishedAt], map: "ArticleLink_tournament_publishedAt_idx")
 }
 
 model Sponsor {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   tournamentId String
   name         String
   logoUrl      String?
   targetUrl    String?
   tier         String?
-  active       Boolean  @default(true)
-  position     Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  active       Boolean    @default(true)
+  position     Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-
-  @@index([tournamentId, active, position])
+  @@index([tournamentId, active, position], map: "Sponsor_tournament_active_position_idx")
 }
 
 model MediaAsset {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   tournamentId String
   source       String
   title        String
@@ -174,23 +130,11 @@ model MediaAsset {
   caption      String?
   tags         String?
   takenAt      DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId, source, takenAt])
-}
-
-enum IngestStatus {
-  pending
-  approved
-  rejected
-}
-
-enum IngestKind {
-  article
-  media
 }
 
 model ContentIngestItem {
@@ -208,9 +152,31 @@ model ContentIngestItem {
   importedToId String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournament   Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId, status, kind])
   @@index([source, status])
+}
+
+enum TournamentStatus {
+  upcoming
+  live
+  completed
+}
+
+enum GameStatus {
+  scheduled
+  live
+  final
+}
+
+enum IngestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum IngestKind {
+  article
+  media
 }

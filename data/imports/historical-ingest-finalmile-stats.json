@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-03-04T12:28:18.094Z",
+  "pass": "final-mile",
+  "stats": {
+    "total": 24,
+    "approved": 15,
+    "pending": 0,
+    "rejected": 0,
+    "duplicates": 9,
+    "noTournament": 0,
+    "byYear": {
+      "2015": {
+        "articles": 0,
+        "media": 5
+      },
+      "2019": {
+        "articles": 0,
+        "media": 7
+      },
+      "2022": {
+        "articles": 1,
+        "media": 2
+      }
+    },
+    "bySource": {
+      "guamsportsnetwork.com": 15
+    }
+  }
+}

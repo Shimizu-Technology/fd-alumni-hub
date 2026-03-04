@@ -1,6 +1,6 @@
 # Historical Content Ingestion Report
 
-**Generated:** 2026-03-04T10:01:10.024Z
+**Generated:** 2026-03-04T12:28:18.094Z
 **Scope:** FD Alumni Hub - Multi-year historical content acquisition
 
 ---
@@ -13,9 +13,9 @@ This report documents a comprehensive historical content acquisition sweep for t
 
 | Metric | Count |
 |--------|-------|
-| **Total Articles** | 50 |
-| **Total Media Assets** | 77 |
-| **Queue Approved** | 63 |
+| **Total Articles** | 51 |
+| **Total Media Assets** | 91 |
+| **Queue Approved** | 78 |
 | **Queue Pending** | 0 |
 | **Queue Rejected** | 13 |
 
@@ -28,12 +28,12 @@ This report documents a comprehensive historical content acquisition sweep for t
 | 2025 | 5 | 18 | ✅ Complete |
 | 2024 | 4 | 4 | ✅ Complete |
 | 2023 | 5 | 5 | ✅ Complete |
-| 2022 | 6 | 9 | ✅ Complete |
+| 2022 | 7 | 11 | ✅ Complete |
 | 2021 | 2 | 7 | ✅ Complete |
-| 2019 | 3 | 6 | ✅ Complete |
+| 2019 | 3 | 13 | ✅ Complete |
 | 2018 | 4 | 5 | ✅ Complete |
 | 2017 | 5 | 3 | ✅ Complete |
-| 2015 | 7 | 11 | ✅ Complete |
+| 2015 | 7 | 16 | ✅ Complete |
 | 2014 | 9 | 9 | ✅ Complete |
 
 ---
@@ -288,6 +288,66 @@ Maximize high-confidence historical completeness through targeted GSPN archive p
 - `docs/exports/historical-score-missing.csv` - Games needing score data
 - `docs/exports/historical-ingest-pending.csv` - Refreshed (empty - all items processed)
 - `data/imports/historical-ingest-pass3-stats.json` - Pass 3 ingestion stats
+
+---
+
+## Final-Mile Archive Sweep (2026-03-04)
+
+### Objective
+Maximize high-confidence historical completeness through deep GSPN archive extraction of embedded photo gallery assets from previously ingested articles.
+
+### Research Conducted
+
+1. **GSPN Deep Archive Pattern Discovery**
+   - Searched for embedded photo galleries in existing articles
+   - Discovered URL patterns for multi-image galleries not previously captured
+   - Extracted direct image URLs from article source code
+
+2. **2019 Opening Night Photo Gallery (NEW)**
+   - Source: `https://www.guamsportsnetwork.com/2019/2006-beats-2016-alumni-tourney-tips-off/`
+   - **7 NEW IMAGES FOUND** (of 10 total, 3 were duplicates)
+   - Photographer: Michael Blas
+   - Subject: 2006 vs 2016 opening night classic (68-64 thriller)
+   - Status: ✅ **All imported**
+
+3. **2022 Playoffs Bracket Graphics (NEW)**
+   - Source: `https://www.guamsportsnetwork.com/2022/fd-alumni-basketball-playoffs-all-set/`
+   - **2 NEW IMAGES FOUND** (schedules Day 1 & Day 2)
+   - Subject: Official FDMSAA playoff schedule graphics
+   - Status: ✅ **Imported**
+
+4. **2015 Championship Photo Gallery (NEW)**
+   - Source: `https://www.guamsportsnetwork.com/2015/2013-wins-first-ever-fd-alumni-tourney/`
+   - **5 NEW IMAGES FOUND** (of 9 total, 4 were duplicates)
+   - Photographer: Dan Paran
+   - Subjects: Fr. San Nicolas ceremonial tip-off, Jay Cruz tribute, game action, Class of 2004 timeout
+   - Status: ✅ **All imported**
+
+5. **2022 Championship Article (NEW)**
+   - URL: `https://www.guamsportsnetwork.com/2022/0204-reclaims-fd-alumni-hoops-reign/`
+   - Class of 02/04 wins 5th title over Class of 2020 (62-52)
+   - Shaun Perez leads championship effort
+   - Status: ✅ **Approved and imported**
+
+### Results (Final-Mile)
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Articles | 50 | 51 | +1 |
+| Total Media | 77 | 91 | +14 |
+| Queue Approved | 63 | 78 | +15 |
+| Queue Pending | 0 | 0 | 0 |
+| 2015 Content | 7 articles, 11 media | 7 articles, 16 media | +5 media |
+| 2019 Content | 3 articles, 6 media | 3 articles, 13 media | +7 media |
+| 2022 Content | 6 articles, 9 media | 7 articles, 11 media | +1/+2 |
+
+### Key Discoveries
+- **Embedded Gallery Extraction:** GSPN articles contain multiple embedded images not captured in initial passes
+- **Photography Attribution:** Dan Paran (2015), Michael Blas (2019) credited
+- **Historical Moments Captured:** Jay Cruz tribute ceremony (2015), ceremonial tip-offs, game action photography
+- **Complete 2022 Coverage:** Championship article now ingested with semifinal coverage
+
+### New Exports Generated
+- `data/imports/historical-ingest-finalmile-stats.json` - Final-mile ingestion stats
 
 ---
 
