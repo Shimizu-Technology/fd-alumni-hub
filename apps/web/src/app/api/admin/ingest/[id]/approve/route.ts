@@ -13,39 +13,44 @@ export async function POST(_: Request, context: { params: Promise<{ id: string }
     return NextResponse.json({ error: 'Item already processed' }, { status: 400 })
   }
 
-  let importedToId: string | null = null
-
-  if (item.kind === 'article') {
-    const article = await db.articleLink.create({
-      data: {
-        tournamentId: item.tournamentId,
-        title: item.title,
-        source: item.source,
-        url: item.url,
-        imageUrl: item.imageUrl,
-        excerpt: item.excerpt,
-      },
-    })
-    importedToId = article.id
-  } else {
-    if (!item.imageUrl) return NextResponse.json({ error: 'Media item requires imageUrl' }, { status: 400 })
-    const media = await db.mediaAsset.create({
-      data: {
-        tournamentId: item.tournamentId,
-        source: item.source,
-        title: item.title,
-        imageUrl: item.imageUrl,
-        articleUrl: item.url,
-        caption: item.excerpt,
-        tags: item.notes,
-      },
-    })
-    importedToId = media.id
+  if (item.kind === 'media' && !item.imageUrl) {
+    return NextResponse.json({ error: 'Media item requires imageUrl' }, { status: 400 })
   }
 
-  const updated = await db.contentIngestItem.update({
-    where: { id: item.id },
-    data: { status: 'approved', importedToId },
+  const updated = await db.$transaction(async (tx) => {
+    let importedToId: string | null = null
+
+    if (item.kind === 'article') {
+      const article = await tx.articleLink.create({
+        data: {
+          tournamentId: item.tournamentId,
+          title: item.title,
+          source: item.source,
+          url: item.url,
+          imageUrl: item.imageUrl,
+          excerpt: item.excerpt,
+        },
+      })
+      importedToId = article.id
+    } else {
+      const media = await tx.mediaAsset.create({
+        data: {
+          tournamentId: item.tournamentId,
+          source: item.source,
+          title: item.title,
+          imageUrl: item.imageUrl!,
+          articleUrl: item.url,
+          caption: item.excerpt,
+          tags: item.notes,
+        },
+      })
+      importedToId = media.id
+    }
+
+    return tx.contentIngestItem.update({
+      where: { id: item.id },
+      data: { status: 'approved', importedToId },
+    })
   })
 
   return NextResponse.json({ item: updated })
