@@ -3,12 +3,22 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { getSchedule } from '@/lib/services/public-feed'
 
+type WatchGame = {
+  id: string
+  streamUrl: string | null
+  status: 'scheduled' | 'live' | 'final' | string
+  startTime: Date
+  homeTeam: { displayName: string }
+  awayTeam: { displayName: string }
+}
+
 export default async function WatchPage() {
   const { tournament, games } = await getSchedule()
-  const withStreams = games.filter((g) => !!g.streamUrl)
-  const live = withStreams.filter((g) => g.status === 'live')
-  const upcoming = withStreams.filter((g) => g.status === 'scheduled')
-  const replays = withStreams.filter((g) => g.status === 'final')
+  const typedGames = games as WatchGame[]
+  const withStreams = typedGames.filter((g: WatchGame) => !!g.streamUrl)
+  const live = withStreams.filter((g: WatchGame) => g.status === 'live')
+  const upcoming = withStreams.filter((g: WatchGame) => g.status === 'scheduled')
+  const replays = withStreams.filter((g: WatchGame) => g.status === 'final')
 
   const renderList = (title: string, list: typeof withStreams) => (
     <div className="rounded-xl border bg-white" style={{ borderColor: 'var(--border-subtle)' }}>

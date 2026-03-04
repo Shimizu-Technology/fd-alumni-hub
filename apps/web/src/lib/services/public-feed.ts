@@ -48,11 +48,16 @@ export async function getHomeFeed(): Promise<HomeFeed> {
   return { tournament, todayGames, liveGames, latestNews }
 }
 
-export async function getSchedule(tournamentId?: string) {
+type ScheduleFeed = {
+  tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
+  games: Awaited<ReturnType<typeof db.game.findMany>>
+}
+
+export async function getSchedule(tournamentId?: string): Promise<ScheduleFeed> {
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, games: [] }
+  if (!tournament) return { tournament: null, games: [] as ScheduleFeed['games'] }
 
   const games = await db.game.findMany({
     where: { tournamentId: tournament.id },
@@ -63,11 +68,16 @@ export async function getSchedule(tournamentId?: string) {
   return { tournament, games }
 }
 
-export async function getStandings(tournamentId?: string) {
+type StandingsFeed = {
+  tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
+  standings: Awaited<ReturnType<typeof db.standing.findMany>>
+}
+
+export async function getStandings(tournamentId?: string): Promise<StandingsFeed> {
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, standings: [] }
+  if (!tournament) return { tournament: null, standings: [] as StandingsFeed['standings'] }
 
   const standings = await db.standing.findMany({
     where: { tournamentId: tournament.id },
