@@ -186,6 +186,25 @@ function GameRow({ game }: { game: ScheduleGame }) {
   )
 }
 
+function buildScheduleUrl({
+  basePath = '/schedule',
+  division,
+  phase,
+  tournamentId,
+}: {
+  basePath?: string
+  division?: string | null
+  phase?: string | null
+  tournamentId?: string | null
+}) {
+  const p = new URLSearchParams()
+  if (division) p.set('division', division)
+  if (phase) p.set('phase', phase)
+  if (tournamentId) p.set('tournamentId', tournamentId)
+  const q = p.toString()
+  return `${basePath}${q ? `?${q}` : ''}`
+}
+
 function DivisionTabs({
   activeDivisions,
   currentFilter,
@@ -210,7 +229,7 @@ function DivisionTabs({
     <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by division">
       {/* All tab */}
       <Link
-        href={`${basePath}${(() => { const p = new URLSearchParams(); if (phaseFilter) p.set('phase', phaseFilter); if (tournamentId) p.set('tournamentId', tournamentId); const q = p.toString(); return q ? `?${q}` : '' })()}`}
+        href={buildScheduleUrl({ basePath, phase: phaseFilter, tournamentId })}
         role="tab"
         aria-selected={!currentFilter}
         className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
@@ -228,7 +247,7 @@ function DivisionTabs({
         return (
           <Link
             key={div.id}
-            href={`${basePath}?${(() => { const p = new URLSearchParams(); p.set('division', div.id); if (phaseFilter) p.set('phase', phaseFilter); if (tournamentId) p.set('tournamentId', tournamentId); return p.toString() })()}`}
+            href={buildScheduleUrl({ basePath, division: div.id, phase: phaseFilter, tournamentId })}
             role="tab"
             aria-selected={isActive}
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
