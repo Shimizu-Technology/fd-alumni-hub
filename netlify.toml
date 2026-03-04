@@ -1,0 +1,7 @@
+[build]
+  base = "."
+  command = "npm ci --include=optional && npm --workspace @fd/web run build"
+  publish = "apps/web/.next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
