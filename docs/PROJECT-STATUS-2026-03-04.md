@@ -183,3 +183,4 @@ The following deliverables were shipped to make the platform legit and ops-ready
 - `docs/PARTNER-SHARE-CHECKLIST.md`
 - `docs/OUTREACH-DRAFTS.md`
 - `docs/CONTENT-PARTNER-FORMAT.md`
+- `docs/S3-UPLOAD-SETUP.md`
