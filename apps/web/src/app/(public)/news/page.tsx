@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getHomeFeed } from '@/lib/services/public-feed'
+import { db } from '@/lib/db'
+import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 
 export const metadata: Metadata = {
   title: 'News',
@@ -93,8 +94,23 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
   )
 }
 
-export default async function NewsPage() {
-  const { tournament, latestNews } = await getHomeFeed()
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tournamentId?: string }>
+}) {
+  const params = await searchParams
+  const tournamentId = params.tournamentId ?? undefined
+
+  const tournament = tournamentId
+    ? await db.tournament.findUnique({ where: { id: tournamentId } })
+    : await getActiveTournament()
+
+  const latestNews = await db.articleLink.findMany({
+    where: tournament ? { tournamentId: tournament.id } : undefined,
+    orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+    take: 50,
+  })
 
   return (
     <section className="space-y-5">

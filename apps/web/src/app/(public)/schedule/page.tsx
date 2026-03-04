@@ -186,14 +186,37 @@ function GameRow({ game }: { game: ScheduleGame }) {
   )
 }
 
+function buildScheduleUrl({
+  basePath = '/schedule',
+  division,
+  phase,
+  tournamentId,
+}: {
+  basePath?: string
+  division?: string | null
+  phase?: string | null
+  tournamentId?: string | null
+}) {
+  const p = new URLSearchParams()
+  if (division) p.set('division', division)
+  if (phase) p.set('phase', phase)
+  if (tournamentId) p.set('tournamentId', tournamentId)
+  const q = p.toString()
+  return `${basePath}${q ? `?${q}` : ''}`
+}
+
 function DivisionTabs({
   activeDivisions,
   currentFilter,
   basePath,
+  phaseFilter,
+  tournamentId,
 }: {
   activeDivisions: string[]
   currentFilter: string | null
   basePath: string
+  phaseFilter: string | null
+  tournamentId: string | null
 }) {
   if (activeDivisions.length < 2) return null
 
@@ -206,7 +229,7 @@ function DivisionTabs({
     <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by division">
       {/* All tab */}
       <Link
-        href={basePath}
+        href={buildScheduleUrl({ basePath, phase: phaseFilter, tournamentId })}
         role="tab"
         aria-selected={!currentFilter}
         className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
@@ -224,7 +247,7 @@ function DivisionTabs({
         return (
           <Link
             key={div.id}
-            href={`${basePath}?division=${encodeURIComponent(div.id)}`}
+            href={buildScheduleUrl({ basePath, division: div.id, phase: phaseFilter, tournamentId })}
             role="tab"
             aria-selected={isActive}
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
@@ -246,11 +269,12 @@ function DivisionTabs({
   )
 }
 
-function PhaseTabs({ currentPhase, phases, divisionFilter }: { currentPhase: string | null; phases: string[]; divisionFilter: string | null }) {
+function PhaseTabs({ currentPhase, phases, divisionFilter, tournamentId }: { currentPhase: string | null; phases: string[]; divisionFilter: string | null; tournamentId: string | null }) {
   if (phases.length < 2) return null
   const qp = (phase: string | null) => {
     const p = new URLSearchParams()
     if (divisionFilter) p.set('division', divisionFilter)
+    if (tournamentId) p.set('tournamentId', tournamentId)
     if (phase) p.set('phase', phase)
     const q = p.toString()
     return `/schedule${q ? `?${q}` : ''}`
@@ -269,13 +293,14 @@ function PhaseTabs({ currentPhase, phases, divisionFilter }: { currentPhase: str
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ division?: string; phase?: 'pool' | 'playoff' | 'fatherson' }>
+  searchParams: Promise<{ division?: string; phase?: 'pool' | 'playoff' | 'fatherson'; tournamentId?: string }>
 }) {
   const params = await searchParams
   const divisionFilter = params.division ?? null
   const phaseFilter = params.phase ?? null
+  const tournamentId = params.tournamentId ?? null
 
-  const { tournament, games, divisions, phases } = await getSchedule(undefined, divisionFilter, phaseFilter)
+  const { tournament, games, divisions, phases } = await getSchedule(tournamentId ?? undefined, divisionFilter, phaseFilter)
   const typedGames = games as ScheduleGame[]
 
   // Group by day
@@ -330,8 +355,10 @@ export default async function SchedulePage({
           activeDivisions={divisions}
           currentFilter={divisionFilter}
           basePath="/schedule"
+          phaseFilter={phaseFilter}
+          tournamentId={tournamentId}
         />
-        <PhaseTabs currentPhase={phaseFilter} phases={phases} divisionFilter={divisionFilter} />
+        <PhaseTabs currentPhase={phaseFilter} phases={phases} divisionFilter={divisionFilter} tournamentId={tournamentId} />
       </div>
 
       {!tournament || typedGames.length === 0 ? (

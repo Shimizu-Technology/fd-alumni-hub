@@ -118,8 +118,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default async function WatchPage() {
-  const { tournament, games } = await getSchedule()
+export default async function WatchPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tournamentId?: string }>
+}) {
+  const params = await searchParams
+  const tournamentId = params.tournamentId ?? undefined
+  const { tournament, games } = await getSchedule(tournamentId)
   const typedGames = games as WatchGame[]
   const withStreams = typedGames.filter(g => !!g.streamUrl)
   const live = withStreams.filter(g => g.status === 'live')
@@ -196,14 +202,12 @@ export default async function WatchPage() {
           </p>
           <div className="flex flex-wrap gap-6 items-center">
             <div className="flex items-center gap-2">
-              <span className="text-sm" aria-hidden="true">📺</span>
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>Clutch</p>
                 <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official streaming partner</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm" aria-hidden="true">🎟️</span>
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>GuamTime</p>
                 <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official ticketing partner</p>
