@@ -17,16 +17,25 @@ export default async function GalleryPage({
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
 
-  const items = await db.mediaAsset.findMany({
-    where: tournament
-      ? {
-          tournamentId: tournament.id,
-          ...(sourceFilter ? { source: sourceFilter } : {}),
-        }
-      : undefined,
-    orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
-    take: 300,
-  })
+  const where = tournament
+    ? {
+        tournamentId: tournament.id,
+        ...(sourceFilter ? { source: sourceFilter } : {}),
+      }
+    : undefined
+
+  const [items, featured] = await Promise.all([
+    db.mediaAsset.findMany({
+      where,
+      orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+      take: 300,
+    }),
+    db.mediaAsset.findMany({
+      where: where ? { ...where, tags: { contains: 'featured' } } : undefined,
+      orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+      take: 3,
+    }),
+  ])
 
   const sourceRows = tournament
     ? await db.mediaAsset.findMany({ where: { tournamentId: tournament.id }, select: { source: true }, distinct: ['source'], orderBy: { source: 'asc' } })
@@ -58,6 +67,22 @@ export default async function GalleryPage({
           </div>
         ) : null}
       </div>
+
+      {featured.length > 0 ? (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--neutral-600)' }}>Featured</h2>
+          <div className="grid gap-3 md:grid-cols-3">
+            {featured.map((item) => (
+              <article key={`featured-${item.id}`} className="rounded-xl border bg-white p-3" style={{ borderColor: 'var(--border-subtle)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.imageUrl} alt={item.title} className="h-44 w-full rounded-md object-cover" />
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-neutral-500">{item.source}</p>
+                <p className="mt-1 font-medium leading-snug">{item.title}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {items.length === 0 ? (
         <div className="rounded-xl border bg-white p-8 text-sm text-neutral-600" style={{ borderColor: 'var(--border-subtle)' }}>

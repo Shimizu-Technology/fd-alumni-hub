@@ -12,7 +12,12 @@ export default async function HistoryPage() {
         orderBy: [{ wins: 'desc' }, { losses: 'asc' }, { pointsFor: 'desc' }],
         take: 1,
       },
-      _count: { select: { games: true, articles: true } },
+      media: {
+        where: { tags: { contains: 'featured' } },
+        orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+        take: 1,
+      },
+      _count: { select: { games: true, articles: true, media: true } },
     },
     take: 20,
   })
@@ -45,11 +50,15 @@ export default async function HistoryPage() {
                   </span>
                 </div>
                 <p className="mt-2 text-xs" style={{ color: 'var(--neutral-500)' }}>
-                  {t._count.games} games · {t._count.articles} articles
+                  {t._count.games} games · {t._count.articles} articles · {t._count.media} media
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--neutral-500)' }}>
                   {leader ? `Current leader/champion signal: ${leader}` : 'Champion pending score completion'}
                 </p>
+                {t.media[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={t.media[0].imageUrl} alt={`${t.year} featured`} className="mt-3 h-28 w-full rounded-md object-cover" />
+                ) : null}
                 <div className="mt-4 flex flex-wrap gap-2 text-xs">
                   <Link className="rounded-lg border px-2.5 py-1.5" style={{ borderColor: 'var(--border-subtle)' }} href={`/schedule?tournamentId=${encodeURIComponent(t.id)}`}>Schedule</Link>
                   <Link className="rounded-lg border px-2.5 py-1.5" style={{ borderColor: 'var(--border-subtle)' }} href={`/standings?tournamentId=${encodeURIComponent(t.id)}`}>Standings</Link>
