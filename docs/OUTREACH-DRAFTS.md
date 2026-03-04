@@ -1,11 +1,19 @@
 # Outreach Drafts
 
 ## Zay / Clutch (collab framing)
-Hey Zay — I’m working on a unified FD Alumni Tournament Hub so fans have one place for schedule, standings, watch links, and tickets.
+Hey Zay — we just built and deployed the FD Alumni Tournament Hub so fans have one place for schedule, standings, watch links, and tickets.
 
-We want to feature Clutch as the official stream partner (live + replay links), drive traffic to your broadcasts, and make discovery way easier.
+We’d love to collaborate with Clutch as the official stream/results partner:
+- feature your live + replay links prominently
+- route viewers directly to Clutch broadcasts
+- keep score/results data accurate and up-to-date
 
-Would you be open to a quick sync this week to align stream metadata + embed/link flow?
+Right now we’ve loaded the full 2025 schedule + playoff structure, and we’re filling in missing scores. If you have result sheets/posts/exports, we can ingest them quickly and attribute Clutch as the source.
+
+Would you be open to a quick sync this week to align:
+1) stream metadata format
+2) score/result sharing format
+3) attribution + traffic flow back to Clutch?
 
 ## GSPN
 Hey guys — building a clean FD Alumni Tournament Hub for this year so schedule/standings/watch/tickets are centralized.
