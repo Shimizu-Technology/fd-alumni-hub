@@ -60,6 +60,7 @@ model Tournament {
   articles  ArticleLink[]
   sponsors  Sponsor[]
   media     MediaAsset[]
+  ingest    ContentIngestItem[]
 
   @@unique([year, name])
   @@index([year, status])
@@ -179,4 +180,37 @@ model MediaAsset {
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId, source, takenAt])
+}
+
+enum IngestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum IngestKind {
+  article
+  media
+}
+
+model ContentIngestItem {
+  id           String       @id @default(cuid())
+  tournamentId String
+  kind         IngestKind
+  status       IngestStatus @default(pending)
+  source       String
+  title        String
+  url          String
+  imageUrl     String?
+  excerpt      String?
+  confidence   String?
+  notes        String?
+  importedToId String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([tournamentId, status, kind])
+  @@index([source, status])
 }
