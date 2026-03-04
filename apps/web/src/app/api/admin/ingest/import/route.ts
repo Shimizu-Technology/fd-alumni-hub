@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { parse } from 'csv-parse/sync'
 import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
 import { isValidHttpUrl } from '@/lib/url'
@@ -16,19 +17,16 @@ type Row = {
 }
 
 function parseCsv(text: string): Row[] {
-  const lines = text.split(/\r?\n/).filter(Boolean)
-  if (lines.length < 2) return []
-  const headers = lines[0].split(',').map((h) => h.trim())
-  const rows: Row[] = []
-  for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split(',')
-    const r: Record<string, string> = {}
-    headers.forEach((h, idx) => {
-      r[h] = (cells[idx] ?? '').trim()
+  try {
+    const records = parse(text, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
     })
-    rows.push(r)
+    return records as Row[]
+  } catch {
+    return []
   }
-  return rows
 }
 
 export async function POST(request: Request) {
@@ -58,6 +56,13 @@ export async function POST(request: Request) {
   let skipped = 0
   const errors: string[] = []
 
+  const existingUrls = new Set(
+    (await db.contentIngestItem.findMany({
+      where: { tournamentId: body.tournamentId },
+      select: { url: true },
+    })).map((item) => item.url),
+  )
+
   for (const row of rows) {
     const kind = (row.kind || body.defaultKind || 'article').toLowerCase()
     const source = row.source || body.defaultSource || 'Partner'
@@ -77,11 +82,7 @@ export async function POST(request: Request) {
       continue
     }
 
-    const exists = await db.contentIngestItem.findFirst({
-      where: { tournamentId: body.tournamentId, url },
-      select: { id: true },
-    })
-    if (exists) {
+    if (existingUrls.has(url)) {
       skipped++
       continue
     }
@@ -100,6 +101,7 @@ export async function POST(request: Request) {
         notes: row.notes || 'partner-import',
       },
     })
+    existingUrls.add(url)
     queued++
   }
 

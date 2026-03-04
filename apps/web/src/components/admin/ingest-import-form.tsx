@@ -32,7 +32,8 @@ export function IngestImportForm({ tournamentId }: { tournamentId: string }) {
         setMsg(data?.error || 'Import failed')
         return
       }
-      setMsg(`Queued: ${data.queued}, Skipped: ${data.skipped}`)
+      const errorMsg = data.errors?.length ? ` | Errors: ${data.errors.join('; ')}` : ''
+      setMsg(`Queued: ${data.queued}, Skipped: ${data.skipped}${errorMsg}`)
       router.refresh()
     } finally {
       setBusy(false)
