@@ -71,32 +71,39 @@ async function seedFromHistorical() {
       const away = await upsertTeam(t2025.id, g.away)
       const start = new Date(`${g.date}T18:00:00.000Z`)
 
-      await prisma.game.upsert({
+      const existing = await prisma.game.findFirst({
         where: {
-          tournamentId_homeTeamId_awayTeamId_startTime: {
-            tournamentId: t2025.id,
-            homeTeamId: home.id,
-            awayTeamId: away.id,
-            startTime: start,
-          },
-        },
-        update: {
-          status: g.status,
-          homeScore: g.homeScore,
-          awayScore: g.awayScore,
-          notes: `SOURCE: GSPN weekly results (${g.confidence})`,
-        },
-        create: {
           tournamentId: t2025.id,
           homeTeamId: home.id,
           awayTeamId: away.id,
           startTime: start,
-          status: g.status,
-          homeScore: g.homeScore,
-          awayScore: g.awayScore,
-          notes: `SOURCE: GSPN weekly results (${g.confidence})`,
         },
       })
+
+      if (existing) {
+        await prisma.game.update({
+          where: { id: existing.id },
+          data: {
+            status: g.status,
+            homeScore: g.homeScore,
+            awayScore: g.awayScore,
+            notes: `SOURCE: GSPN weekly results (${g.confidence})`,
+          },
+        })
+      } else {
+        await prisma.game.create({
+          data: {
+            tournamentId: t2025.id,
+            homeTeamId: home.id,
+            awayTeamId: away.id,
+            startTime: start,
+            status: g.status,
+            homeScore: g.homeScore,
+            awayScore: g.awayScore,
+            notes: `SOURCE: GSPN weekly results (${g.confidence})`,
+          },
+        })
+      }
     }
   }
 
