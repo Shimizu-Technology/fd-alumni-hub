@@ -1,6 +1,6 @@
 [build]
   base = "."
-  command = "npm ci --include=optional && npm --workspace @fd/web install lightningcss-linux-x64-gnu --no-save && npm --workspace @fd/web run build"
+  command = "npm ci --include=optional && npm --workspace @fd/web install --no-save lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu && npm --workspace @fd/web run build"
   publish = "apps/web/.next"
 
 [[plugins]]
