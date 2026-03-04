@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
+import type { Prisma } from '@prisma/client'
 
 type HomeFeed = {
   tournament: Awaited<ReturnType<typeof getActiveTournament>>
@@ -48,9 +49,13 @@ export async function getHomeFeed(): Promise<HomeFeed> {
   return { tournament, todayGames, liveGames, latestNews }
 }
 
+type ScheduleGame = Prisma.GameGetPayload<{
+  include: { homeTeam: true; awayTeam: true }
+}>
+
 type ScheduleFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
-  games: Awaited<ReturnType<typeof db.game.findMany>>
+  games: ScheduleGame[]
 }
 
 export async function getSchedule(tournamentId?: string): Promise<ScheduleFeed> {
@@ -68,9 +73,13 @@ export async function getSchedule(tournamentId?: string): Promise<ScheduleFeed> 
   return { tournament, games }
 }
 
+type StandingWithTeam = Prisma.StandingGetPayload<{
+  include: { team: true }
+}>
+
 type StandingsFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
-  standings: Awaited<ReturnType<typeof db.standing.findMany>>
+  standings: StandingWithTeam[]
 }
 
 export async function getStandings(tournamentId?: string): Promise<StandingsFeed> {

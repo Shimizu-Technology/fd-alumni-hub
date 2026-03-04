@@ -32,7 +32,7 @@ export default async function StandingsPage() {
               </tr>
             </thead>
             <tbody>
-              {standings.map((row: { id: string; wins: number; losses: number; pointsFor: number; pointsAgainst: number; team: { displayName: string } }) => {
+              {standings.map((row) => {
                 const diff = row.pointsFor - row.pointsAgainst
                 return (
                   <tr key={row.id} className="border-t" style={{ borderColor: 'var(--border-subtle)' }}>

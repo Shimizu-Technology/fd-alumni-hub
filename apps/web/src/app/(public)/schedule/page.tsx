@@ -3,6 +3,19 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { getSchedule } from '@/lib/services/public-feed'
 
+type ScheduleGame = {
+  id: string
+  startTime: Date
+  venue: string | null
+  status: 'scheduled' | 'live' | 'final'
+  homeScore: number | null
+  awayScore: number | null
+  streamUrl: string | null
+  ticketUrl: string | null
+  homeTeam: { displayName: string }
+  awayTeam: { displayName: string }
+}
+
 function statusBadge(status: 'scheduled' | 'live' | 'final') {
   if (status === 'live') return 'badge-live'
   if (status === 'final') return 'badge-final'
@@ -19,9 +32,10 @@ function dayKey(date: Date) {
 
 export default async function SchedulePage() {
   const { tournament, games } = await getSchedule()
+  const typedGames = games as ScheduleGame[]
 
-  const grouped: Record<string, Array<(typeof games)[number]>> = {}
-  for (const game of games) {
+  const grouped: Record<string, ScheduleGame[]> = {}
+  for (const game of typedGames) {
     const key = dayKey(new Date(game.startTime))
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(game)
