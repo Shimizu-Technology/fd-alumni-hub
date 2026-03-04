@@ -25,6 +25,12 @@ async function main() {
     process.exit(1)
   }
 
+  const tournament = await db.tournament.findUnique({ where: { id: tournamentId } })
+  if (!tournament) {
+    console.error(`Error: Tournament ${tournamentId} not found`)
+    process.exit(1)
+  }
+
   for (const url of urls) {
     if (!isAllowed(url)) {
       console.log(`skip (not allowlisted): ${url}`)

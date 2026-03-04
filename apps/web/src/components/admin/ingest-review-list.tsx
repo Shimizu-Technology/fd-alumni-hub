@@ -13,7 +13,7 @@ type Item = {
   imageUrl: string | null
   excerpt: string | null
   confidence: string | null
-  createdAt: string
+  createdAt: string | Date
 }
 
 export function IngestReviewList({ items }: { items: Item[] }) {

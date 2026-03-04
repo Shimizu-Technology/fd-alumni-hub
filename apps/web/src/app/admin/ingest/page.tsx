@@ -29,7 +29,7 @@ export default async function AdminIngestPage() {
         <p className="text-sm text-neutral-600">Queue scraped/manual content and approve it into Articles/Media with attribution.</p>
       </div>
       <IngestCreateForm tournamentId={tournament.id} />
-      <IngestReviewList items={items as any} />
+      <IngestReviewList items={items} />
     </section>
   )
 }
