@@ -89,22 +89,31 @@ export async function getSchedule(
 
   // Build where clause
   const where: Prisma.GameWhereInput = { tournamentId: tournament.id }
+  const andFilters: Prisma.GameWhereInput[] = []
+
   if (divisionFilter) {
     // Match games where game.division = filter OR (game.division is null AND homeTeam.division = filter)
-    where.OR = [
-      { division: divisionFilter },
-      { division: null, homeTeam: { division: divisionFilter } },
-    ]
+    andFilters.push({
+      OR: [
+        { division: divisionFilter },
+        { division: null, homeTeam: { division: divisionFilter } },
+      ],
+    })
   }
-  if (phaseFilter === 'pool') where.notes = { contains: 'phase=pool' }
-  if (phaseFilter === 'playoff') where.notes = { contains: 'phase=playoff' }
+
+  if (phaseFilter === 'pool') andFilters.push({ notes: { contains: 'phase=pool' } })
+  if (phaseFilter === 'playoff') andFilters.push({ notes: { contains: 'phase=playoff' } })
   if (phaseFilter === 'fatherson') {
-    where.OR = [
-      { bracketCode: 'FS' },
-      { homeTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
-      { awayTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
-    ]
+    andFilters.push({
+      OR: [
+        { bracketCode: 'FS' },
+        { homeTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
+        { awayTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
+      ],
+    })
   }
+
+  if (andFilters.length > 0) where.AND = andFilters
 
   const games = await db.game.findMany({
     where,
