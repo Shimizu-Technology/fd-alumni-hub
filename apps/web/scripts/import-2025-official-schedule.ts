@@ -256,14 +256,12 @@ async function upsertGame(tournamentId: string, g: ParsedGame) {
   const away = await ensureTeam(tournamentId, g.away, inferDivision(g.away, g.bracketCode))
   const startTime = toStartTime(g.date, g.time)
 
-  const existing = await prisma.game.findUnique({
+  const existing = await prisma.game.findFirst({
     where: {
-      tournamentId_homeTeamId_awayTeamId_startTime: {
-        tournamentId,
-        homeTeamId: home.id,
-        awayTeamId: away.id,
-        startTime,
-      },
+      tournamentId,
+      homeTeamId: home.id,
+      awayTeamId: away.id,
+      startTime,
     },
   })
 
