@@ -173,4 +173,5 @@ The following deliverables were shipped to make the platform legit and ops-ready
 - `docs/DATA-MODEL-V1.md`
 - `docs/BRAND-DESIGN-TOKENS.md`
 - `docs/2025-SCORE-COVERAGE-REPORT.md`
+- `docs/PARTNER-SHARE-CHECKLIST.md`
 - `docs/OUTREACH-DRAFTS.md`

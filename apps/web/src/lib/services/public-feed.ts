@@ -150,6 +150,11 @@ type StandingsFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
   standings: StandingWithTeam[]
   divisions: string[]
+  scoreCoverage: {
+    scoredGames: number
+    totalGames: number
+    percent: number
+  }
 }
 
 export async function getStandings(
@@ -159,7 +164,12 @@ export async function getStandings(
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, standings: [], divisions: [] }
+  if (!tournament) return {
+    tournament: null,
+    standings: [],
+    divisions: [],
+    scoreCoverage: { scoredGames: 0, totalGames: 0, percent: 0 },
+  }
 
   // Get all teams' divisions for the tab list
   const allTeams = await db.team.findMany({
@@ -175,15 +185,32 @@ export async function getStandings(
   const teamWhere: Prisma.TeamWhereInput = { tournamentId: tournament.id }
   if (divisionFilter) teamWhere.division = divisionFilter
 
-  const standings = await db.standing.findMany({
-    where: {
-      tournamentId: tournament.id,
-      team: teamWhere,
-    },
-    include: { team: true },
-    orderBy: [{ wins: 'desc' }, { losses: 'asc' }, { pointsFor: 'desc' }],
-    take: 100,
-  })
+  const [standings, totalGames, scoredGames] = await Promise.all([
+    db.standing.findMany({
+      where: {
+        tournamentId: tournament.id,
+        team: teamWhere,
+      },
+      include: { team: true },
+      orderBy: [{ wins: 'desc' }, { losses: 'asc' }, { pointsFor: 'desc' }],
+      take: 100,
+    }),
+    db.game.count({ where: { tournamentId: tournament.id } }),
+    db.game.count({
+      where: {
+        tournamentId: tournament.id,
+        homeScore: { not: null },
+        awayScore: { not: null },
+      },
+    }),
+  ])
 
-  return { tournament, standings, divisions: Array.from(divSet).sort() }
+  const percent = totalGames ? Math.round((scoredGames / totalGames) * 1000) / 10 : 0
+
+  return {
+    tournament,
+    standings,
+    divisions: Array.from(divSet).sort(),
+    scoreCoverage: { scoredGames, totalGames, percent },
+  }
 }

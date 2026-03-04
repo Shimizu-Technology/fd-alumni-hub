@@ -95,7 +95,7 @@ export default async function StandingsPage({
   const params = await searchParams
   const divisionFilter = params.division ?? null
 
-  const { tournament, standings, divisions } = await getStandings(undefined, divisionFilter)
+  const { tournament, standings, divisions, scoreCoverage } = await getStandings(undefined, divisionFilter)
   const typedStandings = standings as StandingRow[]
 
   const activeDiv = divisionFilter ? getDivision(divisionFilter) : undefined
@@ -120,6 +120,11 @@ export default async function StandingsPage({
           currentFilter={divisionFilter}
           basePath="/standings"
         />
+
+        <div className="mt-3 inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs" style={{ borderColor: 'var(--border-subtle)', color: 'var(--neutral-600)' }}>
+          <span className="font-semibold" style={{ color: 'var(--fd-ink)' }}>Data coverage</span>
+          <span>{scoreCoverage.scoredGames}/{scoreCoverage.totalGames} games scored ({scoreCoverage.percent}%)</span>
+        </div>
       </div>
 
       {!tournament || typedStandings.length === 0 ? (
