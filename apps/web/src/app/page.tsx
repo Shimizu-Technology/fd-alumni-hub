@@ -17,29 +17,38 @@ export default async function Home() {
 
   return (
     <section className="space-y-6">
-      <div className="rounded-2xl border bg-white p-6" style={{ borderColor: 'var(--border-subtle)' }}>
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--fd-maroon)' }}>FD Alumni Basketball Hub</h1>
-        <p className="mt-2 text-neutral-600">
-          {tournament
-            ? `${tournament.name} ${tournament.year} — your single source for schedule, standings, watch links, tickets, and updates.`
-            : 'Single source of truth for schedule, standings, watch links, tickets, and updates.'}
-        </p>
-        <div className="mt-3 rounded-lg border bg-neutral-50 px-3 py-2 text-sm text-neutral-700" style={{ borderColor: 'var(--border-subtle)' }}>
-          <span className="font-semibold">Now:</span>{' '}
-          {upcomingOrLiveTournament
-            ? `${upcomingOrLiveTournament.year} ${upcomingOrLiveTournament.status.toUpperCase()}`
-            : 'No live/upcoming tournament set'}
-          {' · '}
-          <span className="font-semibold">Latest results:</span>{' '}
-          {latestResultsTournament
-            ? `${latestResultsTournament.year} COMPLETED`
-            : 'No completed tournament data yet'}
-        </div>
+      <div className="relative overflow-hidden rounded-3xl border bg-white p-6 md:p-8" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="pointer-events-none absolute -right-14 -top-14 h-52 w-52 rounded-full bg-[color:var(--fd-maroon)]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-12 bottom-0 h-36 w-36 rounded-full bg-blue-400/10 blur-2xl" />
 
-        <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          <Link href="/schedule" className="rounded-lg px-3 py-2 text-white" style={{ background: 'var(--fd-maroon)' }}>View Schedule</Link>
-          <Link href="/standings" className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-subtle)' }}>View Standings</Link>
-          <Link href="/watch" className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-subtle)' }}>Watch Games</Link>
+        <div className="relative">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500">Official Tournament Hub</p>
+          <h1 className="mt-2 text-4xl font-bold leading-tight md:text-5xl" style={{ color: 'var(--fd-maroon)' }}>
+            FD Alumni Basketball
+          </h1>
+          <p className="mt-3 max-w-3xl text-base leading-relaxed text-neutral-600 md:text-lg">
+            {tournament
+              ? `${tournament.name} ${tournament.year} — live schedule, standings, watch links, and verified updates in one place.`
+              : 'Single source of truth for schedule, standings, watch links, tickets, and updates.'}
+          </p>
+
+          <div className="mt-4 rounded-xl border bg-white/90 px-4 py-3 text-sm text-neutral-700" style={{ borderColor: 'var(--border-subtle)' }}>
+            <span className="font-semibold">Now:</span>{' '}
+            {upcomingOrLiveTournament
+              ? `${upcomingOrLiveTournament.year} ${upcomingOrLiveTournament.status.toUpperCase()}`
+              : 'No live/upcoming tournament set'}
+            {' · '}
+            <span className="font-semibold">Latest results:</span>{' '}
+            {latestResultsTournament
+              ? `${latestResultsTournament.year} COMPLETED`
+              : 'No completed tournament data yet'}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3 text-sm">
+            <Link href="/schedule" className="rounded-xl px-4 py-2.5 font-medium text-white shadow-sm hover:-translate-y-0.5" style={{ background: 'var(--fd-maroon)' }}>View Schedule</Link>
+            <Link href="/standings" className="rounded-xl border bg-white px-4 py-2.5 font-medium text-[color:var(--fd-ink)] hover:-translate-y-0.5" style={{ borderColor: 'var(--border-subtle)' }}>View Standings</Link>
+            <Link href="/watch" className="rounded-xl border bg-white px-4 py-2.5 font-medium text-[color:var(--fd-ink)] hover:-translate-y-0.5" style={{ borderColor: 'var(--border-subtle)' }}>Watch Games</Link>
+          </div>
         </div>
       </div>
 

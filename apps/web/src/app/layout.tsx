@@ -18,7 +18,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <html lang="en" className={`${geist.variable} ${sora.variable}`}>
       <body style={{ background: 'var(--bg-page)', color: 'var(--neutral-900)' }}>
         <SiteHeader />
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8 md:py-10">{children}</main>
       </body>
     </html>
   )
