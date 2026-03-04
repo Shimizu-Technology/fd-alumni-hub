@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/authz'
 import { createImageUploadPost } from '@/lib/s3'
+import { db } from '@/lib/db'
 
 export async function POST(request: Request) {
   const staff = await requireStaff()
@@ -14,6 +15,11 @@ export async function POST(request: Request) {
 
   if (!body.tournamentId || !body.filename || !body.contentType) {
     return NextResponse.json({ error: 'tournamentId, filename, contentType required' }, { status: 400 })
+  }
+
+  const tournament = await db.tournament.findUnique({ where: { id: body.tournamentId } })
+  if (!tournament) {
+    return NextResponse.json({ error: 'invalid tournamentId' }, { status: 400 })
   }
 
   if (!body.contentType.startsWith('image/')) {
