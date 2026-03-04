@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-03-04T14:12:36.757Z",
+  "recovered": 6,
+  "failed": 0,
+  "results": [
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/2013-wins-first-ever-fd-alumni-tourney/",
+      "status": "recovered_alt",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/2004-to-face-2013-in-fd-hoops-finals/",
+      "status": "recovered_alt",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/final-four-set-in-fd-hoops/",
+      "status": "recovered_alt",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/playoff-action-underway-for-fd-hoops/",
+      "status": "recovered_wayback",
+      "newUrl": "http://web.archive.org/web/im_/20160409092611/http://www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/fd-alumni-tournament-tips-off/",
+      "status": "recovered_alt",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/2004-to-play-2012-in-alumni-finals/",
+      "status": "recovered_alt",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    }
+  ]
+}

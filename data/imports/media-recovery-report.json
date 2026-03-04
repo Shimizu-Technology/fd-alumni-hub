@@ -1,0 +1,416 @@
+{
+  "timestamp": "2026-03-04T14:11:14.673Z",
+  "summary": {
+    "recovered": 0,
+    "normalized": 35,
+    "failed": 14
+  },
+  "results": [
+    {
+      "id": "cmmbs9k4q002ghx02syv8xdib",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Screen-Shot-2015-06-29-at-6.19.49-PM.png?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Screen-Shot-2015-06-29-at-6.19.49-PM.png?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbs9nsu002nhx02mcxl6drh",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4790.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4790.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscb6j0004hxfltxb29kq5",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_0293.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_0293.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscj8a000ihxflbvxsmv1a",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_5501.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_5501.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscmoi000phxflo89ea4ky",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1816.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1816.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscqbq000whxfl7gyw421l",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1968.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1968.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscxma001ahxflk5apbqxt",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0086.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0086.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbsd172001hhxflhh91k42t",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0132.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0132.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbsd4pj001ohxflxvlplsc9",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg?resize=720%2C468&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg?resize=720%2C468&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbsd8gx001vhxflc2jdnp0k",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-112.jpg?resize=720%2C461&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-112.jpg?resize=720%2C461&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbsdcdy0022hxflr8e39yet",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Alumni-41.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Alumni-41.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbsdg5z0029hxfl5k4utq4c",
+      "type": "article",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/fd-champs-10.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/fd-champs-10.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbscffn000bhxfle5lxixl3",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4964.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4964.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbv89pf0001hxmg3kkdp75u",
+      "type": "article",
+      "tournamentYear": 2014,
+      "originalUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4843.jpg",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4843.jpg?resize=1000%2C600&#038;ssl=1",
+      "status": "failed",
+      "notes": "Extracted og:image URL returns 404"
+    },
+    {
+      "id": "cmmbs89iu0004hx026bay9op4",
+      "type": "redirect",
+      "tournamentYear": 2023,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/DSC04752.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/DSC04752.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8e0p000bhx02kvowaoiu",
+      "type": "redirect",
+      "tournamentYear": 2023,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/06/brothers-ig.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/06/brothers-ig.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8hzf000ihx02jnk8np1f",
+      "type": "redirect",
+      "tournamentYear": 2023,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/DSC01175-1.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/DSC01175-1.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8td80013hx02e0asbncf",
+      "type": "redirect",
+      "tournamentYear": 2022,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/06/DSC09686.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/06/DSC09686.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8x4s001ahx029di9yvob",
+      "type": "redirect",
+      "tournamentYear": 2024,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2024/07/DSC8952-scaled.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2024/07/DSC8952-scaled.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs90uz001hhx020ngfebmz",
+      "type": "redirect",
+      "tournamentYear": 2025,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2025/06/WhatsApp-Image-2025-06-23-at-9.21.48-AM-e1751204444224.jpeg?resize=920%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2025/06/WhatsApp-Image-2025-06-23-at-9.21.48-AM-e1751204444224.jpeg?resize=920%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs94ke001ohx020eohmvhw",
+      "type": "redirect",
+      "tournamentYear": 2019,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/06/06-V-16-ALUMNI-TOURNEY-2019-10.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/06/06-V-16-ALUMNI-TOURNEY-2019-10.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs98kq001vhx02th0h83kc",
+      "type": "redirect",
+      "tournamentYear": 2019,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/07/ALUMNI-TOURNY-4.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/07/ALUMNI-TOURNY-4.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs9ccm0022hx02w5q21nwi",
+      "type": "redirect",
+      "tournamentYear": 2018,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/07/2018-FD-Alumni-Tournament-Finals-13.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/07/2018-FD-Alumni-Tournament-Finals-13.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs9g020029hx02r4b1wbag",
+      "type": "redirect",
+      "tournamentYear": 2017,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/IMG_3238.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/IMG_3238.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs9k4q002ghx02syv8xdib",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Screen-Shot-2015-06-29-at-6.19.49-PM.png?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Screen-Shot-2015-06-29-at-6.19.49-PM.png?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8lrz000phx02ioljqfsd",
+      "type": "redirect",
+      "tournamentYear": 2022,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/07/DSC08418.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/07/DSC08418.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs9nsu002nhx02mcxl6drh",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4790.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4790.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscb6j0004hxfltxb29kq5",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_0293.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_0293.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscj8a000ihxflbvxsmv1a",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_5501.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_5501.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscmoi000phxflo89ea4ky",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1816.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1816.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscqbq000whxfl7gyw421l",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1968.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_1968.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsctva0013hxfljvwq9csf",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_2409.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_2409.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscxma001ahxflk5apbqxt",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0086.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0086.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsd172001hhxflhh91k42t",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0132.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/IMG_0132.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsd4pj001ohxflxvlplsc9",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg?resize=720%2C468&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg?resize=720%2C468&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsd8gx001vhxflc2jdnp0k",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-112.jpg?resize=720%2C461&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-112.jpg?resize=720%2C461&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsdcdy0022hxflr8e39yet",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Alumni-41.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/Alumni-41.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsdg5z0029hxfl5k4utq4c",
+      "type": "redirect",
+      "tournamentYear": 2015,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/fd-champs-10.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2015/06/fd-champs-10.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsdjrt002ghxflz0otkl5q",
+      "type": "redirect",
+      "tournamentYear": 2017,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/logo-3.png?resize=319%2C90&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/logo-3.png?resize=319%2C90&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsdqsp002shxflhqsjob97",
+      "type": "redirect",
+      "tournamentYear": 2017,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/07/IMG_6539.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/07/IMG_6539.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsduan002zhxfl7ddmhn46",
+      "type": "redirect",
+      "tournamentYear": 2018,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/06/20180624_200020.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/06/20180624_200020.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbse18x0039hxfliz4rqb9c",
+      "type": "redirect",
+      "tournamentYear": 2018,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/06/2018-FD-Alumni-Tournament-02.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/06/2018-FD-Alumni-Tournament-02.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbse4t1003ghxfl3m3i4g0d",
+      "type": "redirect",
+      "tournamentYear": 2018,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/07/IMG_2771.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2018/07/IMG_2771.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbse8ht003nhxflszqyb82n",
+      "type": "redirect",
+      "tournamentYear": 2019,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/07/IMG-6076.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2019/07/IMG-6076.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbskfis0004hxkkxxrxzyq6",
+      "type": "redirect",
+      "tournamentYear": 2023,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/COVER-PHOTO-1-scaled.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2023/07/COVER-PHOTO-1-scaled.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbscffn000bhxfle5lxixl3",
+      "type": "redirect",
+      "tournamentYear": 2014,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4964.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2014/07/IMG_4964.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbs8pci000whx02w49xzmec",
+      "type": "redirect",
+      "tournamentYear": 2022,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/07/DSC00591.jpg?resize=1000%2C600&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2022/07/DSC00591.jpg?resize=1000%2C600&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbsdne9002nhxfl0g1r84l1",
+      "type": "redirect",
+      "tournamentYear": 2017,
+      "originalUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/logo-3.png?resize=319%2C90&#038;ssl=1",
+      "newUrl": "https://i0.wp.com/www.guamsportsnetwork.com/wp-content/uploads/2017/06/logo-3.png?resize=319%2C90&ssl=1",
+      "status": "normalized"
+    },
+    {
+      "id": "cmmbppjnf0003hxpk39bqrr65",
+      "type": "redirect",
+      "tournamentYear": 2025,
+      "originalUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2017/05/orange-copy.jpg');",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2017/05/orange-copy.jpg",
+      "status": "normalized"
+    }
+  ]
+}

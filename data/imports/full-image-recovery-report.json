@@ -1,0 +1,56 @@
+{
+  "timestamp": "2026-03-04T14:13:55.119Z",
+  "recovered": 8,
+  "unrecoverable": 0,
+  "results": [
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/2015-fd-alumni-tourney-video-recap/",
+      "year": 2015,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/fd-alumni-tournament-day-2/",
+      "year": 2014,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/alumni-tourney-playoffs-heating-up/",
+      "year": 2014,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/fd-alumni-tourney-heading-into-semis/",
+      "year": 2014,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/one-week-done-in-alumni-hoops/",
+      "year": 2015,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2015/old-rivalries-spark-alumni-hoops/",
+      "year": 2015,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/storm-cant-stop-fd-alumni-tourney/",
+      "year": 2014,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    },
+    {
+      "url": "https://www.guamsportsnetwork.com/2014/fd-alumni-basketball-tournament-scoreboard/",
+      "year": 2014,
+      "status": "recovered",
+      "newUrl": "https://www.guamsportsnetwork.com/wp-content/uploads/2019/08/GSPNNAVLOGO-1-1.jpg"
+    }
+  ],
+  "notes": "Unrecoverable images were deleted from GSPN servers with no Wayback archives"
+}
