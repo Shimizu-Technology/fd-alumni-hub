@@ -13,7 +13,7 @@
  * Run: npx tsx scripts/historical-ingest.ts
  */
 
-import { PrismaClient, IngestKind, IngestStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 const db = new PrismaClient()
 
@@ -392,8 +392,8 @@ async function runIngestion(): Promise<IngestStats> {
     }
 
     // Determine status based on confidence
-    const status: IngestStatus = content.confidence === 'confirmed' ? 'approved' : 'pending'
-    const kind: IngestKind = content.kind === 'media' ? 'media' : 'article'
+    const status: 'approved' | 'pending' = content.confidence === 'confirmed' ? 'approved' : 'pending'
+    const kind: 'media' | 'article' = content.kind === 'media' ? 'media' : 'article'
 
     // Create ingest item
     await db.contentIngestItem.create({

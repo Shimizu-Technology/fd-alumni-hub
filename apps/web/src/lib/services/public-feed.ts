@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import { resolveGameDivision } from '@/lib/divisions'
-import type { Prisma } from '@prisma/client'
 
 type HomeFeed = {
   tournament: Awaited<ReturnType<typeof getActiveTournament>>
@@ -65,9 +64,24 @@ export async function getHomeFeed(): Promise<HomeFeed> {
   }
 }
 
-type ScheduleGame = Prisma.GameGetPayload<{
-  include: { homeTeam: true; awayTeam: true }
-}>
+type ScheduleGame = {
+  id: string
+  tournamentId: string
+  homeTeamId: string
+  awayTeamId: string
+  startTime: Date
+  status: string
+  homeScore: number | null
+  awayScore: number | null
+  venue: string | null
+  streamUrl: string | null
+  ticketUrl: string | null
+  bracketCode: string | null
+  division: string | null
+  notes: string | null
+  homeTeam: { displayName: string; division: string | null }
+  awayTeam: { displayName: string; division: string | null }
+}
 
 type ScheduleFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
@@ -88,8 +102,8 @@ export async function getSchedule(
   if (!tournament) return { tournament: null, games: [], divisions: [], phases: [] }
 
   // Build where clause
-  const where: Prisma.GameWhereInput = { tournamentId: tournament.id }
-  const andFilters: Prisma.GameWhereInput[] = []
+  const where: any = { tournamentId: tournament.id }
+  const andFilters: any[] = []
 
   if (divisionFilter) {
     // Match games where game.division = filter OR (game.division is null AND homeTeam.division = filter)
@@ -151,9 +165,16 @@ export async function getSchedule(
   return { tournament, games, divisions: Array.from(divSet).sort(), phases: Array.from(phaseSet) }
 }
 
-type StandingWithTeam = Prisma.StandingGetPayload<{
-  include: { team: true }
-}>
+type StandingWithTeam = {
+  id: string
+  tournamentId: string
+  teamId: string
+  wins: number
+  losses: number
+  pointsFor: number
+  pointsAgainst: number
+  team: { displayName: string; division: string | null }
+}
 
 type StandingsFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
@@ -191,7 +212,7 @@ export async function getStandings(
   }
 
   // Apply filter: if divisionFilter set, filter teams by division
-  const teamWhere: Prisma.TeamWhereInput = { tournamentId: tournament.id }
+  const teamWhere: any = { tournamentId: tournament.id }
   if (divisionFilter) teamWhere.division = divisionFilter
 
   const [standings, totalGames, scoredGames] = await Promise.all([

@@ -97,48 +97,52 @@ export async function POST(request: Request) {
       const homeScore = r.home_score && r.home_score !== '' ? Number(r.home_score) : null
       const awayScore = r.away_score && r.away_score !== '' ? Number(r.away_score) : null
 
-      await db.game.upsert({
+      const notes = [
+        r.stage ? `stage=${r.stage}` : null,
+        r.source_confidence ? `confidence=${r.source_confidence}` : null,
+        r.source_url ? `source=${r.source_url}` : null,
+        r.notes || null,
+      ].filter(Boolean).join(' | ')
+
+      const existing = await db.game.findFirst({
         where: {
-          tournamentId_homeTeamId_awayTeamId_startTime: {
-            tournamentId: tournament.id,
-            homeTeamId: home.id,
-            awayTeamId: away.id,
-            startTime,
-          },
-        },
-        update: {
-          status,
-          homeScore,
-          awayScore,
-          venue: r.venue || 'FD Jungle',
-          streamUrl: r.stream_url || null,
-          ticketUrl: r.ticket_url || null,
-          notes: [
-            r.stage ? `stage=${r.stage}` : null,
-            r.source_confidence ? `confidence=${r.source_confidence}` : null,
-            r.source_url ? `source=${r.source_url}` : null,
-            r.notes || null,
-          ].filter(Boolean).join(' | '),
-        },
-        create: {
           tournamentId: tournament.id,
           homeTeamId: home.id,
           awayTeamId: away.id,
           startTime,
-          status,
-          homeScore,
-          awayScore,
-          venue: r.venue || 'FD Jungle',
-          streamUrl: r.stream_url || null,
-          ticketUrl: r.ticket_url || null,
-          notes: [
-            r.stage ? `stage=${r.stage}` : null,
-            r.source_confidence ? `confidence=${r.source_confidence}` : null,
-            r.source_url ? `source=${r.source_url}` : null,
-            r.notes || null,
-          ].filter(Boolean).join(' | '),
         },
       })
+
+      if (existing) {
+        await db.game.update({
+          where: { id: existing.id },
+          data: {
+            status,
+            homeScore,
+            awayScore,
+            venue: r.venue || 'FD Jungle',
+            streamUrl: r.stream_url || null,
+            ticketUrl: r.ticket_url || null,
+            notes,
+          },
+        })
+      } else {
+        await db.game.create({
+          data: {
+            tournamentId: tournament.id,
+            homeTeamId: home.id,
+            awayTeamId: away.id,
+            startTime,
+            status,
+            homeScore,
+            awayScore,
+            venue: r.venue || 'FD Jungle',
+            streamUrl: r.stream_url || null,
+            ticketUrl: r.ticket_url || null,
+            notes,
+          },
+        })
+      }
 
       upserts++
     } catch (e) {
