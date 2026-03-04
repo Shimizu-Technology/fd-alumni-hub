@@ -1,6 +1,6 @@
 # QA Smoke Check Report
 
-**Generated:** 2026-03-04T12:01:09.918Z
+**Generated:** 2026-03-04T16:15:00.816Z
 **Overall Status:** ⚠️ READY WITH GAPS
 
 ## Summary
@@ -21,11 +21,11 @@
 | Score Coverage | ⚠️ | 0/0 games scored (0.0%) |
 | Ticket Link Coverage | ⚠️ | 0/0 games have ticket links |
 | Stream Link Coverage | ⚠️ | 0/0 games have stream links |
-| Historical Articles | ✅ | 50 articles ingested |
-| Media Assets | ✅ | 77 media assets ingested |
-| Historical Tournaments | ✅ | 10 completed tournaments in database |
+| Historical Articles | ✅ | 54 articles ingested |
+| Media Assets | ✅ | 92 media assets ingested |
+| Historical Tournaments | ✅ | 11 completed tournaments in database |
 | Active Sponsors | ⚠️ | 0 sponsors configured |
-| News Content | ✅ | 50 news articles available |
+| News Content | ✅ | 54 news articles available |
 | Division Config | ⚠️ | Divisions: None |
 
 ## Route Compilation Status

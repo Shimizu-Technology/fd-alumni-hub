@@ -1,7 +1,6 @@
 # Historical Content Summary
 
-**Generated:** 2026-03-05T00:47:00.000Z
-**Last Pass:** Autonomous Archive Polish (media cleanup)
+**Generated:** 2026-03-04T16:14:51.061Z
 
 ## Overview
 
@@ -12,7 +11,6 @@
 | Ingest Approved | 87 |
 | Ingest Pending | 0 |
 | Ingest Rejected | 13 |
-| **Media URL Health** | **100%** |
 
 ## By Year
 
@@ -46,16 +44,3 @@
 | GSPN | 64 |
 | guamsportsnetwork.com | 27 |
 | Clutch | 1 |
-
-## Coverage Summary
-
-- **Years Covered:** 11 (2008, 2014, 2015, 2017-2019, 2021-2025)
-- **Confirmed Gaps:** 2016 (unrecoverable), 2020 (COVID cancelled)
-- **Unique Sources:** 5 (GSPN, guamsportsnetwork.com, postguam.com, guampdn.com, Clutch)
-
-## Latest Pass
-
-**Autonomous Archive Polish (2026-03-05)**
-- Removed 1 broken Wayback image URL (redirected to homepage)
-- Final media health verified at 100%
-- All 126 media/article image URLs confirmed working

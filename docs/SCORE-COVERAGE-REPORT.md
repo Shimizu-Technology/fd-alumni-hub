@@ -1,6 +1,6 @@
 # Score Coverage Report
 
-**Generated:** 2026-03-04T12:00:58.322Z
+**Generated:** 2026-03-04T16:14:47.070Z
 
 ## Summary by Tournament
 
@@ -17,6 +17,7 @@
 | 2017 | 0 | 0 | 0.0% |
 | 2015 | 0 | 0 | 0.0% |
 | 2014 | 0 | 0 | 0.0% |
+| 2008 | 0 | 0 | 0.0% |
 
 ## 2025 Tournament Detail
 
