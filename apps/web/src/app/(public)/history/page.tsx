@@ -13,6 +13,7 @@ export default async function HistoryPage() {
         take: 1,
       },
       media: {
+        where: { tags: { contains: 'featured' } },
         orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
         take: 1,
       },

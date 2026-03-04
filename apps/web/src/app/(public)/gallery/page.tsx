@@ -24,13 +24,18 @@ export default async function GalleryPage({
       }
     : undefined
 
-  const items = await db.mediaAsset.findMany({
-    where,
-    orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
-    take: 300,
-  })
-
-  const featured = items.filter((i) => (i.tags || '').split(',').map(t => t.trim()).includes('featured')).slice(0, 3)
+  const [items, featured] = await Promise.all([
+    db.mediaAsset.findMany({
+      where,
+      orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+      take: 300,
+    }),
+    db.mediaAsset.findMany({
+      where: where ? { ...where, tags: { contains: 'featured' } } : undefined,
+      orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+      take: 3,
+    }),
+  ])
 
   const sourceRows = tournament
     ? await db.mediaAsset.findMany({ where: { tournamentId: tournament.id }, select: { source: true }, distinct: ['source'], orderBy: { source: 'asc' } })
