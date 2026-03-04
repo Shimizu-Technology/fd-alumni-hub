@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getSchedule } from '@/lib/services/public-feed'
+import { DIVISIONS, getBracketCode, resolveGameDivision, getDivision } from '@/lib/divisions'
 
 export const metadata: Metadata = {
   title: 'Schedule',
@@ -17,8 +18,10 @@ type ScheduleGame = {
   awayScore: number | null
   streamUrl: string | null
   ticketUrl: string | null
-  homeTeam: { displayName: string }
-  awayTeam: { displayName: string }
+  division: string | null
+  bracketCode: string | null
+  homeTeam: { displayName: string; division: string | null }
+  awayTeam: { displayName: string; division: string | null }
 }
 
 function dayKey(date: Date) {
@@ -29,20 +32,10 @@ function dayKey(date: Date) {
   })
 }
 
-function dayKeyShort(date: Date) {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
 function StatusBadge({ status }: { status: 'scheduled' | 'live' | 'final' }) {
   if (status === 'live') {
     return (
-      <span
-        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider badge-live"
-      >
+      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider badge-live">
         <span className="live-dot" style={{ width: '5px', height: '5px', flexShrink: 0 }} />
         Live
       </span>
@@ -62,6 +55,38 @@ function StatusBadge({ status }: { status: 'scheduled' | 'live' | 'final' }) {
   )
 }
 
+function BracketBadge({ code, divisionId }: { code: string; divisionId?: string | null }) {
+  const bracketInfo = getBracketCode(code)
+  const divInfo = divisionId ? getDivision(divisionId) : undefined
+  const color = divInfo?.color ?? '#6b7a8d'
+
+  return (
+    <span
+      className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+      style={{
+        background: `${color}18`,
+        color,
+        border: `1px solid ${color}30`,
+      }}
+      title={bracketInfo?.label ?? code}
+    >
+      {code}
+    </span>
+  )
+}
+
+function DivisionPip({ divisionId }: { divisionId: string | null | undefined }) {
+  const div = getDivision(divisionId)
+  if (!div) return null
+  return (
+    <span
+      className="inline-block w-2 h-2 rounded-full shrink-0"
+      style={{ background: div.color }}
+      title={div.label}
+    />
+  )
+}
+
 function ExternalIcon() {
   return (
     <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
@@ -74,6 +99,7 @@ function GameRow({ game }: { game: ScheduleGame }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
   const hasScore = isFinal && game.homeScore != null && game.awayScore != null
+  const effectiveDivision = resolveGameDivision(game.division, game.homeTeam.division)
 
   return (
     <div
@@ -87,28 +113,20 @@ function GameRow({ game }: { game: ScheduleGame }) {
         {/* Time + venue */}
         <div className="shrink-0 w-28">
           <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--neutral-700)' }}>
-            {new Date(game.startTime).toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
+            {new Date(game.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
           </p>
           {game.venue && (
-            <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--neutral-400)' }}>
-              {game.venue}
-            </p>
+            <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--neutral-400)' }}>{game.venue}</p>
           )}
         </div>
 
         {/* Matchup */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-2">
-            <span className="font-semibold text-sm" style={{ color: 'var(--fd-ink)' }}>
-              {game.awayTeam.displayName}
-            </span>
+            <DivisionPip divisionId={effectiveDivision} />
+            <span className="font-semibold text-sm" style={{ color: 'var(--fd-ink)' }}>{game.awayTeam.displayName}</span>
             <span className="text-xs font-medium" style={{ color: 'var(--neutral-400)' }}>vs</span>
-            <span className="font-semibold text-sm" style={{ color: 'var(--fd-ink)' }}>
-              {game.homeTeam.displayName}
-            </span>
+            <span className="font-semibold text-sm" style={{ color: 'var(--fd-ink)' }}>{game.homeTeam.displayName}</span>
           </div>
           {hasScore && (
             <p className="mt-1 text-sm font-bold tabular-nums" style={{ color: 'var(--fd-maroon)' }}>
@@ -117,8 +135,11 @@ function GameRow({ game }: { game: ScheduleGame }) {
           )}
         </div>
 
-        {/* Status + actions */}
+        {/* Bracket code + status + actions */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {game.bracketCode && (
+            <BracketBadge code={game.bracketCode} divisionId={effectiveDivision} />
+          )}
           <StatusBadge status={game.status} />
           {game.streamUrl && (
             <Link
@@ -148,10 +169,78 @@ function GameRow({ game }: { game: ScheduleGame }) {
   )
 }
 
-export default async function SchedulePage() {
-  const { tournament, games } = await getSchedule()
+function DivisionTabs({
+  activeDivisions,
+  currentFilter,
+  basePath,
+}: {
+  activeDivisions: string[]
+  currentFilter: string | null
+  basePath: string
+}) {
+  if (activeDivisions.length < 2) return null
+
+  // Order tabs by DIVISIONS config sortOrder
+  const orderedDivisions = DIVISIONS
+    .filter(d => activeDivisions.includes(d.id))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by division">
+      {/* All tab */}
+      <Link
+        href={basePath}
+        role="tab"
+        aria-selected={!currentFilter}
+        className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
+        style={
+          !currentFilter
+            ? { background: 'var(--fd-ink)', color: '#fff' }
+            : { background: 'var(--neutral-100)', color: 'var(--neutral-600)', border: '1px solid var(--border-subtle)' }
+        }
+      >
+        All
+      </Link>
+
+      {orderedDivisions.map(div => {
+        const isActive = currentFilter === div.id
+        return (
+          <Link
+            key={div.id}
+            href={`${basePath}?division=${encodeURIComponent(div.id)}`}
+            role="tab"
+            aria-selected={isActive}
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-150"
+            style={
+              isActive
+                ? { background: div.color, color: '#fff' }
+                : { background: div.colorMuted, color: div.color, border: `1px solid ${div.color}30` }
+            }
+          >
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{ background: isActive ? 'rgba(255,255,255,0.7)' : div.color }}
+            />
+            {div.label}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ division?: string }>
+}) {
+  const params = await searchParams
+  const divisionFilter = params.division ?? null
+
+  const { tournament, games, divisions } = await getSchedule(undefined, divisionFilter)
   const typedGames = games as ScheduleGame[]
 
+  // Group by day
   const grouped: Record<string, ScheduleGame[]> = {}
   for (const game of typedGames) {
     const key = dayKey(new Date(game.startTime))
@@ -159,7 +248,6 @@ export default async function SchedulePage() {
     grouped[key].push(game)
   }
   const days = Object.entries(grouped)
-
   const liveCount = typedGames.filter(g => g.status === 'live').length
 
   return (
@@ -167,7 +255,7 @@ export default async function SchedulePage() {
 
       {/* Page header */}
       <div className="animate-fade-up">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl font-bold md:text-3xl" style={{ color: 'var(--fd-maroon)' }}>
@@ -185,32 +273,47 @@ export default async function SchedulePage() {
             </p>
           </div>
 
-          {/* Legend */}
+          {/* Status legend */}
           <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--neutral-500)' }}>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--status-live)' }} />
-              Live
+              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--status-live)' }} />Live
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--fd-maroon)' }} />
-              Upcoming
+              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--fd-maroon)' }} />Upcoming
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--neutral-300)' }} />
-              Final
+              <span className="w-2 h-2 rounded-full" style={{ background: 'var(--neutral-300)' }} />Final
             </span>
           </div>
         </div>
+
+        {/* Division filter tabs */}
+        <DivisionTabs
+          activeDivisions={divisions}
+          currentFilter={divisionFilter}
+          basePath="/schedule"
+        />
       </div>
 
-      {!tournament || games.length === 0 ? (
+      {!tournament || typedGames.length === 0 ? (
         <div
           className="rounded-xl border bg-white p-10 text-center animate-fade-up delay-75"
           style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No games yet. Seed data or add games from admin.
+            {divisionFilter
+              ? `No games found for the ${divisionFilter} division.`
+              : 'No games yet. Seed data or add games from admin.'}
           </p>
+          {divisionFilter && (
+            <Link
+              href="/schedule"
+              className="mt-3 inline-block text-xs font-medium"
+              style={{ color: 'var(--fd-maroon)' }}
+            >
+              Show all divisions
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -229,9 +332,7 @@ export default async function SchedulePage() {
                 className="flex items-center justify-between px-5 py-3.5 border-b"
                 style={{ background: 'var(--neutral-50)', borderColor: 'var(--border-subtle)' }}
               >
-                <h2 className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>
-                  {label}
-                </h2>
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>{label}</h2>
                 <span className="text-xs" style={{ color: 'var(--neutral-400)' }}>
                   {dayGames.length} {dayGames.length === 1 ? 'game' : 'games'}
                 </span>
@@ -239,12 +340,53 @@ export default async function SchedulePage() {
 
               {/* Games */}
               <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
-                {dayGames.map(game => (
-                  <GameRow key={game.id} game={game} />
-                ))}
+                {dayGames.map(game => <GameRow key={game.id} game={game} />)}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Division legend (when showing all) */}
+      {!divisionFilter && divisions.length > 1 && (
+        <div
+          className="rounded-xl border bg-white p-4 animate-fade-up"
+          style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)', animationDelay: `${days.length * 80 + 80}ms` }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] mb-3" style={{ color: 'var(--neutral-500)' }}>
+            Division Guide
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {DIVISIONS.filter(d => divisions.includes(d.id))
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map(div => (
+                <div key={div.id} className="flex items-center gap-2">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: div.color }} />
+                  <span className="text-xs font-medium" style={{ color: 'var(--neutral-700)' }}>{div.label}</span>
+                  <span className="text-xs" style={{ color: 'var(--neutral-400)' }}>{div.description}</span>
+                </div>
+              ))
+            }
+          </div>
+          {/* Bracket code legend */}
+          <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] mb-2" style={{ color: 'var(--neutral-500)' }}>
+              Bracket Codes
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--neutral-500)' }}>
+              {[
+                ['MP', 'Maroon Playoff'], ['WMP', 'Winner Maroon Playoff'],
+                ['GP', 'Gold Playoff'], ['WGP', 'Winner Gold Playoff'],
+                ['PP', 'Platinum Playoff'], ['WPP', 'Winner Platinum Playoff'],
+                ['QF', 'Quarterfinal'], ['SF', 'Semifinal'], ['F', 'Final'],
+              ].map(([code, label]) => (
+                <span key={code} className="flex items-center gap-1">
+                  <span className="font-bold" style={{ color: 'var(--fd-ink)' }}>{code}</span>
+                  <span>= {label}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </section>

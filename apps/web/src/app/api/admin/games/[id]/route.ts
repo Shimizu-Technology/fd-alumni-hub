@@ -13,6 +13,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     awayScore?: number | null
     streamUrl?: string | null
     ticketUrl?: string | null
+    division?: string | null
+    bracketCode?: string | null
   }
 
   if (body.status === 'final') {
@@ -30,6 +32,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       awayScore: body.awayScore,
       streamUrl: body.streamUrl,
       ticketUrl: body.ticketUrl,
+      ...(Object.prototype.hasOwnProperty.call(body, 'division') ? { division: body.division } : {}),
+      ...(Object.prototype.hasOwnProperty.call(body, 'bracketCode') ? { bracketCode: body.bracketCode } : {}),
     },
   })
 

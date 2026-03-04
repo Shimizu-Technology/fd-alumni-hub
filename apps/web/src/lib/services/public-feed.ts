@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
+import { resolveGameDivision } from '@/lib/divisions'
 import type { Prisma } from '@prisma/client'
 
 type HomeFeed = {
@@ -71,21 +72,51 @@ type ScheduleGame = Prisma.GameGetPayload<{
 type ScheduleFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
   games: ScheduleGame[]
+  /** Distinct divisions found across games (resolved from game.division → homeTeam.division) */
+  divisions: string[]
 }
 
-export async function getSchedule(tournamentId?: string): Promise<ScheduleFeed> {
+export async function getSchedule(
+  tournamentId?: string,
+  divisionFilter?: string | null,
+): Promise<ScheduleFeed> {
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, games: [] as ScheduleFeed['games'] }
+  if (!tournament) return { tournament: null, games: [], divisions: [] }
+
+  // Build where clause
+  const where: Prisma.GameWhereInput = { tournamentId: tournament.id }
+  if (divisionFilter) {
+    // Match games where game.division = filter OR (game.division is null AND homeTeam.division = filter)
+    where.OR = [
+      { division: divisionFilter },
+      { division: null, homeTeam: { division: divisionFilter } },
+    ]
+  }
 
   const games = await db.game.findMany({
-    where: { tournamentId: tournament.id },
+    where,
     include: { homeTeam: true, awayTeam: true },
     orderBy: { startTime: 'asc' },
     take: 500,
   })
-  return { tournament, games }
+
+  // Collect distinct divisions from this tournament's games
+  const allGames = divisionFilter
+    ? await db.game.findMany({
+        where: { tournamentId: tournament.id },
+        select: { division: true, homeTeam: { select: { division: true } } },
+      })
+    : games.map(g => ({ division: g.division, homeTeam: { division: g.homeTeam.division } }))
+
+  const divSet = new Set<string>()
+  for (const g of allGames) {
+    const resolved = resolveGameDivision(g.division, g.homeTeam?.division)
+    if (resolved) divSet.add(resolved)
+  }
+
+  return { tournament, games, divisions: Array.from(divSet).sort() }
 }
 
 type StandingWithTeam = Prisma.StandingGetPayload<{
@@ -95,19 +126,41 @@ type StandingWithTeam = Prisma.StandingGetPayload<{
 type StandingsFeed = {
   tournament: Awaited<ReturnType<typeof db.tournament.findUnique>>
   standings: StandingWithTeam[]
+  divisions: string[]
 }
 
-export async function getStandings(tournamentId?: string): Promise<StandingsFeed> {
+export async function getStandings(
+  tournamentId?: string,
+  divisionFilter?: string | null,
+): Promise<StandingsFeed> {
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, standings: [] as StandingsFeed['standings'] }
+  if (!tournament) return { tournament: null, standings: [], divisions: [] }
+
+  // Get all teams' divisions for the tab list
+  const allTeams = await db.team.findMany({
+    where: { tournamentId: tournament.id },
+    select: { division: true },
+  })
+  const divSet = new Set<string>()
+  for (const t of allTeams) {
+    if (t.division) divSet.add(t.division)
+  }
+
+  // Apply filter: if divisionFilter set, filter teams by division
+  const teamWhere: Prisma.TeamWhereInput = { tournamentId: tournament.id }
+  if (divisionFilter) teamWhere.division = divisionFilter
 
   const standings = await db.standing.findMany({
-    where: { tournamentId: tournament.id },
+    where: {
+      tournamentId: tournament.id,
+      team: teamWhere,
+    },
     include: { team: true },
     orderBy: [{ wins: 'desc' }, { losses: 'asc' }, { pointsFor: 'desc' }],
     take: 100,
   })
-  return { tournament, standings }
+
+  return { tournament, standings, divisions: Array.from(divSet).sort() }
 }

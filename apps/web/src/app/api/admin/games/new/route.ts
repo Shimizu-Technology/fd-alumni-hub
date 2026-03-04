@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     awayTeamId?: string
     startTime?: string
     venue?: string
+    division?: string | null
+    bracketCode?: string | null
   }
 
   if (!body.tournamentId || !body.homeTeamId || !body.awayTeamId || !body.startTime) {
@@ -40,6 +42,8 @@ export async function POST(request: Request) {
       startTime: new Date(body.startTime),
       venue: body.venue,
       status: 'scheduled',
+      division: body.division ?? null,
+      bracketCode: body.bracketCode ?? null,
     },
   })
 

@@ -95,6 +95,10 @@ model Game {
   streamUrl    String?
   ticketUrl    String?
   notes        String?
+  /// Division this game belongs to (e.g. "Maroon", "Gold", "Platinum"). Null = derive from teams.
+  division     String?
+  /// Bracket stage code for playoffs. Examples: MP, WMP, GP, WGP, PP, WPP, QF, SF, F
+  bracketCode  String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -103,6 +107,7 @@ model Game {
   awayTeam   Team       @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
 
   @@index([tournamentId, startTime])
+  @@index([tournamentId, division])
   @@index([status])
   @@unique([tournamentId, homeTeamId, awayTeamId, startTime])
 }
