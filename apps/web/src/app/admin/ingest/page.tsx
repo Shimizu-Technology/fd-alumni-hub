@@ -4,6 +4,7 @@ import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
 import { IngestCreateForm } from '@/components/admin/ingest-create-form'
+import { IngestImportForm } from '@/components/admin/ingest-import-form'
 import { IngestReviewList } from '@/components/admin/ingest-review-list'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,7 @@ export default async function AdminIngestPage() {
         <p className="text-sm text-neutral-600">Queue scraped/manual content and approve it into Articles/Media with attribution.</p>
       </div>
       <IngestCreateForm tournamentId={tournament.id} />
+      <IngestImportForm tournamentId={tournament.id} />
       <IngestReviewList items={items} />
     </section>
   )

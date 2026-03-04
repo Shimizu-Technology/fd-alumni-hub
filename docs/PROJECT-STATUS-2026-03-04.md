@@ -180,6 +180,7 @@ Current 2025 score coverage: **14 / 93 games (15.1%)**
 - `docs/OUTREACH-DRAFTS.md`
 - `docs/S3-UPLOAD-SETUP.md`
 - `docs/INGESTION-QUEUE-WORKFLOW.md`
+- `docs/PARTNER-DATA-CONTRACTS.md`
 
 ---
 
