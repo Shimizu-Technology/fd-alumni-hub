@@ -1,9 +1,23 @@
 import { db } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 
-export async function getHomeFeed() {
+type HomeFeed = {
+  tournament: Awaited<ReturnType<typeof getActiveTournament>>
+  todayGames: Awaited<ReturnType<typeof db.game.findMany>>
+  liveGames: Awaited<ReturnType<typeof db.game.findMany>>
+  latestNews: Awaited<ReturnType<typeof db.articleLink.findMany>>
+}
+
+export async function getHomeFeed(): Promise<HomeFeed> {
   const tournament = await getActiveTournament()
-  if (!tournament) return { tournament: null, todayGames: [], liveGames: [], latestNews: [] }
+  if (!tournament) {
+    return {
+      tournament: null,
+      todayGames: [] as HomeFeed['todayGames'],
+      liveGames: [] as HomeFeed['liveGames'],
+      latestNews: [] as HomeFeed['latestNews'],
+    }
+  }
 
   const now = new Date()
   const start = new Date(now)
