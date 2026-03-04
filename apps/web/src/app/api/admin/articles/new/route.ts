@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
+import { isValidHttpUrl } from '@/lib/url'
 
 export async function POST(request: Request) {
   const staff = await requireStaff()
@@ -11,11 +12,17 @@ export async function POST(request: Request) {
     title?: string
     source?: string
     url?: string
+    imageUrl?: string | null
+    excerpt?: string | null
     publishedAt?: string | null
   }
 
   if (!body.tournamentId || !body.title || !body.source || !body.url) {
     return NextResponse.json({ error: 'tournamentId, title, source, url required' }, { status: 400 })
+  }
+
+  if (!isValidHttpUrl(body.url) || !isValidHttpUrl(body.imageUrl)) {
+    return NextResponse.json({ error: 'Invalid URL fields (http/https only)' }, { status: 400 })
   }
 
   const article = await db.articleLink.create({
@@ -24,6 +31,8 @@ export async function POST(request: Request) {
       title: body.title,
       source: body.source,
       url: body.url,
+      imageUrl: body.imageUrl || null,
+      excerpt: body.excerpt || null,
       publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
     },
   })
