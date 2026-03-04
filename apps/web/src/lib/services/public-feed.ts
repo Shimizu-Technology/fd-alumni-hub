@@ -1,19 +1,27 @@
 import { db } from '@/lib/db'
-import { getActiveTournament } from '@/lib/repositories/tournament-repo'
+import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import type { Prisma } from '@prisma/client'
 
 type HomeFeed = {
   tournament: Awaited<ReturnType<typeof getActiveTournament>>
+  upcomingOrLiveTournament: Awaited<ReturnType<typeof getHomeTournamentContext>>['upcomingOrLive']
+  latestResultsTournament: Awaited<ReturnType<typeof getHomeTournamentContext>>['latestCompletedWithGames']
   todayGames: Awaited<ReturnType<typeof db.game.findMany>>
   liveGames: Awaited<ReturnType<typeof db.game.findMany>>
   latestNews: Awaited<ReturnType<typeof db.articleLink.findMany>>
 }
 
 export async function getHomeFeed(): Promise<HomeFeed> {
-  const tournament = await getActiveTournament()
+  const [tournament, context] = await Promise.all([
+    getActiveTournament(),
+    getHomeTournamentContext(),
+  ])
+
   if (!tournament) {
     return {
       tournament: null,
+      upcomingOrLiveTournament: context.upcomingOrLive,
+      latestResultsTournament: context.latestCompletedWithGames,
       todayGames: [] as HomeFeed['todayGames'],
       liveGames: [] as HomeFeed['liveGames'],
       latestNews: [] as HomeFeed['latestNews'],
@@ -46,7 +54,14 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     }),
   ])
 
-  return { tournament, todayGames, liveGames, latestNews }
+  return {
+    tournament,
+    upcomingOrLiveTournament: context.upcomingOrLive,
+    latestResultsTournament: context.latestCompletedWithGames,
+    todayGames,
+    liveGames,
+    latestNews,
+  }
 }
 
 type ScheduleGame = Prisma.GameGetPayload<{

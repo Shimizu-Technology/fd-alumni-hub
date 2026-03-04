@@ -1,28 +1,35 @@
 import { db } from '@/lib/db'
 
+export async function getHomeTournamentContext() {
+  const [upcomingOrLive, latestCompletedWithGames] = await Promise.all([
+    db.tournament.findFirst({
+      where: { status: { in: ['live', 'upcoming'] } },
+      orderBy: [{ year: 'desc' }],
+    }),
+    db.tournament.findFirst({
+      where: {
+        status: 'completed',
+        games: { some: {} },
+      },
+      orderBy: [{ year: 'desc' }],
+    }),
+  ])
+
+  return { upcomingOrLive, latestCompletedWithGames }
+}
+
 export async function getActiveTournament() {
-  const withGames = await db.tournament.findFirst({
-    where: {
-      status: { in: ['live', 'upcoming'] },
-      games: { some: {} },
-    },
-    orderBy: [{ year: 'desc' }],
-  })
-  if (withGames) return withGames
+  const { upcomingOrLive, latestCompletedWithGames } = await getHomeTournamentContext()
 
-  const latestCompletedWithGames = await db.tournament.findFirst({
-    where: {
-      status: 'completed',
-      games: { some: {} },
-    },
-    orderBy: [{ year: 'desc' }],
-  })
+  const upcomingOrLiveWithGames = upcomingOrLive
+    ? await db.tournament.findFirst({
+        where: { id: upcomingOrLive.id, games: { some: {} } },
+      })
+    : null
+
+  if (upcomingOrLiveWithGames) return upcomingOrLiveWithGames
   if (latestCompletedWithGames) return latestCompletedWithGames
-
-  return db.tournament.findFirst({
-    where: { status: { in: ['live', 'upcoming'] } },
-    orderBy: [{ year: 'desc' }],
-  })
+  return upcomingOrLive
 }
 
 export async function getTournamentByYear(year: number) {
