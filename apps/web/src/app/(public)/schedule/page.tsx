@@ -149,26 +149,36 @@ function GameRow({ game }: { game: ScheduleGame }) {
           )}
           <StatusBadge status={game.status} />
           {game.streamUrl && (
-            <Link
-              href={game.streamUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm"
-              style={{ background: 'var(--fd-maroon)', color: '#fff' }}
-            >
-              Watch <ExternalIcon />
-            </Link>
+            <div className="flex flex-col items-end gap-0.5">
+              <Link
+                href={game.streamUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 hover:-translate-y-0.5 hover:shadow-sm"
+                style={{ background: 'var(--fd-maroon)', color: '#fff' }}
+              >
+                Watch <ExternalIcon />
+              </Link>
+              <span className="text-[9px] font-medium tracking-wide" style={{ color: 'var(--neutral-400)' }}>
+                Streams by Clutch
+              </span>
+            </div>
           )}
           {game.ticketUrl && (
-            <Link
-              href={game.ticketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 hover:-translate-y-0.5"
-              style={{ background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}
-            >
-              Tickets <ExternalIcon />
-            </Link>
+            <div className="flex flex-col items-end gap-0.5">
+              <Link
+                href={game.ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-150 hover:-translate-y-0.5"
+                style={{ background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}
+              >
+                Tickets <ExternalIcon />
+              </Link>
+              <span className="text-[9px] font-medium tracking-wide" style={{ color: 'var(--neutral-400)' }}>
+                Tickets by GuamTime
+              </span>
+            </div>
           )}
         </div>
       </div>

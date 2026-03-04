@@ -104,6 +104,69 @@ Current score coverage: **14 / 93 games (15.1%)**
 
 ---
 
+---
+
+## Sprint A — Partner-Readiness (2026-03-04)
+
+The following deliverables were shipped to make the platform legit and ops-ready for Clutch + GuamTime partners.
+
+### What's Partner-Ready Now
+
+#### 1. Admin Bulk Link Editor (`/admin/links`)
+- New admin page for bulk-updating `ticketUrl` and `streamUrl` across all games
+- Filter by division, phase (Pool / Playoffs / Father-Son), or missing-only views
+- "Bulk fill" — paste one URL to apply to all visible/filtered games at once
+- Dirty-state tracking shows which rows have unsaved edits
+- Saves via atomic `POST /api/admin/games/bulk-links` endpoint
+
+#### 2. Missing Links Dashboard (`/admin/missing-links`)
+- Summary cards: total games, missing ticket, missing stream, missing both
+- Visual coverage progress bars for ticket and stream completeness
+- Full table of games missing at least one link (matchup, date, division, phase, missing fields)
+- One-click jump to Bulk Link Editor to fix gaps
+
+#### 3. Link Health Checker Script
+- Script: `apps/web/scripts/check-link-health.ts`
+- Run: `cd apps/web && npx tsx scripts/check-link-health.ts`
+- Validates all ticket/stream URLs via HTTP (HEAD → GET fallback, 8s timeout)
+- Tracks redirect targets for transparency
+- Outputs markdown to `docs/LINK-HEALTH-REPORT.md`
+
+#### 4. Public Partner Attribution
+- **Schedule page**: "Tickets by GuamTime" and "Streams by Clutch" attribution beneath respective action buttons — tasteful, small text
+- **Watch page**: "Streams by Clutch" under each watch button + "Media Partners" footer card naming both Clutch and GuamTime with their roles
+
+#### 5. Collaboration CSV Exports
+- Script: `apps/web/scripts/export-missing-links.ts`
+- Run: `cd apps/web && npx tsx scripts/export-missing-links.ts`
+- Generates two CSVs in `docs/exports/`:
+  - `{year}-{name}-missing-ticket-links.csv` — for GuamTime
+  - `{year}-{name}-missing-stream-links.csv` — for Clutch
+- CSV includes: game ID, date/time, matchup, division, phase, bracket code, venue, status
+
+### Partner Handoff Checklist
+
+| Item | Status |
+|------|--------|
+| Bulk link editor (admin) | ✅ Shipped |
+| Missing links dashboard (admin) | ✅ Shipped |
+| Link health checker script | ✅ Shipped |
+| Partner attribution on Schedule | ✅ Shipped |
+| Partner attribution on Watch | ✅ Shipped |
+| CSV exports for partners | ✅ Shipped |
+| Actual ticket URLs (GuamTime) | ⏳ Awaiting GuamTime |
+| Actual stream URLs (Clutch) | ⏳ Awaiting Clutch |
+
+### Next: Getting URLs from Partners
+
+1. Share `docs/exports/{year}-*-missing-ticket-links.csv` with GuamTime → get ticket URLs
+2. Share `docs/exports/{year}-*-missing-stream-links.csv` with Clutch → get stream URLs
+3. Use `/admin/links` to bulk-paste returned URLs
+4. Run `npx tsx scripts/check-link-health.ts` to validate all links
+5. All done — attribution shows automatically on public pages
+
+---
+
 ## Source-of-Truth Docs
 - `README.md`
 - `docs/IA-V1.md`

@@ -3,6 +3,8 @@ import Link from 'next/link'
 const links = [
   ['/admin', 'Overview'],
   ['/admin/games', 'Games'],
+  ['/admin/links', '🔗 Bulk Links'],
+  ['/admin/missing-links', '⚠️ Missing Links'],
   ['/admin/divisions', 'Divisions'],
   ['/admin/standings', 'Standings'],
   ['/admin/news', 'News'],

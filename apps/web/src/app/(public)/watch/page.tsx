@@ -102,6 +102,9 @@ function GameStreamCard({ game }: { game: WatchGame }) {
           {isLive ? 'Watch Live' : isFinal ? 'Watch Replay' : 'Open Stream'}
           <ExternalIcon />
         </Link>
+        <p className="text-center text-[10px] font-medium mt-1" style={{ color: 'var(--neutral-400)' }}>
+          Streams by Clutch
+        </p>
       </div>
     </div>
   )
@@ -180,6 +183,34 @@ export default async function WatchPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Partner attribution */}
+      {withStreams.length > 0 && (
+        <div
+          className="rounded-xl border bg-white p-4 animate-fade-up"
+          style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] mb-3" style={{ color: 'var(--neutral-500)' }}>
+            Media Partners
+          </p>
+          <div className="flex flex-wrap gap-6 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm" aria-hidden="true">📺</span>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>Clutch</p>
+                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official streaming partner</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm" aria-hidden="true">🎟️</span>
+              <div>
+                <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>GuamTime</p>
+                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official ticketing partner</p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )
