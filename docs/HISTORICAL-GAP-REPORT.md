@@ -15,9 +15,9 @@ After targeted deep research across Clutch YouTube, GSPN archives, and GuamPDN, 
 | Metric | Value |
 |--------|-------|
 | **Years Covered** | 10 (2014-2025, excluding 2016/2020) |
-| **Total Articles** | 47 |
-| **Total Media Assets** | 74 |
-| **Approved Ingest Items** | 57 |
+| **Total Articles** | 50 |
+| **Total Media Assets** | 77 |
+| **Approved Ingest Items** | 63 |
 | **Rejected (noise/404)** | 13 |
 | **Pending Review** | 0 |
 
@@ -29,19 +29,19 @@ After targeted deep research across Clutch YouTube, GSPN archives, and GuamPDN, 
 
 | Year | Articles | Media | Notes |
 |------|----------|-------|-------|
-| 2014 | 8 | 7 | Complete - scoreboard, multiple game recaps |
+| 2014 | 9 | 9 | Complete - scoreboard, multiple game recaps, playoffs |
 | 2015 | 7 | 11 | Complete - 30th anniversary, championship article |
 | 2022 | 6 | 9 | Complete - full playoff coverage |
 | 2017 | 5 | 3 | Complete - jersey retirement ceremony |
-| 2023 | 5 | 4 | Complete - opening night, championship |
+| 2023 | 5 | 5 | Complete - opening night, championship, MVP photo |
+| 2025 | 5 | 18 | Complete - opening, results, closeout, GuamPDN recap |
 
 ### ⚠️ Moderate Coverage (2-4 articles)
 
 | Year | Articles | Media | Gap Notes |
 |------|----------|-------|-----------|
-| 2025 | 4 | 18 | **In progress** - tournament concludes July 18 |
 | 2018 | 4 | 5 | Minor - championship article exists |
-| 2024 | 3 | 4 | Minor - Leon Shimizu buzzer-beater well-documented |
+| 2024 | 4 | 4 | Complete - Leon Shimizu buzzer-beater + year-end recap |
 | 2019 | 3 | 6 | Minor - 2006 championship article exists |
 | 2021 | 2 | 7 | Minor - post-COVID return documented |
 
@@ -118,7 +118,7 @@ Items rejected during deep-pass for quality/relevance:
 
 | Year | Champion | Source Status |
 |------|----------|---------------|
-| 2025 | TBD (in progress) | Live coverage |
+| 2025 | Class of 2002/04 (4th title, 50-44 over 2013) | ✅ Documented (GuamPDN) |
 | 2024 | Class of 2016/17 | ✅ Documented |
 | 2023 | Class of 2013 | ✅ Documented |
 | 2022 | Class of 2002/04 (5th title) | ✅ Documented |

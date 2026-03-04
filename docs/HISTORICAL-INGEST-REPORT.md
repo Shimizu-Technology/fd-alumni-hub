@@ -13,9 +13,9 @@ This report documents a comprehensive historical content acquisition sweep for t
 
 | Metric | Count |
 |--------|-------|
-| **Total Articles** | 47 |
-| **Total Media Assets** | 74 |
-| **Queue Approved** | 57 |
+| **Total Articles** | 50 |
+| **Total Media Assets** | 77 |
+| **Queue Approved** | 63 |
 | **Queue Pending** | 0 |
 | **Queue Rejected** | 13 |
 
@@ -25,16 +25,16 @@ This report documents a comprehensive historical content acquisition sweep for t
 
 | Year | Articles | Media | Status |
 |------|----------|-------|--------|
-| 2025 | 4 | 18 | ✅ Complete |
-| 2024 | 3 | 4 | ✅ Complete |
-| 2023 | 5 | 4 | ✅ Complete |
+| 2025 | 5 | 18 | ✅ Complete |
+| 2024 | 4 | 4 | ✅ Complete |
+| 2023 | 5 | 5 | ✅ Complete |
 | 2022 | 6 | 9 | ✅ Complete |
 | 2021 | 2 | 7 | ✅ Complete |
 | 2019 | 3 | 6 | ✅ Complete |
 | 2018 | 4 | 5 | ✅ Complete |
 | 2017 | 5 | 3 | ✅ Complete |
 | 2015 | 7 | 11 | ✅ Complete |
-| 2014 | 8 | 7 | ✅ Complete |
+| 2014 | 9 | 9 | ✅ Complete |
 
 ---
 
@@ -225,6 +225,69 @@ Increase high-confidence real content coverage beyond initial ingest, prioritizi
 
 ### Conclusion
 Deep research confirmed that the 2016 tournament gap is a **source-side issue** - either the tournament wasn't held, coverage was never published online, or articles were deleted. No additional high-confidence content was identified. See `docs/HISTORICAL-GAP-REPORT.md` for detailed gap analysis.
+
+---
+
+## Deep-Pass Research (2026-03-04) - Pass 3
+
+### Objective
+Maximize high-confidence historical completeness through targeted GSPN archive patterns, specific video discovery, and GuamPDN cross-referencing.
+
+### Research Conducted
+
+1. **GSPN Archive Patterns by Year/Playoff Terms**
+   - Systematically searched 2014-2025 using "championship", "finals", "playoff", "semifinals"
+   - Discovered previously missing 2014 playoff articles
+   - Confirmed 2023 championship article exists and is accessible
+   - 2017 championship article confirmed 404 (deleted from GSPN)
+
+2. **2023 Championship Article Recovery**
+   - URL: `https://www.guamsportsnetwork.com/2023/class-of-2013-kings-of-friarfest/`
+   - Class of 2013 won 2nd title while hosting
+   - Michael Sakazaki - Championship Game Player of the Game (17 pts)
+   - Status: ✅ **Approved and imported**
+
+3. **2014 Detailed Playoff Coverage**
+   - Semifinals: `https://www.guamsportsnetwork.com/2014/2004-to-play-2012-in-alumni-finals/`
+   - Playoff game: `https://www.guamsportsnetwork.com/2014/buzzer-beater-sends-0203-packing/`
+   - Goro Borja game-winning 3-pointer documented
+   - Status: ✅ **Approved and imported**
+
+4. **2024 Year-End Recap**
+   - URL: `https://www.guamsportsnetwork.com/2024/2024-recap-of-guam-sports/`
+   - Confirms Leon Shimizu buzzer-beater championship moment
+   - Status: ✅ **Approved**
+
+5. **GuamPDN Cross-Reference**
+   - URL: `https://www.guampdn.com/sports/top-10-sports-stories-of-2025-geckos-football-gets-1/`
+   - **CRITICAL DISCOVERY:** Confirms 2025 champion = Class of 02/04 (50-44 over 2013)
+   - Status: ✅ **Approved** (first GuamPDN article with confirmed FD Alumni score)
+
+6. **Clutch YouTube Video Discovery**
+   - Searched for specific FD Alumni game videos
+   - Found "'23 FD Alumni Basketball Tournament" content reference
+   - Extracted: Michael Sakazaki championship MVP photo
+   - Status: ⚠️ **Limited - mostly index pages**
+
+### Results (Pass 3)
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total Articles | 47 | 50 | +3 |
+| Total Media | 74 | 77 | +3 |
+| Queue Approved | 57 | 63 | +6 |
+| Queue Pending | 0 | 0 | 0 |
+| 2014 Content | 8 articles, 7 media | 9 articles, 9 media | +1/+2 |
+
+### Key Discoveries
+- **2025 Champion Confirmed:** Class of 02/04 defeats 2013, 50-44 (4th championship)
+- **2023 Championship Article Found:** 2013 won hosting their tournament
+- **2014 Playoff Coverage Expanded:** Buzzer-beater game and semifinals now documented
+- **2017 Championship Article:** Confirmed unavailable (404) - source-side deletion
+
+### New Exports Generated
+- `docs/exports/historical-score-missing.csv` - Games needing score data
+- `docs/exports/historical-ingest-pending.csv` - Refreshed (empty - all items processed)
+- `data/imports/historical-ingest-pass3-stats.json` - Pass 3 ingestion stats
 
 ---
 

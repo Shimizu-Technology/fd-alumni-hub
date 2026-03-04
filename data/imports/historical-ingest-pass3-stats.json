@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-03-04T10:55:36.724Z",
+  "pass": 3,
+  "stats": {
+    "total": 9,
+    "approved": 6,
+    "pending": 0,
+    "rejected": 0,
+    "duplicates": 3,
+    "noTournament": 0,
+    "byYear": {
+      "2014": {
+        "articles": 1,
+        "media": 2,
+        "pending": 0
+      },
+      "2023": {
+        "articles": 0,
+        "media": 1,
+        "pending": 0
+      },
+      "2024": {
+        "articles": 1,
+        "media": 0,
+        "pending": 0
+      },
+      "2025": {
+        "articles": 1,
+        "media": 0,
+        "pending": 0
+      }
+    },
+    "bySource": {
+      "guamsportsnetwork.com": 5,
+      "guampdn.com": 1
+    }
+  }
+}
