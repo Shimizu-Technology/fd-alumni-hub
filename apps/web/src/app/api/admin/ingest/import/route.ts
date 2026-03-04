@@ -16,16 +16,19 @@ type Row = {
   notes?: string
 }
 
-function parseCsv(text: string): Row[] {
+function parseCsv(text: string): { rows: Row[]; error?: string } {
   try {
     const records = parse(text, {
       columns: true,
       skip_empty_lines: true,
       trim: true,
     })
-    return records as Row[]
-  } catch {
-    return []
+    return { rows: records as Row[] }
+  } catch (e) {
+    return {
+      rows: [],
+      error: e instanceof Error ? e.message : 'Malformed CSV',
+    }
   }
 }
 
@@ -49,7 +52,11 @@ export async function POST(request: Request) {
   const tournament = await db.tournament.findUnique({ where: { id: body.tournamentId } })
   if (!tournament) return NextResponse.json({ error: 'invalid tournamentId' }, { status: 400 })
 
-  const rows = body.format === 'csv' ? parseCsv(body.csv ?? '') : (body.rows ?? [])
+  const parsed = body.format === 'csv' ? parseCsv(body.csv ?? '') : { rows: body.rows ?? [] }
+  if (parsed.error) {
+    return NextResponse.json({ error: `CSV parse error: ${parsed.error}` }, { status: 400 })
+  }
+  const rows = parsed.rows
   if (!rows.length) return NextResponse.json({ error: 'no rows supplied' }, { status: 400 })
 
   let queued = 0
@@ -84,6 +91,7 @@ export async function POST(request: Request) {
 
     if (existingUrls.has(url)) {
       skipped++
+      errors.push(`Duplicate URL skipped: ${url}`)
       continue
     }
 
