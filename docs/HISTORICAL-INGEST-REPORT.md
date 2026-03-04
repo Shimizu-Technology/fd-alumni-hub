@@ -1,6 +1,6 @@
 # Historical Content Ingestion Report
 
-**Generated:** 2026-03-05T00:30:00.000Z
+**Generated:** 2026-03-05T00:47:00.000Z
 **Scope:** FD Alumni Hub - Multi-year historical content acquisition
 
 ---
@@ -476,4 +476,64 @@ See `docs/LAST-MILE-RECOVERY-REPORT.md` for full details.
 
 ---
 
-*Report updated by FD Alumni Hub Last-Mile Recovery System*
+## Autonomous Archive Polish Pass (2026-03-05)
+
+### Objective
+Continue autonomous archive enhancement to verify and maintain 100% media URL health, remove broken fallback URLs, and finalize historical data quality.
+
+### Work Completed
+
+1. **Media Health Audit**
+   - Verified all 126 media/article image URLs (92 media + 34 article images)
+   - Identified 1 broken Wayback Machine URL (redirecting to homepage)
+   - No placeholder/fallback patterns detected
+   - No low-quality scaled images found
+
+2. **Broken URL Resolution**
+   - 2015 "PLAYOFF ACTION UNDERWAY FOR FD HOOPS" article
+   - Original: `http://web.archive.org/web/im_/20160409092611/http://www.guamsportsnetwork.com/wp-content/uploads/2015/06/BBall-13.jpg`
+   - Status: Redirects to `http://web.archive.org/` (homepage)
+   - Resolution: Set imageUrl to null (unrecoverable from public archives)
+   - Original GSPN image also 404 - deleted from server
+
+3. **Recovery Attempts**
+   - Checked GSPN CDN (i0.wp.com) - 404
+   - Checked direct GSPN URL - 301 → 404  
+   - Checked Wayback Machine for alternative snapshots - none found
+   - Searched article body for alternative images - none available
+   - **Conclusion:** Image permanently lost, no public archive recovery possible
+
+### Results
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| Total URLs Checked | 127 | 126 | -1 (removed broken) |
+| OK URLs | 126 | 126 | 0 |
+| Broken URLs | 1 | 0 | -1 |
+| **Media Health** | 99.2% | **100%** | +0.8% |
+
+### Final Statistics
+| Metric | Count |
+|--------|-------|
+| Total Articles | 54 |
+| Total Media Assets | 92 |
+| Articles with Images | 34 |
+| Queue Approved | 87 |
+| Queue Pending | 0 |
+| Queue Rejected | 13 |
+
+### Quality Verification
+- ✅ All 126 image URLs verified working (HTTP 200)
+- ✅ No placeholder/fallback patterns in use
+- ✅ No nav logos or generic images as thumbnails
+- ✅ No scaled/thumbnail images (< 600px width)
+- ✅ Deduplication verified
+
+### Notes
+- 2015 playoff image loss is source-side (GSPN server deletion)
+- Wayback Machine did not capture this image before deletion
+- Setting null is appropriate - UI should handle gracefully
+- No further public archive recovery opportunities identified
+
+---
+
+*Report updated by autonomous archive polish system*

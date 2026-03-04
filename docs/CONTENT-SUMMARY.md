@@ -1,16 +1,18 @@
 # Historical Content Summary
 
-**Generated:** 2026-03-04T12:30:00.000Z
+**Generated:** 2026-03-05T00:47:00.000Z
+**Last Pass:** Autonomous Archive Polish (media cleanup)
 
 ## Overview
 
 | Metric | Count |
 |--------|-------|
-| Total Articles | 51 |
-| Total Media Assets | 91 |
-| Ingest Approved | 78 |
+| Total Articles | 54 |
+| Total Media Assets | 92 |
+| Ingest Approved | 87 |
 | Ingest Pending | 0 |
 | Ingest Rejected | 13 |
+| **Media URL Health** | **100%** |
 
 ## By Year
 
@@ -23,29 +25,37 @@
 | 2021 | 2 | 7 | ✅5 ⏳0 ❌1 |
 | 2019 | 3 | 13 | ✅13 ⏳0 ❌0 |
 | 2018 | 4 | 5 | ✅5 ⏳0 ❌1 |
-| 2017 | 5 | 3 | ✅5 ⏳0 ❌0 |
-| 2015 | 7 | 16 | ✅16 ⏳0 ❌0 |
+| 2017 | 5 | 9 | ✅11 ⏳0 ❌0 |
+| 2015 | 7 | 11 | ✅16 ⏳0 ❌0 |
 | 2014 | 9 | 9 | ✅11 ⏳0 ❌0 |
+| 2008 | 3 | 0 | ✅3 ⏳0 ❌0 |
 
 ## By Source
 
 ### Articles
 | Source | Count |
 |--------|-------|
-| GSPN | 46 |
-| guamsportsnetwork.com | 4 |
+| GSPN | 45 |
+| guamsportsnetwork.com | 5 |
+| postguam.com | 3 |
 | guampdn.com | 1 |
 
 ### Media
 | Source | Count |
 |--------|-------|
-| GSPN | 58 |
-| guamsportsnetwork.com | 32 |
+| GSPN | 64 |
+| guamsportsnetwork.com | 27 |
 | Clutch | 1 |
 
-## Latest Ingestion Pass
+## Coverage Summary
 
-**Final-Mile Archive Sweep (2026-03-04)**
-- +1 article (2022 championship)
-- +14 media assets (2019: 7, 2022: 2, 2015: 5)
-- Source: GSPN embedded photo galleries
+- **Years Covered:** 11 (2008, 2014, 2015, 2017-2019, 2021-2025)
+- **Confirmed Gaps:** 2016 (unrecoverable), 2020 (COVID cancelled)
+- **Unique Sources:** 5 (GSPN, guamsportsnetwork.com, postguam.com, guampdn.com, Clutch)
+
+## Latest Pass
+
+**Autonomous Archive Polish (2026-03-05)**
+- Removed 1 broken Wayback image URL (redirected to homepage)
+- Final media health verified at 100%
+- All 126 media/article image URLs confirmed working
