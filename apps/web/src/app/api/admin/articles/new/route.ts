@@ -11,6 +11,8 @@ export async function POST(request: Request) {
     title?: string
     source?: string
     url?: string
+    imageUrl?: string | null
+    excerpt?: string | null
     publishedAt?: string | null
   }
 
@@ -24,6 +26,8 @@ export async function POST(request: Request) {
       title: body.title,
       source: body.source,
       url: body.url,
+      imageUrl: body.imageUrl || null,
+      excerpt: body.excerpt || null,
       publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
     },
   })

@@ -182,3 +182,4 @@ The following deliverables were shipped to make the platform legit and ops-ready
 - `docs/2025-SCORE-COVERAGE-REPORT.md`
 - `docs/PARTNER-SHARE-CHECKLIST.md`
 - `docs/OUTREACH-DRAFTS.md`
+- `docs/CONTENT-PARTNER-FORMAT.md`

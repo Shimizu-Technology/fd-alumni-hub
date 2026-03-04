@@ -135,6 +135,8 @@ model ArticleLink {
   title        String
   source       String
   url          String
+  imageUrl     String?
+  excerpt      String?
   publishedAt  DateTime?
   createdAt    DateTime @default(now())
 

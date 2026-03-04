@@ -13,6 +13,8 @@ type NewsItem = {
   id: string
   source: string
   title: string
+  imageUrl?: string | null
+  excerpt?: string | null
   publishedAt: Date | null
   url: string
 }
@@ -49,8 +51,12 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
           boxShadow: 'var(--shadow-card)',
         }}
       >
+        {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt={item.title} className="h-20 w-full rounded-lg object-cover sm:h-24 sm:w-40" />
+        ) : null}
+
         <div className="min-w-0 flex-1">
-          {/* Source pill */}
           <span
             className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] mb-2"
             style={{ background: 'var(--fd-maroon)', color: '#fff' }}
@@ -58,7 +64,6 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
             {item.source}
           </span>
 
-          {/* Title */}
           <h2
             className="font-semibold leading-snug text-base transition-colors group-hover:underline"
             style={{ color: 'var(--fd-ink)', textDecorationColor: 'var(--fd-maroon)' }}
@@ -66,7 +71,12 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
             {item.title}
           </h2>
 
-          {/* Date */}
+          {item.excerpt ? (
+            <p className="mt-1 text-xs line-clamp-2" style={{ color: 'var(--neutral-500)' }}>
+              {item.excerpt}
+            </p>
+          ) : null}
+
           {date && (
             <p className="mt-2 text-xs" style={{ color: 'var(--neutral-400)' }}>
               {date}
@@ -74,7 +84,6 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
           )}
         </div>
 
-        {/* CTA */}
         <div className="flex shrink-0 items-center gap-1.5 self-start sm:self-center">
           <span
             className="text-xs font-semibold whitespace-nowrap"
@@ -97,20 +106,36 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tournamentId?: string }>
+  searchParams: Promise<{ tournamentId?: string; source?: string }>
 }) {
   const params = await searchParams
   const tournamentId = params.tournamentId ?? undefined
+  const sourceFilter = params.source ?? null
 
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
 
   const latestNews = await db.articleLink.findMany({
-    where: tournament ? { tournamentId: tournament.id } : undefined,
+    where: tournament
+      ? {
+          tournamentId: tournament.id,
+          ...(sourceFilter ? { source: sourceFilter } : {}),
+        }
+      : undefined,
     orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-    take: 50,
+    take: 100,
   })
+
+  const sourceRows = tournament
+    ? await db.articleLink.findMany({
+        where: { tournamentId: tournament.id },
+        select: { source: true },
+        distinct: ['source'],
+        orderBy: { source: 'asc' },
+      })
+    : []
+  const sources = sourceRows.map(s => s.source)
 
   return (
     <section className="space-y-5">
@@ -123,6 +148,23 @@ export default async function NewsPage({
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
           {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
         </p>
+        {sources.length > 1 ? (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <Link href={`/news${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : ''}`} className="rounded-full px-3 py-1.5 text-xs font-semibold" style={!sourceFilter ? { background: 'var(--fd-ink)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>
+              All sources
+            </Link>
+            {sources.map((s) => {
+              const p = new URLSearchParams()
+              if (tournamentId) p.set('tournamentId', tournamentId)
+              p.set('source', s)
+              return (
+                <Link key={s} href={`/news?${p.toString()}`} className="rounded-full px-3 py-1.5 text-xs font-semibold" style={sourceFilter===s ? { background: 'var(--fd-maroon)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>
+                  {s}
+                </Link>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
 
       {latestNews.length === 0 ? (
