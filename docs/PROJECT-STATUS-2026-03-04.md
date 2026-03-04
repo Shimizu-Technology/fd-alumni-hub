@@ -92,6 +92,13 @@ Current score coverage: **14 / 93 games (15.1%)**
 3. Recompute standings per division
 4. Run final 2025 QA checklist against official docs
 
+## Current Partner Ops Baseline
+- Missing-link exports generated for 2025:
+  - `docs/exports/2025-fd-alumni-basketball-tournament-missing-ticket-links.csv`
+  - `docs/exports/2025-fd-alumni-basketball-tournament-missing-stream-links.csv`
+- Link health baseline report generated:
+  - `docs/LINK-HEALTH-REPORT.md` (0 URLs checked; 93 ticket + 93 stream links still missing)
+
 ## P1 — Operations
 1. Add simple admin "missing score" work queue
 2. Add visible coverage badge on standings (e.g., 14/93 scored)
