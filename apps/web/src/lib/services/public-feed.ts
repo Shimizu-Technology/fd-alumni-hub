@@ -74,16 +74,18 @@ type ScheduleFeed = {
   games: ScheduleGame[]
   /** Distinct divisions found across games (resolved from game.division → homeTeam.division) */
   divisions: string[]
+  phases: string[]
 }
 
 export async function getSchedule(
   tournamentId?: string,
   divisionFilter?: string | null,
+  phaseFilter?: 'pool' | 'playoff' | 'fatherson' | null,
 ): Promise<ScheduleFeed> {
   const tournament = tournamentId
     ? await db.tournament.findUnique({ where: { id: tournamentId } })
     : await getActiveTournament()
-  if (!tournament) return { tournament: null, games: [], divisions: [] }
+  if (!tournament) return { tournament: null, games: [], divisions: [], phases: [] }
 
   // Build where clause
   const where: Prisma.GameWhereInput = { tournamentId: tournament.id }
@@ -92,6 +94,15 @@ export async function getSchedule(
     where.OR = [
       { division: divisionFilter },
       { division: null, homeTeam: { division: divisionFilter } },
+    ]
+  }
+  if (phaseFilter === 'pool') where.notes = { contains: 'phase=pool' }
+  if (phaseFilter === 'playoff') where.notes = { contains: 'phase=playoff' }
+  if (phaseFilter === 'fatherson') {
+    where.OR = [
+      { bracketCode: 'FS' },
+      { homeTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
+      { awayTeam: { displayName: { contains: 'FS', mode: 'insensitive' } } },
     ]
   }
 
@@ -111,12 +122,24 @@ export async function getSchedule(
     : games.map(g => ({ division: g.division, homeTeam: { division: g.homeTeam.division } }))
 
   const divSet = new Set<string>()
+  const phaseSet = new Set<string>()
   for (const g of allGames) {
     const resolved = resolveGameDivision(g.division, g.homeTeam?.division)
     if (resolved) divSet.add(resolved)
   }
 
-  return { tournament, games, divisions: Array.from(divSet).sort() }
+  const phaseRows = await db.game.findMany({
+    where: { tournamentId: tournament.id },
+    select: { notes: true, bracketCode: true, homeTeam: { select: { displayName: true } }, awayTeam: { select: { displayName: true } } },
+  })
+  for (const g of phaseRows) {
+    if (g.notes?.includes('phase=pool')) phaseSet.add('pool')
+    if (g.notes?.includes('phase=playoff')) phaseSet.add('playoff')
+    const isFS = g.bracketCode === 'FS' || /\bFS\b/i.test(g.homeTeam.displayName) || /\bFS\b/i.test(g.awayTeam.displayName)
+    if (isFS) phaseSet.add('fatherson')
+  }
+
+  return { tournament, games, divisions: Array.from(divSet).sort(), phases: Array.from(phaseSet) }
 }
 
 type StandingWithTeam = Prisma.StandingGetPayload<{

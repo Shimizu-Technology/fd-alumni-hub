@@ -20,6 +20,7 @@ type ScheduleGame = {
   ticketUrl: string | null
   division: string | null
   bracketCode: string | null
+  notes?: string | null
   homeTeam: { displayName: string; division: string | null }
   awayTeam: { displayName: string; division: string | null }
 }
@@ -100,6 +101,7 @@ function GameRow({ game }: { game: ScheduleGame }) {
   const isFinal = game.status === 'final'
   const hasScore = isFinal && game.homeScore != null && game.awayScore != null
   const effectiveDivision = resolveGameDivision(game.division, game.homeTeam.division)
+  const isFatherSon = game.bracketCode === 'FS' || /\bFS\b/i.test(game.homeTeam.displayName) || /\bFS\b/i.test(game.awayTeam.displayName)
 
   return (
     <div
@@ -139,6 +141,11 @@ function GameRow({ game }: { game: ScheduleGame }) {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           {game.bracketCode && (
             <BracketBadge code={game.bracketCode} divisionId={effectiveDivision} />
+          )}
+          {isFatherSon && (
+            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider" style={{ background: '#1d4ed814', color: '#1d4ed8', border: '1px solid #1d4ed830' }}>
+              Father-Son
+            </span>
           )}
           <StatusBadge status={game.status} />
           {game.streamUrl && (
@@ -229,15 +236,36 @@ function DivisionTabs({
   )
 }
 
+function PhaseTabs({ currentPhase, phases, divisionFilter }: { currentPhase: string | null; phases: string[]; divisionFilter: string | null }) {
+  if (phases.length < 2) return null
+  const qp = (phase: string | null) => {
+    const p = new URLSearchParams()
+    if (divisionFilter) p.set('division', divisionFilter)
+    if (phase) p.set('phase', phase)
+    const q = p.toString()
+    return `/schedule${q ? `?${q}` : ''}`
+  }
+  const labels: Record<string, string> = { pool: 'Pool', playoff: 'Playoffs', fatherson: 'Father-Son' }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Filter by phase">
+      <Link href={qp(null)} className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold" style={!currentPhase ? { background: 'var(--fd-ink)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-600)', border: '1px solid var(--border-subtle)' }}>All phases</Link>
+      {['pool','playoff','fatherson'].filter(k => phases.includes(k)).map(k => (
+        <Link key={k} href={qp(k)} className="inline-flex items-center rounded-full px-3.5 py-1.5 text-xs font-semibold" style={currentPhase===k ? { background: 'var(--fd-maroon)', color:'#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>{labels[k]}</Link>
+      ))}
+    </div>
+  )
+}
+
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ division?: string }>
+  searchParams: Promise<{ division?: string; phase?: 'pool' | 'playoff' | 'fatherson' }>
 }) {
   const params = await searchParams
   const divisionFilter = params.division ?? null
+  const phaseFilter = params.phase ?? null
 
-  const { tournament, games, divisions } = await getSchedule(undefined, divisionFilter)
+  const { tournament, games, divisions, phases } = await getSchedule(undefined, divisionFilter, phaseFilter)
   const typedGames = games as ScheduleGame[]
 
   // Group by day
@@ -293,6 +321,7 @@ export default async function SchedulePage({
           currentFilter={divisionFilter}
           basePath="/schedule"
         />
+        <PhaseTabs currentPhase={phaseFilter} phases={phases} divisionFilter={divisionFilter} />
       </div>
 
       {!tournament || typedGames.length === 0 ? (
@@ -301,8 +330,8 @@ export default async function SchedulePage({
           style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            {divisionFilter
-              ? `No games found for the ${divisionFilter} division.`
+            {divisionFilter || phaseFilter
+              ? `No games found for current filters${divisionFilter ? ` (${divisionFilter})` : ''}${phaseFilter ? ` (${phaseFilter})` : ''}.`
               : 'No games yet. Seed data or add games from admin.'}
           </p>
           {divisionFilter && (
