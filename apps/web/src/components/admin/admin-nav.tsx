@@ -134,11 +134,11 @@ export function AdminNav() {
           scrollbar-hide
           scroll-smooth
           snap-x snap-mandatory
-          -webkit-overflow-scrolling-touch
         "
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {LINKS.map(({ href, label, icon: Icon }) => {

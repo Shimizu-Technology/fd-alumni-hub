@@ -43,8 +43,17 @@ export function TournamentProvider({
   initialCurrentId,
 }: TournamentProviderProps) {
   const [tournaments, setTournaments] = useState<TournamentSummary[]>(initialTournaments)
-  const [currentTournament, setCurrentTournamentState] = useState<TournamentSummary | null>(null)
-  const [isLoading, setIsLoading] = useState(!initialTournaments.length)
+  const getInitialTournament = (): TournamentSummary | null => {
+    if (!initialTournaments.length) return null
+    if (initialCurrentId) {
+      const found = initialTournaments.find((t) => t.id === initialCurrentId)
+      if (found) return found
+    }
+    return findActiveTournament(initialTournaments)
+  }
+
+  const [currentTournament, setCurrentTournamentState] = useState<TournamentSummary | null>(getInitialTournament)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Find the default active tournament
@@ -118,7 +127,8 @@ export function TournamentProvider({
       // Fetch from API
       refreshTournaments()
     }
-  }, [initialTournaments, initialCurrentId, findActiveTournament, refreshTournaments])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <TournamentContext.Provider
