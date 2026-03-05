@@ -119,7 +119,7 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       setTakenAt('')
       setSource('GSPN')
     } catch (err) {
-      setRetryEligible(stage !== null)
+      setRetryEligible(true)
       const prefix = stage === 'create' ? 'Create step failed:' : 'Upload flow failed:'
       setMsg({ text: `${prefix} ${err instanceof Error ? err.message : 'Please retry.'}`, ok: false })
     } finally {
