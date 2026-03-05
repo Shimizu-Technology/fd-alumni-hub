@@ -39,6 +39,8 @@ High-risk import endpoints:
 - `/api/admin/bootstrap-whitelist`
 - Guarded by `x-bootstrap-secret` + `BOOTSTRAP_SECRET`.
 - This endpoint is intentionally not role-guarded because it is used for initial bootstrap provisioning.
+- **Important**: `BOOTSTRAP_SECRET` should be unset (or rotated) in production after initial admin provisioning.
+  The endpoint has no one-time-use protection; a leaked secret allows repeated admin promotion.
 
 ## Consistency rules
 
@@ -48,6 +50,7 @@ High-risk import endpoints:
 
 ## Regression checklist
 
+- [ ] Unauthenticated request to `/api/admin/*` endpoint returns `401` or `403`.
 - [ ] Staff can access `/admin` and load tournament selector + refresh.
 - [ ] Staff can use media/sponsor workflows.
 - [ ] Staff receives `403` on admin-only endpoints.
