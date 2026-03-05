@@ -108,7 +108,9 @@ export function TournamentProvider({
       }
 
       const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      const candidates = [savedId, currentIdRef.current, payload.currentTournamentId].filter(Boolean) as string[]
+      // Server's freshly-computed smart default wins over stale localStorage — this ensures
+      // a newly-live tournament returned by the server is not masked by an old saved selection.
+      const candidates = [payload.currentTournamentId, savedId, currentIdRef.current].filter(Boolean) as string[]
 
       let next: TournamentSummary | null = null
       for (const id of candidates) {
@@ -161,7 +163,12 @@ export function TournamentProvider({
         setCurrentTournamentState(valid)
       } else if (currentTournament?.id !== savedId) {
         // SSR default is already active; sync localStorage to match.
-        localStorage.setItem(STORAGE_KEY, currentTournament.id)
+        // Explicit null check required — optional chaining above does not narrow the type.
+        if (currentTournament) {
+          localStorage.setItem(STORAGE_KEY, currentTournament.id)
+        } else {
+          localStorage.removeItem(STORAGE_KEY)
+        }
       }
     } catch {
       // localStorage may be unavailable (private mode / restricted contexts)

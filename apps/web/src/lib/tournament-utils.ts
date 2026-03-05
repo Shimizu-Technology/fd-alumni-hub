@@ -16,7 +16,7 @@ export function findActiveTournament<T extends TournamentLike>(list: T[]): T | n
     .sort((a, b) => b.year - a.year)[0]
   if (mostRecentCompleted) return mostRecentCompleted
 
-  // Final fallback if no completed tournament exists
-  const sortedByYear = [...list].sort((a, b) => b.year - a.year)
-  return sortedByYear[0] ?? null
+  // No known-good status found — return null to avoid silently surfacing
+  // a cancelled, paused, or unknown-status tournament as the active context.
+  return null
 }
