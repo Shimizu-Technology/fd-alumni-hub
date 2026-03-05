@@ -131,6 +131,7 @@ export function TournamentSelector() {
               {completedTournaments.length > 5 && !showAllCompleted && (
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => setShowAllCompleted(true)}
                   className="w-full px-3 py-1.5 text-left text-xs text-neutral-500 hover:text-neutral-700"
                 >
@@ -163,7 +164,6 @@ function TournamentOption({
   return (
     <button
       role="menuitem"
-      aria-selected={isSelected}
       onClick={() => onSelect(tournament)}
       className={`
         w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm
