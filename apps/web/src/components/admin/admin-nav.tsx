@@ -63,6 +63,7 @@ export function AdminNav() {
         aria-label="Scroll admin tabs left"
         aria-hidden={!showLeftArrow}
         aria-disabled={!showLeftArrow}
+        tabIndex={showLeftArrow ? 0 : -1}
         className={`absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white p-1 shadow transition ${showLeftArrow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         style={{ borderColor: 'var(--border-subtle)' }}
       >
@@ -101,6 +102,7 @@ export function AdminNav() {
         aria-label="Scroll admin tabs right"
         aria-hidden={!showRightArrow}
         aria-disabled={!showRightArrow}
+        tabIndex={showRightArrow ? 0 : -1}
         className={`absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white p-1 shadow transition ${showRightArrow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         style={{ borderColor: 'var(--border-subtle)' }}
       >
