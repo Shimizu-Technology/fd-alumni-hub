@@ -41,6 +41,7 @@ High-risk import endpoints:
 - This endpoint is intentionally not role-guarded because it is used for initial bootstrap provisioning.
 - **Important**: `BOOTSTRAP_SECRET` should be unset (or rotated) in production after initial admin provisioning.
   The endpoint has no one-time-use protection; a leaked secret allows repeated admin promotion.
+  When `BOOTSTRAP_SECRET` is absent, the endpoint rejects all requests (`401`) and is effectively disabled.
 
 ## Consistency rules
 
