@@ -31,18 +31,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid takenAt date' }, { status: 400 })
   }
 
-  const media = await db.mediaAsset.create({
-    data: {
-      tournamentId: body.tournamentId,
-      source: body.source,
-      title: body.title,
-      imageUrl: body.imageUrl,
-      articleUrl: body.articleUrl || null,
-      caption: body.caption || null,
-      tags: body.tags || null,
-      takenAt: parsedTakenAt,
-    },
-  })
+  try {
+    const media = await db.mediaAsset.create({
+      data: {
+        tournamentId: body.tournamentId,
+        source: body.source,
+        title: body.title,
+        imageUrl: body.imageUrl,
+        articleUrl: body.articleUrl || null,
+        caption: body.caption || null,
+        tags: body.tags || null,
+        takenAt: parsedTakenAt,
+      },
+    })
 
-  return NextResponse.json({ media })
+    return NextResponse.json({ media })
+  } catch (err) {
+    console.error('[media/new] db.mediaAsset.create failed:', err)
+    return NextResponse.json({ error: 'Failed to create media item' }, { status: 500 })
+  }
 }

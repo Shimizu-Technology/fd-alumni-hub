@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isValidHttpUrl } from '@/lib/url'
 import {
@@ -23,7 +23,9 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
   const [takenAt, setTakenAt] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [retryEligible, setRetryEligible] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const resolvedImageUrlRef = useRef<string | null>(null)
   const router = useRouter()
 
   const uploadToS3 = async (file: File) => {
@@ -39,7 +41,7 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
 
     if (!presign.ok) {
       const data = await presign.json().catch(() => ({}))
-      throw new Error(data?.error || 'Failed to create upload URL')
+      throw new Error(data?.error || 'Could not prepare upload. Please try again.')
     }
 
     const data = await presign.json()
@@ -55,30 +57,34 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
     })
 
     if (!uploadRes.ok) {
-      throw new Error(`Upload failed (${uploadRes.status})`)
+      throw new Error('Image upload failed. Please retry.')
     }
 
     return data.publicUrl as string
   }
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const createMedia = async () => {
     setMsg(null)
+    setRetryEligible(false)
+    let stage: 'create' | null = null
 
     if ((imageUrl && !isValidHttpUrl(imageUrl)) || (articleUrl && !isValidHttpUrl(articleUrl))) {
-      setMsg({ text: 'Please provide valid URLs', ok: false })
+      setMsg({ text: 'Please provide valid URLs (http/https).', ok: false })
       return
     }
 
     if (!imageUrl && !imageFile) {
-      setMsg({ text: 'Provide an image URL or upload an image file', ok: false })
+      setMsg({ text: 'Provide an image URL or upload an image file.', ok: false })
       return
     }
 
     try {
       setUploading(true)
-      const resolvedImageUrl = imageFile ? await uploadToS3(imageFile) : imageUrl
+      const resolvedImageUrl =
+        resolvedImageUrlRef.current ?? (imageFile ? await uploadToS3(imageFile) : imageUrl)
+      resolvedImageUrlRef.current = resolvedImageUrl
 
+      stage = 'create'
       const res = await fetch('/api/admin/media/new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,25 +102,32 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setMsg({ text: data?.error || 'Failed to create media item', ok: false })
-        return
+        throw new Error(data?.error || 'Failed to create media item. Please retry.')
       }
 
       setMsg({ text: 'Media item added successfully', ok: true })
       router.refresh()
 
-      // Reset form
+      // Reset form only on success
       setTitle('')
       setImageUrl('')
       setImageFile(null)
+      resolvedImageUrlRef.current = null
       setArticleUrl('')
       setCaption('')
       setTags('')
     } catch (err) {
-      setMsg({ text: err instanceof Error ? err.message : 'Upload failed', ok: false })
+      setRetryEligible(true)
+      const prefix = stage === 'create' ? 'Create step failed:' : 'Upload flow failed:'
+      setMsg({ text: `${prefix} ${err instanceof Error ? err.message : 'Please retry.'}`, ok: false })
     } finally {
       setUploading(false)
     }
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await createMedia()
   }
 
   return (
@@ -122,7 +135,6 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       <form onSubmit={submit} className="space-y-4">
         <AdminCardTitle>Add Media Asset</AdminCardTitle>
 
-        {/* Row 1: Source + Date */}
         <div className="grid gap-3 sm:grid-cols-2">
           <AdminSelect
             label="Source"
@@ -144,7 +156,6 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
           />
         </div>
 
-        {/* Row 2: Title */}
         <AdminInput
           label="Title"
           value={title}
@@ -153,13 +164,15 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
           required
         />
 
-        {/* Row 3: Image URL + Article URL */}
         <div className="grid gap-3 sm:grid-cols-2">
           <AdminInput
             label="Image URL"
             type="url"
             value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            onChange={(e) => {
+              resolvedImageUrlRef.current = null
+              setImageUrl(e.target.value)
+            }}
             placeholder="https://example.com/image.jpg"
             hint="Optional if uploading a file below"
           />
@@ -173,16 +186,17 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
           />
         </div>
 
-        {/* Row 4: File Upload */}
         <AdminFileInput
           label="Or Upload Image"
           accept="image/*"
-          onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            resolvedImageUrlRef.current = null
+            setImageFile(e.target.files?.[0] ?? null)
+          }}
           selectedFileName={imageFile?.name}
           hint="JPG, PNG, WebP up to 10MB"
         />
 
-        {/* Row 5: Caption + Tags */}
         <div className="grid gap-3 sm:grid-cols-2">
           <AdminInput
             label="Caption"
@@ -199,11 +213,15 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
           />
         </div>
 
-        {/* Actions */}
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <AdminButton type="submit" loading={uploading}>
             {uploading ? 'Uploading…' : 'Create Media Item'}
           </AdminButton>
+          {!uploading && msg && !msg.ok && retryEligible && (
+            <AdminButton type="button" variant="secondary" onClick={createMedia}>
+              Retry
+            </AdminButton>
+          )}
           {msg && <AdminMessage type={msg.ok ? 'success' : 'error'}>{msg.text}</AdminMessage>}
         </div>
       </form>
