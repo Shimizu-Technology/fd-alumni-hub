@@ -13,7 +13,7 @@ export type TournamentSummary = {
   id: string
   name: string
   year: number
-  status: 'upcoming' | 'live' | 'completed' | string
+  status: 'upcoming' | 'live' | 'completed' | (string & {})
 }
 
 type TournamentResponse =

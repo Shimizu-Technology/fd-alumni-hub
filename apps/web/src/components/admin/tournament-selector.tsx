@@ -18,6 +18,7 @@ function StatusDot({ status }: { status: TournamentSummary['status'] }) {
 export function TournamentSelector() {
   const { tournaments, currentTournament, setCurrentTournament, isLoading } = useTournament()
   const [open, setOpen] = useState(false)
+  const [showAllCompleted, setShowAllCompleted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Close on outside click
@@ -44,12 +45,18 @@ export function TournamentSelector() {
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) setShowAllCompleted(false)
+  }, [open])
+
   const activeTournaments = tournaments.filter((t) => t.status !== 'completed')
   const completedTournaments = tournaments.filter((t) => t.status === 'completed')
+  const displayedCompleted = showAllCompleted ? completedTournaments : completedTournaments.slice(0, 5)
 
   const handleSelect = (tournament: TournamentSummary) => {
     setCurrentTournament(tournament.id)
     setOpen(false)
+    setShowAllCompleted(false)
   }
 
   return (
@@ -58,7 +65,7 @@ export function TournamentSelector() {
         onClick={() => setOpen(!open)}
         disabled={isLoading}
         aria-expanded={open}
-        aria-haspopup="listbox"
+        aria-haspopup="menu"
         className="
           flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium
           transition-colors border
@@ -83,7 +90,7 @@ export function TournamentSelector() {
 
       {open && (
         <div
-          role="listbox"
+          role="menu"
           className="
             absolute right-0 z-50 mt-1.5 w-72 origin-top-right
             rounded-xl border border-neutral-200 bg-white shadow-lg
@@ -113,7 +120,7 @@ export function TournamentSelector() {
               <p aria-hidden="true" className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
                 Completed
               </p>
-              {completedTournaments.slice(0, 5).map((t) => (
+              {displayedCompleted.map((t) => (
                 <TournamentOption
                   key={t.id}
                   tournament={t}
@@ -121,10 +128,14 @@ export function TournamentSelector() {
                   onSelect={handleSelect}
                 />
               ))}
-              {completedTournaments.length > 5 && (
-                <p className="px-3 py-1.5 text-xs text-neutral-400">
+              {completedTournaments.length > 5 && !showAllCompleted && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(true)}
+                  className="w-full px-3 py-1.5 text-left text-xs text-neutral-500 hover:text-neutral-700"
+                >
                   +{completedTournaments.length - 5} more in history
-                </p>
+                </button>
               )}
             </div>
           )}
@@ -151,7 +162,7 @@ function TournamentOption({
 }) {
   return (
     <button
-      role="option"
+      role="menuitem"
       aria-selected={isSelected}
       onClick={() => onSelect(tournament)}
       className={`
