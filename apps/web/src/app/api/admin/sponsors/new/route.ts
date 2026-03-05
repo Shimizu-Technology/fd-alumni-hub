@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
+import { isValidHttpUrl } from '@/lib/url'
 
 export async function POST(request: Request) {
   const staff = await requireStaff()
@@ -15,21 +16,30 @@ export async function POST(request: Request) {
     position?: number
   }
 
-  if (!body.tournamentId || !body.name) {
+  const trimmedName = body.name?.trim()
+  if (!body.tournamentId || !trimmedName) {
     return NextResponse.json({ error: 'tournamentId and name required' }, { status: 400 })
   }
 
-  const sponsor = await db.sponsor.create({
-    data: {
-      tournamentId: body.tournamentId,
-      name: body.name,
-      logoUrl: body.logoUrl,
-      targetUrl: body.targetUrl,
-      tier: body.tier,
-      position: body.position ?? 0,
-      active: true,
-    },
-  })
+  if (!isValidHttpUrl(body.logoUrl) || !isValidHttpUrl(body.targetUrl)) {
+    return NextResponse.json({ error: 'Invalid URL fields (http/https only)' }, { status: 400 })
+  }
 
-  return NextResponse.json({ sponsor })
+  try {
+    const sponsor = await db.sponsor.create({
+      data: {
+        tournamentId: body.tournamentId,
+        name: trimmedName,
+        logoUrl: body.logoUrl,
+        targetUrl: body.targetUrl,
+        tier: body.tier,
+        position: body.position ?? 0,
+        active: true,
+      },
+    })
+
+    return NextResponse.json({ sponsor })
+  } catch {
+    return NextResponse.json({ error: 'Failed to create sponsor' }, { status: 500 })
+  }
 }
