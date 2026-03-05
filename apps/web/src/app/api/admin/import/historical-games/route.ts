@@ -62,6 +62,7 @@ async function ensureTeam(tournamentId: string, label: string, division?: string
 }
 
 export async function POST(request: Request) {
+  // Admin-only by policy: historical imports can rewrite large portions of data.
   const admin = await requireAdmin()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
