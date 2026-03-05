@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { requireAdmin } from '@/lib/authz'
+import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
 import { TournamentProvider, type TournamentSummary } from '@/contexts/tournament-context'
 import { AdminHeader } from '@/components/admin/admin-header'
@@ -22,7 +22,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await requireAdmin()
+  const user = await requireStaff()
   if (!user) redirect('/sign-in')
 
   const tournaments = await getInitialTournaments()
