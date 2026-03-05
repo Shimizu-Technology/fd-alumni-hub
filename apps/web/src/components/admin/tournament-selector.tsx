@@ -200,7 +200,7 @@ function TournamentOption({
           {tournament.name} {tournament.year}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <StatusDot status={tournament.status} ariaLabel={tournament.status} />
+          <StatusDot status={tournament.status} />
           <span className="capitalize">{tournament.status}</span>
         </div>
       </div>

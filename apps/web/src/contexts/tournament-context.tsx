@@ -120,7 +120,9 @@ export function TournamentProvider({
       }
 
       if (!next) next = findActiveTournament(list)
-      setCurrentTournamentState(next)
+      if (next?.id !== currentIdRef.current) {
+        setCurrentTournamentState(next)
+      }
       if (next && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, next.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to refresh tournaments')
@@ -151,11 +153,15 @@ export function TournamentProvider({
         return
       }
 
-      // Honor the admin's explicit stored choice on subsequent loads.
-      // SSR wins only on first-ever load (when localStorage is empty above).
-      // If the admin previously selected a different tournament, restore it.
-      if (currentTournament?.id !== savedId) {
+      // Honor the admin's explicit stored choice on subsequent loads,
+      // BUT defer to the SSR-computed smart default when it explicitly overrides localStorage.
+      // This ensures a newly-live tournament (returned as initialCurrentId) is not silently
+      // overwritten by a stale saved selection.
+      if (currentTournament?.id !== savedId && currentTournament?.id !== initialCurrentId) {
         setCurrentTournamentState(valid)
+      } else if (currentTournament?.id !== savedId) {
+        // SSR default is already active; sync localStorage to match.
+        localStorage.setItem(STORAGE_KEY, currentTournament.id)
       }
     } catch {
       // localStorage may be unavailable (private mode / restricted contexts)
