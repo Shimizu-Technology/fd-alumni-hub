@@ -3,6 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DIVISIONS, BRACKET_CODES } from '@/lib/divisions'
+import { Calendar, Trash2, Save } from 'lucide-react'
+import {
+  AdminInput,
+  AdminSelect,
+  AdminButton,
+  AdminBadge,
+  AdminMessage,
+  AdminEmptyState,
+  inputBaseClasses,
+} from './ui'
 
 function isValidUrl(value: string) {
   if (!value) return true
@@ -31,7 +41,7 @@ type GameRow = {
 export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
   const [games, setGames] = useState(initialGames)
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ id: string; text: string; ok: boolean } | null>(null)
   const router = useRouter()
 
   const updateGame = (id: string, patch: Partial<GameRow>) => {
@@ -40,8 +50,10 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
 
   const save = async (game: GameRow) => {
     setSavingId(game.id)
+    setMsg(null)
+
     if (!isValidUrl(game.streamUrl ?? '') || !isValidUrl(game.ticketUrl ?? '')) {
-      setMsg('Please provide valid stream/ticket URL(s)')
+      setMsg({ id: game.id, text: 'Invalid stream/ticket URL format', ok: false })
       setSavingId(null)
       return
     }
@@ -61,163 +73,210 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
         }),
       })
       if (!res.ok) throw new Error('Save failed')
-      setMsg(`Saved — ${game.awayTeam.displayName} vs ${game.homeTeam.displayName}`)
+      setMsg({ id: game.id, text: 'Saved successfully', ok: true })
       router.refresh()
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Save failed')
+      setMsg({ id: game.id, text: e instanceof Error ? e.message : 'Save failed', ok: false })
     } finally {
       setSavingId(null)
     }
   }
 
   const archive = async (game: GameRow) => {
-    if (!confirm('Archive/delete this game?')) return
+    if (!confirm('Archive/delete this game? This cannot be undone.')) return
     setSavingId(game.id)
     try {
       const res = await fetch(`/api/admin/games/${game.id}/archive`, { method: 'POST' })
       if (!res.ok) throw new Error('Archive failed')
-      setMsg('Archived')
+      setMsg({ id: game.id, text: 'Archived', ok: true })
       router.refresh()
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Archive failed')
+      setMsg({ id: game.id, text: e instanceof Error ? e.message : 'Archive failed', ok: false })
     } finally {
       setSavingId(null)
     }
   }
 
-  const inputCls = 'rounded-lg border px-2 py-1.5 text-sm w-full focus:outline-none focus:ring-1 focus:ring-[color:var(--fd-maroon)]'
+  if (games.length === 0) {
+    return (
+      <AdminEmptyState
+        title="No games scheduled"
+        description="Create your first game using the form above."
+      />
+    )
+  }
 
   return (
     <div className="space-y-3">
-      {msg && (
-        <p className="text-xs px-1" style={{ color: msg.includes('Saved') ? '#16a34a' : '#dc2626' }}>{msg}</p>
-      )}
-      {games.map((g) => {
+      {games.map((g, index) => {
         const effectiveDivision = g.division ?? g.homeTeam.division ?? null
-        const divInfo = DIVISIONS.find(d => d.id === effectiveDivision)
+        const divInfo = DIVISIONS.find((d) => d.id === effectiveDivision)
+        const gameMsg = msg?.id === g.id ? msg : null
+
         return (
           <div
             key={g.id}
-            className="rounded-xl border bg-white p-4"
+            className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 animate-fade-up hover:shadow-md"
             style={{
               borderColor: 'var(--border-subtle)',
-              borderLeft: divInfo ? `3px solid ${divInfo.color}` : undefined,
+              borderLeft: divInfo ? `4px solid ${divInfo.color}` : '4px solid var(--border-subtle)',
+              animationDelay: `${index * 30}ms`,
             }}
           >
-            {/* Matchup header */}
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <p className="font-medium text-sm" style={{ color: 'var(--fd-ink)' }}>
-                {g.awayTeam.displayName} <span style={{ color: 'var(--neutral-400)' }}>vs</span> {g.homeTeam.displayName}
+            {/* Header */}
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-[var(--fd-ink)]">
+                {g.awayTeam.displayName}{' '}
+                <span className="font-normal text-[var(--neutral-400)]">vs</span>{' '}
+                {g.homeTeam.displayName}
               </p>
+
+              {/* Status badge */}
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  g.status === 'live'
+                    ? 'badge-live'
+                    : g.status === 'final'
+                    ? 'badge-final'
+                    : 'badge-upcoming'
+                }`}
+              >
+                {g.status === 'live' && <span className="live-dot mr-1.5" />}
+                {g.status}
+              </span>
+
               {effectiveDivision && (
-                <span
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{ background: divInfo?.colorMuted ?? '#f0f0f0', color: divInfo?.color ?? '#666' }}
+                <AdminBadge
+                  className="border"
+                  style={{
+                    background: divInfo?.colorMuted ?? 'var(--neutral-100)',
+                    color: divInfo?.color ?? 'var(--neutral-600)',
+                    borderColor: divInfo?.color ?? 'var(--border-subtle)',
+                  }}
                 >
                   {effectiveDivision}
-                </span>
+                </AdminBadge>
               )}
-              {g.bracketCode && (
-                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: '#f0f0f0', color: '#555' }}>
-                  {g.bracketCode}
-                </span>
-              )}
-            </div>
-            <p className="mb-3 text-xs" style={{ color: 'var(--neutral-400)' }}>
-              {new Date(g.startTime).toLocaleString('en-US')}
-            </p>
 
-            {/* Row 1: Status + Scores + URLs */}
-            <div className="grid gap-2 sm:grid-cols-5 mb-2">
-              <select
+              {g.bracketCode && (
+                <AdminBadge variant="default">{g.bracketCode}</AdminBadge>
+              )}
+
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-[var(--neutral-400)]">
+                <Calendar className="h-3.5 w-3.5" />
+                {new Date(g.startTime).toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+
+            {/* Row 1: Status + Scores */}
+            <div className="mb-3 grid gap-3 sm:grid-cols-5">
+              <AdminSelect
+                label="Status"
                 value={g.status}
                 onChange={(e) => updateGame(g.id, { status: e.target.value as GameRow['status'] })}
-                className={inputCls}
               >
-                <option value="scheduled">scheduled</option>
-                <option value="live">live</option>
-                <option value="final">final</option>
-              </select>
-              <input
+                <option value="scheduled">Scheduled</option>
+                <option value="live">Live</option>
+                <option value="final">Final</option>
+              </AdminSelect>
+              <AdminInput
+                label="Away Score"
                 type="number"
-                placeholder="Away score"
+                placeholder="—"
+                min={0}
                 value={g.awayScore ?? ''}
-                onChange={(e) => updateGame(g.id, { awayScore: e.target.value === '' ? null : Number(e.target.value) })}
-                className={inputCls}
+                onChange={(e) =>
+                  updateGame(g.id, {
+                    awayScore: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
               />
-              <input
+              <AdminInput
+                label="Home Score"
                 type="number"
-                placeholder="Home score"
+                placeholder="—"
+                min={0}
                 value={g.homeScore ?? ''}
-                onChange={(e) => updateGame(g.id, { homeScore: e.target.value === '' ? null : Number(e.target.value) })}
-                className={inputCls}
+                onChange={(e) =>
+                  updateGame(g.id, {
+                    homeScore: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
               />
-              <input
-                placeholder="Stream URL"
+              <AdminInput
+                label="Stream URL"
+                type="url"
+                placeholder="https://..."
                 value={g.streamUrl ?? ''}
                 onChange={(e) => updateGame(g.id, { streamUrl: e.target.value || null })}
-                className={inputCls}
               />
-              <input
-                placeholder="Ticket URL"
+              <AdminInput
+                label="Ticket URL"
+                type="url"
+                placeholder="https://..."
                 value={g.ticketUrl ?? ''}
                 onChange={(e) => updateGame(g.id, { ticketUrl: e.target.value || null })}
-                className={inputCls}
               />
             </div>
 
             {/* Row 2: Division + Bracket Code */}
-            <div className="grid gap-2 sm:grid-cols-2 mb-3">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--neutral-500)' }}>
-                  Division
-                </label>
-                <select
-                  value={g.division ?? ''}
-                  onChange={(e) => updateGame(g.id, { division: e.target.value || null })}
-                  className={inputCls}
-                >
-                  <option value="">— Auto / None —</option>
-                  {DIVISIONS.sort((a, b) => a.sortOrder - b.sortOrder).map(d => (
-                    <option key={d.id} value={d.id}>{d.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--neutral-500)' }}>
-                  Bracket Code
-                </label>
-                <select
-                  value={g.bracketCode ?? ''}
-                  onChange={(e) => updateGame(g.id, { bracketCode: e.target.value || null })}
-                  className={inputCls}
-                >
-                  <option value="">— Regular Season —</option>
-                  {BRACKET_CODES.map(b => (
-                    <option key={b.code} value={b.code}>{b.code} — {b.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <AdminSelect
+                label="Division"
+                value={g.division ?? ''}
+                onChange={(e) => updateGame(g.id, { division: e.target.value || null })}
+              >
+                <option value="">— Auto / None —</option>
+                {DIVISIONS.sort((a, b) => a.sortOrder - b.sortOrder).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+              </AdminSelect>
+              <AdminSelect
+                label="Bracket Code"
+                value={g.bracketCode ?? ''}
+                onChange={(e) => updateGame(g.id, { bracketCode: e.target.value || null })}
+              >
+                <option value="">— Pool Play —</option>
+                {BRACKET_CODES.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.code} — {b.label}
+                  </option>
+                ))}
+              </AdminSelect>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2">
-              <button
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border-subtle)] pt-3">
+              <AdminButton
                 onClick={() => save(g)}
-                disabled={savingId === g.id}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-all hover:-translate-y-0.5 disabled:opacity-50"
-                style={{ background: 'var(--fd-maroon)' }}
+                loading={savingId === g.id}
+                size="sm"
               >
-                {savingId === g.id ? 'Saving...' : 'Save'}
-              </button>
-              <button
+                <Save className="h-4 w-4" />
+                Save Changes
+              </AdminButton>
+              <AdminButton
                 onClick={() => archive(g)}
                 disabled={savingId === g.id}
-                className="rounded-lg border px-3 py-1.5 text-sm text-red-600 transition-all hover:bg-red-50 disabled:opacity-50"
-                style={{ borderColor: 'var(--border-subtle)' }}
+                variant="danger"
+                size="sm"
               >
+                <Trash2 className="h-4 w-4" />
                 Archive
-              </button>
+              </AdminButton>
+              {gameMsg && (
+                <AdminMessage type={gameMsg.ok ? 'success' : 'error'}>
+                  {gameMsg.text}
+                </AdminMessage>
+              )}
             </div>
           </div>
         )

@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { AdminButton, AdminMessage } from './ui'
 
 export function RecomputeStandingsButton({ tournamentId }: { tournamentId: string }) {
   const [loading, setLoading] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
   const run = async () => {
     setLoading(true)
@@ -16,21 +18,25 @@ export function RecomputeStandingsButton({ tournamentId }: { tournamentId: strin
         body: JSON.stringify({ tournamentId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed')
-      setMsg(`Recomputed ${data.result?.teams ?? 0} teams from ${data.result?.games ?? 0} games`)
+      if (!res.ok) throw new Error(data?.error || 'Recompute failed')
+      setMsg({
+        text: `Recomputed ${data.result?.teams ?? 0} teams from ${data.result?.games ?? 0} games`,
+        ok: true,
+      })
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : 'Failed')
+      setMsg({ text: e instanceof Error ? e.message : 'Failed', ok: false })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <button onClick={run} disabled={loading} className="rounded-lg px-3 py-2 text-sm text-white" style={{ background: 'var(--fd-maroon)' }}>
-        {loading ? 'Recomputing…' : 'Recompute Standings'}
-      </button>
-      {msg ? <p className="text-xs text-neutral-600">{msg}</p> : null}
+    <div className="flex flex-wrap items-center gap-3">
+      <AdminButton onClick={run} loading={loading}>
+        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        Recompute Standings
+      </AdminButton>
+      {msg && <AdminMessage type={msg.ok ? 'success' : 'error'}>{msg.text}</AdminMessage>}
     </div>
   )
 }

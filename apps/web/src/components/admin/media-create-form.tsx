@@ -3,6 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isValidHttpUrl } from '@/lib/url'
+import {
+  AdminInput,
+  AdminSelect,
+  AdminFileInput,
+  AdminButton,
+  AdminCard,
+  AdminCardTitle,
+  AdminMessage,
+} from './ui'
 
 export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
   const [source, setSource] = useState('GSPN')
@@ -14,7 +23,7 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
   const [takenAt, setTakenAt] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [msg, setMsg] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const router = useRouter()
 
   const uploadToS3 = async (file: File) => {
@@ -56,13 +65,13 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
     e.preventDefault()
     setMsg(null)
 
-    if (!isValidHttpUrl(imageUrl) || !isValidHttpUrl(articleUrl)) {
-      setMsg('Please provide valid URLs')
+    if ((imageUrl && !isValidHttpUrl(imageUrl)) || (articleUrl && !isValidHttpUrl(articleUrl))) {
+      setMsg({ text: 'Please provide valid URLs', ok: false })
       return
     }
 
     if (!imageUrl && !imageFile) {
-      setMsg('Provide an image URL or upload an image file')
+      setMsg({ text: 'Provide an image URL or upload an image file', ok: false })
       return
     }
 
@@ -71,28 +80,30 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       const resolvedImageUrl = imageFile ? await uploadToS3(imageFile) : imageUrl
 
       const res = await fetch('/api/admin/media/new', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tournamentId,
-        source,
-        title,
-        imageUrl: resolvedImageUrl,
-        articleUrl: articleUrl || null,
-        caption: caption || null,
-        tags: tags || null,
-        takenAt: takenAt || null,
-      }),
-    })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId,
+          source,
+          title,
+          imageUrl: resolvedImageUrl,
+          articleUrl: articleUrl || null,
+          caption: caption || null,
+          tags: tags || null,
+          takenAt: takenAt || null,
+        }),
+      })
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setMsg(data?.error || 'Failed to create media item')
+        setMsg({ text: data?.error || 'Failed to create media item', ok: false })
         return
       }
 
-      setMsg('Media item added')
+      setMsg({ text: 'Media item added successfully', ok: true })
       router.refresh()
+
+      // Reset form
       setTitle('')
       setImageUrl('')
       setImageFile(null)
@@ -100,45 +111,102 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       setCaption('')
       setTags('')
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : 'Upload failed')
+      setMsg({ text: err instanceof Error ? err.message : 'Upload failed', ok: false })
     } finally {
       setUploading(false)
     }
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-2 rounded-xl border bg-white p-4" style={{ borderColor: 'var(--border-subtle)' }}>
-      <h2 className="text-sm font-semibold">Add Media Asset</h2>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input value={source} onChange={(e) => setSource(e.target.value)} placeholder="Source (GSPN/Clutch/GuamPDN)" className="rounded-lg border px-2 py-2 text-sm" required />
-        <input value={takenAt} onChange={(e) => setTakenAt(e.target.value)} placeholder="Taken at (YYYY-MM-DD)" className="rounded-lg border px-2 py-2 text-sm" />
-      </div>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="rounded-lg border px-2 py-2 text-sm" required />
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Image URL (optional if uploading file)" className="rounded-lg border px-2 py-2 text-sm" />
-        <input value={articleUrl} onChange={(e) => setArticleUrl(e.target.value)} placeholder="Article URL (optional)" className="rounded-lg border px-2 py-2 text-sm" />
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input
-          type="file"
+    <AdminCard>
+      <form onSubmit={submit} className="space-y-4">
+        <AdminCardTitle>Add Media Asset</AdminCardTitle>
+
+        {/* Row 1: Source + Date */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AdminSelect
+            label="Source"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            required
+          >
+            <option value="GSPN">GSPN</option>
+            <option value="Clutch">Clutch Guam</option>
+            <option value="GuamPDN">Guam PDN</option>
+            <option value="Other">Other</option>
+          </AdminSelect>
+          <AdminInput
+            label="Date Taken"
+            type="date"
+            value={takenAt}
+            onChange={(e) => setTakenAt(e.target.value)}
+            hint="When was this photo/video taken?"
+          />
+        </div>
+
+        {/* Row 2: Title */}
+        <AdminInput
+          label="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter a descriptive title"
+          required
+        />
+
+        {/* Row 3: Image URL + Article URL */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AdminInput
+            label="Image URL"
+            type="url"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            hint="Optional if uploading a file below"
+          />
+          <AdminInput
+            label="Article URL"
+            type="url"
+            value={articleUrl}
+            onChange={(e) => setArticleUrl(e.target.value)}
+            placeholder="https://example.com/article"
+            hint="Link to original article (optional)"
+          />
+        </div>
+
+        {/* Row 4: File Upload */}
+        <AdminFileInput
+          label="Or Upload Image"
           accept="image/*"
           onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
-          className="rounded-lg border px-2 py-2 text-sm"
+          selectedFileName={imageFile?.name}
+          hint="JPG, PNG, WebP up to 10MB"
         />
-        <p className="text-xs self-center" style={{ color: 'var(--neutral-500)' }}>
-          {imageFile ? `Selected: ${imageFile.name}` : 'Optional: upload image directly to S3'}
-        </p>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="Caption (optional)" className="rounded-lg border px-2 py-2 text-sm" />
-        <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)" className="rounded-lg border px-2 py-2 text-sm" />
-      </div>
-      <div className="flex items-center gap-3">
-        <button disabled={uploading} className="rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60" style={{ background: 'var(--fd-maroon)' }}>
-          {uploading ? 'Uploading…' : 'Create'}
-        </button>
-        {msg ? <p className="text-xs text-neutral-600">{msg}</p> : null}
-      </div>
-    </form>
+
+        {/* Row 5: Caption + Tags */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AdminInput
+            label="Caption"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Brief description for display"
+          />
+          <AdminInput
+            label="Tags"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="championship, playoffs, boys-25"
+            hint="Comma-separated"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <AdminButton type="submit" loading={uploading}>
+            {uploading ? 'Uploading…' : 'Create Media Item'}
+          </AdminButton>
+          {msg && <AdminMessage type={msg.ok ? 'success' : 'error'}>{msg.text}</AdminMessage>}
+        </div>
+      </form>
+    </AdminCard>
   )
 }

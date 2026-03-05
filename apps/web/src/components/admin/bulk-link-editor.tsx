@@ -3,6 +3,18 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { DIVISIONS } from '@/lib/divisions'
+import { Filter, Zap, Save, Edit3, Calendar } from 'lucide-react'
+import {
+  AdminInput,
+  AdminSelect,
+  AdminButton,
+  AdminCard,
+  AdminCardTitle,
+  AdminMessage,
+  AdminEmptyState,
+  AdminBadge,
+  inputBaseClasses,
+} from './ui'
 
 function isValidUrl(value: string) {
   if (!value) return true
@@ -27,7 +39,7 @@ type GameLink = {
 
 type Filters = {
   division: string
-  phase: string  // 'pool' | 'playoff' | 'fatherson' | ''
+  phase: string
   missingOnly: 'ticket' | 'stream' | 'both' | ''
 }
 
@@ -45,7 +57,7 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [filters, setFilters] = useState<Filters>({ division: '', phase: '', missingOnly: '' })
 
-  // Build bulk-fill state
+  // Bulk-fill state
   const [bulkTicket, setBulkTicket] = useState('')
   const [bulkStream, setBulkStream] = useState('')
 
@@ -56,9 +68,13 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
   }
 
   const updateEdit = (id: string, field: 'ticketUrl' | 'streamUrl', value: string) => {
-    setEdits(prev => ({
+    setEdits((prev) => ({
       ...prev,
-      [id]: { ...(prev[id] ?? { ticketUrl: null, streamUrl: null, dirty: false }), [field]: value || null, dirty: true },
+      [id]: {
+        ...(prev[id] ?? { ticketUrl: null, streamUrl: null, dirty: false }),
+        [field]: value || null,
+        dirty: true,
+      },
     }))
   }
 
@@ -69,51 +85,77 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
   }
 
   const filteredGames = useMemo(() => {
-    return games.filter(g => {
+    return games.filter((g) => {
       const effDiv = g.division ?? g.homeTeam.division ?? ''
       if (filters.division && effDiv !== filters.division) return false
       if (filters.phase && phaseof(g) !== filters.phase) return false
-      if (filters.missingOnly === 'ticket' && (currentVal(g, 'ticketUrl') || g.ticketUrl)) return false
-      if (filters.missingOnly === 'stream' && (currentVal(g, 'streamUrl') || g.streamUrl)) return false
-      if (filters.missingOnly === 'both' && (currentVal(g, 'ticketUrl') || g.ticketUrl) && (currentVal(g, 'streamUrl') || g.streamUrl)) return false
+      if (filters.missingOnly === 'ticket' && (currentVal(g, 'ticketUrl') || g.ticketUrl))
+        return false
+      if (filters.missingOnly === 'stream' && (currentVal(g, 'streamUrl') || g.streamUrl))
+        return false
+      if (
+        filters.missingOnly === 'both' &&
+        (currentVal(g, 'ticketUrl') || g.ticketUrl) &&
+        (currentVal(g, 'streamUrl') || g.streamUrl)
+      )
+        return false
       return true
     })
   }, [games, edits, filters])
 
-  const dirtyGames = filteredGames.filter(g => edits[g.id]?.dirty)
+  const dirtyGames = Object.entries(edits).filter(([, e]) => e.dirty)
 
   const applyBulkTicket = () => {
     if (!bulkTicket) return
-    if (!isValidUrl(bulkTicket)) { setMsg({ text: 'Invalid ticket URL', ok: false }); return }
+    if (!isValidUrl(bulkTicket)) {
+      setMsg({ text: 'Invalid ticket URL format', ok: false })
+      return
+    }
     const patch: Record<string, LocalEdit> = {}
-    filteredGames.forEach(g => {
-      patch[g.id] = { ...(edits[g.id] ?? { ticketUrl: null, streamUrl: null, dirty: false }), ticketUrl: bulkTicket, dirty: true }
+    filteredGames.forEach((g) => {
+      patch[g.id] = {
+        ...(edits[g.id] ?? { ticketUrl: null, streamUrl: null, dirty: false }),
+        ticketUrl: bulkTicket,
+        dirty: true,
+      }
     })
-    setEdits(prev => ({ ...prev, ...patch }))
+    setEdits((prev) => ({ ...prev, ...patch }))
     setMsg({ text: `Applied ticket URL to ${filteredGames.length} visible games`, ok: true })
   }
 
   const applyBulkStream = () => {
     if (!bulkStream) return
-    if (!isValidUrl(bulkStream)) { setMsg({ text: 'Invalid stream URL', ok: false }); return }
+    if (!isValidUrl(bulkStream)) {
+      setMsg({ text: 'Invalid stream URL format', ok: false })
+      return
+    }
     const patch: Record<string, LocalEdit> = {}
-    filteredGames.forEach(g => {
-      patch[g.id] = { ...(edits[g.id] ?? { ticketUrl: null, streamUrl: null, dirty: false }), streamUrl: bulkStream, dirty: true }
+    filteredGames.forEach((g) => {
+      patch[g.id] = {
+        ...(edits[g.id] ?? { ticketUrl: null, streamUrl: null, dirty: false }),
+        streamUrl: bulkStream,
+        dirty: true,
+      }
     })
-    setEdits(prev => ({ ...prev, ...patch }))
+    setEdits((prev) => ({ ...prev, ...patch }))
     setMsg({ text: `Applied stream URL to ${filteredGames.length} visible games`, ok: true })
   }
 
   const saveAll = async () => {
-    const updates = Object.entries(edits)
-      .filter(([, e]) => e.dirty)
-      .map(([id, e]) => ({ id, ticketUrl: e.ticketUrl, streamUrl: e.streamUrl }))
+    const updates = dirtyGames.map(([id, e]) => ({
+      id,
+      ticketUrl: e.ticketUrl,
+      streamUrl: e.streamUrl,
+    }))
 
-    if (updates.length === 0) { setMsg({ text: 'No changes to save', ok: false }); return }
+    if (updates.length === 0) {
+      setMsg({ text: 'No changes to save', ok: false })
+      return
+    }
 
     for (const u of updates) {
       if ((u.ticketUrl && !isValidUrl(u.ticketUrl)) || (u.streamUrl && !isValidUrl(u.streamUrl))) {
-        setMsg({ text: `Invalid URL detected for game ${u.id}`, ok: false })
+        setMsg({ text: `Invalid URL detected for game ${u.id.slice(0, 8)}…`, ok: false })
         return
       }
     }
@@ -127,11 +169,16 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Save failed')
-      setMsg({ text: `Saved ${data.saved} games${data.failed > 0 ? `, ${data.failed} failed` : ''}`, ok: data.failed === 0 })
+      setMsg({
+        text: `Saved ${data.saved} games${data.failed > 0 ? `, ${data.failed} failed` : ''}`,
+        ok: data.failed === 0,
+      })
       // Clear dirty flags
-      setEdits(prev => {
+      setEdits((prev) => {
         const next = { ...prev }
-        updates.forEach(u => { if (next[u.id]) next[u.id] = { ...next[u.id], dirty: false } })
+        updates.forEach((u) => {
+          if (next[u.id]) next[u.id] = { ...next[u.id], dirty: false }
+        })
         return next
       })
       router.refresh()
@@ -142,156 +189,195 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
     }
   }
 
-  const inputCls = 'rounded-lg border px-2 py-1.5 text-sm w-full focus:outline-none focus:ring-1 focus:ring-[color:var(--fd-maroon)]'
-  const activeDivisions = [...new Set(games.map(g => g.division ?? g.homeTeam.division ?? '').filter(Boolean))]
+  const activeDivisions = [...new Set(games.map((g) => g.division ?? g.homeTeam.division ?? '').filter(Boolean))]
 
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: 'var(--border-subtle)' }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--neutral-500)' }}>Filter</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--neutral-500)' }}>Division</label>
-            <select value={filters.division} onChange={e => setFilters(f => ({ ...f, division: e.target.value }))} className={inputCls}>
-              <option value="">All divisions</option>
-              {DIVISIONS.filter(d => activeDivisions.includes(d.id)).sort((a,b) => a.sortOrder - b.sortOrder).map(d => (
-                <option key={d.id} value={d.id}>{d.label}</option>
-              ))}
-            </select>
+      <AdminCard>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--neutral-100)]">
+            <Filter className="h-4 w-4 text-[var(--neutral-500)]" />
           </div>
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--neutral-500)' }}>Phase</label>
-            <select value={filters.phase} onChange={e => setFilters(f => ({ ...f, phase: e.target.value }))} className={inputCls}>
-              <option value="">All phases</option>
-              <option value="pool">Pool</option>
-              <option value="playoff">Playoffs</option>
-              <option value="fatherson">Father-Son</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--neutral-500)' }}>Show only</label>
-            <select value={filters.missingOnly} onChange={e => setFilters(f => ({ ...f, missingOnly: e.target.value as Filters['missingOnly'] }))} className={inputCls}>
-              <option value="">All games</option>
-              <option value="ticket">Missing ticket link</option>
-              <option value="stream">Missing stream link</option>
-              <option value="both">Missing either link</option>
-            </select>
-          </div>
+          <AdminCardTitle className="mb-0">Filter Games</AdminCardTitle>
+          <span className="ml-auto text-xs text-[var(--neutral-400)]">
+            {filteredGames.length} of {games.length} games visible
+          </span>
         </div>
-        <p className="text-xs" style={{ color: 'var(--neutral-400)' }}>{filteredGames.length} of {games.length} games visible</p>
-      </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <AdminSelect
+            label="Division"
+            value={filters.division}
+            onChange={(e) => setFilters((f) => ({ ...f, division: e.target.value }))}
+          >
+            <option value="">All divisions</option>
+            {DIVISIONS.filter((d) => activeDivisions.includes(d.id))
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+          </AdminSelect>
+          <AdminSelect
+            label="Phase"
+            value={filters.phase}
+            onChange={(e) => setFilters((f) => ({ ...f, phase: e.target.value }))}
+          >
+            <option value="">All phases</option>
+            <option value="pool">Pool Play</option>
+            <option value="playoff">Playoffs</option>
+            <option value="fatherson">Father-Son</option>
+          </AdminSelect>
+          <AdminSelect
+            label="Show Only"
+            value={filters.missingOnly}
+            onChange={(e) =>
+              setFilters((f) => ({ ...f, missingOnly: e.target.value as Filters['missingOnly'] }))
+            }
+          >
+            <option value="">All games</option>
+            <option value="ticket">Missing ticket link</option>
+            <option value="stream">Missing stream link</option>
+            <option value="both">Missing either link</option>
+          </AdminSelect>
+        </div>
+      </AdminCard>
 
       {/* Bulk fill */}
-      <div className="rounded-xl border bg-white p-4 space-y-3" style={{ borderColor: 'var(--border-subtle)' }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--neutral-500)' }}>Bulk Fill (applies to all visible games)</p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <div className="flex gap-2">
-            <input
-              placeholder="Ticket URL for all visible"
-              value={bulkTicket}
-              onChange={e => setBulkTicket(e.target.value)}
-              className={inputCls}
-            />
-            <button
-              onClick={applyBulkTicket}
-              className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white"
-              style={{ background: 'var(--fd-maroon)' }}
-            >
-              Apply
-            </button>
+      <AdminCard>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+            <Zap className="h-4 w-4 text-amber-600" />
           </div>
-          <div className="flex gap-2">
-            <input
-              placeholder="Stream URL for all visible"
-              value={bulkStream}
-              onChange={e => setBulkStream(e.target.value)}
-              className={inputCls}
-            />
-            <button
-              onClick={applyBulkStream}
-              className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-white"
-              style={{ background: 'var(--fd-maroon)' }}
-            >
-              Apply
-            </button>
+          <div>
+            <AdminCardTitle className="mb-0">Bulk Fill</AdminCardTitle>
+            <p className="text-xs text-[var(--neutral-400)]">
+              Applies to all {filteredGames.length} visible games
+            </p>
           </div>
         </div>
-      </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex gap-2">
+            <AdminInput
+              placeholder="Ticket URL for all visible"
+              value={bulkTicket}
+              onChange={(e) => setBulkTicket(e.target.value)}
+            />
+            <AdminButton onClick={applyBulkTicket} variant="secondary" className="shrink-0">
+              Apply
+            </AdminButton>
+          </div>
+          <div className="flex gap-2">
+            <AdminInput
+              placeholder="Stream URL for all visible"
+              value={bulkStream}
+              onChange={(e) => setBulkStream(e.target.value)}
+            />
+            <AdminButton onClick={applyBulkStream} variant="secondary" className="shrink-0">
+              Apply
+            </AdminButton>
+          </div>
+        </div>
+      </AdminCard>
 
       {/* Status bar */}
       {(msg || dirtyGames.length > 0) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 bg-white" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 bg-white shadow-sm transition-all"
+          style={{
+            borderColor: dirtyGames.length > 0 ? 'var(--fd-maroon)' : 'var(--border-subtle)',
+          }}
+        >
           <div className="flex items-center gap-3">
             {dirtyGames.length > 0 && (
-              <span className="text-sm font-medium" style={{ color: 'var(--fd-maroon)' }}>
+              <span className="flex items-center gap-2 text-sm font-semibold text-[var(--fd-maroon)]">
+                <Edit3 className="h-4 w-4" />
                 {dirtyGames.length} unsaved change{dirtyGames.length !== 1 ? 's' : ''}
               </span>
             )}
-            {msg && (
-              <span className="text-sm" style={{ color: msg.ok ? '#16a34a' : '#dc2626' }}>{msg.text}</span>
-            )}
+            {msg && <AdminMessage type={msg.ok ? 'success' : 'error'}>{msg.text}</AdminMessage>}
           </div>
-          <button
+          <AdminButton
             onClick={saveAll}
-            disabled={saving || dirtyGames.length === 0}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 transition-all hover:-translate-y-0.5"
-            style={{ background: 'var(--fd-maroon)' }}
+            loading={saving}
+            disabled={dirtyGames.length === 0}
           >
-            {saving ? 'Saving...' : `Save All Changes (${Object.values(edits).filter(e => e.dirty).length})`}
-          </button>
+            <Save className="h-4 w-4" />
+            Save All Changes ({dirtyGames.length})
+          </AdminButton>
         </div>
       )}
 
       {/* Game rows */}
       {filteredGames.length === 0 ? (
-        <div className="rounded-xl border bg-white p-8 text-center text-sm" style={{ borderColor: 'var(--border-subtle)', color: 'var(--neutral-400)' }}>
-          No games match current filters.
-        </div>
+        <AdminEmptyState
+          icon={Filter}
+          title="No games match current filters"
+          description="Try adjusting your filters or add more games."
+        />
       ) : (
         <div className="space-y-2">
-          {filteredGames.map(g => {
+          {filteredGames.map((g, index) => {
             const edit = edits[g.id]
-            const ticketVal = (edit && Object.prototype.hasOwnProperty.call(edit, 'ticketUrl') ? edit.ticketUrl : g.ticketUrl) ?? ''
-            const streamVal = (edit && Object.prototype.hasOwnProperty.call(edit, 'streamUrl') ? edit.streamUrl : g.streamUrl) ?? ''
+            const ticketVal =
+              edit && Object.prototype.hasOwnProperty.call(edit, 'ticketUrl')
+                ? (edit.ticketUrl ?? '')
+                : (g.ticketUrl ?? '')
+            const streamVal =
+              edit && Object.prototype.hasOwnProperty.call(edit, 'streamUrl')
+                ? (edit.streamUrl ?? '')
+                : (g.streamUrl ?? '')
             const isDirty = edit?.dirty ?? false
 
             return (
               <div
                 key={g.id}
-                className="rounded-xl border bg-white p-3 transition-all"
+                className="rounded-xl border bg-white p-4 transition-all duration-200 animate-fade-up hover:shadow-sm"
                 style={{
                   borderColor: isDirty ? 'var(--fd-maroon)' : 'var(--border-subtle)',
-                  borderWidth: isDirty ? '1.5px' : '1px',
+                  borderWidth: isDirty ? '2px' : '1px',
+                  animationDelay: `${index * 20}ms`,
                 }}
               >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
-                  <p className="font-medium text-sm" style={{ color: 'var(--fd-ink)' }}>
-                    {g.awayTeam.displayName} <span style={{ color: 'var(--neutral-400)' }}>vs</span> {g.homeTeam.displayName}
+                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-sm font-medium text-[var(--fd-ink)]">
+                    {g.awayTeam.displayName}{' '}
+                    <span className="text-[var(--neutral-400)]">vs</span>{' '}
+                    {g.homeTeam.displayName}
                   </p>
-                  <span className="text-xs" style={{ color: 'var(--neutral-400)' }}>
-                    {new Date(g.startTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  <span className="flex items-center gap-1.5 text-xs text-[var(--neutral-400)]">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(g.startTime).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
                   </span>
                   {g.division && (
-                    <span className="text-xs font-semibold" style={{ color: 'var(--fd-maroon)' }}>{g.division}</span>
+                    <AdminBadge variant="default">{g.division}</AdminBadge>
                   )}
                   {g.bracketCode && (
-                    <span className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase" style={{ background: '#f0f0f0', color: '#555' }}>{g.bracketCode}</span>
+                    <AdminBadge variant="default">{g.bracketCode}</AdminBadge>
                   )}
-                  {isDirty && <span className="text-[10px] font-semibold" style={{ color: 'var(--fd-maroon)' }}>● edited</span>}
+                  {isDirty && (
+                    <AdminBadge variant="warning">
+                      <Edit3 className="mr-1 h-2.5 w-2.5" />
+                      Edited
+                    </AdminBadge>
+                  )}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <AdminInput
                     placeholder="Ticket URL"
                     value={ticketVal}
-                    onChange={e => updateEdit(g.id, 'ticketUrl', e.target.value)}
-                    className={inputCls}
+                    onChange={(e) => updateEdit(g.id, 'ticketUrl', e.target.value)}
                   />
-                  <input
+                  <AdminInput
                     placeholder="Stream URL"
                     value={streamVal}
-                    onChange={e => updateEdit(g.id, 'streamUrl', e.target.value)}
-                    className={inputCls}
+                    onChange={(e) => updateEdit(g.id, 'streamUrl', e.target.value)}
                   />
                 </div>
               </div>
