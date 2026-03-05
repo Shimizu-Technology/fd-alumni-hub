@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, Power, CheckCircle2, XCircle } from 'lucide-react'
-import { AdminButton, AdminEmptyState, AdminMessage, AdminBadge } from './ui'
+import { AdminButton, AdminEmptyState, AdminMessage } from './ui'
 
 type Sponsor = {
   id: string
@@ -25,11 +25,10 @@ const TIER_COLORS: Record<string, { bg: string; text: string }> = {
 export function AdminSponsorsList({ initialSponsors }: { initialSponsors: Sponsor[] }) {
   const [msg, setMsg] = useState<{ id: string; text: string; ok: boolean } | null>(null)
   const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const router = useRouter()
 
   const archive = async (id: string) => {
-    if (!confirm('Deactivate this sponsor? They will be hidden from the public site.')) return
-
     setArchivingId(id)
     setMsg(null)
 
@@ -42,6 +41,7 @@ export function AdminSponsorsList({ initialSponsors }: { initialSponsors: Sponso
       setMsg({ id, text: 'Failed to deactivate', ok: false })
     } finally {
       setArchivingId(null)
+      setConfirmingId(null)
     }
   }
 
@@ -142,15 +142,36 @@ export function AdminSponsorsList({ initialSponsors }: { initialSponsors: Sponso
               )}
 
               {s.active && (
-                <AdminButton
-                  onClick={() => archive(s.id)}
-                  loading={archivingId === s.id}
-                  variant="danger"
-                  size="sm"
-                >
-                  <Power className="h-3.5 w-3.5" />
-                  Deactivate
-                </AdminButton>
+                confirmingId === s.id ? (
+                  <div className="flex items-center gap-2">
+                    <AdminButton
+                      onClick={() => archive(s.id)}
+                      loading={archivingId === s.id}
+                      variant="danger"
+                      size="sm"
+                    >
+                      Confirm
+                    </AdminButton>
+                    <AdminButton
+                      onClick={() => setConfirmingId(null)}
+                      disabled={archivingId === s.id}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Cancel
+                    </AdminButton>
+                  </div>
+                ) : (
+                  <AdminButton
+                    onClick={() => setConfirmingId(s.id)}
+                    loading={archivingId === s.id}
+                    variant="danger"
+                    size="sm"
+                  >
+                    <Power className="h-3.5 w-3.5" />
+                    Deactivate
+                  </AdminButton>
+                )
               )}
             </div>
 
