@@ -160,7 +160,9 @@ export function TournamentProvider({
       return
     }
 
-    if (!currentTournament || currentTournament.id !== valid.id) {
+    // Preserve server-selected tournament (initialCurrentId smart default)
+    // and only fall back to localStorage when nothing is currently selected.
+    if (!currentTournament) {
       setCurrentTournamentState(valid)
     }
   }, [currentTournament, tournaments])

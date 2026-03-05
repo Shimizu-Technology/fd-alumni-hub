@@ -92,8 +92,8 @@ export function TournamentSelector() {
         >
           {/* Active tournaments */}
           {activeTournaments.length > 0 && (
-            <div className="p-1.5">
-              <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+            <div role="group" aria-label="Active tournaments" className="p-1.5">
+              <p aria-hidden="true" className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
                 Active
               </p>
               {activeTournaments.map((t) => (
@@ -109,8 +109,8 @@ export function TournamentSelector() {
 
           {/* Completed tournaments */}
           {completedTournaments.length > 0 && (
-            <div className="border-t border-neutral-100 p-1.5">
-              <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+            <div role="group" aria-label="Completed tournaments" className="border-t border-neutral-100 p-1.5">
+              <p aria-hidden="true" className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
                 Completed
               </p>
               {completedTournaments.slice(0, 5).map((t) => (
