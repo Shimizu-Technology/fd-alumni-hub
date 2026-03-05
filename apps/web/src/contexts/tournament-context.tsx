@@ -135,28 +135,32 @@ export function TournamentProvider({
     if (reconciledRef.current || typeof window === 'undefined') return
     reconciledRef.current = true
 
-    const savedId = localStorage.getItem(STORAGE_KEY)
-    if (!savedId) {
-      if (currentTournament) localStorage.setItem(STORAGE_KEY, currentTournament.id)
-      return
-    }
+    try {
+      const savedId = localStorage.getItem(STORAGE_KEY)
+      if (!savedId) {
+        if (currentTournament) localStorage.setItem(STORAGE_KEY, currentTournament.id)
+        return
+      }
 
-    const valid = tournamentsRef.current.find((t) => t.id === savedId)
-    if (!valid) {
-      const fallback = findActiveTournament(tournamentsRef.current)
-      setCurrentTournamentState(fallback)
-      if (fallback) localStorage.setItem(STORAGE_KEY, fallback.id)
-      else localStorage.removeItem(STORAGE_KEY)
-      return
-    }
+      const valid = tournamentsRef.current.find((t) => t.id === savedId)
+      if (!valid) {
+        const fallback = findActiveTournament(tournamentsRef.current)
+        setCurrentTournamentState(fallback)
+        if (fallback) localStorage.setItem(STORAGE_KEY, fallback.id)
+        else localStorage.removeItem(STORAGE_KEY)
+        return
+      }
 
-    // Preserve server-selected tournament (initialCurrentId smart default)
-    // and only fall back to localStorage when nothing is currently selected.
-    if (!currentTournament) {
-      setCurrentTournamentState(valid)
-    } else if (currentTournament.id !== savedId) {
-      // Prevent stale localStorage IDs from winning on future refreshes.
-      localStorage.setItem(STORAGE_KEY, currentTournament.id)
+      // Preserve server-selected tournament (initialCurrentId smart default)
+      // and only fall back to localStorage when nothing is currently selected.
+      if (!currentTournament) {
+        setCurrentTournamentState(valid)
+      } else if (currentTournament.id !== savedId) {
+        // Prevent stale localStorage IDs from winning on future refreshes.
+        localStorage.setItem(STORAGE_KEY, currentTournament.id)
+      }
+    } catch {
+      // localStorage may be unavailable (private mode / restricted contexts)
     }
   }, [])
 

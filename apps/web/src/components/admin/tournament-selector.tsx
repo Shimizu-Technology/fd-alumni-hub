@@ -47,6 +47,9 @@ export function TournamentSelector() {
     (t) => t.status === 'live' || t.status === 'upcoming',
   )
   const completedTournaments = tournaments.filter((t) => t.status === 'completed')
+  const otherTournaments = tournaments.filter(
+    (t) => t.status !== 'live' && t.status !== 'upcoming' && t.status !== 'completed',
+  )
   const displayedCompleted = showAllCompleted ? completedTournaments : completedTournaments.slice(0, 5)
 
   const handleSelect = (tournament: TournamentSummary) => {
@@ -138,6 +141,23 @@ export function TournamentSelector() {
                   +{completedTournaments.length - 5} more in history
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Other statuses */}
+          {otherTournaments.length > 0 && (
+            <div role="group" aria-label="Other tournaments" className="border-t border-neutral-100 p-1.5">
+              <p aria-hidden="true" className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+                Other
+              </p>
+              {otherTournaments.map((t) => (
+                <TournamentOption
+                  key={t.id}
+                  tournament={t}
+                  isSelected={currentTournament?.id === t.id}
+                  onSelect={handleSelect}
+                />
+              ))}
             </div>
           )}
 
