@@ -7,7 +7,7 @@ export async function GET() {
   if (!staff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const tournaments = await db.tournament.findMany({
-    orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+    orderBy: [{ year: 'desc' }, { name: 'asc' }],
     take: 100,
     select: {
       id: true,

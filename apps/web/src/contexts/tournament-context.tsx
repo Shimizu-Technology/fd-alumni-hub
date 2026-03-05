@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -80,15 +81,6 @@ export function TournamentProvider({
       if (found) return found
     }
 
-    // Client saved preference (only if still valid)
-    if (typeof window !== 'undefined') {
-      const savedId = localStorage.getItem(STORAGE_KEY)
-      if (savedId) {
-        const found = initialTournaments.find((t) => t.id === savedId)
-        if (found) return found
-      }
-    }
-
     return findActiveTournament(initialTournaments)
   })
 
@@ -101,6 +93,11 @@ export function TournamentProvider({
     },
     [tournaments],
   )
+
+  const currentIdRef = useRef<string | undefined>(currentTournament?.id)
+  useEffect(() => {
+    currentIdRef.current = currentTournament?.id
+  }, [currentTournament?.id])
 
   const refreshTournaments = useCallback(async () => {
     setIsLoading(true)
@@ -119,7 +116,7 @@ export function TournamentProvider({
       }
 
       const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      const candidates = [savedId, currentTournament?.id, payload.currentTournamentId].filter(Boolean) as string[]
+      const candidates = [savedId, currentIdRef.current, payload.currentTournamentId].filter(Boolean) as string[]
 
       let next: TournamentSummary | null = null
       for (const id of candidates) {
@@ -138,7 +135,7 @@ export function TournamentProvider({
     } finally {
       setIsLoading(false)
     }
-  }, [currentTournament?.id])
+  }, [])
 
   // Reconcile stale localStorage selection once after mount.
   useEffect(() => {
