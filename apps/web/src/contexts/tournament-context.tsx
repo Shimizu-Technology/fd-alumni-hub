@@ -151,13 +151,11 @@ export function TournamentProvider({
         return
       }
 
-      // Preserve server-selected tournament (initialCurrentId smart default)
-      // and only fall back to localStorage when nothing is currently selected.
-      if (!currentTournament) {
+      // Honor the admin's explicit stored choice on subsequent loads.
+      // SSR wins only on first-ever load (when localStorage is empty above).
+      // If the admin previously selected a different tournament, restore it.
+      if (currentTournament?.id !== savedId) {
         setCurrentTournamentState(valid)
-      } else if (currentTournament.id !== savedId) {
-        // Prevent stale localStorage IDs from winning on future refreshes.
-        localStorage.setItem(STORAGE_KEY, currentTournament.id)
       }
     } catch {
       // localStorage may be unavailable (private mode / restricted contexts)

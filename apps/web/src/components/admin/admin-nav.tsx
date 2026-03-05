@@ -35,6 +35,12 @@ export function AdminNav() {
     const el = scrollRef.current
     if (!el) return
 
+    // Scroll the active tab into view on mount
+    const activeLink = el.querySelector('[aria-current="page"]') as HTMLElement | null
+    if (activeLink) {
+      activeLink.scrollIntoView({ block: 'nearest', inline: 'center' })
+    }
+
     updateScrollIndicators()
     el.addEventListener('scroll', updateScrollIndicators, { passive: true })
     window.addEventListener('resize', updateScrollIndicators)
