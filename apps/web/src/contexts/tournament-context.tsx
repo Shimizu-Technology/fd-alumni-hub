@@ -159,6 +159,9 @@ export function TournamentProvider({
     // and only fall back to localStorage when nothing is currently selected.
     if (!currentTournament) {
       setCurrentTournamentState(valid)
+    } else if (currentTournament.id !== savedId) {
+      // Prevent stale localStorage IDs from winning on future refreshes.
+      localStorage.setItem(STORAGE_KEY, currentTournament.id)
     }
   }, [currentTournament, tournaments])
 
