@@ -46,7 +46,7 @@ export function RecomputeStandingsButton({ tournamentId }: { tournamentId: strin
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3">
         {!confirming ? (
-          <AdminButton onClick={() => setConfirming(true)} loading={loading}>
+          <AdminButton onClick={() => setConfirming(true)}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Recompute Standings
           </AdminButton>
@@ -59,7 +59,7 @@ export function RecomputeStandingsButton({ tournamentId }: { tournamentId: strin
         )}
         {lastRunAt && (
           <p className="text-xs text-neutral-500">
-            Last recompute: {lastRunAt.toLocaleTimeString()}
+            Last recompute: {lastRunAt.toLocaleString()}
           </p>
         )}
       </div>
