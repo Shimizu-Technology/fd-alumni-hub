@@ -5,17 +5,14 @@ import { ChevronDown, Calendar, Check } from 'lucide-react'
 import { useTournament, type TournamentSummary } from '@/contexts/tournament-context'
 
 function StatusDot({ status }: { status: TournamentSummary['status'] }) {
-  const colors = {
-    live: 'bg-green-500',
-    upcoming: 'bg-yellow-500',
-    completed: 'bg-neutral-400',
-  }
-  return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full ${colors[status]}`}
-      aria-label={status}
-    />
-  )
+  const color =
+    status === 'live'
+      ? 'bg-green-500'
+      : status === 'upcoming'
+        ? 'bg-yellow-500'
+        : 'bg-neutral-400'
+
+  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-label={status} />
 }
 
 export function TournamentSelector() {
@@ -51,7 +48,7 @@ export function TournamentSelector() {
   const completedTournaments = tournaments.filter((t) => t.status === 'completed')
 
   const handleSelect = (tournament: TournamentSummary) => {
-    setCurrentTournament(tournament)
+    setCurrentTournament(tournament.id)
     setOpen(false)
   }
 

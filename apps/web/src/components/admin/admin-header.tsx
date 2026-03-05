@@ -74,11 +74,13 @@ export function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
   )
 }
 
-function StatusDot({ status }: { status: 'live' | 'upcoming' | 'completed' }) {
-  const colors = {
-    live: 'bg-green-500',
-    upcoming: 'bg-yellow-500',
-    completed: 'bg-neutral-400',
-  }
-  return <span className={`inline-block h-1.5 w-1.5 rounded-full ${colors[status]}`} />
+function StatusDot({ status }: { status: string }) {
+  const color =
+    status === 'live'
+      ? 'bg-green-500'
+      : status === 'upcoming'
+        ? 'bg-yellow-500'
+        : 'bg-neutral-400'
+
+  return <span className={`inline-block h-1.5 w-1.5 rounded-full ${color}`} />
 }

@@ -185,3 +185,8 @@ export function useTournamentContext() {
   if (!context) throw new Error('useTournamentContext must be used within TournamentProvider')
   return context
 }
+
+// Backward-compatible alias used across admin components.
+export function useTournament() {
+  return useTournamentContext()
+}
