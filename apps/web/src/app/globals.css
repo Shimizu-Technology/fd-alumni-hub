@@ -322,6 +322,12 @@ button:active:not(:disabled) {
   );
 }
 
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Better scrollbar styling for admin panels */
 .admin-scroll::-webkit-scrollbar {
   width: 6px;

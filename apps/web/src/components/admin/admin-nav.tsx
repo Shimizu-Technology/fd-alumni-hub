@@ -2,43 +2,86 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard,
-  Gamepad2,
-  Link2,
-  AlertCircle,
-  Users,
-  Trophy,
-  Newspaper,
-  Image,
-  Inbox,
-  Heart,
-} from 'lucide-react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const LINKS = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/games', label: 'Games', icon: Gamepad2 },
-  { href: '/admin/links', label: 'Bulk Links', icon: Link2 },
-  { href: '/admin/missing-links', label: 'Missing Links', icon: AlertCircle },
-  { href: '/admin/divisions', label: 'Divisions', icon: Users },
-  { href: '/admin/standings', label: 'Standings', icon: Trophy },
-  { href: '/admin/news', label: 'News', icon: Newspaper },
-  { href: '/admin/media', label: 'Media', icon: Image },
-  { href: '/admin/ingest', label: 'Ingestion Queue', icon: Inbox },
-  { href: '/admin/sponsors', label: 'Sponsors', icon: Heart },
+  ['/admin', 'Overview'],
+  ['/admin/games', 'Games'],
+  ['/admin/links', 'Bulk Links'],
+  ['/admin/missing-links', 'Missing Links'],
+  ['/admin/divisions', 'Divisions'],
+  ['/admin/standings', 'Standings'],
+  ['/admin/news', 'News'],
+  ['/admin/media', 'Media'],
+  ['/admin/ingest', 'Ingestion Queue'],
+  ['/admin/sponsors', 'Sponsors'],
 ] as const
 
 export function AdminNav() {
   const pathname = usePathname()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(false)
+
+  const updateScrollIndicators = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    setShowLeftArrow(el.scrollLeft > 8)
+    setShowRightArrow(el.scrollLeft < el.scrollWidth - el.clientWidth - 8)
+  }, [])
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    // Scroll the active tab into view on mount
+    const activeLink = el.querySelector('[aria-current="page"]') as HTMLElement | null
+    if (activeLink) {
+      activeLink.scrollIntoView({ block: 'nearest', inline: 'center' })
+    }
+
+    updateScrollIndicators()
+    el.addEventListener('scroll', updateScrollIndicators, { passive: true })
+    window.addEventListener('resize', updateScrollIndicators)
+
+    return () => {
+      el.removeEventListener('scroll', updateScrollIndicators)
+      window.removeEventListener('resize', updateScrollIndicators)
+    }
+  }, [updateScrollIndicators])
+
+  const scrollBy = (dir: 'left' | 'right') => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: dir === 'left' ? -220 : 220, behavior: 'smooth' })
+  }
 
   return (
-    <nav
-      aria-label="Admin navigation"
-      className="rounded-xl border bg-white p-1.5 shadow-sm"
-      style={{ borderColor: 'var(--border-subtle)' }}
-    >
-      <div className="flex flex-wrap gap-1">
-        {LINKS.map(({ href, label, icon: Icon }) => {
+    <nav aria-label="Admin navigation" className="relative rounded-xl border bg-white p-2" style={{ borderColor: 'var(--border-subtle)' }}>
+      <div
+        className={`pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-r from-white to-transparent transition-opacity ${showLeftArrow ? 'opacity-100' : 'opacity-0'}`}
+        aria-hidden="true"
+      />
+      <button
+        type="button"
+        onClick={() => scrollBy('left')}
+        aria-label="Scroll admin tabs left"
+        aria-hidden={!showLeftArrow}
+        aria-disabled={!showLeftArrow}
+        tabIndex={showLeftArrow ? 0 : -1}
+        className={`absolute left-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white p-1 shadow transition ${showLeftArrow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        style={{ borderColor: 'var(--border-subtle)' }}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      <div
+        ref={scrollRef}
+        className="flex gap-2 overflow-x-auto scrollbar-hide pl-8 pr-8 snap-x snap-proximity"
+        style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {LINKS.map(([href, label]) => {
           const active = pathname === href
           return (
             <Link
@@ -46,36 +89,31 @@ export function AdminNav() {
               href={href}
               prefetch
               aria-current={active ? 'page' : undefined}
-              className={`
-                group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium
-                transition-all duration-200 ease-out
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
-                ${active
-                  ? 'bg-[var(--fd-maroon)] text-white shadow-md'
-                  : 'text-[var(--neutral-600)] hover:bg-[var(--neutral-100)] hover:text-[var(--neutral-900)]'
-                }
-              `}
-              style={{
-                boxShadow: active ? 'var(--shadow-maroon)' : undefined,
-              }}
+              className={`snap-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fd-maroon)] focus-visible:ring-offset-1 ${active ? 'text-white shadow-sm' : 'border text-neutral-700 hover:bg-neutral-100'}`}
+              style={active ? { background: 'var(--fd-maroon)' } : { borderColor: 'var(--border-subtle)' }}
             >
-              <Icon
-                className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-                  active ? '' : 'group-hover:scale-110'
-                }`}
-                strokeWidth={active ? 2.5 : 2}
-              />
-              <span>{label}</span>
-              {active && (
-                <span
-                  className="absolute inset-x-0 -bottom-1.5 mx-auto h-0.5 w-6 rounded-full bg-white/60"
-                  aria-hidden="true"
-                />
-              )}
+              {label}
             </Link>
           )
         })}
       </div>
+
+      <div
+        className={`pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-white to-transparent transition-opacity ${showRightArrow ? 'opacity-100' : 'opacity-0'}`}
+        aria-hidden="true"
+      />
+      <button
+        type="button"
+        onClick={() => scrollBy('right')}
+        aria-label="Scroll admin tabs right"
+        aria-hidden={!showRightArrow}
+        aria-disabled={!showRightArrow}
+        tabIndex={showRightArrow ? 0 : -1}
+        className={`absolute right-1 top-1/2 z-20 -translate-y-1/2 rounded-full border bg-white p-1 shadow transition ${showRightArrow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        style={{ borderColor: 'var(--border-subtle)' }}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
     </nav>
   )
 }
