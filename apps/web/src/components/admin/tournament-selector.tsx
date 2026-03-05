@@ -53,7 +53,9 @@ export function TournamentSelector() {
     if (!open) setShowAllCompleted(false)
   }, [open])
 
-  const activeTournaments = tournaments.filter((t) => t.status !== 'completed')
+  const activeTournaments = tournaments.filter(
+    (t) => t.status === 'live' || t.status === 'upcoming',
+  )
   const completedTournaments = tournaments.filter((t) => t.status === 'completed')
   const displayedCompleted = showAllCompleted ? completedTournaments : completedTournaments.slice(0, 5)
 
