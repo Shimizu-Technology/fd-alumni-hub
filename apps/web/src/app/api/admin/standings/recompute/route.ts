@@ -15,10 +15,11 @@ export async function POST(request: Request) {
     const result = await recomputeStandingsForTournament(body.tournamentId)
     return NextResponse.json({ ok: true, result, recomputedAt: new Date().toISOString() })
   } catch (error) {
+    console.error('standings.recompute failed', error)
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'Failed to recompute standings',
+        error: 'Failed to recompute standings',
       },
       { status: 500 },
     )
