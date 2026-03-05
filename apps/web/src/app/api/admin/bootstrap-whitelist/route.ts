@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+// Intentionally secret-guarded instead of role-guarded for first-user bootstrap flows.
 export async function POST(request: Request) {
   const secret = request.headers.get('x-bootstrap-secret')
   if (!process.env.BOOTSTRAP_SECRET || secret !== process.env.BOOTSTRAP_SECRET) {
