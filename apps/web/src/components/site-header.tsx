@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
 
 const links = [
@@ -150,15 +151,29 @@ export function SiteHeader() {
                 )
               })}
             </nav>
-            <Link
-              href="/admin"
-              className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
-              style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
-            >
-              Admin
-            </Link>
+            <SignedIn>
+              <Link
+                href="/admin"
+                className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
+                style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
+              >
+                Admin
+              </Link>
+            </SignedIn>
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button
+                  className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
+                  style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
+                >
+                  Admin
+                </button>
+              </SignInButton>
+            </SignedOut>
           </div>
 
           {/* Mobile menu button */}
@@ -232,13 +247,25 @@ export function SiteHeader() {
 
         {/* Drawer footer */}
         <div className="mt-auto pt-8 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <Link
-            href="/admin"
-            className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-            style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
-          >
-            Admin
-          </Link>
+          <SignedIn>
+            <Link
+              href="/admin"
+              className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+              style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+            >
+              Admin
+            </Link>
+          </SignedIn>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button
+                className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+              >
+                Admin
+              </button>
+            </SignInButton>
+          </SignedOut>
           <p className="text-xs" style={{ color: 'rgba(240,232,236,0.35)' }}>
             FD Alumni Basketball Hub
           </p>
