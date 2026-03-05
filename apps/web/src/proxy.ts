@@ -9,9 +9,7 @@ export default clerkMiddleware(async (auth, req) => {
 
   if (isAdminApiRoute(req) && !userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (isAdminPageRoute(req) && !userId) {
+  } else if (isAdminPageRoute(req) && !userId) {
     const signInUrl = new URL('/sign-in', req.url)
     signInUrl.searchParams.set('redirect_url', req.url)
     return NextResponse.redirect(signInUrl)
