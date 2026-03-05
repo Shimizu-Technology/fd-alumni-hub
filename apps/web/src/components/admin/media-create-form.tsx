@@ -116,8 +116,6 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       setArticleUrl('')
       setCaption('')
       setTags('')
-      setTakenAt('')
-      setSource('GSPN')
     } catch (err) {
       setRetryEligible(true)
       const prefix = stage === 'create' ? 'Create step failed:' : 'Upload flow failed:'
