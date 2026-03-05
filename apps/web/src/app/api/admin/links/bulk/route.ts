@@ -44,7 +44,8 @@ export async function POST(request: Request) {
 
       await db.game.update({ where: { id: u.id }, data })
       results.push({ id: u.id, ok: true })
-    } catch {
+    } catch (e) {
+      console.error(`[links/bulk] update failed for id=${u.id}:`, e)
       results.push({ id: u.id, ok: false, error: 'Update failed' })
     }
   }
