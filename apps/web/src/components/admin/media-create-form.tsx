@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isValidHttpUrl } from '@/lib/url'
 import {
@@ -23,7 +23,9 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
   const [takenAt, setTakenAt] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [retryEligible, setRetryEligible] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const resolvedImageUrlRef = useRef<string | null>(null)
   const router = useRouter()
 
   const uploadToS3 = async (file: File) => {
@@ -63,6 +65,7 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
 
   const createMedia = async () => {
     setMsg(null)
+    setRetryEligible(false)
     let stage: 'create' | null = null
 
     if ((imageUrl && !isValidHttpUrl(imageUrl)) || (articleUrl && !isValidHttpUrl(articleUrl))) {
@@ -77,7 +80,9 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
 
     try {
       setUploading(true)
-      const resolvedImageUrl = imageFile ? await uploadToS3(imageFile) : imageUrl
+      const resolvedImageUrl =
+        resolvedImageUrlRef.current ?? (imageFile ? await uploadToS3(imageFile) : imageUrl)
+      resolvedImageUrlRef.current = resolvedImageUrl
 
       stage = 'create'
       const res = await fetch('/api/admin/media/new', {
@@ -107,12 +112,14 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
       setTitle('')
       setImageUrl('')
       setImageFile(null)
+      resolvedImageUrlRef.current = null
       setArticleUrl('')
       setCaption('')
       setTags('')
       setTakenAt('')
       setSource('GSPN')
     } catch (err) {
+      setRetryEligible(stage !== null)
       const prefix = stage === 'create' ? 'Create step failed:' : 'Upload flow failed:'
       setMsg({ text: `${prefix} ${err instanceof Error ? err.message : 'Please retry.'}`, ok: false })
     } finally {
@@ -164,7 +171,10 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
             label="Image URL"
             type="url"
             value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            onChange={(e) => {
+              resolvedImageUrlRef.current = null
+              setImageUrl(e.target.value)
+            }}
             placeholder="https://example.com/image.jpg"
             hint="Optional if uploading a file below"
           />
@@ -181,7 +191,10 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
         <AdminFileInput
           label="Or Upload Image"
           accept="image/*"
-          onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+          onChange={(e) => {
+            resolvedImageUrlRef.current = null
+            setImageFile(e.target.files?.[0] ?? null)
+          }}
           selectedFileName={imageFile?.name}
           hint="JPG, PNG, WebP up to 10MB"
         />
@@ -206,7 +219,7 @@ export function MediaCreateForm({ tournamentId }: { tournamentId: string }) {
           <AdminButton type="submit" loading={uploading}>
             {uploading ? 'Uploading…' : 'Create Media Item'}
           </AdminButton>
-          {!uploading && msg && !msg.ok && (
+          {!uploading && msg && !msg.ok && retryEligible && (
             <AdminButton type="button" variant="secondary" onClick={createMedia}>
               Retry
             </AdminButton>

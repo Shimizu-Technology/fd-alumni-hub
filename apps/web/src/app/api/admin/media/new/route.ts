@@ -46,7 +46,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ media })
-  } catch {
+  } catch (err) {
+    console.error('[media/new] db.mediaAsset.create failed:', err)
     return NextResponse.json({ error: 'Failed to create media item' }, { status: 500 })
   }
 }
