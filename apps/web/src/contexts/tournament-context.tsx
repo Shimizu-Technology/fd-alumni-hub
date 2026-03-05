@@ -71,7 +71,7 @@ export function TournamentProvider({
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const getInitialTournament = useCallback((): TournamentSummary | null => {
+  const [currentTournament, setCurrentTournamentState] = useState<TournamentSummary | null>(() => {
     if (!initialTournaments.length) return null
 
     // SSR hint always wins on first render
@@ -90,9 +90,7 @@ export function TournamentProvider({
     }
 
     return findActiveTournament(initialTournaments)
-  }, [initialCurrentId, initialTournaments])
-
-  const [currentTournament, setCurrentTournamentState] = useState<TournamentSummary | null>(getInitialTournament)
+  })
 
   const setCurrentTournament = useCallback(
     (id: string) => {

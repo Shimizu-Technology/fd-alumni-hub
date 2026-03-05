@@ -72,7 +72,7 @@ export function AdminNav() {
 
       <div
         ref={scrollRef}
-        className="flex gap-2 overflow-x-auto scrollbar-hide pl-8 pr-8"
+        className="flex gap-2 overflow-x-auto scrollbar-hide pl-8 pr-8 snap-x snap-mandatory"
         style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {LINKS.map(([href, label]) => {
@@ -83,7 +83,7 @@ export function AdminNav() {
               href={href}
               prefetch
               aria-current={active ? 'page' : undefined}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fd-maroon)] focus-visible:ring-offset-1 ${active ? 'text-white shadow-sm' : 'border text-neutral-700 hover:bg-neutral-100'}`}
+              className={`snap-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fd-maroon)] focus-visible:ring-offset-1 ${active ? 'text-white shadow-sm' : 'border text-neutral-700 hover:bg-neutral-100'}`}
               style={active ? { background: 'var(--fd-maroon)' } : { borderColor: 'var(--border-subtle)' }}
             >
               {label}

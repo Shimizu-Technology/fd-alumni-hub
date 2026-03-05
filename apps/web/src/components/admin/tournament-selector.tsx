@@ -20,6 +20,7 @@ export function TournamentSelector() {
   const [open, setOpen] = useState(false)
   const [showAllCompleted, setShowAllCompleted] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   // Close on outside click
   useEffect(() => {
@@ -37,7 +38,10 @@ export function TournamentSelector() {
   // Close on Escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
     }
     if (open) {
       document.addEventListener('keydown', handleKey)
@@ -57,11 +61,13 @@ export function TournamentSelector() {
     setCurrentTournament(tournament.id)
     setOpen(false)
     setShowAllCompleted(false)
+    triggerRef.current?.focus()
   }
 
   return (
     <div ref={containerRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
         disabled={isLoading}
