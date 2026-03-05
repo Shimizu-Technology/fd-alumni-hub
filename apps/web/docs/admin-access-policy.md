@@ -20,11 +20,14 @@ Rationale:
 ### Staff endpoints (`requireStaff`)
 
 Operational CRUD and workflow routes, including:
-- games, articles, links, teams
+- games, articles, teams
 - media and sponsors CRUD
 - standings read/recompute
 - tournament list refresh
 - ingestion queue actions
+
+> Note: There is an admin `/admin/links` page, but there are currently no dedicated `/api/admin/links/*` endpoints.
+> Link updates are handled through existing games-related endpoints/workflows.
 
 ### Admin-only endpoints (`requireAdmin`)
 
