@@ -2,154 +2,186 @@
 
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   useCallback,
-  type ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
 } from 'react'
 
-export interface TournamentSummary {
+export type TournamentSummary = {
   id: string
   name: string
   year: number
-  status: 'upcoming' | 'live' | 'completed'
-  startDate: string
-  endDate: string
+  status: 'upcoming' | 'live' | 'completed' | string
 }
 
-interface TournamentContextType {
+type TournamentResponse =
+  | TournamentSummary[]
+  | {
+      tournaments: TournamentSummary[]
+      currentTournamentId?: string | null
+    }
+
+type TournamentContextValue = {
   tournaments: TournamentSummary[]
   currentTournament: TournamentSummary | null
+  setCurrentTournament: (id: string) => void
+  refreshTournaments: () => Promise<void>
   isLoading: boolean
   error: string | null
-  setCurrentTournament: (tournament: TournamentSummary | null) => void
-  refreshTournaments: () => Promise<void>
 }
 
-const TournamentContext = createContext<TournamentContextType | undefined>(undefined)
+const TournamentContext = createContext<TournamentContextValue | undefined>(undefined)
 
-const STORAGE_KEY = 'fd-admin-tournament-id'
+const STORAGE_KEY = 'fd-admin-current-tournament-id'
 
-interface TournamentProviderProps {
-  children: ReactNode
-  initialTournaments?: TournamentSummary[]
-  initialCurrentId?: string
+function findActiveTournament(list: TournamentSummary[]): TournamentSummary | null {
+  const live = list.find((t) => t.status === 'live')
+  if (live) return live
+
+  const upcoming = list.find((t) => t.status === 'upcoming')
+  if (upcoming) return upcoming
+
+  const sortedByYear = [...list].sort((a, b) => b.year - a.year)
+  return sortedByYear[0] ?? null
+}
+
+function normalizeResponse(data: TournamentResponse): {
+  tournaments: TournamentSummary[]
+  currentTournamentId?: string | null
+} {
+  if (Array.isArray(data)) return { tournaments: data, currentTournamentId: null }
+  return {
+    tournaments: data.tournaments ?? [],
+    currentTournamentId: data.currentTournamentId ?? null,
+  }
 }
 
 export function TournamentProvider({
   children,
-  initialTournaments = [],
+  initialTournaments,
   initialCurrentId,
-}: TournamentProviderProps) {
+}: {
+  children: React.ReactNode
+  initialTournaments: TournamentSummary[]
+  initialCurrentId: string | null
+}) {
   const [tournaments, setTournaments] = useState<TournamentSummary[]>(initialTournaments)
-  const getInitialTournament = (): TournamentSummary | null => {
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const getInitialTournament = useCallback((): TournamentSummary | null => {
     if (!initialTournaments.length) return null
+
+    // SSR hint always wins on first render
     if (initialCurrentId) {
       const found = initialTournaments.find((t) => t.id === initialCurrentId)
       if (found) return found
     }
+
+    // Client saved preference (only if still valid)
+    if (typeof window !== 'undefined') {
+      const savedId = localStorage.getItem(STORAGE_KEY)
+      if (savedId) {
+        const found = initialTournaments.find((t) => t.id === savedId)
+        if (found) return found
+      }
+    }
+
     return findActiveTournament(initialTournaments)
-  }
+  }, [initialCurrentId, initialTournaments])
 
   const [currentTournament, setCurrentTournamentState] = useState<TournamentSummary | null>(getInitialTournament)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  // Find the default active tournament
-  const findActiveTournament = useCallback((list: TournamentSummary[]): TournamentSummary | null => {
-    // Priority: live > upcoming > most recent completed
-    const live = list.find((t) => t.status === 'live')
-    if (live) return live
-
-    const upcoming = list.find((t) => t.status === 'upcoming')
-    if (upcoming) return upcoming
-
-    // Fall back to most recent completed
-    const sorted = [...list].sort((a, b) => b.year - a.year)
-    return sorted[0] ?? null
-  }, [])
+  const setCurrentTournament = useCallback(
+    (id: string) => {
+      const next = tournaments.find((t) => t.id === id) ?? null
+      if (!next) return
+      setCurrentTournamentState(next)
+      if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, next.id)
+    },
+    [tournaments],
+  )
 
   const refreshTournaments = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
     try {
-      setIsLoading(true)
-      setError(null)
-      const res = await fetch('/api/admin/tournaments')
-      if (!res.ok) throw new Error('Failed to fetch tournaments')
-      const data: TournamentSummary[] = await res.json()
-      setTournaments(data)
+      const response = await fetch('/api/admin/tournaments', { cache: 'no-store' })
+      if (!response.ok) throw new Error('Failed to load tournaments')
+      const payload = normalizeResponse((await response.json()) as TournamentResponse)
+      const list = payload.tournaments
+      setTournaments(list)
 
-      // Restore from localStorage or find active
+      if (!list.length) {
+        setCurrentTournamentState(null)
+        if (typeof window !== 'undefined') localStorage.removeItem(STORAGE_KEY)
+        return
+      }
+
       const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      if (savedId) {
-        const saved = data.find((t) => t.id === savedId)
-        if (saved) {
-          setCurrentTournamentState(saved)
-          return
+      const candidates = [savedId, payload.currentTournamentId, currentTournament?.id].filter(Boolean) as string[]
+
+      let next: TournamentSummary | null = null
+      for (const id of candidates) {
+        const found = list.find((t) => t.id === id)
+        if (found) {
+          next = found
+          break
         }
       }
 
-      // Find active tournament
-      setCurrentTournamentState(findActiveTournament(data))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tournaments')
+      if (!next) next = findActiveTournament(list)
+      setCurrentTournamentState(next)
+      if (next && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, next.id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to refresh tournaments')
     } finally {
       setIsLoading(false)
     }
-  }, [findActiveTournament])
+  }, [currentTournament?.id])
 
-  const setCurrentTournament = useCallback((tournament: TournamentSummary | null) => {
-    setCurrentTournamentState(tournament)
-    if (typeof window !== 'undefined') {
-      if (tournament) {
-        localStorage.setItem(STORAGE_KEY, tournament.id)
-      } else {
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-  }, [])
-
-  // Initialize on mount
+  // Reconcile stale localStorage selection once after mount.
   useEffect(() => {
-    if (initialTournaments.length > 0) {
-      // Use provided initial data
-      const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      const targetId = savedId ?? initialCurrentId
-      if (targetId) {
-        const saved = initialTournaments.find((t) => t.id === targetId)
-        if (saved) {
-          setCurrentTournamentState(saved)
-          return
-        }
-      }
-      setCurrentTournamentState(findActiveTournament(initialTournaments))
-    } else {
-      // Fetch from API
-      refreshTournaments()
+    if (typeof window === 'undefined') return
+    const savedId = localStorage.getItem(STORAGE_KEY)
+    if (!savedId) {
+      if (currentTournament) localStorage.setItem(STORAGE_KEY, currentTournament.id)
+      return
     }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
-  return (
-    <TournamentContext.Provider
-      value={{
-        tournaments,
-        currentTournament,
-        isLoading,
-        error,
-        setCurrentTournament,
-        refreshTournaments,
-      }}
-    >
-      {children}
-    </TournamentContext.Provider>
+    const valid = tournaments.find((t) => t.id === savedId)
+    if (!valid) {
+      const fallback = findActiveTournament(tournaments)
+      setCurrentTournamentState(fallback)
+      if (fallback) localStorage.setItem(STORAGE_KEY, fallback.id)
+      else localStorage.removeItem(STORAGE_KEY)
+      return
+    }
+
+    if (!currentTournament || currentTournament.id !== valid.id) {
+      setCurrentTournamentState(valid)
+    }
+  }, [currentTournament, tournaments])
+
+  const value = useMemo<TournamentContextValue>(
+    () => ({
+      tournaments,
+      currentTournament,
+      setCurrentTournament,
+      refreshTournaments,
+      isLoading,
+      error,
+    }),
+    [tournaments, currentTournament, setCurrentTournament, refreshTournaments, isLoading, error],
   )
+
+  return <TournamentContext.Provider value={value}>{children}</TournamentContext.Provider>
 }
 
-export function useTournament() {
+export function useTournamentContext() {
   const context = useContext(TournamentContext)
-  if (context === undefined) {
-    throw new Error('useTournament must be used within a TournamentProvider')
-  }
+  if (!context) throw new Error('useTournamentContext must be used within TournamentProvider')
   return context
 }
