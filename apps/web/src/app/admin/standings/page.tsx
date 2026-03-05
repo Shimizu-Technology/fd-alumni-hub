@@ -24,8 +24,13 @@ export default async function AdminStandingsPage() {
     <section className="space-y-4">
       <AdminNav />
       <div className="rounded-xl border bg-white p-5" style={{ borderColor: 'var(--border-subtle)' }}>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>Admin · Standings</h1>
-        <p className="text-sm text-neutral-600">{tournament.name} {tournament.year}</p>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--fd-maroon)' }}>
+          Admin · Standings
+        </h1>
+        <p className="text-sm text-neutral-600">
+          {tournament.name} {tournament.year}
+        </p>
+        <p className="mt-2 text-xs text-neutral-500">{standings.length} teams in current table</p>
       </div>
 
       <RecomputeStandingsButton tournamentId={tournament.id} />
@@ -38,16 +43,28 @@ export default async function AdminStandingsPage() {
             </tr>
           </thead>
           <tbody>
-            {standings.map((s) => (
-              <tr key={s.id} className="border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-                <td className="px-4 py-2">{s.team.displayName}</td>
-                <td className="px-3 py-2 text-right">{s.wins}</td>
-                <td className="px-3 py-2 text-right">{s.losses}</td>
-                <td className="px-3 py-2 text-right">{s.pointsFor}</td>
-                <td className="px-3 py-2 text-right">{s.pointsAgainst}</td>
-                <td className="px-3 py-2 text-right">{(s.pointsFor - s.pointsAgainst) > 0 ? `+${s.pointsFor - s.pointsAgainst}` : s.pointsFor - s.pointsAgainst}</td>
+            {standings.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-neutral-500">
+                  No standings yet. Enter game results, then recompute standings.
+                </td>
               </tr>
-            ))}
+            ) : (
+              standings.map((s) => (
+                <tr key={s.id} className="border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <td className="px-4 py-2">{s.team.displayName}</td>
+                  <td className="px-3 py-2 text-right">{s.wins}</td>
+                  <td className="px-3 py-2 text-right">{s.losses}</td>
+                  <td className="px-3 py-2 text-right">{s.pointsFor}</td>
+                  <td className="px-3 py-2 text-right">{s.pointsAgainst}</td>
+                  <td className="px-3 py-2 text-right">
+                    {s.pointsFor - s.pointsAgainst > 0
+                      ? `+${s.pointsFor - s.pointsAgainst}`
+                      : s.pointsFor - s.pointsAgainst}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
