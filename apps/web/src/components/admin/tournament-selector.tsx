@@ -144,9 +144,9 @@ export function TournamentSelector() {
           )}
 
           {tournaments.length === 0 && !isLoading && (
-            <p className="px-3 py-4 text-sm text-neutral-500 text-center">
+            <div role="presentation" className="px-3 py-4 text-sm text-neutral-500 text-center">
               No tournaments found
-            </p>
+            </div>
           )}
         </div>
       )}

@@ -10,7 +10,7 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
-  const { currentTournament, isLoading } = useTournament()
+  const { currentTournament, isLoading, error } = useTournament()
 
   return (
     <div
@@ -49,6 +49,7 @@ export function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
         {/* Right side: Tournament selector + active indicator */}
         <div className="flex flex-col items-start sm:items-end gap-2">
           <TournamentSelector />
+          {error && <p className="text-xs text-red-600">{error}</p>}
           {!isLoading && currentTournament && (
             <div className="flex items-center gap-1.5 text-xs text-neutral-500">
               <span>Working in:</span>
