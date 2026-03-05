@@ -5,23 +5,15 @@ import { TournamentProvider, type TournamentSummary } from '@/contexts/tournamen
 import { AdminHeader } from '@/components/admin/admin-header'
 
 async function getInitialTournaments(): Promise<TournamentSummary[]> {
-  const tournaments = await db.tournament.findMany({
+  return db.tournament.findMany({
     select: {
       id: true,
       name: true,
       year: true,
       status: true,
-      startDate: true,
-      endDate: true,
     },
     orderBy: [{ year: 'desc' }, { name: 'asc' }],
   })
-
-  return tournaments.map((t) => ({
-    ...t,
-    startDate: t.startDate.toISOString(),
-    endDate: t.endDate.toISOString(),
-  }))
 }
 
 export default async function AdminLayout({
@@ -43,7 +35,7 @@ export default async function AdminLayout({
   return (
     <TournamentProvider
       initialTournaments={tournaments}
-      initialCurrentId={activeTournament?.id}
+      initialCurrentId={activeTournament?.id ?? null}
     >
       <div className="space-y-4">
         <AdminHeader userEmail={user.email} userRole={user.role} />
