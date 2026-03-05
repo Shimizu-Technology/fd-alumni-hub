@@ -52,3 +52,4 @@ High-risk import endpoints:
 - [ ] Staff can use media/sponsor workflows.
 - [ ] Staff receives `403` on admin-only endpoints.
 - [ ] Admin can access all staff endpoints and admin-only endpoints.
+- [ ] Bootstrap endpoint rejects requests with a missing or incorrect `x-bootstrap-secret`.
