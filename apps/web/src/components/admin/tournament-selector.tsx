@@ -165,6 +165,7 @@ function TournamentOption({
 }) {
   return (
     <button
+      type="button"
       role="menuitem"
       onClick={() => onSelect(tournament)}
       className={`
