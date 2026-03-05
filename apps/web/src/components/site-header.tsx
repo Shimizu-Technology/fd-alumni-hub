@@ -117,38 +117,49 @@ export function SiteHeader() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-0.5 md:flex" aria-label="Main navigation">
-            {links.map(({ label, href }) => {
-              const active = pathname === href
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className="relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-150"
-                  style={{
-                    color: active ? '#fff' : 'rgba(240,232,236,0.7)',
-                    background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-                  }}
-                  onMouseEnter={e => {
-                    if (!active) (e.currentTarget as HTMLElement).style.color = '#fff'
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'
-                  }}
-                  onMouseLeave={e => {
-                    if (!active) (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.7)'
-                    if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'
-                  }}
-                >
-                  {label}
-                  {active && (
-                    <span
-                      className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full"
-                      style={{ background: 'var(--fd-gold)' }}
-                    />
-                  )}
-                </Link>
-              )
-            })}
-          </nav>
+          <div className="hidden items-center gap-2 md:flex">
+            <nav className="items-center gap-0.5 md:flex" aria-label="Main navigation">
+              {links.map(({ label, href }) => {
+                const active = pathname === href
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="relative px-3.5 py-1.5 text-sm font-medium rounded-lg transition-all duration-150"
+                    style={{
+                      color: active ? '#fff' : 'rgba(240,232,236,0.7)',
+                      background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+                    }}
+                    onMouseEnter={e => {
+                      if (!active) (e.currentTarget as HTMLElement).style.color = '#fff'
+                      if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'
+                    }}
+                    onMouseLeave={e => {
+                      if (!active) (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.7)'
+                      if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'
+                    }}
+                  >
+                    {label}
+                    {active && (
+                      <span
+                        className="absolute bottom-0 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full"
+                        style={{ background: 'var(--fd-gold)' }}
+                      />
+                    )}
+                  </Link>
+                )
+              })}
+            </nav>
+            <Link
+              href="/admin"
+              className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
+              style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
+            >
+              Admin
+            </Link>
+          </div>
 
           {/* Mobile menu button */}
           <button
@@ -221,6 +232,13 @@ export function SiteHeader() {
 
         {/* Drawer footer */}
         <div className="mt-auto pt-8 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <Link
+            href="/admin"
+            className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+            style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+          >
+            Admin
+          </Link>
           <p className="text-xs" style={{ color: 'rgba(240,232,236,0.35)' }}>
             FD Alumni Basketball Hub
           </p>
