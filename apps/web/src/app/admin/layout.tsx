@@ -3,6 +3,7 @@ import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
 import { TournamentProvider, type TournamentSummary } from '@/contexts/tournament-context'
 import { AdminHeader } from '@/components/admin/admin-header'
+import { findActiveTournament } from '@/lib/tournament-utils'
 
 async function getInitialTournaments(): Promise<TournamentSummary[]> {
   return db.tournament.findMany({
@@ -27,11 +28,7 @@ export default async function AdminLayout({
 
   const tournaments = await getInitialTournaments()
 
-  // Find the active tournament ID (live > upcoming > most recent completed)
-  const activeTournament =
-    tournaments.find((t) => t.status === 'live') ??
-    tournaments.find((t) => t.status === 'upcoming') ??
-    tournaments[0]
+  const activeTournament = findActiveTournament(tournaments)
 
   return (
     <TournamentProvider

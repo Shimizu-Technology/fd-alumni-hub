@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/authz'
 import { db } from '@/lib/db'
+import { findActiveTournament } from '@/lib/tournament-utils'
 
 export async function GET() {
   const staff = await requireStaff()
@@ -17,11 +18,7 @@ export async function GET() {
     },
   })
 
-  const currentTournament =
-    tournaments.find((t) => t.status === 'live') ||
-    tournaments.find((t) => t.status === 'upcoming') ||
-    tournaments[0] ||
-    null
+  const currentTournament = findActiveTournament(tournaments)
 
   return NextResponse.json({
     tournaments,

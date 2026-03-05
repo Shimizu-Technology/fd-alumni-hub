@@ -3,17 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Calendar, Check } from 'lucide-react'
 import { useTournament, type TournamentSummary } from '@/contexts/tournament-context'
-
-function StatusDot({ status }: { status: TournamentSummary['status'] }) {
-  const color =
-    status === 'live'
-      ? 'bg-green-500'
-      : status === 'upcoming'
-        ? 'bg-yellow-500'
-        : 'bg-neutral-400'
-
-  return <span className={`inline-block h-2 w-2 rounded-full ${color}`} aria-label={status} />
-}
+import { StatusDot } from './status-dot'
 
 export function TournamentSelector() {
   const { tournaments, currentTournament, setCurrentTournament, isLoading } = useTournament()
@@ -190,7 +180,7 @@ function TournamentOption({
           {tournament.name} {tournament.year}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-neutral-500">
-          <StatusDot status={tournament.status} />
+          <StatusDot status={tournament.status} ariaLabel={tournament.status} />
           <span className="capitalize">{tournament.status}</span>
         </div>
       </div>

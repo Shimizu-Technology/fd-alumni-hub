@@ -3,6 +3,7 @@
 import { Shield } from 'lucide-react'
 import { TournamentSelector } from './tournament-selector'
 import { useTournament } from '@/contexts/tournament-context'
+import { StatusDot } from './status-dot'
 
 interface AdminHeaderProps {
   userEmail: string
@@ -64,7 +65,7 @@ export function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
                   }
                 `}
               >
-                <StatusDot status={currentTournament.status} />
+                <StatusDot status={currentTournament.status} size="sm" />
                 {currentTournament.name} {currentTournament.year}
               </span>
             </div>
@@ -75,13 +76,3 @@ export function AdminHeader({ userEmail, userRole }: AdminHeaderProps) {
   )
 }
 
-function StatusDot({ status }: { status: string }) {
-  const color =
-    status === 'live'
-      ? 'bg-green-500'
-      : status === 'upcoming'
-        ? 'bg-yellow-500'
-        : 'bg-neutral-400'
-
-  return <span className={`inline-block h-1.5 w-1.5 rounded-full ${color}`} />
-}

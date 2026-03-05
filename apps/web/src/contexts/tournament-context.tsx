@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { findActiveTournament } from '@/lib/tournament-utils'
 
 export type TournamentSummary = {
   id: string
@@ -36,17 +37,6 @@ type TournamentContextValue = {
 const TournamentContext = createContext<TournamentContextValue | undefined>(undefined)
 
 const STORAGE_KEY = 'fd-admin-current-tournament-id'
-
-function findActiveTournament(list: TournamentSummary[]): TournamentSummary | null {
-  const live = list.find((t) => t.status === 'live')
-  if (live) return live
-
-  const upcoming = list.find((t) => t.status === 'upcoming')
-  if (upcoming) return upcoming
-
-  const sortedByYear = [...list].sort((a, b) => b.year - a.year)
-  return sortedByYear[0] ?? null
-}
 
 function normalizeResponse(data: TournamentResponse): {
   tournaments: TournamentSummary[]
@@ -84,15 +74,17 @@ export function TournamentProvider({
     return findActiveTournament(initialTournaments)
   })
 
-  const setCurrentTournament = useCallback(
-    (id: string) => {
-      const next = tournaments.find((t) => t.id === id) ?? null
-      if (!next) return
-      setCurrentTournamentState(next)
-      if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, next.id)
-    },
-    [tournaments],
-  )
+  const tournamentsRef = useRef<TournamentSummary[]>(tournaments)
+  useEffect(() => {
+    tournamentsRef.current = tournaments
+  }, [tournaments])
+
+  const setCurrentTournament = useCallback((id: string) => {
+    const next = tournamentsRef.current.find((t) => t.id === id) ?? null
+    if (!next) return
+    setCurrentTournamentState(next)
+    if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, next.id)
+  }, [])
 
   const currentIdRef = useRef<string | undefined>(currentTournament?.id)
   useEffect(() => {
@@ -138,17 +130,20 @@ export function TournamentProvider({
   }, [])
 
   // Reconcile stale localStorage selection once after mount.
+  const reconciledRef = useRef(false)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    if (reconciledRef.current || typeof window === 'undefined') return
+    reconciledRef.current = true
+
     const savedId = localStorage.getItem(STORAGE_KEY)
     if (!savedId) {
       if (currentTournament) localStorage.setItem(STORAGE_KEY, currentTournament.id)
       return
     }
 
-    const valid = tournaments.find((t) => t.id === savedId)
+    const valid = tournamentsRef.current.find((t) => t.id === savedId)
     if (!valid) {
-      const fallback = findActiveTournament(tournaments)
+      const fallback = findActiveTournament(tournamentsRef.current)
       setCurrentTournamentState(fallback)
       if (fallback) localStorage.setItem(STORAGE_KEY, fallback.id)
       else localStorage.removeItem(STORAGE_KEY)
@@ -163,7 +158,7 @@ export function TournamentProvider({
       // Prevent stale localStorage IDs from winning on future refreshes.
       localStorage.setItem(STORAGE_KEY, currentTournament.id)
     }
-  }, [currentTournament, tournaments])
+  }, [])
 
   const value = useMemo<TournamentContextValue>(
     () => ({
