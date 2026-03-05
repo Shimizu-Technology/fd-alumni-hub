@@ -23,6 +23,11 @@ export async function POST(request: Request) {
 
   for (const u of body.updates) {
     try {
+      if (!u.id || typeof u.id !== 'string') {
+        results.push({ id: String(u.id ?? ''), ok: false, error: 'Missing or invalid id' })
+        continue
+      }
+
       if ((u.ticketUrl && !isValidHttpUrl(u.ticketUrl)) || (u.streamUrl && !isValidHttpUrl(u.streamUrl))) {
         results.push({ id: u.id, ok: false, error: 'Invalid URL format (http/https only)' })
         continue

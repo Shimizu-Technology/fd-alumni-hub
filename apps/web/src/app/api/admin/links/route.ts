@@ -16,12 +16,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 })
   }
 
-  const games = await db.game.findMany({
-    where: { tournamentId },
-    include: { homeTeam: true, awayTeam: true },
-    orderBy: { startTime: 'asc' },
-    take: 500,
-  })
+  try {
+    const games = await db.game.findMany({
+      where: { tournamentId },
+      include: { homeTeam: true, awayTeam: true },
+      orderBy: { startTime: 'asc' },
+      take: 500,
+    })
 
-  return NextResponse.json({ games })
+    return NextResponse.json({ games })
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 })
+  }
 }
