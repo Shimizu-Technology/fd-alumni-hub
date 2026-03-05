@@ -162,7 +162,7 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
 
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/games/bulk-links', {
+      const res = await fetch('/api/admin/links/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ updates }),
