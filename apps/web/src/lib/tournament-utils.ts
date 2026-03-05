@@ -1,5 +1,6 @@
 export type TournamentLike = {
   id: string
+  name: string
   status: string
   year: number
 }
@@ -13,7 +14,7 @@ export function findActiveTournament<T extends TournamentLike>(list: T[]): T | n
 
   const mostRecentCompleted = list
     .filter((t) => t.status === 'completed')
-    .sort((a, b) => b.year - a.year)[0]
+    .sort((a, b) => b.year - a.year || a.name.localeCompare(b.name))[0]
   if (mostRecentCompleted) return mostRecentCompleted
 
   // No known-good status found — return null to avoid silently surfacing
