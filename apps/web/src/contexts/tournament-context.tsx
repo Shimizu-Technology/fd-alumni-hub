@@ -121,7 +121,7 @@ export function TournamentProvider({
       }
 
       const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      const candidates = [savedId, payload.currentTournamentId, currentTournament?.id].filter(Boolean) as string[]
+      const candidates = [payload.currentTournamentId, savedId, currentTournament?.id].filter(Boolean) as string[]
 
       let next: TournamentSummary | null = null
       for (const id of candidates) {

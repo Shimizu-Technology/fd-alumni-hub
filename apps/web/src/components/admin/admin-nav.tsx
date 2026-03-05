@@ -72,7 +72,7 @@ export function AdminNav() {
 
       <div
         ref={scrollRef}
-        className="flex gap-2 overflow-x-auto scrollbar-hide px-8"
+        className={`flex gap-2 overflow-x-auto scrollbar-hide ${showLeftArrow ? 'pl-8' : 'pl-2'} ${showRightArrow ? 'pr-8' : 'pr-2'}`}
         style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {LINKS.map(([href, label]) => {
