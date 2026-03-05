@@ -62,6 +62,7 @@ export function TournamentSelector() {
   return (
     <div ref={containerRef} className="relative">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         disabled={isLoading}
         aria-expanded={open}
@@ -95,6 +96,7 @@ export function TournamentSelector() {
             absolute right-0 z-50 mt-1.5 w-72 origin-top-right
             rounded-xl border border-neutral-200 bg-white shadow-lg
             animate-in fade-in-0 zoom-in-95 duration-150
+            max-h-[min(80vh,400px)] overflow-y-auto
           "
         >
           {/* Active tournaments */}

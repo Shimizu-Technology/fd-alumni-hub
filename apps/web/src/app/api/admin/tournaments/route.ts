@@ -8,6 +8,7 @@ export async function GET() {
 
   const tournaments = await db.tournament.findMany({
     orderBy: [{ year: 'desc' }, { createdAt: 'desc' }],
+    take: 100,
     select: {
       id: true,
       name: true,

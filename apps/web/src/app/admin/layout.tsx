@@ -6,6 +6,7 @@ import { AdminHeader } from '@/components/admin/admin-header'
 
 async function getInitialTournaments(): Promise<TournamentSummary[]> {
   return db.tournament.findMany({
+    take: 100,
     select: {
       id: true,
       name: true,
