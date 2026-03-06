@@ -25,9 +25,7 @@ Operational CRUD and workflow routes, including:
 - standings read/recompute
 - tournament list refresh
 - ingestion queue actions
-
-> Note: There is an admin `/admin/links` page, but there are currently no dedicated `/api/admin/links/*` endpoints.
-> Link updates are handled through existing games-related endpoints/workflows.
+- links endpoints (`/api/admin/links`, `/api/admin/links/bulk`)
 
 ### Admin-only endpoints (`requireAdmin`)
 
