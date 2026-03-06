@@ -32,20 +32,33 @@ async function main() {
   const streamMissing = finalGames.filter((g) => !g.streamUrl)
   const scoreMissing = finalGames.filter((g) => g.homeScore == null || g.awayScore == null)
 
-  let taggedStream = 0
+  // Compose note tags per game id first, then write each game once.
+  const notesById = new Map<string, { before: string; after: string }>()
+
   for (const g of streamMissing) {
-    const nextNotes = withTag(g.notes, STREAM_PENDING_TAG)
-    if (nextNotes !== (g.notes ?? '')) {
-      await db.game.update({ where: { id: g.id }, data: { notes: nextNotes } })
-      taggedStream += 1
-    }
+    const before = notesById.get(g.id)?.after ?? (g.notes ?? '').trim()
+    const after = withTag(before, STREAM_PENDING_TAG)
+    notesById.set(g.id, { before: (g.notes ?? '').trim(), after })
   }
 
-  let taggedScore = 0
   for (const g of scoreMissing) {
-    const nextNotes = withTag(g.notes, SCORE_PENDING_TAG)
-    if (nextNotes !== (g.notes ?? '')) {
-      await db.game.update({ where: { id: g.id }, data: { notes: nextNotes } })
+    const before = notesById.get(g.id)?.after ?? (g.notes ?? '').trim()
+    const after = withTag(before, SCORE_PENDING_TAG)
+    notesById.set(g.id, { before: (g.notes ?? '').trim(), after })
+  }
+
+  let taggedStream = 0
+  let taggedScore = 0
+
+  for (const [gameId, notes] of notesById.entries()) {
+    if (notes.after === notes.before) continue
+
+    await db.game.update({ where: { id: gameId }, data: { notes: notes.after } })
+
+    if (!notes.before.includes(STREAM_PENDING_TAG) && notes.after.includes(STREAM_PENDING_TAG)) {
+      taggedStream += 1
+    }
+    if (!notes.before.includes(SCORE_PENDING_TAG) && notes.after.includes(SCORE_PENDING_TAG)) {
       taggedScore += 1
     }
   }
