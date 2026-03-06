@@ -4,6 +4,15 @@ import { db } from '../src/lib/db'
 
 const EXPORTS_DIR = path.resolve(process.cwd(), 'docs', 'exports')
 
+function escapeCsv(val: string | null | undefined): string {
+  if (val == null) return ''
+  const s = String(val)
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replaceAll('"', '""')}"`
+  }
+  return s
+}
+
 type Row = {
   year: number
   gameId: string
@@ -21,6 +30,7 @@ async function main() {
   const games = await db.game.findMany({
     where: {
       tournament: { year: { lte: 2025 } },
+      status: 'final',
     },
     include: {
       tournament: { select: { year: true, name: true } },
@@ -30,7 +40,7 @@ async function main() {
     orderBy: [{ startTime: 'asc' }],
   })
 
-  const finalGames = games.filter((g) => g.status === 'final')
+  const finalGames = games
 
   const scoreMissing = finalGames.filter((g) => g.homeScore == null || g.awayScore == null)
   const linkMissing = finalGames.filter((g) => !g.ticketUrl || !g.streamUrl)
@@ -79,7 +89,7 @@ async function main() {
   const csvBody = prioritized
     .map(
       (r) =>
-        `${r.year},${r.gameId},${r.date},"${r.matchup.replaceAll('"', '""')}",${r.division},${r.bracket},${r.status},${r.missing}`,
+        `${r.year},${escapeCsv(r.gameId)},${escapeCsv(r.date)},${escapeCsv(r.matchup)},${escapeCsv(r.division)},${escapeCsv(r.bracket)},${escapeCsv(r.status)},${escapeCsv(r.missing)}`,
     )
     .join('\n')
 

@@ -1,6 +1,6 @@
 # Historical Gap Cleanup — Batch 1
 
-Generated: 2026-03-06T00:05:11.952Z
+Generated: 2026-03-06T00:14:00.708Z
 
 - Final historical games scanned: 15
 - Missing score rows (final-only): 1
