@@ -1,12 +1,16 @@
 # Historical Gap Cleanup — Batch 1 Finalization
 
-Generated: 2026-03-06T01:12:07.630Z
+Generated: 2026-03-06T01:20:26.098Z
 
 - Final games scanned (<=2025): 15
 - Remaining final games missing stream links: 15
 - Remaining final games missing scores: 1
-- Stream-gap notes tagged this pass: 1
+- Stream-gap notes tagged this pass: 0
 - Score-gap notes tagged this pass: 0
+- Remaining stream gaps currently tagged: 15/15
+- Remaining score gaps currently tagged: 1/1
+
+_Note: this script is idempotent; re-runs may show lower "tagged this pass" counts once tags already exist._
 
 ## Remaining Stream Gaps (partner-blocked)
 - cmmbe40zz0006hxphcs5yw4a5 | 2025 | 2025-06-27 | Class 79/80 vs Class 84/85

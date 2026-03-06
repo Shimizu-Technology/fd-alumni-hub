@@ -50,11 +50,16 @@ async function main() {
   let taggedStream = 0
   let taggedScore = 0
 
-  for (const [gameId, notes] of notesById.entries()) {
-    if (notes.after === notes.before) continue
+  const updates = [...notesById.entries()].filter(([, notes]) => notes.after !== notes.before)
+  if (updates.length > 0) {
+    await db.$transaction(
+      updates.map(([gameId, notes]) =>
+        db.game.update({ where: { id: gameId }, data: { notes: notes.after } }),
+      ),
+    )
+  }
 
-    await db.game.update({ where: { id: gameId }, data: { notes: notes.after } })
-
+  for (const [, notes] of updates) {
     if (!notes.before.includes(STREAM_PENDING_TAG) && notes.after.includes(STREAM_PENDING_TAG)) {
       taggedStream += 1
     }
@@ -62,6 +67,15 @@ async function main() {
       taggedScore += 1
     }
   }
+
+  const streamTaggedTotal = streamMissing.filter((g) => {
+    const effectiveNotes = notesById.get(g.id)?.after ?? (g.notes ?? '').trim()
+    return effectiveNotes.includes(STREAM_PENDING_TAG)
+  }).length
+  const scoreTaggedTotal = scoreMissing.filter((g) => {
+    const effectiveNotes = notesById.get(g.id)?.after ?? (g.notes ?? '').trim()
+    return effectiveNotes.includes(SCORE_PENDING_TAG)
+  }).length
 
   const lines = [
     '# Historical Gap Cleanup — Batch 1 Finalization',
@@ -73,6 +87,10 @@ async function main() {
     `- Remaining final games missing scores: ${scoreMissing.length}`,
     `- Stream-gap notes tagged this pass: ${taggedStream}`,
     `- Score-gap notes tagged this pass: ${taggedScore}`,
+    `- Remaining stream gaps currently tagged: ${streamTaggedTotal}/${streamMissing.length}`,
+    `- Remaining score gaps currently tagged: ${scoreTaggedTotal}/${scoreMissing.length}`,
+    '',
+    '_Note: this script is idempotent; re-runs may show lower "tagged this pass" counts once tags already exist._',
     '',
     '## Remaining Stream Gaps (partner-blocked)',
     ...streamMissing.map(
