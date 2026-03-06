@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { parse } from 'csv-parse/sync'
 import { db } from '../src/lib/db'
 
 const EXPORTS_DIR = path.resolve(process.cwd(), 'docs', 'exports')
@@ -15,17 +16,18 @@ type PriorityRow = {
 }
 
 function parseCsvRows(raw: string): PriorityRow[] {
-  const lines = raw.trim().split('\n')
-  const body = lines.slice(1)
-  return body.map((line) => {
-    const cols = line.split(',')
-    return {
-      year: Number(cols[0]),
-      gameId: cols[1],
-      status: cols[6],
-      missing: cols[7],
-    }
-  })
+  const records = parse(raw, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  }) as Array<Record<string, string>>
+
+  return records.map((r) => ({
+    year: Number(r.year),
+    gameId: r.game_id,
+    status: r.status,
+    missing: r.missing,
+  }))
 }
 
 async function countFinalMissingTicketLinks() {
@@ -53,6 +55,7 @@ async function main() {
   const uniqueGameIds = [...new Set(candidates.map((r) => r.gameId))].slice(0, MAX_UPDATES)
 
   let updated = 0
+  const updatedIds: string[] = []
   for (const gameId of uniqueGameIds) {
     const game = await db.game.findUnique({ where: { id: gameId }, select: { ticketUrl: true } })
     if (!game) continue
@@ -62,6 +65,7 @@ async function main() {
       where: { id: gameId },
       data: { ticketUrl: GUAMTIME_EVENT_URL },
     })
+    updatedIds.push(gameId)
     updated += 1
   }
 
@@ -80,7 +84,7 @@ async function main() {
     `- Delta resolved this pass: ${beforeMissing - afterMissing}`,
     '',
     'Updated game IDs:',
-    ...uniqueGameIds.map((id) => `- ${id}`),
+    ...(updatedIds.length > 0 ? updatedIds.map((id) => `- ${id}`) : ['- none']),
   ].join('\n')
 
   const outPath = path.join(EXPORTS_DIR, 'historical-gap-batch1-execution.md')
