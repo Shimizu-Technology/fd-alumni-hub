@@ -1,2 +1,2 @@
-game_id,year,date,time,matchup,division,bracket,venue,status,home_score,away_score,request
-cmmbe4mcm0046hxphbzlzfr4f,2025,2025-07-01,10:20,"Class 2023 vs Class 2025",Maroon,,FD Jungle,final,,,score_confirmation
+game_id,year,date,time,matchup,division,bracket,venue,status,home_score,away_score,request,coordination_note
+cmmbe4mcm0046hxphbzlzfr4f,2025,2025-07-01,10:20,"Class 2023 vs Class 2025",Maroon,,FD Jungle,final,,,score_confirmation,requires_stream_url_too
