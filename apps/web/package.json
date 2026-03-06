@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "partner-package": "tsx scripts/generate-partner-package.ts",
+    "export:historical-gap-batch1": "tsx scripts/export-historical-gap-batch1.ts",
     "qa-check": "tsx scripts/qa-smoke-check.ts"
   },
   "dependencies": {
