@@ -26,6 +26,17 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_nil body.dig("team", "division")
   end
 
+  test "missing team returns JSON 404" do
+    patch "/api/v1/admin/teams/999999",
+      params: { team: { division: "Gold" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :not_found
+    assert_equal({ "error" => "Not found" }, JSON.parse(response.body))
+    assert_equal "application/json", response.media_type
+  end
+
   private
 
   def auth_headers

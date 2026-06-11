@@ -22,6 +22,14 @@ class AdminTournamentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 7, 3), @tournament.reload.start_date
   end
 
+  test "missing tournament returns JSON 404" do
+    get "/api/v1/admin/tournaments/999999", headers: auth_headers
+
+    assert_response :not_found
+    assert_equal({ "error" => "Not found" }, JSON.parse(response.body))
+    assert_equal "application/json", response.media_type
+  end
+
   private
 
   def auth_headers

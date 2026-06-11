@@ -48,6 +48,17 @@ class AdminGamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, standing.points_against
   end
 
+  test "missing game returns JSON 404" do
+    patch "/api/v1/admin/games/999999",
+      params: { game: { status: "scheduled" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :not_found
+    assert_equal({ "error" => "Not found" }, JSON.parse(response.body))
+    assert_equal "application/json", response.media_type
+  end
+
   private
 
   def auth_headers
