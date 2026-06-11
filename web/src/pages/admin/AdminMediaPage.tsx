@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -35,13 +35,32 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 }
 
 function CreateMediaPanel({ tournaments, selectedTournamentId, onSaved }: { tournaments: Tournament[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState<MediaForm>({ tournamentId: selectedTournamentId || tournaments[0]?.id || '', source: 'GSPN', title: '', imageUrl: '', articleUrl: '', caption: '', tags: '', takenAt: '' })
+  const defaultTournamentId = selectedTournamentId || tournaments[0]?.id || ''
+  const [form, setForm] = useState<MediaForm>({ tournamentId: defaultTournamentId, source: 'GSPN', title: '', imageUrl: '', articleUrl: '', caption: '', tags: '', takenAt: '' })
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!defaultTournamentId) return
+
+    setForm((current) => {
+      if (current.tournamentId === defaultTournamentId) return current
+      if (selectedTournamentId || !current.tournamentId) return { ...current, tournamentId: defaultTournamentId }
+      return current
+    })
+  }, [defaultTournamentId, selectedTournamentId])
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    setMessage('')
+    const tournamentId = form.tournamentId || defaultTournamentId
+    if (!tournamentId) {
+      setMessage('Select a tournament before creating media')
+      return
+    }
+
     try {
-      await api.adminCreateMedia(cleanMedia(form))
-      setForm({ ...form, title: '', imageUrl: '', articleUrl: '', caption: '', tags: '' })
+      await api.adminCreateMedia(cleanMedia({ ...form, tournamentId }))
+      setForm({ ...form, tournamentId, title: '', imageUrl: '', articleUrl: '', caption: '', tags: '' })
       setMessage('Media created')
       await onSaved()
     } catch (err) {
@@ -49,7 +68,7 @@ function CreateMediaPanel({ tournaments, selectedTournamentId, onSaved }: { tour
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add media</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><MediaFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit">Create media</button></form></Panel>
+  return <Panel><div className="section-heading"><h2>Add media</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><MediaFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create media</button></form></Panel>
 }
 
 function MediaRow({ asset, onSaved }: { asset: MediaAsset; onSaved: () => Promise<void> }) {

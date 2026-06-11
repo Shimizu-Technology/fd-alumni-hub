@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
@@ -51,12 +51,29 @@ function CreateGamePanel({ tournaments, teams, selectedTournamentId, onSaved }: 
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
+  useEffect(() => {
+    if (!defaultTournamentId) return
+
+    setForm((current) => {
+      if (current.tournamentId === defaultTournamentId) return current
+      if (selectedTournamentId) return { ...current, tournamentId: defaultTournamentId, homeTeamId: '', awayTeamId: '' }
+      if (!current.tournamentId) return { ...current, tournamentId: defaultTournamentId }
+      return current
+    })
+  }, [defaultTournamentId, selectedTournamentId])
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    setSaving(true)
     setMessage('')
+    const tournamentId = form.tournamentId || defaultTournamentId
+    if (!tournamentId) {
+      setMessage('Select a tournament before creating a game')
+      return
+    }
+
+    setSaving(true)
     try {
-      await api.adminCreateGame({ ...form, startTime: guamLocalDateTimeInputToIso(form.startTime) })
+      await api.adminCreateGame({ ...form, tournamentId, startTime: guamLocalDateTimeInputToIso(form.startTime) })
       setMessage('Game created')
       await onSaved()
     } catch (err) {
@@ -78,7 +95,7 @@ function CreateGamePanel({ tournaments, teams, selectedTournamentId, onSaved }: 
           <Field label="Venue"><input value={form.venue} onChange={(event) => setForm({ ...form, venue: event.target.value })} /></Field>
           <Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field>
         </FormGrid>
-        <button className="btn primary" type="submit" disabled={saving}>{saving ? 'Saving' : 'Create game'}</button>
+        <button className="btn primary" type="submit" disabled={saving || !form.tournamentId}>{saving ? 'Saving' : 'Create game'}</button>
       </form>
     </Panel>
   )

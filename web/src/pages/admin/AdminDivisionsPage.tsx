@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -33,13 +33,32 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 }
 
 function CreateTeamPanel({ tournaments, selectedTournamentId, onSaved }: { tournaments: Tournament[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ tournamentId: selectedTournamentId || tournaments[0]?.id || '', classYearLabel: '', displayName: '', division: '' })
+  const defaultTournamentId = selectedTournamentId || tournaments[0]?.id || ''
+  const [form, setForm] = useState({ tournamentId: defaultTournamentId, classYearLabel: '', displayName: '', division: '' })
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!defaultTournamentId) return
+
+    setForm((current) => {
+      if (current.tournamentId === defaultTournamentId) return current
+      if (selectedTournamentId || !current.tournamentId) return { ...current, tournamentId: defaultTournamentId }
+      return current
+    })
+  }, [defaultTournamentId, selectedTournamentId])
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    setMessage('')
+    const tournamentId = form.tournamentId || defaultTournamentId
+    if (!tournamentId) {
+      setMessage('Select a tournament before creating a team')
+      return
+    }
+
     try {
-      await api.adminCreateTeam(form)
-      setForm({ ...form, classYearLabel: '', displayName: '' })
+      await api.adminCreateTeam({ ...form, tournamentId })
+      setForm({ ...form, tournamentId, classYearLabel: '', displayName: '' })
       setMessage('Team created')
       await onSaved()
     } catch (err) {
@@ -47,7 +66,7 @@ function CreateTeamPanel({ tournaments, selectedTournamentId, onSaved }: { tourn
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add team</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><FormGrid><Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="Class of 2016/17" required /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="2016/17" required /></Field><Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} placeholder="Maroon" /></Field></FormGrid><button className="btn primary" type="submit">Create team</button></form></Panel>
+  return <Panel><div className="section-heading"><h2>Add team</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><FormGrid><Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="Class of 2016/17" required /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="2016/17" required /></Field><Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} placeholder="Maroon" /></Field></FormGrid><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create team</button></form></Panel>
 }
 
 function EditableTeam({ team, onSaved }: { team: Team; onSaved: () => Promise<void> }) {

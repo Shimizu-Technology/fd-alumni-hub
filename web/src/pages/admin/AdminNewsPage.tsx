@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -35,13 +35,32 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 }
 
 function CreateArticlePanel({ tournaments, selectedTournamentId, onSaved }: { tournaments: Tournament[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ tournamentId: selectedTournamentId || tournaments[0]?.id || '', title: '', source: 'GSPN', url: '', publishedAt: '', imageUrl: '', excerpt: '' })
+  const defaultTournamentId = selectedTournamentId || tournaments[0]?.id || ''
+  const [form, setForm] = useState<ArticleForm>({ tournamentId: defaultTournamentId, title: '', source: 'GSPN', url: '', publishedAt: '', imageUrl: '', excerpt: '' })
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!defaultTournamentId) return
+
+    setForm((current) => {
+      if (current.tournamentId === defaultTournamentId) return current
+      if (selectedTournamentId || !current.tournamentId) return { ...current, tournamentId: defaultTournamentId }
+      return current
+    })
+  }, [defaultTournamentId, selectedTournamentId])
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    setMessage('')
+    const tournamentId = form.tournamentId || defaultTournamentId
+    if (!tournamentId) {
+      setMessage('Select a tournament before creating an article')
+      return
+    }
+
     try {
-      await api.adminCreateArticle({ ...form, publishedAt: form.publishedAt || null, imageUrl: form.imageUrl || null, excerpt: form.excerpt || null })
-      setForm({ ...form, title: '', url: '', imageUrl: '', excerpt: '' })
+      await api.adminCreateArticle({ ...form, tournamentId, publishedAt: form.publishedAt || null, imageUrl: form.imageUrl || null, excerpt: form.excerpt || null })
+      setForm({ ...form, tournamentId, title: '', url: '', imageUrl: '', excerpt: '' })
       setMessage('Article created')
       await onSaved()
     } catch (err) {
@@ -49,7 +68,7 @@ function CreateArticlePanel({ tournaments, selectedTournamentId, onSaved }: { to
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add article</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><ArticleFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit">Create article</button></form></Panel>
+  return <Panel><div className="section-heading"><h2>Add article</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><ArticleFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create article</button></form></Panel>
 }
 
 function ArticleRow({ article, onSaved }: { article: Article; onSaved: () => Promise<void> }) {

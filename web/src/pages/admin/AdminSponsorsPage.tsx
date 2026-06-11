@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -32,13 +32,32 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 }
 
 function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { tournaments: Tournament[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState<SponsorForm>({ tournamentId: selectedTournamentId || tournaments[0]?.id || '', name: '', logoUrl: '', targetUrl: '', tier: 'Community Partner', active: true, position: '0' })
+  const defaultTournamentId = selectedTournamentId || tournaments[0]?.id || ''
+  const [form, setForm] = useState<SponsorForm>({ tournamentId: defaultTournamentId, name: '', logoUrl: '', targetUrl: '', tier: 'Community Partner', active: true, position: '0' })
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!defaultTournamentId) return
+
+    setForm((current) => {
+      if (current.tournamentId === defaultTournamentId) return current
+      if (selectedTournamentId || !current.tournamentId) return { ...current, tournamentId: defaultTournamentId }
+      return current
+    })
+  }, [defaultTournamentId, selectedTournamentId])
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    setMessage('')
+    const tournamentId = form.tournamentId || defaultTournamentId
+    if (!tournamentId) {
+      setMessage('Select a tournament before creating a sponsor')
+      return
+    }
+
     try {
-      await api.adminCreateSponsor(cleanSponsor(form))
-      setForm({ ...form, name: '', logoUrl: '', targetUrl: '' })
+      await api.adminCreateSponsor(cleanSponsor({ ...form, tournamentId }))
+      setForm({ ...form, tournamentId, name: '', logoUrl: '', targetUrl: '' })
       setMessage('Sponsor created')
       await onSaved()
     } catch (err) {
@@ -46,7 +65,7 @@ function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { to
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add sponsor</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><SponsorFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit">Create sponsor</button></form></Panel>
+  return <Panel><div className="section-heading"><h2>Add sponsor</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><SponsorFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create sponsor</button></form></Panel>
 }
 
 function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Promise<void> }) {
