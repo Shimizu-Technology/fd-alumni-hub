@@ -129,7 +129,7 @@ export default async function StandingsPage({
             Standings
           </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-            {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
+            {tournament ? `${tournament.name} ${tournament.year}` : 'Standings will appear here as results are confirmed.'}
             {activeDiv ? ` · ${activeDiv.label}` : ''}
           </p>
         </div>
@@ -155,7 +155,7 @@ export default async function StandingsPage({
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
             {divisionFilter
               ? `No standings found for the ${divisionFilter} division.`
-              : 'No standings yet. Add teams and scores from admin.'}
+              : 'Standings will appear once teams and confirmed results are published.'}
           </p>
           {divisionFilter && (
             <Link href="/standings" className="mt-3 inline-block text-xs font-medium" style={{ color: 'var(--fd-maroon)' }}>

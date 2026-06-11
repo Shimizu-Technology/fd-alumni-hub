@@ -39,9 +39,10 @@ export function TournamentSelector() {
     }
   }, [open])
 
-  useEffect(() => {
-    if (!open) setShowAllCompleted(false)
-  }, [open])
+  const toggleOpen = () => {
+    if (open) setShowAllCompleted(false)
+    setOpen(!open)
+  }
 
   const activeTournaments = tournaments.filter(
     (t) => t.status === 'live' || t.status === 'upcoming',
@@ -64,7 +65,7 @@ export function TournamentSelector() {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         disabled={isLoading}
         aria-expanded={open}
         aria-haspopup="menu"

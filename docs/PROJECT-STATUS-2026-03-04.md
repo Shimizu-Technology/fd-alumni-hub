@@ -10,7 +10,18 @@ The hub is now in a strong **functional beta** state for 2025 replay/testing:
 - Historical content ingest is 96% complete
 - Champion data verified for 2014-2025 (excluding 2016)
 
-Current 2025 score coverage: **14 / 93 games (15.1%)**
+Current 2025 score coverage in the historical docs was **14 / 93 games (15.1%)** before the June 2026 refresh.
+
+## Update — 2026-06-11
+
+- Added a static researched archive layer in `apps/web/src/lib/historical-archive.ts` so the public site can show historical articles, media, and champion records before the database is backfilled.
+- Added `npm --workspace @fd/web run import:archive-content` to materialize that archive into the database when `DATABASE_URL` is available.
+- Added GSPN opening-weekend 2025 results to `apps/web/scripts/import-2025-gspn-scores.ts`.
+- Fixed Guam timezone formatting and past-game status display in public/admin schedule views.
+- Added `apps/web/.env.example` and made `build` run `prisma generate` before `next build`.
+- Production database imports/migrations were not run from the local harness because production secrets were unavailable.
+
+See `docs/research/public-archive-refresh-2026-06-11.md` for source notes and remaining gaps.
 
 ---
 

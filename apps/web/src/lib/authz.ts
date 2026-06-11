@@ -1,7 +1,9 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { db } from '@/lib/db'
+import { db, isDatabaseConfigured } from '@/lib/db'
 
 export async function ensureAppUser() {
+  if (!isDatabaseConfigured || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY) return null
+
   const { userId } = await auth()
   if (!userId) return null
 

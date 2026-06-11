@@ -2,6 +2,8 @@ import { AdminNav } from '@/components/admin/admin-nav'
 import { HistoricalImportForm } from '@/components/admin/historical-import-form'
 import { DataHealthCard } from '@/components/admin/data-health-card'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminHome() {
   return (
     <section className="space-y-4">

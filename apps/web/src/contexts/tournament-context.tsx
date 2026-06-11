@@ -173,7 +173,7 @@ export function TournamentProvider({
     } catch {
       // localStorage may be unavailable (private mode / restricted contexts)
     }
-  }, [])
+  }, [currentTournament, initialCurrentId])
 
   const value = useMemo<TournamentContextValue>(
     () => ({

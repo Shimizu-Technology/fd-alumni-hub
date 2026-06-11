@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Newspaper, Calendar, Trash2, ExternalLink } from 'lucide-react'
 import { AdminButton, AdminEmptyState, AdminMessage, AdminBadge } from './ui'
+import { formatGuamDate } from '@/lib/datetime'
 
 type Article = {
   id: string
   title: string
   source: string
   url?: string
-  publishedAt: string | null
+  publishedAt: string | Date | null
 }
 
 export function AdminNewsList({ initialArticles }: { initialArticles: Article[] }) {
@@ -67,7 +68,7 @@ export function AdminNewsList({ initialArticles }: { initialArticles: Article[] 
                   {a.publishedAt && (
                     <span className="flex items-center gap-1.5 text-xs text-[var(--neutral-400)]">
                       <Calendar className="h-3 w-3" />
-                      {new Date(a.publishedAt).toLocaleDateString('en-US', {
+                      {formatGuamDate(a.publishedAt, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',

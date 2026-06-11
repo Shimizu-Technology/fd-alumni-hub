@@ -47,7 +47,7 @@ async function checkUrl(url: string): Promise<{ status: number; finalUrl: string
       finalUrl: response.url,
       ok: response.ok
     }
-  } catch (err) {
+  } catch {
     return { status: 0, finalUrl: url, ok: false }
   }
 }

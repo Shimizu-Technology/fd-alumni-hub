@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getHomeFeed } from '@/lib/services/public-feed'
 import { QuickCard } from '@/components/quick-card'
 import { LiveUpdates } from '@/components/live-updates'
+import { LATEST_ARCHIVE_YEAR } from '@/lib/historical-archive'
 
 function CalendarIcon() {
   return (
@@ -48,6 +49,7 @@ export default async function Home() {
   } = await getHomeFeed()
 
   const isLive = liveGames.length > 0
+  const isArchivePreview = !tournament && latestNews.length > 0
 
   return (
     <section className="space-y-6">
@@ -87,7 +89,7 @@ export default async function Home() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: 'rgba(217,178,111,0.15)', color: 'var(--fd-gold)', border: '1px solid rgba(217,178,111,0.25)' }}>
-                Official Tournament Hub
+                {isArchivePreview ? 'Archive Preview' : 'Tournament Hub'}
               </span>
             )}
           </div>
@@ -109,7 +111,9 @@ export default async function Home() {
           >
             {tournament
               ? `${tournament.name} ${tournament.year} — schedule, standings, watch links, and verified updates.`
-              : 'Single source of truth for schedule, standings, watch links, and tournament updates.'}
+              : isArchivePreview
+                ? 'Browse researched historical coverage while live schedule data is not connected locally.'
+                : 'Single source of truth for schedule, standings, watch links, and tournament updates.'}
           </p>
 
           {/* CTA buttons */}
@@ -160,7 +164,9 @@ export default async function Home() {
               <span className="font-semibold" style={{ color: 'rgba(240,232,236,0.85)' }}>
                 {upcomingOrLiveTournament
                   ? `${upcomingOrLiveTournament.year} ${upcomingOrLiveTournament.status.toUpperCase()}`
-                  : 'None'}
+                  : isArchivePreview
+                    ? 'Archive preview'
+                    : 'None'}
               </span>
             </span>
             <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
@@ -169,7 +175,9 @@ export default async function Home() {
               <span className="font-semibold" style={{ color: 'rgba(240,232,236,0.85)' }}>
                 {latestResultsTournament
                   ? `${latestResultsTournament.year} COMPLETED`
-                  : 'No data yet'}
+                  : isArchivePreview
+                    ? `${LATEST_ARCHIVE_YEAR} coverage`
+                    : 'No data yet'}
               </span>
             </span>
           </div>
@@ -196,14 +204,14 @@ export default async function Home() {
         />
         <QuickCard
           title="Tournament"
-          value={tournament ? tournament.status.toUpperCase() : '—'}
-          sub={tournament ? tournament.name : 'No active tournament'}
+          value={tournament ? tournament.status.toUpperCase() : isArchivePreview ? 'ARCHIVE' : '—'}
+          sub={tournament ? tournament.name : isArchivePreview ? 'Connect DB for live data' : 'No active tournament'}
           accent="neutral"
         />
       </div>
 
       {/* ── Latest updates ────────────────────────────────────── */}
-      <LiveUpdates items={latestNews as any} />
+      <LiveUpdates items={latestNews} />
 
     </section>
   )

@@ -11,7 +11,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { writeFileSync, mkdirSync } from 'fs'
-import { resolve, dirname } from 'path'
+import { resolve } from 'path'
 
 const db = new PrismaClient()
 
@@ -26,6 +26,14 @@ function escapeCsv(val: string | null | undefined): string {
 
 function row(...cells: (string | null | undefined)[]): string {
   return cells.map(escapeCsv).join(',')
+}
+
+function formatGuamDate(value: Date): string {
+  return value.toLocaleDateString('en-US', { timeZone: 'Pacific/Guam', month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function formatGuamTime(value: Date): string {
+  return value.toLocaleTimeString('en-US', { timeZone: 'Pacific/Guam', hour: 'numeric', minute: '2-digit' })
 }
 
 function phaseOf(bracketCode: string | null, teamName: string): string {
@@ -48,7 +56,7 @@ async function main() {
     process.exit(1)
   }
 
-  console.log(`\n📊 Exporting missing links for: ${tournament.name} ${tournament.year}\n`)
+  console.log(`\nExporting missing links for: ${tournament.name} ${tournament.year}\n`)
 
   const games = await db.game.findMany({
     where: { tournamentId: tournament.id },
@@ -63,8 +71,8 @@ async function main() {
 
   const toRow = (g: typeof games[0], missingField: string) => row(
     g.id,
-    new Date(g.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    new Date(g.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    formatGuamDate(g.startTime),
+    formatGuamTime(g.startTime),
     g.awayTeam.displayName,
     g.homeTeam.displayName,
     g.division ?? g.homeTeam.division ?? '',
@@ -107,9 +115,9 @@ async function main() {
   writeFileSync(ticketPath, ticketLines.join('\n'), 'utf-8')
   writeFileSync(streamPath, streamLines.join('\n'), 'utf-8')
 
-  console.log(`✅ Exported ${missingTicket.length} games missing ticket links → ${ticketPath}`)
-  console.log(`✅ Exported ${missingStream.length} games missing stream links → ${streamPath}`)
-  console.log(`\n📁 Files in: ${exportsDir}\n`)
+  console.log(`Exported ${missingTicket.length} games missing ticket links -> ${ticketPath}`)
+  console.log(`Exported ${missingStream.length} games missing stream links -> ${streamPath}`)
+  console.log(`\nFiles in: ${exportsDir}\n`)
 
   await db.$disconnect()
 }

@@ -14,10 +14,10 @@ export const metadata: Metadata = {
     default: 'FD Alumni Basketball Hub',
     template: '%s — FD Alumni Hub',
   },
-  description: 'The official hub for FD Alumni Basketball. Schedule, standings, watch links, and verified updates for the tournament.',
+  description: 'A central hub for FD Alumni Basketball schedules, standings, watch links, tickets, and partner coverage.',
   openGraph: {
     title: 'FD Alumni Basketball Hub',
-    description: 'Schedule, standings, watch links, and updates for the FD Alumni Tournament.',
+    description: 'Schedule, standings, watch links, tickets, and partner coverage for the FD Alumni Tournament.',
     type: 'website',
   },
 }

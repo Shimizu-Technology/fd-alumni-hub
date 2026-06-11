@@ -1,6 +1,8 @@
 node_modules/
 .npm/
 .env*
+!.env.example
+!apps/*/.env.example
 .next/
 dist/
 .DS_Store

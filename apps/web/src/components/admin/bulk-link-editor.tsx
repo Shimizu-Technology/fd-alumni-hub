@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DIVISIONS } from '@/lib/divisions'
+import { formatGuamDateTime } from '@/lib/datetime'
 import { Filter, Zap, Save, Edit3, Calendar } from 'lucide-react'
 import {
   AdminInput,
@@ -13,7 +14,6 @@ import {
   AdminMessage,
   AdminEmptyState,
   AdminBadge,
-  inputBaseClasses,
 } from './ui'
 
 function isValidUrl(value: string) {
@@ -28,7 +28,7 @@ function isValidUrl(value: string) {
 
 type GameLink = {
   id: string
-  startTime: string
+  startTime: string | Date
   division: string | null
   bracketCode: string | null
   ticketUrl: string | null
@@ -51,7 +51,7 @@ type LocalEdit = {
 
 export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
   const router = useRouter()
-  const [games, setGames] = useState<GameLink[]>(initialGames)
+  const [games] = useState<GameLink[]>(initialGames)
   const [edits, setEdits] = useState<Record<string, LocalEdit>>({})
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
@@ -61,11 +61,11 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
   const [bulkTicket, setBulkTicket] = useState('')
   const [bulkStream, setBulkStream] = useState('')
 
-  const currentVal = (g: GameLink, field: 'ticketUrl' | 'streamUrl') => {
+  const currentVal = useCallback((g: GameLink, field: 'ticketUrl' | 'streamUrl') => {
     const e = edits[g.id]
     if (e && Object.prototype.hasOwnProperty.call(e, field)) return e[field] ?? ''
     return g[field] ?? ''
-  }
+  }, [edits])
 
   const updateEdit = (id: string, field: 'ticketUrl' | 'streamUrl', value: string) => {
     setEdits((prev) => ({
@@ -101,7 +101,7 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
         return false
       return true
     })
-  }, [games, edits, filters])
+  }, [games, currentVal, filters])
 
   const dirtyGames = Object.entries(edits).filter(([, e]) => e.dirty)
 
@@ -348,12 +348,7 @@ export function BulkLinkEditor({ initialGames }: { initialGames: GameLink[] }) {
                   </p>
                   <span className="flex items-center gap-1.5 text-xs text-[var(--neutral-400)]">
                     <Calendar className="h-3 w-3" />
-                    {new Date(g.startTime).toLocaleString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
+                    {formatGuamDateTime(g.startTime)}
                   </span>
                   {g.division && (
                     <AdminBadge variant="default">{g.division}</AdminBadge>

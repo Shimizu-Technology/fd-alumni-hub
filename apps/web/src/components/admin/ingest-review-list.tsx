@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Inbox, ExternalLink, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Inbox, ExternalLink, CheckCircle2, XCircle, Clock, FileText, Image as ImageIcon } from 'lucide-react'
 import { AdminButton, AdminEmptyState, AdminMessage, AdminBadge } from './ui'
 
 type Item = {
@@ -111,7 +111,11 @@ export function IngestReviewList({ items }: { items: Item[] }) {
                 {/* Badges */}
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <AdminBadge variant="default">
-                    {item.kind === 'article' ? '📄 Article' : '🖼️ Media'}
+                    {item.kind === 'article' ? (
+                      <><FileText className="mr-1 h-3 w-3" /> Article</>
+                    ) : (
+                      <><ImageIcon className="mr-1 h-3 w-3" /> Media</>
+                    )}
                   </AdminBadge>
                   <AdminBadge variant="default">{item.source}</AdminBadge>
                   <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.bg} ${status.text}`}>

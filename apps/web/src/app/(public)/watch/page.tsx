@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getSchedule } from '@/lib/services/public-feed'
+import { formatGuamDate, formatGuamTime } from '@/lib/datetime'
 
 export const metadata: Metadata = {
   title: 'Watch',
@@ -36,7 +37,6 @@ function ExternalIcon() {
 function GameStreamCard({ game }: { game: WatchGame }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
-  const date = new Date(game.startTime)
 
   return (
     <div
@@ -69,9 +69,9 @@ function GameStreamCard({ game }: { game: WatchGame }) {
             </span>
           )}
           <span className="text-xs tabular-nums" style={{ color: 'var(--neutral-400)' }}>
-            {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {formatGuamDate(game.startTime, { month: 'short', day: 'numeric' })}
             {' · '}
-            {date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            {formatGuamTime(game.startTime)}
           </span>
         </div>
 
@@ -141,7 +141,7 @@ export default async function WatchPage({
           Watch
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-          {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
+          {tournament ? `${tournament.name} ${tournament.year}` : 'Stream links and replays will appear here when available.'}
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default async function WatchPage({
             <PlayIcon size={28} />
           </div>
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No stream links yet. Add stream URLs to games from the admin panel.
+            No Clutch stream links are published yet. Check back closer to game time for live games and replays.
           </p>
         </div>
       ) : (
@@ -204,13 +204,13 @@ export default async function WatchPage({
             <div className="flex items-center gap-2">
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>Clutch</p>
-                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official streaming partner</p>
+                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Streaming partner</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <div>
                 <p className="text-sm font-semibold" style={{ color: 'var(--fd-ink)' }}>GuamTime</p>
-                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Official ticketing partner</p>
+                <p className="text-xs" style={{ color: 'var(--neutral-500)' }}>Ticketing partner</p>
               </div>
             </div>
           </div>

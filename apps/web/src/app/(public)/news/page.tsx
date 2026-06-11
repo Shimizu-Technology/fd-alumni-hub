@@ -2,22 +2,17 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
+import { LATEST_ARCHIVE_YEAR, archiveArticlesForYear } from '@/lib/historical-archive'
+import { mergeArchiveArticles, type FeedArticle } from '@/lib/services/public-feed'
+import { formatGuamDate } from '@/lib/datetime'
 
 export const metadata: Metadata = {
   title: 'News',
 }
 
-type NewsItem = {
-  id: string
-  source: string
-  title: string
-  imageUrl?: string | null
-  excerpt?: string | null
-  publishedAt: Date | null
-  url: string
-}
+type NewsItem = FeedArticle
 
 function ExternalLinkIcon() {
   return (
@@ -29,7 +24,7 @@ function ExternalLinkIcon() {
 
 function NewsCard({ item, index }: { item: NewsItem; index: number }) {
   const date = item.publishedAt
-    ? new Date(item.publishedAt).toLocaleDateString('en-US', {
+    ? formatGuamDate(item.publishedAt, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
@@ -106,36 +101,43 @@ function NewsCard({ item, index }: { item: NewsItem; index: number }) {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tournamentId?: string; source?: string }>
+  searchParams: Promise<{ tournamentId?: string; source?: string; year?: string }>
 }) {
   const params = await searchParams
   const tournamentId = params.tournamentId ?? undefined
   const sourceFilter = params.source ?? null
+  const parsedYear = params.year ? Number(params.year) : null
+  const yearFilter = parsedYear && Number.isInteger(parsedYear) && parsedYear >= 1900 && parsedYear <= 2200
+    ? parsedYear
+    : null
 
   const tournament = tournamentId
-    ? await db.tournament.findUnique({ where: { id: tournamentId } })
-    : await getActiveTournament()
+    ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
+    : yearFilter
+      ? await withDatabaseFallback(() => db.tournament.findFirst({ where: { year: yearFilter } }), null)
+      : await getActiveTournament()
 
-  const latestNews = await db.articleLink.findMany({
-    where: tournament
-      ? {
-          tournamentId: tournament.id,
-          ...(sourceFilter ? { source: sourceFilter } : {}),
-        }
-      : undefined,
-    orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-    take: 100,
-  })
+  const displayYear = yearFilter ?? tournament?.year ?? LATEST_ARCHIVE_YEAR
 
-  const sourceRows = tournament
-    ? await db.articleLink.findMany({
+  const dbNews = tournament
+    ? await withDatabaseFallback(() => db.articleLink.findMany({
         where: { tournamentId: tournament.id },
-        select: { source: true },
-        distinct: ['source'],
-        orderBy: { source: 'asc' },
-      })
+        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+        take: 150,
+      }), [])
     : []
-  const sources = sourceRows.map(s => s.source)
+
+  const mergedNews = displayYear ? mergeArchiveArticles(dbNews, displayYear) : dbNews
+  const latestNews = sourceFilter
+    ? mergedNews.filter((item) => item.source === sourceFilter)
+    : mergedNews
+
+  const sources = displayYear
+    ? Array.from(new Set([
+        ...dbNews.map((item) => item.source),
+        ...archiveArticlesForYear(displayYear).map((item) => item.source),
+      ])).sort()
+    : []
 
   return (
     <section className="space-y-5">
@@ -146,16 +148,17 @@ export default async function NewsPage({
           News
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-          {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
+          {tournament ? `${tournament.name} ${tournament.year}` : displayYear ? `FD Alumni Basketball Tournament ${displayYear}` : 'Tournament coverage will appear here when available.'}
         </p>
         {sources.length > 1 ? (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <Link href={`/news${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : ''}`} className="rounded-full px-3 py-1.5 text-xs font-semibold" style={!sourceFilter ? { background: 'var(--fd-ink)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>
+            <Link href={`/news${tournamentId ? `?tournamentId=${encodeURIComponent(tournamentId)}` : displayYear ? `?year=${displayYear}` : ''}`} className="rounded-full px-3 py-1.5 text-xs font-semibold" style={!sourceFilter ? { background: 'var(--fd-ink)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>
               All sources
             </Link>
             {sources.map((s) => {
               const p = new URLSearchParams()
               if (tournamentId) p.set('tournamentId', tournamentId)
+              else if (displayYear) p.set('year', String(displayYear))
               p.set('source', s)
               return (
                 <Link key={s} href={`/news?${p.toString()}`} className="rounded-full px-3 py-1.5 text-xs font-semibold" style={sourceFilter===s ? { background: 'var(--fd-maroon)', color: '#fff' } : { background: 'var(--neutral-100)', color: 'var(--neutral-700)', border: '1px solid var(--border-subtle)' }}>
@@ -173,12 +176,12 @@ export default async function NewsPage({
           style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No news links yet. Add article links in Admin / News.
+            No coverage links are published for this filter yet. Check back for GSPN, Clutch, and tournament updates.
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {(latestNews as NewsItem[]).map((item, i) => (
+          {latestNews.map((item: NewsItem, i) => (
             <NewsCard key={item.id} item={item} index={i} />
           ))}
         </div>

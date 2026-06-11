@@ -79,7 +79,7 @@ async function main(): Promise<QualityResult> {
   }
 
   // Remove duplicates (keep oldest)
-  for (const [url, articles] of articlesByUrl) {
+  for (const articles of articlesByUrl.values()) {
     if (articles.length > 1) {
       const [keep, ...remove] = articles
       for (const dup of remove) {
@@ -133,7 +133,7 @@ async function main(): Promise<QualityResult> {
   }
 
   // Remove duplicates (keep oldest)
-  for (const [url, mediaList] of mediaByUrl) {
+  for (const mediaList of mediaByUrl.values()) {
     if (mediaList.length > 1) {
       const [keep, ...remove] = mediaList
       for (const dup of remove) {
