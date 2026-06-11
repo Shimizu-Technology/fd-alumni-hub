@@ -34,12 +34,13 @@ module Api
         def team_params
           raw = params.fetch(:team, params)
           permitted = raw.permit(:tournament_id, :tournamentId, :class_year_label, :classYearLabel, :display_name, :displayName, :division)
-          {
-            tournament_id: permitted[:tournament_id] || permitted[:tournamentId],
-            class_year_label: permitted[:class_year_label] || permitted[:classYearLabel],
-            display_name: permitted[:display_name] || permitted[:displayName],
-            division: permitted[:division]
-          }.compact
+
+          attrs = {}
+          assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
+          assign_param(attrs, permitted, :class_year_label, :class_year_label, :classYearLabel)
+          assign_param(attrs, permitted, :display_name, :display_name, :displayName)
+          assign_param(attrs, permitted, :division, :division)
+          attrs
         end
       end
     end

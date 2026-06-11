@@ -87,15 +87,6 @@ module Api
           attrs
         end
 
-        def assign_param(attrs, permitted, target_key, *source_keys)
-          source_keys.each do |source_key|
-            next unless permitted.key?(source_key)
-
-            attrs[target_key] = permitted[source_key]
-            return
-          end
-        end
-
         def standings_sensitive_change?(incoming)
           incoming.key?(:status) || incoming.key?(:home_score) || incoming.key?(:away_score) ||
             incoming.key?(:home_team_id) || incoming.key?(:away_team_id)
