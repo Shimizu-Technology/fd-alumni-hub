@@ -105,7 +105,7 @@ module ClerkAuthenticatable
     end
 
     sync_whitelisted_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
-  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordNotFound
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique, ActiveRecord::RecordNotFound
     user = User.find_by(clerk_id: clerk_id) || User.find_by("LOWER(email) = ?", email.downcase)
     sync_whitelisted_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
   end

@@ -52,6 +52,19 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "staff", user.role
   end
 
+  test "rejects allowlisted sign in when the email belongs to an inactive user" do
+    User.create!(email: "host@example.com", clerk_id: "old_clerk_host", role: "staff", active: false)
+    AdminWhitelist.create!(email: "host@example.com", role: "staff")
+
+    claims = { "sub" => "new_clerk_host", "email" => "host@example.com", "first_name" => "Host" }
+    with_clerk_claims(claims) do
+      get "/api/v1/admin/tournaments", headers: { "Authorization" => "Bearer clerk_test" }
+    end
+
+    assert_response :unauthorized
+    assert_nil User.find_by(clerk_id: "new_clerk_host")
+  end
+
   test "rejects admin endpoints without auth" do
     get "/api/v1/admin/tournaments"
 

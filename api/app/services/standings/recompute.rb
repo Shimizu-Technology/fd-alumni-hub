@@ -12,15 +12,15 @@ module Standings
 
     def call
       teams = @tournament.teams.to_a
-      final_games = @tournament.games.finals.includes(:home_team, :away_team).to_a
+      final_games = @tournament.games.finals.to_a
 
-      rows = teams.index_with do
-        { wins: 0, losses: 0, points_for: 0, points_against: 0 }
+      rows_by_team_id = teams.to_h do |team|
+        [ team.id, { wins: 0, losses: 0, points_for: 0, points_against: 0 } ]
       end
 
       final_games.each do |game|
-        home = rows[game.home_team]
-        away = rows[game.away_team]
+        home = rows_by_team_id[game.home_team_id]
+        away = rows_by_team_id[game.away_team_id]
         next unless home && away
 
         home[:points_for] += game.home_score
@@ -39,8 +39,8 @@ module Standings
 
       Standing.transaction do
         @tournament.standings.delete_all
-        rows.each do |team, values|
-          @tournament.standings.create!(values.merge(team: team))
+        teams.each do |team|
+          @tournament.standings.create!(rows_by_team_id.fetch(team.id).merge(team: team))
         end
       end
 
