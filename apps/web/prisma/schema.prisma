@@ -182,6 +182,7 @@ enum TournamentStatus {
   upcoming
   live
   completed
+  cancelled
 }
 
 enum GameStatus {

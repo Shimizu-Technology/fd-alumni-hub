@@ -32,12 +32,12 @@ async function ensureTournament(year: number) {
   return prisma.tournament.upsert({
     where: { year_name: { year, name: TOURNAMENT_NAME } },
     update: {
-      status: champion?.status === 'cancelled' ? 'completed' : undefined,
+      status: champion?.status === 'cancelled' ? 'cancelled' : undefined,
     },
     create: {
       year,
       name: TOURNAMENT_NAME,
-      status: champion?.status === 'cancelled' ? 'completed' : 'completed',
+      status: champion?.status === 'cancelled' ? 'cancelled' : 'completed',
       startDate,
       endDate,
     },

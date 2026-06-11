@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 
 export const metadata: Metadata = {
@@ -63,10 +63,10 @@ function ExternalIcon() {
 export default async function SponsorsPage() {
   const tournament = await getActiveTournament()
   const sponsors = tournament
-    ? await db.sponsor.findMany({
+    ? await withDatabaseFallback(() => db.sponsor.findMany({
         where: { tournamentId: tournament.id, active: true },
         orderBy: [{ position: 'asc' }, { tier: 'asc' }, { name: 'asc' }],
-      })
+      }), [])
     : []
 
   const sponsorsByTier = sponsors.reduce<Record<string, typeof sponsors>>((acc, sponsor) => {
