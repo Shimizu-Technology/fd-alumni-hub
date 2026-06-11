@@ -10,6 +10,10 @@ npm run lint
 echo "== Next app build =="
 npm run build
 
+echo "== React/Vite app build =="
+cd "$ROOT_DIR"
+npm --workspace @fd/react-web run build
+
 echo "== Rails API rubocop =="
 cd "$ROOT_DIR/api"
 bin/rubocop --no-color

@@ -14,6 +14,20 @@ module Api
           render json: { errors: record.errors.full_messages }, status: :unprocessable_entity
         end
 
+        def admin_tournament
+          @admin_tournament ||= begin
+            if params[:tournamentId].present?
+              Tournament.find(params[:tournamentId])
+            elsif params[:tournament_id].present?
+              Tournament.find(params[:tournament_id])
+            elsif params[:year].present?
+              Tournament.find_by!(year: params[:year].to_i)
+            else
+              Tournament.active_for_public || Tournament.order(year: :desc, start_date: :desc).first
+            end
+          end
+        end
+
         def assign_param(attrs, permitted, target_key, *source_keys)
           source_keys.each do |source_key|
             next unless permitted.key?(source_key)

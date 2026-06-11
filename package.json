@@ -2,11 +2,15 @@
   "name": "fd-alumni-hub",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "web"
   ],
   "scripts": {
     "dev": "node scripts/with-env.mjs npm --workspace @fd/web run dev",
     "build": "node scripts/with-env.mjs npm --workspace @fd/web run build",
-    "lint": "npm --workspace @fd/web run lint"
+    "lint": "npm --workspace @fd/web run lint",
+    "web:dev": "npm --workspace @fd/react-web run dev",
+    "web:build": "npm --workspace @fd/react-web run build",
+    "web:preview": "npm --workspace @fd/react-web run preview"
   }
 }

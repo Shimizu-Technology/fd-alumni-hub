@@ -10,7 +10,7 @@ The hub is now in a strong **functional beta** state for 2025 replay/testing:
 - Historical content ingest is 96% complete
 - Champion data verified for 2014-2025 (excluding 2016)
 
-Current 2025 score coverage in the historical docs was **14 / 93 games (15.1%)** before the June 2026 refresh.
+Current 2025 score coverage after the June 2026 refresh is **28 / 93 games** in the production/local database snapshots that were verified after PR #30.
 
 ## Update — 2026-06-11
 
@@ -19,7 +19,9 @@ Current 2025 score coverage in the historical docs was **14 / 93 games (15.1%)**
 - Added GSPN opening-weekend 2025 results to `apps/web/scripts/import-2025-gspn-scores.ts`.
 - Fixed Guam timezone formatting and past-game status display in public/admin schedule views.
 - Added `apps/web/.env.example` and made `build` run `prisma generate` before `next build`.
-- Production database imports/migrations were not run from the local harness because production secrets were unavailable.
+- Production Prisma migration/import tasks were later run manually by an operator after PR #30: archive content was imported, the cancelled tournament status migration was applied, and 2025 score coverage increased to 28/93.
+- PR #31 added the Rails API foundation and merged to `main`.
+- The `rails-migration/phase-2-web-parity` branch adds the side-by-side `/web` React/Vite frontend and expanded Rails admin endpoints. Current production remains `apps/web` until staging/cutover are approved.
 
 See `docs/research/public-archive-refresh-2026-06-11.md` for source notes and remaining gaps.
 
@@ -57,7 +59,7 @@ See `docs/research/public-archive-refresh-2026-06-11.md` for source notes and re
 - Improved nav responsiveness + loading skeletons for perceived speed
 - Mobile-first behavior retained
 - **History page enhanced** with:
-  - Champion/runner-up badges (🏆🥈)
+  - Champion/runner-up context
   - Championship scores where available
   - Score coverage progress bars
   - Dynasty watch highlights
@@ -102,7 +104,7 @@ See `docs/research/public-archive-refresh-2026-06-11.md` for source notes and re
 
 ### P0 — Data Completion
 1. **Complete score coverage**
-   - Remaining missing scores: **79 games**
+   - Remaining missing scores: **65 games**
    - Without this, standings/bracket outcomes are partial
 2. **Bracket winner resolution**
    - Winner-slot games (WMP/WGP/WPP) depend on full score entry
@@ -173,7 +175,7 @@ See `docs/research/public-archive-refresh-2026-06-11.md` for source notes and re
 
 ### Gaps Remaining
 1. **2016 Champion** — No tournament data found in GSPN, GuamPDN, or Wayback
-2. **79 missing 2025 scores** — Need partner data or manual entry
+2. **65 missing 2025 scores** — Need partner data or manual entry
 3. **Link URLs** — Awaiting GuamTime (tickets) and Clutch (streams)
 
 ---
