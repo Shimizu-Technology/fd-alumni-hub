@@ -20,6 +20,14 @@ Optional local demo seed:
 FD_SEED_DEMO=1 FD_ADMIN_EMAIL=you@example.com bin/rails db:seed
 ```
 
+## CORS
+
+Local development falls back to localhost frontend origins. Production intentionally has no CORS fallback; set `ALLOWED_ORIGINS` explicitly before deploying the Rails API, for example:
+
+```bash
+ALLOWED_ORIGINS=https://fd-alumni-hub.netlify.app,https://your-custom-domain.com
+```
+
 ## Health checks
 
 ```bash

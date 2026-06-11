@@ -11,14 +11,22 @@ default_local_origins = %w[
   http://127.0.0.1:4173
 ].join(",")
 
-Rails.application.config.middleware.insert_before 0, Rack::Cors do
-  allow do
-    origins ENV.fetch("ALLOWED_ORIGINS", default_local_origins).split(",").map(&:strip)
+# Production should fail closed unless deploy config explicitly declares the
+# frontend origins. This avoids accidentally allowing localhost origins with
+# credentialed CORS on a real API deployment.
+default_origins = Rails.env.production? ? "" : default_local_origins
+allowed_origins = ENV.fetch("ALLOWED_ORIGINS", default_origins).split(",").map(&:strip).reject(&:blank?)
 
-    resource "*",
-      headers: :any,
-      methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
-      expose: [ "Authorization" ],
-      credentials: true
+if allowed_origins.any?
+  Rails.application.config.middleware.insert_before 0, Rack::Cors do
+    allow do
+      origins allowed_origins
+
+      resource "*",
+        headers: :any,
+        methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
+        expose: [ "Authorization" ],
+        credentials: true
+    end
   end
 end
