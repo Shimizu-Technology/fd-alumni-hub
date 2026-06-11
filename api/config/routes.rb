@@ -17,11 +17,25 @@ Rails.application.routes.draw do
       end
 
       namespace :admin do
+        resource :dashboard, only: :show, controller: "dashboard"
         resources :tournaments, only: [ :index, :show, :create, :update ] do
           post :recompute_standings, path: "recompute-standings", on: :member
         end
         resources :teams, only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]
+        resources :articles, only: [ :index, :show, :create, :update, :destroy ]
+        resources :media_assets, path: "media-assets", only: [ :index, :show, :create, :update, :destroy ]
+        resources :sponsors, only: [ :index, :show, :create, :update, :destroy ]
+        resources :content_ingest_items, path: "content-ingest-items", only: [ :index, :show, :create, :update, :destroy ] do
+          post :approve, on: :member
+          post :reject, on: :member
+        end
+        get :links, to: "links#index"
+        get :missing_links, path: "missing-links", to: "links#missing"
+        patch "links/bulk", to: "links#bulk_update"
+        post "links/bulk", to: "links#bulk_update"
+        get :standings, to: "standings#index"
+        post "standings/recompute", to: "standings#recompute"
       end
     end
   end

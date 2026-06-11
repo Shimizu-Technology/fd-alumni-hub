@@ -28,8 +28,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Build
+      - name: Build Next app
         run: npm run build
+
+      - name: Build React/Vite app
+        run: npm --workspace @fd/react-web run build
 
   rails_api:
     name: Rails API

@@ -28,8 +28,8 @@ A phased Rails + React migration has started so the hub can become a repeatable 
 
 ```txt
 apps/web/  Current Next.js app, kept as fallback during migration
-api/       Rails API foundation
-web/       Future React/Vite frontend
+api/       Rails API foundation plus public/admin JSON endpoints
+web/       Side-by-side React/Vite frontend being validated before cutover
 ```
 
 See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-go criteria, and route mapping.
@@ -37,8 +37,10 @@ See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-g
 ## App Scaffold
 - Next.js app lives in `apps/web`
 - Rails API lives in `api`
-- Run current dev app: `npm run dev` (from repo root)
+- Run current production/fallback dev app: `npm run dev` (from repo root)
+- Run Rails-backed React/Vite app: `npm run web:dev` after starting Rails on port `3001`
 - Build current app: `npm run build`
+- Build React/Vite app: `npm run web:build`
 - Full verification gate: `./scripts/gate.sh`
 
 
@@ -75,19 +77,19 @@ See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-g
 - Public: `/api/public/home`, `/api/public/schedule`, `/api/public/standings`
 - Admin: `/api/admin/tournaments`, `/api/admin/games`, `/api/admin/standings`, `/api/admin/articles`, `/api/admin/sponsors`
 
-### Rails API Foundation
+### Rails-backed React/Vite validation
 ```bash
+# terminal 1
 cd api
 cp .env.example .env
 bundle install
 bin/rails db:create db:migrate
 bin/rails server -p 3001
+
+# terminal 2
+cp web/.env.example web/.env.local
+npm run web:dev
 ```
 
-Early Rails public routes:
-- `GET /api/v1/public/home`
-- `GET /api/v1/public/schedule`
-- `GET /api/v1/public/standings`
-- `GET /api/v1/public/articles`
-- `GET /api/v1/public/media-assets`
-- `GET /api/v1/public/sponsors`
+Rails public routes include home, tournaments, schedule, standings, articles, media assets, and sponsors.
+Rails admin routes now cover dashboard, tournaments, teams, games, standings recompute, articles, media assets, sponsors, ingest review, bulk links, and missing-link/data-health checks.

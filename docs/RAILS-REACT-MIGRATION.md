@@ -54,7 +54,7 @@ The current production app remains the fallback for 2026 until we intentionally 
 
 ### Phase 0: Preserve the working Next app
 
-Status: **in progress on `rails-migration/phase-0-1`**
+Status: **complete; merged in PR #31**
 
 - Keep `apps/web` and Netlify production behavior unchanged.
 - Document the migration plan and go/no-go criteria.
@@ -63,7 +63,7 @@ Status: **in progress on `rails-migration/phase-0-1`**
 
 ### Phase 1: Rails API foundation
 
-Status: **started on `rails-migration/phase-0-1`**
+Status: **complete; merged in PR #31**
 
 Scope:
 
@@ -87,10 +87,10 @@ Scope:
 
 ### Phase 2: React/Vite public frontend
 
-Planned:
+Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; not cut over**
 
-- Create `/web` React/Vite app.
-- Port public pages from the current Next app:
+- Created `/web` React/Vite app.
+- Ported public pages from the current Next app:
   - Home
   - Schedule
   - Standings
@@ -99,20 +99,20 @@ Planned:
   - Gallery
   - History
   - Sponsors
-- Reuse the FD maroon/gold design direction and Shimizu frontend standards.
-- Fetch from `/api/v1/public/*` endpoints.
+- Reused the FD maroon/gold design direction and Shimizu frontend standards.
+- Fetches from `/api/v1/public/*` endpoints.
 
 ### Phase 3: Admin workflows
 
-Planned:
+Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; needs staging validation**
 
 - Admin dashboard.
-- Tournament/year management.
 - Teams/divisions editor.
 - Schedule/game editor.
 - Score entry and standings recompute.
 - Sponsor, article, media, and link management.
-- Host-class admin handoff flow.
+- Missing links / data-health view.
+- Ingest review flow for article/media candidates.
 
 ### Phase 4: Data migration and staging validation
 
@@ -153,6 +153,7 @@ Current gate coverage:
 
 - Next app ESLint
 - Next app production build
+- React/Vite app TypeScript build
 - Rails API RuboCop
 - Rails API tests
 
@@ -193,6 +194,13 @@ Current Next backend routes map to Rails like this:
 | `standings-recompute.ts` | `Standings::Recompute` service |
 | admin game update routes | `/api/v1/admin/games` |
 | admin tournament routes | `/api/v1/admin/tournaments` |
+| admin team/division routes | `/api/v1/admin/teams` |
+| admin news/articles | `/api/v1/admin/articles` |
+| admin media/gallery | `/api/v1/admin/media-assets` |
+| admin sponsors | `/api/v1/admin/sponsors` |
+| admin ingest review | `/api/v1/admin/content-ingest-items` |
+| admin bulk ticket/stream links | `/api/v1/admin/links/bulk` |
+| admin missing links/data health | `/api/v1/admin/missing-links` |
 | Clerk/admin allowlist logic | `User`, `AdminWhitelist`, `ClerkAuthenticatable` |
 
 ## Non-goals for the first migration branch

@@ -1,8 +1,8 @@
 # FD Alumni Hub Rails API
 
-Rails API foundation for the phased Rails + React migration.
+Rails API for the phased Rails + React migration.
 
-The current Next.js app in `apps/web` remains the production/fallback app until the Rails + React version reaches parity.
+The current Next.js app in `apps/web` remains the production/fallback app until the side-by-side React/Vite app in `/web` is validated and intentionally cut over.
 
 ## Local setup
 
@@ -62,9 +62,10 @@ Development-only tokens are supported for local API checks when a user already e
 Authorization: Bearer dev_token_you@example.com
 ```
 
-## Admin endpoints in phase 1
+## Admin endpoints
 
 - `GET /api/v1/me`
+- `GET /api/v1/admin/dashboard`
 - `GET /api/v1/admin/tournaments`
 - `POST /api/v1/admin/tournaments`
 - `PATCH /api/v1/admin/tournaments/:id`
@@ -73,8 +74,32 @@ Authorization: Bearer dev_token_you@example.com
 - `POST /api/v1/admin/teams`
 - `PATCH /api/v1/admin/teams/:id`
 - `GET /api/v1/admin/games`
+- `GET /api/v1/admin/games/:id`
 - `POST /api/v1/admin/games`
 - `PATCH /api/v1/admin/games/:id`
+- `GET /api/v1/admin/standings`
+- `POST /api/v1/admin/standings/recompute`
+- `GET /api/v1/admin/articles`
+- `POST /api/v1/admin/articles`
+- `PATCH /api/v1/admin/articles/:id`
+- `DELETE /api/v1/admin/articles/:id`
+- `GET /api/v1/admin/media-assets`
+- `POST /api/v1/admin/media-assets`
+- `PATCH /api/v1/admin/media-assets/:id`
+- `DELETE /api/v1/admin/media-assets/:id`
+- `GET /api/v1/admin/sponsors`
+- `POST /api/v1/admin/sponsors`
+- `PATCH /api/v1/admin/sponsors/:id`
+- `DELETE /api/v1/admin/sponsors/:id`
+- `GET /api/v1/admin/content-ingest-items`
+- `POST /api/v1/admin/content-ingest-items`
+- `PATCH /api/v1/admin/content-ingest-items/:id`
+- `DELETE /api/v1/admin/content-ingest-items/:id`
+- `POST /api/v1/admin/content-ingest-items/:id/approve`
+- `POST /api/v1/admin/content-ingest-items/:id/reject`
+- `GET /api/v1/admin/links`
+- `PATCH /api/v1/admin/links/bulk`
+- `GET /api/v1/admin/missing-links`
 
 ## Data safety
 
