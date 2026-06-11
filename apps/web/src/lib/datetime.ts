@@ -7,6 +7,74 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 })
 
+const guamDatePartsFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: GUAM_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const guamOffsetFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: GUAM_TIME_ZONE,
+  timeZoneName: 'longOffset',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+})
+
+function numericPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes) {
+  const value = parts.find((part) => part.type === type)?.value
+  if (!value) throw new Error(`Unable to read ${type} for ${GUAM_TIME_ZONE}`)
+  return Number(value)
+}
+
+function guamDateParts(value: Date | string) {
+  const parts = guamDatePartsFormatter.formatToParts(new Date(value))
+  return {
+    year: numericPart(parts, 'year'),
+    month: numericPart(parts, 'month'),
+    day: numericPart(parts, 'day'),
+  }
+}
+
+function guamOffsetMs(value: Date) {
+  const timeZoneName = guamOffsetFormatter
+    .formatToParts(value)
+    .find((part) => part.type === 'timeZoneName')?.value
+
+  if (!timeZoneName || timeZoneName === 'GMT' || timeZoneName === 'UTC') return 0
+
+  const match = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(timeZoneName)
+  if (!match) throw new Error(`Unable to parse ${GUAM_TIME_ZONE} offset: ${timeZoneName}`)
+
+  const sign = match[1] === '-' ? -1 : 1
+  const hours = Number(match[2])
+  const minutes = Number(match[3] ?? '0')
+  return sign * (hours * 60 + minutes) * 60_000
+}
+
+function guamLocalDateTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  millisecond: number,
+) {
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond))
+  const firstOffset = guamOffsetMs(utcGuess)
+  const firstResult = new Date(utcGuess.getTime() - firstOffset)
+  const adjustedOffset = guamOffsetMs(firstResult)
+
+  return adjustedOffset === firstOffset
+    ? firstResult
+    : new Date(utcGuess.getTime() - adjustedOffset)
+}
+
 export function formatGuamTime(value: Date | string) {
   return new Date(value).toLocaleTimeString('en-US', {
     timeZone: GUAM_TIME_ZONE,
@@ -40,24 +108,16 @@ export function guamDayLabel(value: Date | string) {
 }
 
 export function guamDateKey(value: Date | string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: GUAM_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(value))
-
-  const year = parts.find((p) => p.type === 'year')?.value
-  const month = parts.find((p) => p.type === 'month')?.value
-  const day = parts.find((p) => p.type === 'day')?.value
-  return `${year}-${month}-${day}`
+  const { year, month, day } = guamDateParts(value)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 export function guamDayRange(value = new Date()) {
-  const key = guamDateKey(value)
+  const { year, month, day } = guamDateParts(value)
+
   return {
-    start: new Date(`${key}T00:00:00+10:00`),
-    end: new Date(`${key}T23:59:59.999+10:00`),
+    start: guamLocalDateTimeToUtc(year, month, day, 0, 0, 0, 0),
+    end: guamLocalDateTimeToUtc(year, month, day, 23, 59, 59, 999),
   }
 }
 

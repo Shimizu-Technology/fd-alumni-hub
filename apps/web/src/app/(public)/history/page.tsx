@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import {
   STATIC_TOURNAMENT_YEARS,
   archiveArticlesForYear,
@@ -123,7 +123,7 @@ function yearHref(path: string, tournamentId: string | null, year: number) {
 }
 
 export default async function HistoryPage() {
-  const tournaments = await db.tournament.findMany({
+  const tournaments = await withDatabaseFallback(() => db.tournament.findMany({
     orderBy: [{ year: 'desc' }, { startDate: 'desc' }],
     include: {
       articles: { select: { url: true } },
@@ -142,7 +142,7 @@ export default async function HistoryPage() {
       _count: { select: { games: true, media: true } },
     },
     take: 50,
-  })
+  }), [])
 
   const tournamentByYear = new Map(tournaments.map((t) => [t.year, t]))
   const years = Array.from(new Set([

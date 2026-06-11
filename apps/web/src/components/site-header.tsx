@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SignInButton, SignedIn, SignedOut } from '@clerk/nextjs'
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const links = [
   { label: 'Schedule', href: '/schedule' },
@@ -59,12 +59,22 @@ export function SiteHeader() {
   const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const previousPathname = useRef(pathname)
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
+
+  // Close the mobile drawer on every route change, including browser back/forward.
+  useEffect(() => {
+    if (previousPathname.current === pathname) return
+    previousPathname.current = pathname
+
+    const frame = requestAnimationFrame(() => setDrawerOpen(false))
+    return () => cancelAnimationFrame(frame)
+  }, [pathname])
 
   // Prevent body scroll when drawer open
   useEffect(() => {

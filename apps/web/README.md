@@ -13,7 +13,7 @@ npm --workspace @fd/web run import:archive-content # optional researched archive
 npm run dev
 ```
 
-Required environment values live in `apps/web/.env.example`.
+Required production/admin environment values live in `apps/web/.env.example`. Without `DATABASE_URL`, local dev falls back to a public archive-preview mode instead of crashing; live schedule/admin data still requires the database.
 
 ## Build
 

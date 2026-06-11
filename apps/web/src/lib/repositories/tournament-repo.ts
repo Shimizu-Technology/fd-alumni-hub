@@ -1,30 +1,35 @@
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 
 export async function getHomeTournamentContext() {
-  const [upcomingOrLive, latestCompletedWithGames] = await Promise.all([
-    db.tournament.findFirst({
-      where: { status: { in: ['live', 'upcoming'] } },
-      orderBy: [{ year: 'desc' }],
-    }),
-    db.tournament.findFirst({
-      where: {
-        status: 'completed',
-        games: { some: {} },
-      },
-      orderBy: [{ year: 'desc' }],
-    }),
-  ])
+  return withDatabaseFallback(async () => {
+    const [upcomingOrLive, latestCompletedWithGames] = await Promise.all([
+      db.tournament.findFirst({
+        where: { status: { in: ['live', 'upcoming'] } },
+        orderBy: [{ year: 'desc' }],
+      }),
+      db.tournament.findFirst({
+        where: {
+          status: 'completed',
+          games: { some: {} },
+        },
+        orderBy: [{ year: 'desc' }],
+      }),
+    ])
 
-  return { upcomingOrLive, latestCompletedWithGames }
+    return { upcomingOrLive, latestCompletedWithGames }
+  }, { upcomingOrLive: null, latestCompletedWithGames: null })
 }
 
 export async function getActiveTournament() {
   const { upcomingOrLive, latestCompletedWithGames } = await getHomeTournamentContext()
 
   const upcomingOrLiveWithGames = upcomingOrLive
-    ? await db.tournament.findFirst({
-        where: { id: upcomingOrLive.id, games: { some: {} } },
-      })
+    ? await withDatabaseFallback(
+        () => db.tournament.findFirst({
+          where: { id: upcomingOrLive.id, games: { some: {} } },
+        }),
+        null,
+      )
     : null
 
   if (upcomingOrLiveWithGames) return upcomingOrLiveWithGames
@@ -33,5 +38,5 @@ export async function getActiveTournament() {
 }
 
 export async function getTournamentByYear(year: number) {
-  return db.tournament.findFirst({ where: { year } })
+  return withDatabaseFallback(() => db.tournament.findFirst({ where: { year } }), null)
 }

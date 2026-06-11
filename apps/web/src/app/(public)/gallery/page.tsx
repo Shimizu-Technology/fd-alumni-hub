@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { archiveMediaForYear } from '@/lib/historical-archive'
 import Link from 'next/link'
@@ -27,20 +27,20 @@ export default async function GalleryPage({
   const yearFilter = params.year ? Number(params.year) : null
 
   const tournament = tournamentId
-    ? await db.tournament.findUnique({ where: { id: tournamentId } })
+    ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
     : yearFilter
-      ? await db.tournament.findFirst({ where: { year: yearFilter } })
+      ? await withDatabaseFallback(() => db.tournament.findFirst({ where: { year: yearFilter } }), null)
       : await getActiveTournament()
 
-  const displayYear = yearFilter ?? tournament?.year ?? null
+  const displayYear = yearFilter ?? tournament?.year ?? 2025
   const where = tournament ? { tournamentId: tournament.id } : undefined
 
   const dbItems = where
-    ? await db.mediaAsset.findMany({
+    ? await withDatabaseFallback(() => db.mediaAsset.findMany({
         where,
         orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
         take: 300,
-      })
+      }), [])
     : []
 
   const staticItems: GalleryItem[] = displayYear
@@ -74,7 +74,7 @@ export default async function GalleryPage({
       <div>
         <h1 className="text-2xl font-bold md:text-3xl" style={{ color: 'var(--fd-maroon)' }}>Gallery</h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-          {tournament ? `${tournament.name} ${tournament.year}` : displayYear ? `FD Alumni Basketball Tournament ${displayYear}` : 'No active tournament loaded yet.'}
+          {tournament ? `${tournament.name} ${tournament.year}` : displayYear ? `FD Alumni Basketball Tournament ${displayYear}` : 'Tournament photos and media will appear here when available.'}
         </p>
         {sources.length > 1 ? (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -114,7 +114,7 @@ export default async function GalleryPage({
 
       {items.length === 0 ? (
         <div className="rounded-xl border bg-white p-8 text-sm text-neutral-600" style={{ borderColor: 'var(--border-subtle)' }}>
-          No media uploaded yet for this tournament.
+          No public media has been published for this tournament yet.
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

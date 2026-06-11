@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { archiveArticlesForYear } from '@/lib/historical-archive'
 import { mergeArchiveArticles, type FeedArticle } from '@/lib/services/public-feed'
@@ -108,19 +108,19 @@ export default async function NewsPage({
   const yearFilter = params.year ? Number(params.year) : null
 
   const tournament = tournamentId
-    ? await db.tournament.findUnique({ where: { id: tournamentId } })
+    ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
     : yearFilter
-      ? await db.tournament.findFirst({ where: { year: yearFilter } })
+      ? await withDatabaseFallback(() => db.tournament.findFirst({ where: { year: yearFilter } }), null)
       : await getActiveTournament()
 
-  const displayYear = yearFilter ?? tournament?.year ?? null
+  const displayYear = yearFilter ?? tournament?.year ?? 2025
 
   const dbNews = tournament
-    ? await db.articleLink.findMany({
+    ? await withDatabaseFallback(() => db.articleLink.findMany({
         where: { tournamentId: tournament.id },
         orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
         take: 150,
-      })
+      }), [])
     : []
 
   const mergedNews = displayYear ? mergeArchiveArticles(dbNews, displayYear) : dbNews
@@ -144,7 +144,7 @@ export default async function NewsPage({
           News
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-          {tournament ? `${tournament.name} ${tournament.year}` : displayYear ? `FD Alumni Basketball Tournament ${displayYear}` : 'No active tournament loaded yet.'}
+          {tournament ? `${tournament.name} ${tournament.year}` : displayYear ? `FD Alumni Basketball Tournament ${displayYear}` : 'Tournament coverage will appear here when available.'}
         </p>
         {sources.length > 1 ? (
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -172,7 +172,7 @@ export default async function NewsPage({
           style={{ borderColor: 'var(--border-subtle)', boxShadow: 'var(--shadow-card)' }}
         >
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No news links yet. Add article links in Admin / News.
+            No coverage links are published for this filter yet. Check back for GSPN, Clutch, and tournament updates.
           </p>
         </div>
       ) : (

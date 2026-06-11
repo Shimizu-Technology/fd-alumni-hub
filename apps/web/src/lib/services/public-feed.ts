@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { db } from '@/lib/db'
+import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import { resolveGameDivision } from '@/lib/divisions'
 import { archiveArticlesForYear } from '@/lib/historical-archive'
@@ -71,13 +71,13 @@ export async function getHomeFeed(): Promise<HomeFeed> {
       latestResultsTournament: context.latestCompletedWithGames,
       todayGames: [] as HomeFeed['todayGames'],
       liveGames: [] as HomeFeed['liveGames'],
-      latestNews: [],
+      latestNews: mergeArchiveArticles([], 2025, 5),
     }
   }
 
   const { start, end } = guamDayRange()
 
-  const [todayGames, liveGames, latestNews] = await Promise.all([
+  const [todayGames, liveGames, latestNews] = await withDatabaseFallback(() => Promise.all([
     db.game.findMany({
       where: { tournamentId: tournament.id, startTime: { gte: start, lte: end } },
       include: { homeTeam: true, awayTeam: true },
@@ -95,7 +95,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
       take: 25,
     }),
-  ])
+  ]), [[], [], []] as const)
 
   return {
     tournament,
@@ -140,7 +140,7 @@ export async function getSchedule(
   phaseFilter?: 'pool' | 'playoff' | 'fatherson' | null,
 ): Promise<ScheduleFeed> {
   const tournament = tournamentId
-    ? await db.tournament.findUnique({ where: { id: tournamentId } })
+    ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
     : await getActiveTournament()
   if (!tournament) return { tournament: null, games: [], divisions: [], phases: [] }
 
@@ -172,19 +172,19 @@ export async function getSchedule(
 
   if (andFilters.length > 0) where.AND = andFilters
 
-  const games = await db.game.findMany({
+  const games = await withDatabaseFallback(() => db.game.findMany({
     where,
     include: { homeTeam: true, awayTeam: true },
     orderBy: { startTime: 'asc' },
     take: 500,
-  })
+  }), [] as ScheduleGame[])
 
   // Collect distinct divisions from this tournament's games
   const allGames = divisionFilter
-    ? await db.game.findMany({
+    ? await withDatabaseFallback(() => db.game.findMany({
         where: { tournamentId: tournament.id },
         select: { division: true, homeTeam: { select: { division: true } } },
-      })
+      }), [])
     : games.map(g => ({ division: g.division, homeTeam: { division: g.homeTeam.division } }))
 
   const divSet = new Set<string>()
@@ -194,10 +194,10 @@ export async function getSchedule(
     if (resolved) divSet.add(resolved)
   }
 
-  const phaseRows = await db.game.findMany({
+  const phaseRows = await withDatabaseFallback(() => db.game.findMany({
     where: { tournamentId: tournament.id },
     select: { notes: true, bracketCode: true, homeTeam: { select: { displayName: true } }, awayTeam: { select: { displayName: true } } },
-  })
+  }), [])
   for (const g of phaseRows) {
     if (g.notes?.includes('phase=pool')) phaseSet.add('pool')
     if (g.notes?.includes('phase=playoff')) phaseSet.add('playoff')
@@ -235,7 +235,7 @@ export async function getStandings(
   divisionFilter?: string | null,
 ): Promise<StandingsFeed> {
   const tournament = tournamentId
-    ? await db.tournament.findUnique({ where: { id: tournamentId } })
+    ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
     : await getActiveTournament()
   if (!tournament) return {
     tournament: null,
@@ -245,10 +245,10 @@ export async function getStandings(
   }
 
   // Get all teams' divisions for the tab list
-  const allTeams = await db.team.findMany({
+  const allTeams = await withDatabaseFallback(() => db.team.findMany({
     where: { tournamentId: tournament.id },
     select: { division: true },
-  })
+  }), [])
   const divSet = new Set<string>()
   for (const t of allTeams) {
     if (t.division) divSet.add(t.division)
@@ -258,7 +258,7 @@ export async function getStandings(
   const teamWhere: Prisma.TeamWhereInput = { tournamentId: tournament.id }
   if (divisionFilter) teamWhere.division = divisionFilter
 
-  const [standings, totalGames, scoredGames] = await Promise.all([
+  const [standings, totalGames, scoredGames] = await withDatabaseFallback(() => Promise.all([
     db.standing.findMany({
       where: {
         tournamentId: tournament.id,
@@ -276,7 +276,7 @@ export async function getStandings(
         awayScore: { not: null },
       },
     }),
-  ])
+  ]), [[], 0, 0] as const)
 
   const percent = totalGames ? Math.round((scoredGames / totalGames) * 1000) / 10 : 0
 

@@ -107,7 +107,7 @@ function GameRow({ game }: { game: ScheduleGame }) {
   const isFinal = game.status === 'final'
   const hasRecordedScore = game.homeScore != null && game.awayScore != null
   const hasScore = isFinal && hasRecordedScore
-  const displayStatus: DisplayStatus = game.status !== 'live' && !hasRecordedScore && isPastGuamGame(game.startTime)
+  const displayStatus: DisplayStatus = game.status === 'scheduled' && !hasRecordedScore && isPastGuamGame(game.startTime)
     ? 'pending'
     : game.status
   const effectiveDivision = resolveGameDivision(game.division, game.homeTeam.division)
@@ -342,7 +342,7 @@ export default async function SchedulePage({
               )}
             </div>
             <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-              {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
+              {tournament ? `${tournament.name} ${tournament.year}` : 'Tournament schedule will appear here once published.'}
             </p>
           </div>
 
@@ -379,7 +379,7 @@ export default async function SchedulePage({
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
             {divisionFilter || phaseFilter
               ? `No games found for current filters${divisionFilter ? ` (${divisionFilter})` : ''}${phaseFilter ? ` (${phaseFilter})` : ''}.`
-              : 'No games yet. Seed data or add games from admin.'}
+              : 'No games are published yet. Check back for the tournament schedule.'}
           </p>
           {divisionFilter && (
             <Link

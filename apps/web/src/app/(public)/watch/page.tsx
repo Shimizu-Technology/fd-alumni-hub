@@ -141,7 +141,7 @@ export default async function WatchPage({
           Watch
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--neutral-500)' }}>
-          {tournament ? `${tournament.name} ${tournament.year}` : 'No active tournament loaded yet.'}
+          {tournament ? `${tournament.name} ${tournament.year}` : 'Stream links and replays will appear here when available.'}
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default async function WatchPage({
             <PlayIcon size={28} />
           </div>
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No stream links yet. Add stream URLs to games from the admin panel.
+            No Clutch stream links are published yet. Check back closer to game time for live games and replays.
           </p>
         </div>
       ) : (
