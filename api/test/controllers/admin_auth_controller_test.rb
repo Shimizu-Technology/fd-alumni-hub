@@ -79,6 +79,23 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "clerk_host", user.reload.clerk_id
   end
 
+  test "does not recover to an arbitrary nil-clerk user when clerk-matched sync fails" do
+    decoy = User.create!(email: "decoy@example.com", role: "staff")
+    user = User.create!(email: "host@example.com", clerk_id: "clerk_host", role: "staff")
+    claims = { "sub" => "clerk_host", "email" => "renamed-host@example.com", "first_name" => "Host" }
+
+    with_update_failure_for(user) do
+      with_clerk_claims(claims) do
+        get "/api/v1/me", headers: { "Authorization" => "Bearer clerk_test" }
+      end
+    end
+
+    assert_response :success
+    payload = JSON.parse(response.body).fetch("user")
+    assert_equal user.id.to_s, payload["id"]
+    assert_not_equal decoy.id.to_s, payload["id"]
+  end
+
   test "rejects admin endpoints without auth" do
     get "/api/v1/admin/tournaments"
 
@@ -96,16 +113,34 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
   end
 
   def with_update_race_for(user, clerk_id)
+    failure = lambda do |record, attrs, simulated|
+      if !simulated.value && record.id == user.id && attrs[:clerk_id] == clerk_id
+        simulated.value = true
+        User.where(id: record.id).update_all(clerk_id: clerk_id, updated_at: Time.current)
+        raise ActiveRecord::RecordInvalid.new(record)
+      end
+    end
+
+    stub_user_update(failure) { yield }
+  end
+
+  def with_update_failure_for(user)
+    failure = lambda do |record, _attrs, simulated|
+      if !simulated.value && record.id == user.id
+        simulated.value = true
+        raise ActiveRecord::RecordInvalid.new(record)
+      end
+    end
+
+    stub_user_update(failure) { yield }
+  end
+
+  def stub_user_update(failure)
     original_update = User.instance_method(:update!)
-    simulated = false
+    simulated = Struct.new(:value).new(false)
 
     User.define_method(:update!) do |attrs|
-      if !simulated && id == user.id && attrs[:clerk_id] == clerk_id
-        simulated = true
-        User.where(id: id).update_all(clerk_id: clerk_id, updated_at: Time.current)
-        raise ActiveRecord::RecordInvalid.new(self)
-      end
-
+      failure.call(self, attrs, simulated)
       original_update.bind_call(self, attrs)
     end
 

@@ -99,7 +99,25 @@ module ClerkAuthenticatable
     update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
     user
   rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-    User.active.find_by(clerk_id: clerk_id) || User.active.find_by("LOWER(email) = ?", email.to_s.downcase)
+    recover_synced_user(user, email, clerk_id)
+  end
+
+  def recover_synced_user(user, email, clerk_id)
+    by_clerk_id = User.active.find_by(clerk_id: clerk_id) if clerk_id.present?
+    return by_clerk_id if by_clerk_id
+
+    reloaded_user = reload_user(user)
+    return reloaded_user if reloaded_user&.active?
+
+    return nil if email.blank?
+
+    User.active.find_by("LOWER(email) = ?", email.downcase)
+  end
+
+  def reload_user(user)
+    user&.reload
+  rescue ActiveRecord::RecordNotFound
+    nil
   end
 
   def create_whitelisted_user(clerk_id:, email:, first_name:, last_name:, role:)
