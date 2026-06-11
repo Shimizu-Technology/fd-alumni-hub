@@ -35,6 +35,7 @@ module Api
         def recompute_standings
           tournament = Tournament.find(params[:id])
           result = Standings::Recompute.call(tournament)
+          tournament.standings.reset
 
           render json: {
             tournament: tournament.api_json,

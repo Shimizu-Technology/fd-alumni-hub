@@ -69,15 +69,13 @@ module ClerkAuthenticatable
 
     user = User.active.find_by(clerk_id: clerk_id)
     if user
-      update_user_from_claims(user, email, first_name, last_name)
-      return user
+      return sync_existing_user(user, email, first_name, last_name)
     end
 
     if email.present?
       user = User.active.find_by("LOWER(email) = ?", email.downcase)
       if user
-        update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id)
-        return user
+        return sync_existing_user(user, email, first_name, last_name, clerk_id: clerk_id)
       end
 
       whitelist = AdminWhitelist.active_for_email(email)
@@ -93,6 +91,15 @@ module ClerkAuthenticatable
     end
 
     nil
+  end
+
+  def sync_existing_user(user, email, first_name, last_name, clerk_id: nil, role: nil)
+    return nil unless user&.active?
+
+    update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
+    user
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+    User.active.find_by(clerk_id: clerk_id) || User.active.find_by("LOWER(email) = ?", email.to_s.downcase)
   end
 
   def create_whitelisted_user(clerk_id:, email:, first_name:, last_name:, role:)
@@ -111,10 +118,7 @@ module ClerkAuthenticatable
   end
 
   def sync_whitelisted_user(user, email, first_name, last_name, clerk_id:, role:)
-    return nil unless user&.active?
-
-    update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
-    user
+    sync_existing_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
   end
 
   def update_user_from_claims(user, email, first_name, last_name, clerk_id: nil, role: nil)

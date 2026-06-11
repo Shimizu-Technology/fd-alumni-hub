@@ -65,6 +65,20 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     assert_nil User.find_by(clerk_id: "new_clerk_host")
   end
 
+  test "recovers when concurrent sign in already stamped clerk id on email matched user" do
+    user = User.create!(email: "host@example.com", role: "staff")
+    claims = { "sub" => "clerk_host", "email" => "host@example.com", "first_name" => "Host" }
+
+    with_update_race_for(user, "clerk_host") do
+      with_clerk_claims(claims) do
+        get "/api/v1/me", headers: { "Authorization" => "Bearer clerk_test" }
+      end
+    end
+
+    assert_response :success
+    assert_equal "clerk_host", user.reload.clerk_id
+  end
+
   test "rejects admin endpoints without auth" do
     get "/api/v1/admin/tournaments"
 
@@ -79,5 +93,24 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     yield
   ensure
     ClerkAuth.define_singleton_method(:verify) { |token| original_verify.call(token) }
+  end
+
+  def with_update_race_for(user, clerk_id)
+    original_update = User.instance_method(:update!)
+    simulated = false
+
+    User.define_method(:update!) do |attrs|
+      if !simulated && id == user.id && attrs[:clerk_id] == clerk_id
+        simulated = true
+        User.where(id: id).update_all(clerk_id: clerk_id, updated_at: Time.current)
+        raise ActiveRecord::RecordInvalid.new(self)
+      end
+
+      original_update.bind_call(self, attrs)
+    end
+
+    yield
+  ensure
+    User.define_method(:update!, original_update)
   end
 end
