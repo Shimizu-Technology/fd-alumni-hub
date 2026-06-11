@@ -62,8 +62,16 @@ module Api
 
         def reject
           item = ContentIngestItem.find(params[:id])
-          item.update!(status: "rejected")
-          render_record item, key: :ingestItem
+
+          item.with_lock do
+            if item.status == "approved"
+              return render json: { errors: [ "Approved ingest item cannot be rejected" ] }, status: :conflict
+            end
+
+            item.update!(status: "rejected") unless item.status == "rejected"
+          end
+
+          render_record item.reload, key: :ingestItem
         end
 
         private
@@ -119,7 +127,6 @@ module Api
             :tournament_id,
             :tournamentId,
             :kind,
-            :status,
             :source,
             :title,
             :url,
@@ -127,15 +134,12 @@ module Api
             :imageUrl,
             :excerpt,
             :confidence,
-            :notes,
-            :imported_to_id,
-            :importedToId
+            :notes
           )
 
           attrs = {}
           assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
           assign_param(attrs, permitted, :kind, :kind)
-          assign_param(attrs, permitted, :status, :status)
           assign_param(attrs, permitted, :source, :source)
           assign_param(attrs, permitted, :title, :title)
           assign_param(attrs, permitted, :url, :url)
@@ -143,7 +147,6 @@ module Api
           assign_param(attrs, permitted, :excerpt, :excerpt)
           assign_param(attrs, permitted, :confidence, :confidence)
           assign_param(attrs, permitted, :notes, :notes)
-          assign_param(attrs, permitted, :imported_to_id, :imported_to_id, :importedToId)
           attrs
         end
       end

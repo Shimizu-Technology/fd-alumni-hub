@@ -96,6 +96,50 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, summary["missingScores"]
   end
 
+  test "creating ingest item ignores status and imported record overrides" do
+    post "/api/v1/admin/content-ingest-items",
+      params: {
+        ingestItem: {
+          tournamentId: @tournament.id.to_s,
+          kind: "article",
+          status: "approved",
+          source: "GSPN",
+          title: "Bypass attempt",
+          url: "https://example.com/bypass-create",
+          importedToId: "12345"
+        }
+      },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :created
+    item = ContentIngestItem.find(JSON.parse(response.body).dig("ingestItem", "id"))
+    assert_equal "pending", item.status
+    assert_nil item.imported_to_id
+  end
+
+  test "updating ingest item ignores status and imported record overrides" do
+    item = @tournament.content_ingest_items.create!(
+      kind: "article",
+      status: "pending",
+      source: "GSPN",
+      title: "Pending candidate",
+      url: "https://example.com/pending-candidate"
+    )
+
+    patch "/api/v1/admin/content-ingest-items/#{item.id}",
+      params: { ingestItem: { title: "Updated candidate", status: "approved", importedToId: "12345" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    item.reload
+    assert_equal "Updated candidate", item.title
+    assert_equal "pending", item.status
+    assert_nil item.imported_to_id
+    assert_not ArticleLink.exists?(tournament: @tournament, url: item.url)
+  end
+
   test "approving article ingest item imports article link" do
     item = @tournament.content_ingest_items.create!(
       kind: "article",
@@ -137,6 +181,29 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     assert_equal "approved", item.status
     assert_equal article.id.to_s, item.imported_to_id
     assert_equal article.id.to_s, JSON.parse(response.body).dig("imported", "id")
+  end
+
+  test "approved ingest item cannot be rejected" do
+    article = @tournament.article_links.create!(
+      title: "Approved import",
+      source: "GSPN",
+      url: "https://example.com/approved-import"
+    )
+    item = @tournament.content_ingest_items.create!(
+      kind: "article",
+      status: "approved",
+      source: "GSPN",
+      title: "Approved import",
+      url: article.url,
+      imported_to_id: article.id.to_s
+    )
+
+    post "/api/v1/admin/content-ingest-items/#{item.id}/reject", headers: auth_headers
+
+    assert_response :conflict
+    item.reload
+    assert_equal "approved", item.status
+    assert_equal article.id.to_s, item.imported_to_id
   end
 
   test "approved ingest item with stale import reference returns conflict" do
