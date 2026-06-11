@@ -25,7 +25,10 @@ export default async function GalleryPage({
   const params = await searchParams
   const tournamentId = params.tournamentId ?? undefined
   const sourceFilter = params.source ?? null
-  const yearFilter = params.year ? Number(params.year) : null
+  const parsedYear = params.year ? Number(params.year) : null
+  const yearFilter = parsedYear && Number.isInteger(parsedYear) && parsedYear >= 1900 && parsedYear <= 2200
+    ? parsedYear
+    : null
 
   const tournament = tournamentId
     ? await withDatabaseFallback(() => db.tournament.findUnique({ where: { id: tournamentId } }), null)
