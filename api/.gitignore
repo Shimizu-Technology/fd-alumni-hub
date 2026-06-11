@@ -1,0 +1,27 @@
+# Rails local/runtime files
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/tmp/pids/*
+!/tmp/pids/.keep
+/tmp/storage/*
+!/tmp/storage/.keep
+/storage/*
+!/storage/.keep
+
+# Secrets and local env
+/config/master.key
+/config/credentials/*.key
+.env*
+!.env.example
+/.kamal/secrets
+
+# Bundler/local caches
+/.bundle
+/vendor/bundle
+.ruby-lsp
+.byebug_history
+
+# OS/editor
+.DS_Store

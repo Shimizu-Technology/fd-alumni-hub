@@ -20,17 +20,26 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 - `docs/DATA-MODEL-V1.md` — core entities for MVP
 - `docs/OUTREACH-DRAFTS.md` — collaboration messages for Zay/GSPN/GuamTime
 
-## Suggested Stack (MVP)
-- Next.js + TypeScript
-- Postgres (or Supabase) for schedule/standings content
-- Admin auth for score/schedule updates
+## Current + Migration Stack
 
+The current production/fallback app remains the Next.js app in `apps/web`.
 
+A phased Rails + React migration has started so the hub can become a repeatable tournament platform for 2026, 2027, and beyond:
+
+```txt
+apps/web/  Current Next.js app, kept as fallback during migration
+api/       Rails API foundation
+web/       Future React/Vite frontend
+```
+
+See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-go criteria, and route mapping.
 
 ## App Scaffold
 - Next.js app lives in `apps/web`
-- Run dev: `npm run dev` (from repo root)
-- Build: `npm run build`
+- Rails API lives in `api`
+- Run current dev app: `npm run dev` (from repo root)
+- Build current app: `npm run build`
+- Full verification gate: `./scripts/gate.sh`
 
 
 ## Auth + Data Foundation
@@ -62,6 +71,23 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
       -d '{"email":"you@example.com"}'`
 6. Sign in via Clerk and visit `/admin`
 
-### Foundation APIs
+### Current Next Foundation APIs
 - Public: `/api/public/home`, `/api/public/schedule`, `/api/public/standings`
 - Admin: `/api/admin/tournaments`, `/api/admin/games`, `/api/admin/standings`, `/api/admin/articles`, `/api/admin/sponsors`
+
+### Rails API Foundation
+```bash
+cd api
+cp .env.example .env
+bundle install
+bin/rails db:create db:migrate
+bin/rails server -p 3001
+```
+
+Early Rails public routes:
+- `GET /api/v1/public/home`
+- `GET /api/v1/public/schedule`
+- `GET /api/v1/public/standings`
+- `GET /api/v1/public/articles`
+- `GET /api/v1/public/media-assets`
+- `GET /api/v1/public/sponsors`
