@@ -12,7 +12,7 @@ class Game < ApplicationRecord
   validate :teams_belong_to_tournament
 
   scope :ordered, -> { order(:start_time, :id) }
-  scope :scored, -> { where.not(home_score: nil, away_score: nil) }
+  scope :scored, -> { where.not(home_score: nil).where.not(away_score: nil) }
   scope :finals, -> { where(status: "final").scored }
 
   def resolved_division

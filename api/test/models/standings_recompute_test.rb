@@ -31,6 +31,16 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
       start_time: Time.zone.local(2026, 7, 5, 18, 0),
       status: "scheduled"
     )
+    tournament.games.create!(
+      home_team: class_2017,
+      away_team: class_2016,
+      start_time: Time.zone.local(2026, 7, 6, 18, 0),
+      status: "final",
+      home_score: 80,
+      away_score: nil
+    )
+
+    assert_equal 1, tournament.games.scored.count
 
     result = Standings::Recompute.call(tournament)
 
