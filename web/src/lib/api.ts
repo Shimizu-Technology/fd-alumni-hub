@@ -55,11 +55,39 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const payload = text ? JSON.parse(text) : null
 
   if (!response.ok) {
-    const message = payload?.error || payload?.errors?.join?.(', ') || response.statusText || 'Request failed'
-    throw new ApiError(message, response.status, payload)
+    throw new ApiError(apiErrorMessage(payload, response.statusText || 'Request failed'), response.status, payload)
   }
 
   return payload as T
+}
+
+function apiErrorMessage(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== 'object') return fallback
+
+  const body = payload as { error?: unknown; errors?: unknown }
+  if (typeof body.error === 'string' && body.error.trim()) return body.error
+
+  if (Array.isArray(body.errors)) {
+    const messages = body.errors.flatMap(errorEntryMessages)
+    if (messages.length > 0) return messages.join(', ')
+  }
+
+  return fallback
+}
+
+function errorEntryMessages(entry: unknown): string[] {
+  if (typeof entry === 'string') return [entry]
+  if (!entry || typeof entry !== 'object') return []
+
+  const item = entry as { id?: unknown; error?: unknown; errors?: unknown }
+  const prefix = item.id === undefined || item.id === null ? '' : `Record ${item.id}: `
+
+  if (typeof item.error === 'string') return [prefix + item.error]
+  if (Array.isArray(item.errors)) {
+    return item.errors.filter((message): message is string => typeof message === 'string').map((message) => prefix + message)
+  }
+
+  return []
 }
 
 function query(params: Record<string, string | number | null | undefined>) {

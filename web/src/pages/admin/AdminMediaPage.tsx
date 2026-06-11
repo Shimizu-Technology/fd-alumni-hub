@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { toDateInputValue } from '../../lib/datetime'
 import type { MediaAsset, Tournament } from '../../lib/types'
@@ -54,22 +55,35 @@ function CreateMediaPanel({ tournaments, selectedTournamentId, onSaved }: { tour
 function MediaRow({ asset, onSaved }: { asset: MediaAsset; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<MediaForm>({ source: asset.source, title: asset.title, imageUrl: asset.imageUrl, articleUrl: asset.articleUrl || '', caption: asset.caption || '', tags: asset.tags || '', takenAt: toDateInputValue(asset.takenAt) })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [mutationError, setMutationError] = useState('')
   const save = async () => {
     setSaving(true)
+    setMutationError('')
     try {
       await api.adminUpdateMedia(asset.id, cleanMedia(form))
       await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to save media asset'))
     } finally {
       setSaving(false)
     }
   }
   const remove = async () => {
     if (!confirm('Delete this media asset?')) return
-    await api.adminDeleteMedia(asset.id)
-    await onSaved()
+    setDeleting(true)
+    setMutationError('')
+    try {
+      await api.adminDeleteMedia(asset.id)
+      await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to delete media asset'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
-  return <article className="admin-row-card media-admin-row">{asset.imageUrl && <img src={asset.imageUrl} alt="" loading="lazy" />}<MediaFields form={form} setForm={setForm} /><div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove}>Delete</button></div></article>
+  return <article className="admin-row-card media-admin-row">{asset.imageUrl && <img src={asset.imageUrl} alt="" loading="lazy" />}<MediaFields form={form} setForm={setForm} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div></article>
 }
 
 function MediaFields({ form, setForm, tournaments, includeTournament = false }: { form: MediaForm; setForm: Dispatch<SetStateAction<MediaForm>>; tournaments?: Tournament[]; includeTournament?: boolean }) {

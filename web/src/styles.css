@@ -202,7 +202,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .notice-panel { color: var(--fd-maroon); font-weight: 900; background: var(--fd-gold-100); border-color: #ead095; }
 .media-admin-row, .sponsor-admin-row { grid-template-columns: 7rem 1fr; align-items: start; }
 .media-admin-row .form-grid, .sponsor-admin-row .form-grid { margin: 0; grid-column: 2; }
-.media-admin-row .row-actions, .sponsor-admin-row .row-actions { grid-column: 2; }
+.media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: 2; }
 .media-admin-row img, .sponsor-admin-row img { width: 7rem; aspect-ratio: 1; object-fit: cover; border-radius: .9rem; border: 1px solid var(--line); }
 .sponsor-admin-row img { object-fit: contain; background: var(--surface-strong); padding: .6rem; }
 
@@ -227,5 +227,5 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .timeline-row { grid-template-columns: 1fr; }
   .watch-hero { grid-template-columns: 1fr; }
   .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
-  .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions { grid-column: auto; }
+  .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
 }

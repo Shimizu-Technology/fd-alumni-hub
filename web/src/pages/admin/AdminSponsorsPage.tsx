@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { Sponsor, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
@@ -51,22 +52,35 @@ function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { to
 function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<SponsorForm>({ name: sponsor.name, logoUrl: sponsor.logoUrl || '', targetUrl: sponsor.targetUrl || '', tier: sponsor.tier || '', active: sponsor.active, position: String(sponsor.position) })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [mutationError, setMutationError] = useState('')
   const save = async () => {
     setSaving(true)
+    setMutationError('')
     try {
       await api.adminUpdateSponsor(sponsor.id, cleanSponsor(form))
       await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to save sponsor'))
     } finally {
       setSaving(false)
     }
   }
   const remove = async () => {
     if (!confirm('Delete this sponsor?')) return
-    await api.adminDeleteSponsor(sponsor.id)
-    await onSaved()
+    setDeleting(true)
+    setMutationError('')
+    try {
+      await api.adminDeleteSponsor(sponsor.id)
+      await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to delete sponsor'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
-  return <article className="admin-row-card sponsor-admin-row">{sponsor.logoUrl && <img src={sponsor.logoUrl} alt="" loading="lazy" />}<SponsorFields form={form} setForm={setForm} /><div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove}>Delete</button></div></article>
+  return <article className="admin-row-card sponsor-admin-row">{sponsor.logoUrl && <img src={sponsor.logoUrl} alt="" loading="lazy" />}<SponsorFields form={form} setForm={setForm} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div></article>
 }
 
 function SponsorFields({ form, setForm, tournaments, includeTournament = false }: { form: SponsorForm; setForm: Dispatch<SetStateAction<SponsorForm>>; tournaments?: Tournament[]; includeTournament?: boolean }) {

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
+import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
@@ -52,15 +53,19 @@ function CreateTeamPanel({ tournaments, selectedTournamentId, onSaved }: { tourn
 function EditableTeam({ team, onSaved }: { team: Team; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({ classYearLabel: team.classYearLabel, displayName: team.displayName, division: team.division || '' })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const save = async () => {
     setSaving(true)
+    setSaveError('')
     try {
       await api.adminUpdateTeam(team.id, form)
       await onSaved()
+    } catch (err) {
+      setSaveError(mutationErrorMessage(err, 'Unable to save team'))
     } finally {
       setSaving(false)
     }
   }
 
-  return <article className="admin-row-card"><FormGrid><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></Field><Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field></FormGrid><button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save team'}</button></article>
+  return <article className="admin-row-card"><FormGrid><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></Field><Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field></FormGrid>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save team'}</button></article>
 }

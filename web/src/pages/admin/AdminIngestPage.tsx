@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
+import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { IngestItem, IngestKind, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
@@ -45,24 +46,31 @@ function CreateIngestPanel({ tournaments, selectedTournamentId, onSaved }: { tou
 
 function IngestRow({ item, onSaved }: { item: IngestItem; onSaved: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
+  const [mutationError, setMutationError] = useState('')
   const approve = async () => {
     setBusy(true)
+    setMutationError('')
     try {
       await api.adminApproveIngest(item.id)
       await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to approve ingest item'))
     } finally {
       setBusy(false)
     }
   }
   const reject = async () => {
     setBusy(true)
+    setMutationError('')
     try {
       await api.adminRejectIngest(item.id)
       await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to reject ingest item'))
     } finally {
       setBusy(false)
     }
   }
 
-  return <article className="admin-row-card"><div className="admin-row-head"><div><strong>{item.title}</strong><span>{item.source} · {item.kind}</span></div><StatusBadge status={item.status} /></div><p>{item.excerpt || item.url}</p><div className="row-actions"><a className="btn secondary" href={item.url} target="_blank" rel="noreferrer">Open source</a>{item.status === 'pending' && <><button className="btn primary" onClick={approve} disabled={busy}>Approve</button><button className="btn danger" onClick={reject} disabled={busy}>Reject</button></>}</div></article>
+  return <article className="admin-row-card"><div className="admin-row-head"><div><strong>{item.title}</strong><span>{item.source} · {item.kind}</span></div><StatusBadge status={item.status} /></div><p>{item.excerpt || item.url}</p>{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><a className="btn secondary" href={item.url} target="_blank" rel="noreferrer">Open source</a>{item.status === 'pending' && <><button className="btn primary" onClick={approve} disabled={busy}>{busy ? 'Working' : 'Approve'}</button><button className="btn danger" onClick={reject} disabled={busy}>{busy ? 'Working' : 'Reject'}</button></>}</div></article>
 }

@@ -1,5 +1,6 @@
 import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { toDateInputValue } from '../../lib/datetime'
 import type { Article, Tournament } from '../../lib/types'
@@ -54,22 +55,35 @@ function CreateArticlePanel({ tournaments, selectedTournamentId, onSaved }: { to
 function ArticleRow({ article, onSaved }: { article: Article; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<ArticleForm>({ tournamentId: article.tournamentId, title: article.title, source: article.source, url: article.url, publishedAt: toDateInputValue(article.publishedAt), imageUrl: article.imageUrl || '', excerpt: article.excerpt || '' })
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [mutationError, setMutationError] = useState('')
   const save = async () => {
     setSaving(true)
+    setMutationError('')
     try {
       await api.adminUpdateArticle(article.id, { ...form, publishedAt: form.publishedAt || null, imageUrl: form.imageUrl || null, excerpt: form.excerpt || null })
       await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to save article'))
     } finally {
       setSaving(false)
     }
   }
   const remove = async () => {
     if (!confirm('Delete this article link?')) return
-    await api.adminDeleteArticle(article.id)
-    await onSaved()
+    setDeleting(true)
+    setMutationError('')
+    try {
+      await api.adminDeleteArticle(article.id)
+      await onSaved()
+    } catch (err) {
+      setMutationError(mutationErrorMessage(err, 'Unable to delete article'))
+    } finally {
+      setDeleting(false)
+    }
   }
 
-  return <article className="admin-row-card"><ArticleFields form={form} setForm={setForm} /><div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove}>Delete</button></div></article>
+  return <article className="admin-row-card"><ArticleFields form={form} setForm={setForm} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div></article>
 }
 
 function ArticleFields({ form, setForm, tournaments, includeTournament = false }: { form: ArticleForm; setForm: Dispatch<SetStateAction<ArticleForm>>; tournaments?: Tournament[]; includeTournament?: boolean }) {
