@@ -6,6 +6,7 @@ import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { LATEST_ARCHIVE_YEAR, archiveArticlesForYear } from '@/lib/historical-archive'
 import { mergeArchiveArticles, type FeedArticle } from '@/lib/services/public-feed'
+import { formatGuamDate } from '@/lib/datetime'
 
 export const metadata: Metadata = {
   title: 'News',
@@ -23,7 +24,7 @@ function ExternalLinkIcon() {
 
 function NewsCard({ item, index }: { item: NewsItem; index: number }) {
   const date = item.publishedAt
-    ? new Date(item.publishedAt).toLocaleDateString('en-US', {
+    ? formatGuamDate(item.publishedAt, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { formatGuamDate } from '@/lib/datetime'
 
 type UpdateItem = {
   id: string
@@ -48,7 +49,7 @@ export function LiveUpdates({ items }: { items: UpdateItem[] }) {
       {items.length === 0 ? (
         <div className="px-5 py-8 text-center">
           <p className="text-sm" style={{ color: 'var(--neutral-500)' }}>
-            No updates yet. Add article links in Admin / News to power this section.
+            No updates have been published yet. Check back for tournament coverage and partner links.
           </p>
         </div>
       ) : (
@@ -77,7 +78,7 @@ export function LiveUpdates({ items }: { items: UpdateItem[] }) {
                   </h3>
                   <p className="mt-1.5 text-xs" style={{ color: 'var(--neutral-400)' }}>
                     {item.publishedAt
-                      ? new Date(item.publishedAt).toLocaleDateString('en-US', {
+                      ? formatGuamDate(item.publishedAt, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

@@ -2,6 +2,7 @@
 
 import { Image as ImageIcon, ExternalLink, Calendar, Tag } from 'lucide-react'
 import { AdminEmptyState, AdminBadge } from './ui'
+import { formatGuamDate } from '@/lib/datetime'
 
 type MediaItem = {
   id: string
@@ -90,7 +91,7 @@ export function AdminMediaList({ items }: { items: MediaItem[] }) {
               <span className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />
                 {item.takenAt
-                  ? new Date(item.takenAt).toLocaleDateString('en-US', {
+                  ? formatGuamDate(item.takenAt, {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { db, withDatabaseFallback } from '@/lib/db'
+import { formatGuamDate } from '@/lib/datetime'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { LATEST_ARCHIVE_YEAR, archiveMediaForYear } from '@/lib/historical-archive'
 import Link from 'next/link'
@@ -126,7 +127,7 @@ export default async function GalleryPage({
               <p className="mt-1 font-medium leading-snug">{item.title}</p>
               {item.caption ? <p className="mt-1 text-xs text-neutral-600 line-clamp-2">{item.caption}</p> : null}
               <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-                <span>{item.takenAt ? new Date(item.takenAt).toLocaleDateString('en-US') : 'No date'}</span>
+                <span>{item.takenAt ? formatGuamDate(item.takenAt) : 'No date'}</span>
                 {item.articleUrl ? <a href={item.articleUrl} target="_blank" rel="noreferrer" className="underline">Source</a> : null}
               </div>
             </article>

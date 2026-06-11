@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 import { AdminButton, AdminMessage } from './ui'
+import { formatGuamDateTime } from '@/lib/datetime'
 
 export function RecomputeStandingsButton({ tournamentId }: { tournamentId: string }) {
   const router = useRouter()
@@ -59,7 +60,7 @@ export function RecomputeStandingsButton({ tournamentId }: { tournamentId: strin
         )}
         {lastRunAt && (
           <p className="text-xs text-neutral-500">
-            Last recompute: {lastRunAt.toLocaleString()}
+            Last recompute: {formatGuamDateTime(lastRunAt)}
           </p>
         )}
       </div>
