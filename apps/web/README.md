@@ -5,7 +5,7 @@ Next.js app for the FD Alumni Basketball Tournament Hub.
 ## Local setup
 
 ```bash
-cp apps/web/.env.example apps/web/.env.local
+cp apps/web/.env.example .env # from repo root; apps/web/.env.local also works
 npm install
 npm --workspace @fd/web exec prisma migrate dev
 npm --workspace @fd/web exec prisma db seed
@@ -13,7 +13,7 @@ npm --workspace @fd/web run import:archive-content # optional researched archive
 npm run dev
 ```
 
-Required production/admin environment values live in `apps/web/.env.example`. Without `DATABASE_URL`, local dev falls back to a public archive-preview mode instead of crashing; live schedule/admin data still requires the database.
+Required production/admin environment values live in `apps/web/.env.example`. The dev/build scripts load env files from both the repo root and `apps/web`; restart `npm run dev` after changes. Without `DATABASE_URL`, local dev falls back to a public archive-preview mode instead of crashing; live schedule/admin data still requires the database.
 
 ## Build
 

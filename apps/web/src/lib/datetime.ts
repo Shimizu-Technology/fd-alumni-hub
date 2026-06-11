@@ -56,7 +56,7 @@ function guamOffsetMs(value: Date) {
   return sign * (hours * 60 + minutes) * 60_000
 }
 
-function guamLocalDateTimeToUtc(
+export function guamLocalDateTimeToUtc(
   year: number,
   month: number,
   day: number,
@@ -110,6 +110,11 @@ export function guamDayLabel(value: Date | string) {
 export function guamDateKey(value: Date | string) {
   const { year, month, day } = guamDateParts(value)
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+export function guamDateStringToDate(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return guamLocalDateTimeToUtc(year, month, day, 0, 0, 0, 0)
 }
 
 export function guamDayRange(value = new Date()) {

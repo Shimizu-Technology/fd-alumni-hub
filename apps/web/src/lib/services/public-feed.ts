@@ -3,7 +3,7 @@ import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import { resolveGameDivision } from '@/lib/divisions'
 import { archiveArticlesForYear } from '@/lib/historical-archive'
-import { guamDayRange } from '@/lib/datetime'
+import { guamDateStringToDate, guamDayRange } from '@/lib/datetime'
 
 export type FeedArticle = {
   id: string
@@ -45,7 +45,7 @@ export function mergeArchiveArticles(dbArticles: FeedArticle[], year: number, ta
       url: item.url,
       imageUrl: item.imageUrl,
       excerpt: item.excerpt,
-      publishedAt: item.publishedAt ? new Date(`${item.publishedAt}T00:00:00+10:00`) : null,
+      publishedAt: item.publishedAt ? guamDateStringToDate(item.publishedAt) : null,
     })
   }
 

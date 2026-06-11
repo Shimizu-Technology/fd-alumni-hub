@@ -13,14 +13,15 @@ import {
   archiveMediaForYear,
   championForYear,
 } from '@/lib/historical-archive'
+import { guamDateStringToDate, guamLocalDateTimeToUtc } from '@/lib/datetime'
 
 const prisma = new PrismaClient()
 const TOURNAMENT_NAME = 'FD Alumni Basketball Tournament'
 
 function tournamentDates(year: number) {
   return {
-    startDate: new Date(`${year}-06-01T00:00:00+10:00`),
-    endDate: new Date(`${year}-08-01T00:00:00+10:00`),
+    startDate: guamLocalDateTimeToUtc(year, 6, 1, 0, 0, 0, 0),
+    endDate: guamLocalDateTimeToUtc(year, 8, 1, 23, 59, 59, 999),
   }
 }
 
@@ -52,7 +53,7 @@ async function upsertArticle(tournamentId: string, article: typeof ARCHIVE_ARTIC
     url: article.url,
     imageUrl: article.imageUrl,
     excerpt: article.excerpt,
-    publishedAt: article.publishedAt ? new Date(`${article.publishedAt}T00:00:00+10:00`) : null,
+    publishedAt: article.publishedAt ? guamDateStringToDate(article.publishedAt) : null,
   }
 
   if (existing) {
@@ -74,7 +75,7 @@ async function upsertMedia(tournamentId: string, media: ReturnType<typeof archiv
     articleUrl: media.articleUrl ?? null,
     caption: media.caption ?? null,
     tags: media.tags ?? null,
-    takenAt: media.takenAt ? new Date(`${media.takenAt}T00:00:00+10:00`) : null,
+    takenAt: media.takenAt ? guamDateStringToDate(media.takenAt) : null,
   }
 
   if (existing) {

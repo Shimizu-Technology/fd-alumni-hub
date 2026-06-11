@@ -39,8 +39,8 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 - Prisma + Postgres configured
 
 ### Setup
-1. Copy `apps/web/.env.example` to `apps/web/.env.local`
-2. Fill Clerk + DB values for full admin/live-data mode. If `DATABASE_URL` is omitted, local dev runs in public archive-preview mode.
+1. Copy `apps/web/.env.example` to either repo-root `.env` or `apps/web/.env.local`
+2. Fill Clerk + DB values for full admin/live-data mode. If `DATABASE_URL` is omitted, local dev runs in public archive-preview mode. Restart `npm run dev` after changing env values.
 3. Run `npm install`
 4. Run `npm --workspace @fd/web exec prisma migrate dev`
 5. Seed baseline data: `npm --workspace @fd/web exec prisma db seed`
