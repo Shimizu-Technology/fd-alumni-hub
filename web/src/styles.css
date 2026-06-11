@@ -117,6 +117,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin-bottom: 1rem; }
 .check-field { align-self: end; display: flex; gap: .55rem; align-items: center; font-weight: 800; color: var(--fd-maroon); padding-bottom: .7rem; }
 .check-field input { width: auto; }
+.form-error { margin: -.25rem 0 .2rem; color: var(--danger); font-weight: 800; }
 
 .day-section h2 { margin: .5rem 0 .9rem; color: var(--fd-maroon); letter-spacing: -.04em; }
 .game-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; }

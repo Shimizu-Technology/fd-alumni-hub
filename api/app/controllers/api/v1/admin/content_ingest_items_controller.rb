@@ -40,9 +40,22 @@ module Api
 
         def approve
           item = ContentIngestItem.find(params[:id])
-          imported = import_item(item)
-          item.update!(status: "approved", imported_to_id: imported.id.to_s)
-          render json: { ingestItem: item.api_json, imported: imported.api_json }
+          imported = nil
+
+          item.with_lock do
+            if item.status == "approved"
+              imported = approved_imported_item(item)
+            else
+              imported = import_item(item)
+              item.update!(status: "approved", imported_to_id: imported.id.to_s)
+            end
+          end
+
+          if imported
+            render json: { ingestItem: item.reload.api_json, imported: imported.api_json }
+          else
+            render json: { errors: [ "Approved ingest item does not reference an imported record" ] }, status: :conflict
+          end
         rescue ActiveRecord::RecordInvalid => e
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
@@ -54,6 +67,33 @@ module Api
         end
 
         private
+
+        def approved_imported_item(item)
+          imported = imported_item(item)
+          return imported if imported || item.imported_to_id.present?
+
+          imported = existing_import_for(item)
+          item.update!(imported_to_id: imported.id.to_s) if imported
+          imported
+        end
+
+        def imported_item(item)
+          return if item.imported_to_id.blank?
+
+          imported_model_for(item).find_by(id: item.imported_to_id)
+        end
+
+        def existing_import_for(item)
+          if item.kind == "article"
+            ArticleLink.find_by(tournament: item.tournament, url: item.url)
+          else
+            MediaAsset.find_by(tournament: item.tournament, image_url: item.image_url)
+          end
+        end
+
+        def imported_model_for(item)
+          item.kind == "article" ? ArticleLink : MediaAsset
+        end
 
         def import_item(item)
           if item.kind == "article"

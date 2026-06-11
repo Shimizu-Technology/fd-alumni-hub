@@ -98,9 +98,11 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
     notes: game.notes || '',
   })
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const save = async () => {
     setSaving(true)
+    setSaveError('')
     try {
       await api.adminUpdateGame(game.id, {
         ...form,
@@ -109,6 +111,8 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
         startTime: guamLocalDateTimeInputToIso(form.startTime),
       })
       await onSaved()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to save game')
     } finally {
       setSaving(false)
     }
@@ -127,6 +131,7 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
         <Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field>
         <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
       </FormGrid>
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save game'}</button>
     </article>
   )

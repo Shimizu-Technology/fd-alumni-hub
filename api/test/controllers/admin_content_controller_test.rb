@@ -51,9 +51,17 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     assert_nil ArticleLink.find(article.id).excerpt
   end
 
-  test "bulk links update ticket and stream urls" do
+  test "bulk links update only ticket and stream urls" do
     patch "/api/v1/admin/links/bulk",
-      params: { updates: [ { id: @game.id.to_s, ticketUrl: "https://guamtime.test/tickets", streamUrl: "https://clutch.test/live" } ] },
+      params: {
+        updates: [ {
+          id: @game.id.to_s,
+          ticketUrl: "https://guamtime.test/tickets",
+          streamUrl: "https://clutch.test/live",
+          status: "final",
+          homeScore: 99
+        } ]
+      },
       headers: auth_headers,
       as: :json
 
@@ -62,6 +70,18 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     @game.reload
     assert_equal "https://guamtime.test/tickets", @game.ticket_url
     assert_equal "https://clutch.test/live", @game.stream_url
+    assert_equal "scheduled", @game.status
+    assert_nil @game.home_score
+  end
+
+  test "bulk links reject malformed updates" do
+    patch "/api/v1/admin/links/bulk",
+      params: { updates: { id: @game.id.to_s, ticketUrl: "https://guamtime.test/tickets" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :bad_request
+    assert_equal [ "updates must be an array" ], JSON.parse(response.body)["errors"]
   end
 
   test "missing links endpoint reports operational gaps" do
@@ -91,6 +111,49 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     item.reload
     assert_equal "approved", item.status
     assert ArticleLink.exists?(tournament: @tournament, url: "https://example.com/playoff-preview")
+  end
+
+  test "approving an already approved ingest item is idempotent" do
+    article = @tournament.article_links.create!(
+      title: "Already imported",
+      source: "GSPN",
+      url: "https://example.com/already-imported"
+    )
+    item = @tournament.content_ingest_items.create!(
+      kind: "article",
+      status: "approved",
+      source: "GSPN",
+      title: "Already imported",
+      url: article.url,
+      imported_to_id: article.id.to_s
+    )
+
+    assert_no_difference -> { ArticleLink.count } do
+      post "/api/v1/admin/content-ingest-items/#{item.id}/approve", headers: auth_headers
+    end
+
+    assert_response :success
+    item.reload
+    assert_equal "approved", item.status
+    assert_equal article.id.to_s, item.imported_to_id
+    assert_equal article.id.to_s, JSON.parse(response.body).dig("imported", "id")
+  end
+
+  test "approved ingest item with stale import reference returns conflict" do
+    item = @tournament.content_ingest_items.create!(
+      kind: "article",
+      status: "approved",
+      source: "GSPN",
+      title: "Stale import",
+      url: "https://example.com/stale-import",
+      imported_to_id: "999999"
+    )
+
+    post "/api/v1/admin/content-ingest-items/#{item.id}/approve", headers: auth_headers
+
+    assert_response :conflict
+    item.reload
+    assert_equal "999999", item.imported_to_id
   end
 
   private
