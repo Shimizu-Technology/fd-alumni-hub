@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getSchedule } from '@/lib/services/public-feed'
 import { DIVISIONS, getBracketCode, resolveGameDivision, getDivision } from '@/lib/divisions'
+import { formatGuamTime, guamDayLabel, isPastGuamGame } from '@/lib/datetime'
 
 export const metadata: Metadata = {
   title: 'Schedule',
@@ -25,15 +26,13 @@ type ScheduleGame = {
   awayTeam: { displayName: string; division: string | null }
 }
 
+type DisplayStatus = 'scheduled' | 'live' | 'final' | 'pending'
+
 function dayKey(date: Date) {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  })
+  return guamDayLabel(date)
 }
 
-function StatusBadge({ status }: { status: 'scheduled' | 'live' | 'final' }) {
+function StatusBadge({ status }: { status: DisplayStatus }) {
   if (status === 'live') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider badge-live">
@@ -46,6 +45,13 @@ function StatusBadge({ status }: { status: 'scheduled' | 'live' | 'final' }) {
     return (
       <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider badge-final">
         Final
+      </span>
+    )
+  }
+  if (status === 'pending') {
+    return (
+      <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider badge-final">
+        Result pending
       </span>
     )
   }
@@ -99,7 +105,11 @@ function ExternalIcon() {
 function GameRow({ game }: { game: ScheduleGame }) {
   const isLive = game.status === 'live'
   const isFinal = game.status === 'final'
-  const hasScore = isFinal && game.homeScore != null && game.awayScore != null
+  const hasRecordedScore = game.homeScore != null && game.awayScore != null
+  const hasScore = isFinal && hasRecordedScore
+  const displayStatus: DisplayStatus = game.status !== 'live' && !hasRecordedScore && isPastGuamGame(game.startTime)
+    ? 'pending'
+    : game.status
   const effectiveDivision = resolveGameDivision(game.division, game.homeTeam.division)
   const isFatherSon = game.bracketCode === 'FS' || /\bFS\b/i.test(game.homeTeam.displayName) || /\bFS\b/i.test(game.awayTeam.displayName)
 
@@ -115,7 +125,7 @@ function GameRow({ game }: { game: ScheduleGame }) {
         {/* Time + venue */}
         <div className="shrink-0 w-28">
           <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--neutral-700)' }}>
-            {new Date(game.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            {formatGuamTime(game.startTime)}
           </p>
           {game.venue && (
             <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--neutral-400)' }}>{game.venue}</p>
@@ -147,7 +157,7 @@ function GameRow({ game }: { game: ScheduleGame }) {
               Father-Son
             </span>
           )}
-          <StatusBadge status={game.status} />
+          <StatusBadge status={displayStatus} />
           {game.streamUrl && (
             <div className="flex flex-col items-end gap-0.5">
               <Link

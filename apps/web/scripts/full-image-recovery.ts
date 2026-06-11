@@ -36,7 +36,7 @@ async function findWorkingImage(articleUrl: string): Promise<string | null> {
     const imgMatches = html.matchAll(/<img[^>]*src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|gif|webp))["']/gi)
     
     for (const match of imgMatches) {
-      let imgUrl = match[1].replace(/&amp;/g, '&')
+      const imgUrl = match[1].replace(/&amp;/g, '&')
       
       // Skip thumbnails, icons, logos
       if (imgUrl.includes('-150x') || imgUrl.includes('-100x') || 
@@ -97,7 +97,7 @@ async function main() {
   
   let recovered = 0
   let failed = 0
-  const results: any[] = []
+  const results: Array<{ url: string; year: number; status: 'recovered' | 'unrecoverable'; newUrl?: string }> = []
   
   for (const articleUrl of REMAINING_BROKEN) {
     const shortName = articleUrl.split('/').filter(Boolean).pop() || ''

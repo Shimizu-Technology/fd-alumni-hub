@@ -87,7 +87,7 @@ export default async function Home() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: 'rgba(217,178,111,0.15)', color: 'var(--fd-gold)', border: '1px solid rgba(217,178,111,0.25)' }}>
-                Official Tournament Hub
+                Tournament Hub
               </span>
             )}
           </div>
@@ -203,7 +203,7 @@ export default async function Home() {
       </div>
 
       {/* ── Latest updates ────────────────────────────────────── */}
-      <LiveUpdates items={latestNews as any} />
+      <LiveUpdates items={latestNews} />
 
     </section>
   )

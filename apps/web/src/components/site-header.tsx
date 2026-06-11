@@ -56,6 +56,7 @@ function CloseIcon({ className }: { className?: string }) {
 
 export function SiteHeader() {
   const pathname = usePathname()
+  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -64,11 +65,6 @@ export function SiteHeader() {
     window.addEventListener('scroll', handler, { passive: true })
     return () => window.removeEventListener('scroll', handler)
   }, [])
-
-  // Close drawer on route change
-  useEffect(() => {
-    setDrawerOpen(false)
-  }, [pathname])
 
   // Prevent body scroll when drawer open
   useEffect(() => {
@@ -151,29 +147,41 @@ export function SiteHeader() {
                 )
               })}
             </nav>
-            <SignedIn>
+            {clerkEnabled ? (
+              <>
+                <SignedIn>
+                  <Link
+                    href="/admin"
+                    className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
+                    style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
+                  >
+                    Admin
+                  </Link>
+                </SignedIn>
+                <SignedOut>
+                  <SignInButton mode="modal">
+                    <button
+                      className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
+                      style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
+                    >
+                      Admin
+                    </button>
+                  </SignInButton>
+                </SignedOut>
+              </>
+            ) : (
               <Link
                 href="/admin"
                 className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
                 style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
               >
                 Admin
               </Link>
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button
-                  className="rounded-md border px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors"
-                  style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.7)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(240,232,236,0.72)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(217,178,111,0.35)' }}
-                >
-                  Admin
-                </button>
-              </SignInButton>
-            </SignedOut>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -226,6 +234,7 @@ export function SiteHeader() {
               <li key={href}>
                 <Link
                   href={href}
+                  onClick={() => setDrawerOpen(false)}
                   className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-150"
                   style={{
                     color: active ? '#fff' : 'rgba(240,232,236,0.7)',
@@ -247,30 +256,44 @@ export function SiteHeader() {
 
         {/* Drawer footer */}
         <div className="mt-auto pt-8 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <SignedIn>
+          {clerkEnabled ? (
+            <>
+              <SignedIn>
+                <Link
+                  href="/admin"
+                  onClick={() => setDrawerOpen(false)}
+                  className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                >
+                  Admin
+                </Link>
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button
+                    className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                    style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
+                  >
+                    Admin
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </>
+          ) : (
             <Link
               href="/admin"
+              onClick={() => setDrawerOpen(false)}
               className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
               style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
             >
               Admin
             </Link>
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button
-                className="mb-3 inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                style={{ borderColor: 'rgba(217,178,111,0.35)', color: 'rgba(240,232,236,0.72)' }}
-              >
-                Admin
-              </button>
-            </SignInButton>
-          </SignedOut>
+          )}
           <p className="text-xs" style={{ color: 'rgba(240,232,236,0.35)' }}>
             FD Alumni Basketball Hub
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(240,232,236,0.25)' }}>
-            Official tournament hub for Guam
+            Central tournament hub for Guam
           </p>
         </div>
       </nav>

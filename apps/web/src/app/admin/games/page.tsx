@@ -70,7 +70,7 @@ export default async function AdminGamesPage() {
         </div>
       </div>
       <GameCreateForm tournamentId={tournament.id} teams={teamOptions} />
-      <GameEditor initialGames={games as any} />
+      <GameEditor initialGames={games} />
     </section>
   )
 }

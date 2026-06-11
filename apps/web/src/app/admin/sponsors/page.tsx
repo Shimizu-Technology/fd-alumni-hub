@@ -25,7 +25,7 @@ export default async function AdminSponsorsPage() {
         <p className="text-sm text-neutral-600">Edit sponsors via API patch endpoint (full CRUD UI next slice).</p>
       </div>
       <SponsorCreateForm tournamentId={tournament.id} />
-      <AdminSponsorsList initialSponsors={sponsors as any} />
+      <AdminSponsorsList initialSponsors={sponsors} />
     </section>
   )
 }

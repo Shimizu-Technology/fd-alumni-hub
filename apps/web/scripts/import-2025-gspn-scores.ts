@@ -20,6 +20,22 @@ const rows: ScoreRow[] = [
   { date: '2025-06-27', winner: '79/80', loser: '84/85', winnerScore: 46, loserScore: 29, source: 'gspn-opens-with-a-bang' },
   { date: '2025-06-27', winner: '02/04', loser: '2013', winnerScore: 56, loserScore: 48, source: 'gspn-opens-with-a-bang' },
 
+  // GSPN: RECAP OF FD ALUMNI BASKETBALL WEEKEND (Jun 29, 2025)
+  { date: '2025-06-28', winner: '18/19', loser: '2015', winnerScore: 71, loserScore: 62, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '08/09', loser: '2014', winnerScore: 68, loserScore: 59, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '1991', loser: '98', winnerScore: 46, loserScore: 37, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '82/86/AD7/92', loser: '1988', winnerScore: 36, loserScore: 25, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '2007', loser: '05', winnerScore: 39, loserScore: 38, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '12 Pack', loser: '2010', winnerScore: 87, loserScore: 69, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-28', winner: '2022', loser: '2023', winnerScore: 64, loserScore: 62, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '2021', loser: '2024', winnerScore: 57, loserScore: 54, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '2023', loser: '2020', winnerScore: 45, loserScore: 39, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '1989', loser: '75', winnerScore: 36, loserScore: 21, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '430-5', loser: '96/97', winnerScore: 56, loserScore: 52, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '2006', loser: '02/04', winnerScore: 69, loserScore: 68, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '2025', loser: '2022', winnerScore: 62, loserScore: 57, source: 'gspn-opening-weekend-recap' },
+  { date: '2025-06-29', winner: '2016/17', loser: '18/19', winnerScore: 57, loserScore: 50, source: 'gspn-opening-weekend-recap' },
+
   // GSPN: RESULTS FROM THIS WEEK'S FD ALUMNI HOOPS TOURNEY (Jul 4, 2025)
   { date: '2025-06-30', winner: '2020', loser: '2021', winnerScore: 62, loserScore: 57, source: 'gspn-results-week' },
   { date: '2025-06-30', winner: '2024', loser: '12 Pack', winnerScore: 54, loserScore: 47, source: 'gspn-results-week' },
@@ -44,6 +60,7 @@ const aliases: Record<string, string[]> = {
   '75': ['75', '1975'],
   '96/97': ['96/97', '96/97/2000'],
   '18/19': ['18/19', '2018/19'],
+  '05': ['05', '2005'],
 }
 
 function norm(label: string): string[] {

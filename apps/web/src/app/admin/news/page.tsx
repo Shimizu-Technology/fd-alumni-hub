@@ -25,7 +25,7 @@ export default async function AdminNewsPage() {
         <p className="text-sm text-neutral-600">Edit existing article links via API (UI CRUD next slice).</p>
       </div>
       <NewsCreateForm tournamentId={tournament.id} />
-      <AdminNewsList initialArticles={articles as any} />
+      <AdminNewsList initialArticles={articles} />
     </section>
   )
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DIVISIONS, BRACKET_CODES } from '@/lib/divisions'
+import { formatGuamDateTime } from '@/lib/datetime'
 import { Calendar, Trash2, Save } from 'lucide-react'
 import {
   AdminInput,
@@ -11,7 +12,6 @@ import {
   AdminBadge,
   AdminMessage,
   AdminEmptyState,
-  inputBaseClasses,
 } from './ui'
 
 function isValidUrl(value: string) {
@@ -24,9 +24,9 @@ function isValidUrl(value: string) {
   }
 }
 
-type GameRow = {
+export type GameRow = {
   id: string
-  startTime: string
+  startTime: string | Date
   status: 'scheduled' | 'live' | 'final'
   homeScore: number | null
   awayScore: number | null
@@ -164,13 +164,7 @@ export function GameEditor({ initialGames }: { initialGames: GameRow[] }) {
 
               <span className="ml-auto flex items-center gap-1.5 text-xs text-[var(--neutral-400)]">
                 <Calendar className="h-3.5 w-3.5" />
-                {new Date(g.startTime).toLocaleString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
+                {formatGuamDateTime(g.startTime)}
               </span>
             </div>
 

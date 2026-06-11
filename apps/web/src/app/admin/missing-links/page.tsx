@@ -4,6 +4,7 @@ import { requireStaff } from '@/lib/authz'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
 import { db } from '@/lib/db'
+import { formatGuamDate } from '@/lib/datetime'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,18 +80,18 @@ export default async function MissingLinksPage() {
       {/* Partner Help */}
       <div className="rounded-xl border p-4" style={{ borderColor: 'var(--fd-maroon)', borderStyle: 'dashed', background: '#fef7f7' }}>
         <p className="text-xs font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--fd-maroon)' }}>
-          📋 What Partners Need to Provide
+          What Partners Need to Provide
         </p>
         <div className="grid gap-3 sm:grid-cols-2 text-xs" style={{ color: 'var(--neutral-600)' }}>
           <div>
-            <p className="font-semibold mb-1">🎟️ GuamTime (Ticketing)</p>
+            <p className="font-semibold mb-1">GuamTime (Ticketing)</p>
             <ul className="space-y-0.5 text-[11px]">
               <li>• Ticket purchase URLs per game (or single event page)</li>
               <li>• Match by date + matchup from our CSV export</li>
             </ul>
           </div>
           <div>
-            <p className="font-semibold mb-1">📺 Clutch (Streaming)</p>
+            <p className="font-semibold mb-1">Clutch (Streaming)</p>
             <ul className="space-y-0.5 text-[11px]">
               <li>• Stream/replay URLs per game</li>
               <li>• Can be live or VOD links</li>
@@ -132,7 +133,7 @@ export default async function MissingLinksPage() {
       {hasEither.length === 0 ? (
         <div className="rounded-xl border bg-white p-8 text-center" style={{ borderColor: 'var(--border-subtle)' }}>
           <p className="text-sm font-medium" style={{ color: '#16a34a' }}>
-            ✅ All games have both ticket and stream links!
+            All games have both ticket and stream links.
           </p>
         </div>
       ) : (
@@ -150,8 +151,8 @@ export default async function MissingLinksPage() {
                   <th className="px-4 py-3">Matchup</th>
                   <th className="px-4 py-3">Div</th>
                   <th className="px-4 py-3">Phase</th>
-                  <th className="px-4 py-3 text-center">🎟️ Ticket</th>
-                  <th className="px-4 py-3 text-center">📺 Stream</th>
+                  <th className="px-4 py-3 text-center">Ticket</th>
+                  <th className="px-4 py-3 text-center">Stream</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
@@ -164,7 +165,7 @@ export default async function MissingLinksPage() {
                       className="hover:bg-neutral-50 transition-colors"
                     >
                       <td className="px-4 py-3 whitespace-nowrap tabular-nums text-xs" style={{ color: 'var(--neutral-500)' }}>
-                        {new Date(g.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {formatGuamDate(g.startTime, { month: 'short', day: 'numeric' })}
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-medium" style={{ color: 'var(--fd-ink)' }}>
@@ -182,14 +183,14 @@ export default async function MissingLinksPage() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {g.ticketUrl ? (
-                          <span style={{ color: '#16a34a' }}>✓</span>
+                          <span className="text-xs font-semibold" style={{ color: '#16a34a' }}>OK</span>
                         ) : (
                           <span className="text-xs font-semibold" style={{ color: '#dc2626' }}>Missing</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {g.streamUrl ? (
-                          <span style={{ color: '#16a34a' }}>✓</span>
+                          <span className="text-xs font-semibold" style={{ color: '#16a34a' }}>OK</span>
                         ) : (
                           <span className="text-xs font-semibold" style={{ color: '#dc2626' }}>Missing</span>
                         )}

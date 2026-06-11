@@ -1,6 +1,21 @@
+import type { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import { resolveGameDivision } from '@/lib/divisions'
+import { archiveArticlesForYear } from '@/lib/historical-archive'
+import { guamDayRange } from '@/lib/datetime'
+
+export type FeedArticle = {
+  id: string
+  tournamentId?: string
+  title: string
+  source: string
+  url: string
+  imageUrl?: string | null
+  excerpt?: string | null
+  publishedAt: Date | null
+  createdAt?: Date
+}
 
 type HomeFeed = {
   tournament: Awaited<ReturnType<typeof getActiveTournament>>
@@ -8,7 +23,39 @@ type HomeFeed = {
   latestResultsTournament: Awaited<ReturnType<typeof getHomeTournamentContext>>['latestCompletedWithGames']
   todayGames: Awaited<ReturnType<typeof db.game.findMany>>
   liveGames: Awaited<ReturnType<typeof db.game.findMany>>
-  latestNews: Awaited<ReturnType<typeof db.articleLink.findMany>>
+  latestNews: FeedArticle[]
+}
+
+export function mergeArchiveArticles(dbArticles: FeedArticle[], year: number, take?: number): FeedArticle[] {
+  const seen = new Set<string>()
+  const merged: FeedArticle[] = []
+
+  for (const item of dbArticles) {
+    seen.add(item.url)
+    merged.push(item)
+  }
+
+  for (const item of archiveArticlesForYear(year)) {
+    if (seen.has(item.url)) continue
+    seen.add(item.url)
+    merged.push({
+      id: `archive:${item.url}`,
+      title: item.title,
+      source: item.source,
+      url: item.url,
+      imageUrl: item.imageUrl,
+      excerpt: item.excerpt,
+      publishedAt: item.publishedAt ? new Date(`${item.publishedAt}T00:00:00+10:00`) : null,
+    })
+  }
+
+  merged.sort((a, b) => {
+    const aTime = a.publishedAt?.getTime() ?? a.createdAt?.getTime() ?? 0
+    const bTime = b.publishedAt?.getTime() ?? b.createdAt?.getTime() ?? 0
+    return bTime - aTime
+  })
+
+  return typeof take === 'number' ? merged.slice(0, take) : merged
 }
 
 export async function getHomeFeed(): Promise<HomeFeed> {
@@ -24,15 +71,11 @@ export async function getHomeFeed(): Promise<HomeFeed> {
       latestResultsTournament: context.latestCompletedWithGames,
       todayGames: [] as HomeFeed['todayGames'],
       liveGames: [] as HomeFeed['liveGames'],
-      latestNews: [] as HomeFeed['latestNews'],
+      latestNews: [],
     }
   }
 
-  const now = new Date()
-  const start = new Date(now)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(now)
-  end.setHours(23, 59, 59, 999)
+  const { start, end } = guamDayRange()
 
   const [todayGames, liveGames, latestNews] = await Promise.all([
     db.game.findMany({
@@ -50,7 +93,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     db.articleLink.findMany({
       where: { tournamentId: tournament.id },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
-      take: 5,
+      take: 25,
     }),
   ])
 
@@ -60,7 +103,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
     latestResultsTournament: context.latestCompletedWithGames,
     todayGames,
     liveGames,
-    latestNews,
+    latestNews: mergeArchiveArticles(latestNews, tournament.year, 5),
   }
 }
 
@@ -102,8 +145,8 @@ export async function getSchedule(
   if (!tournament) return { tournament: null, games: [], divisions: [], phases: [] }
 
   // Build where clause
-  const where: any = { tournamentId: tournament.id }
-  const andFilters: any[] = []
+  const where: Prisma.GameWhereInput = { tournamentId: tournament.id }
+  const andFilters: Prisma.GameWhereInput[] = []
 
   if (divisionFilter) {
     // Match games where game.division = filter OR (game.division is null AND homeTeam.division = filter)
@@ -212,7 +255,7 @@ export async function getStandings(
   }
 
   // Apply filter: if divisionFilter set, filter teams by division
-  const teamWhere: any = { tournamentId: tournament.id }
+  const teamWhere: Prisma.TeamWhereInput = { tournamentId: tournament.id }
   if (divisionFilter) teamWhere.division = divisionFilter
 
   const [standings, totalGames, scoredGames] = await Promise.all([

@@ -1,14 +1,16 @@
+const navSkeletonWidths = [84, 112, 96, 124, 88, 108]
+
 export default function AdminLoading() {
   return (
     <section className="space-y-4 animate-fade-up">
       {/* Nav skeleton */}
       <div className="rounded-xl border bg-white p-1.5 shadow-sm" style={{ borderColor: 'var(--border-subtle)' }}>
         <div className="flex flex-wrap gap-1">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {navSkeletonWidths.map((width, i) => (
             <div
               key={i}
               className="skeleton h-9 rounded-lg"
-              style={{ width: `${80 + Math.random() * 40}px`, animationDelay: `${i * 50}ms` }}
+              style={{ width: `${width}px`, animationDelay: `${i * 50}ms` }}
             />
           ))}
         </div>

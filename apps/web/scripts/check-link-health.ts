@@ -10,7 +10,7 @@
  */
 
 import { PrismaClient } from '@prisma/client'
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync } from 'fs'
 import { resolve } from 'path'
 
 const db = new PrismaClient()

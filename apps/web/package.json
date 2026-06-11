@@ -4,24 +4,25 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "partner-package": "tsx scripts/generate-partner-package.ts",
     "export:historical-gap-batch1": "tsx scripts/export-historical-gap-batch1.ts",
     "apply:historical-gap-batch1": "tsx scripts/apply-historical-gap-batch1.ts",
     "finalize:historical-gap-batch1": "tsx scripts/finalize-historical-gap-batch1.ts",
-    "qa-check": "tsx scripts/qa-smoke-check.ts"
+    "qa-check": "tsx scripts/qa-smoke-check.ts",
+    "import:archive-content": "tsx scripts/import-archive-content.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",
     "@aws-sdk/s3-presigned-post": "^3.1001.0",
-    "@clerk/nextjs": "^6.39.0",
+    "@clerk/nextjs": "^6.39.5",
     "@netlify/plugin-nextjs": "^5.8.1",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.19.3",
     "csv-parse": "^6.1.0",
     "lucide-react": "^0.577.0",
-    "next": "16.1.6",
+    "next": "^16.2.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "zod": "^4.3.6"
@@ -32,8 +33,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "prisma": "^6.16.2",
+    "eslint-config-next": "^16.2.9",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

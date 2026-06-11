@@ -10,7 +10,7 @@ type Article = {
   title: string
   source: string
   url?: string
-  publishedAt: string | null
+  publishedAt: string | Date | null
 }
 
 export function AdminNewsList({ initialArticles }: { initialArticles: Article[] }) {

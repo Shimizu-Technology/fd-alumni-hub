@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { History } from 'lucide-react'
-import { AdminFileInput, AdminButton, AdminCard, AdminCardTitle, AdminMessage } from './ui'
+import { AdminButton, AdminCard, AdminCardTitle, AdminMessage } from './ui'
 
 export function ImportHistoricalForm() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)

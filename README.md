@@ -1,6 +1,6 @@
 # FD Alumni Basketball Tournament Hub
 
-Official-style hub concept for Father Duenas Memorial School Alumni Basketball Tournament.
+Central hub concept for Father Duenas Memorial School Alumni Basketball Tournament information, built to route fans toward partner ticketing, streaming, and coverage sources.
 
 ## V1 Goal
 Single source of truth for:
@@ -8,7 +8,7 @@ Single source of truth for:
 - Standings
 - Watch links (Clutch)
 - Ticket links (GuamTime)
-- News/articles (GSPN + official updates)
+- News/articles (GSPN + organizer updates)
 - Sponsors
 
 ## Product Principle
@@ -41,22 +41,26 @@ Spreadsheet-simple UX first. Add advanced stats/automation later.
 ### Setup
 1. Copy `apps/web/.env.example` to `apps/web/.env.local`
 2. Fill Clerk + DB values
-3. Run `cd apps/web && npx prisma migrate dev --name init_auth`
-4. Start app: `npm run dev`
+3. Run `npm install`
+4. Run `npm --workspace @fd/web exec prisma migrate dev`
+5. Seed baseline data: `npm --workspace @fd/web exec prisma db seed`
+6. Optional archive import: `npm --workspace @fd/web run import:archive-content`
+7. Start app: `npm run dev`
 
 ### Bootstrap first admin
 `POST /api/admin/bootstrap-whitelist` with header `x-bootstrap-secret` and JSON `{ "email": "you@example.com" }`
 
 ## Next Actions (Foundation Complete)
 1. Configure `apps/web/.env.local`
-2. Run DB migration: `cd apps/web && npx prisma migrate dev --name init_foundation`
-3. Seed sample data: `cd apps/web && npx prisma db seed`
-4. Bootstrap first admin whitelist:
+2. Run DB migrations: `npm --workspace @fd/web exec prisma migrate dev`
+3. Seed sample data: `npm --workspace @fd/web exec prisma db seed`
+4. Import researched archive content: `npm --workspace @fd/web run import:archive-content`
+5. Bootstrap first admin whitelist:
    - `curl -X POST http://localhost:3000/api/admin/bootstrap-whitelist \
       -H "Content-Type: application/json" \
       -H "x-bootstrap-secret: <BOOTSTRAP_SECRET>" \
       -d '{"email":"you@example.com"}'`
-5. Sign in via Clerk and visit `/admin`
+6. Sign in via Clerk and visit `/admin`
 
 ### Foundation APIs
 - Public: `/api/public/home`, `/api/public/schedule`, `/api/public/standings`

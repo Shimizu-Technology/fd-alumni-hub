@@ -46,7 +46,7 @@ export function SiteFooter() {
               </div>
             </Link>
             <p className="text-xs leading-relaxed max-w-xs" style={{ color: 'rgba(240,232,236,0.45)' }}>
-              The official hub for FD Alumni Basketball. Schedule, standings, watch links, and verified updates.
+              A central hub for FD Alumni Basketball schedules, standings, watch links, tickets, and partner coverage.
             </p>
           </div>
 
