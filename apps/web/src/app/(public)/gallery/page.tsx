@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
-import { archiveMediaForYear } from '@/lib/historical-archive'
+import { LATEST_ARCHIVE_YEAR, archiveMediaForYear } from '@/lib/historical-archive'
 import Link from 'next/link'
 
 type GalleryItem = {
@@ -32,7 +32,7 @@ export default async function GalleryPage({
       ? await withDatabaseFallback(() => db.tournament.findFirst({ where: { year: yearFilter } }), null)
       : await getActiveTournament()
 
-  const displayYear = yearFilter ?? tournament?.year ?? 2025
+  const displayYear = yearFilter ?? tournament?.year ?? LATEST_ARCHIVE_YEAR
   const where = tournament ? { tournamentId: tournament.id } : undefined
 
   const dbItems = where

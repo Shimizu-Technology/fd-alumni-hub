@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getHomeFeed } from '@/lib/services/public-feed'
 import { QuickCard } from '@/components/quick-card'
 import { LiveUpdates } from '@/components/live-updates'
+import { LATEST_ARCHIVE_YEAR } from '@/lib/historical-archive'
 
 function CalendarIcon() {
   return (
@@ -175,7 +176,7 @@ export default async function Home() {
                 {latestResultsTournament
                   ? `${latestResultsTournament.year} COMPLETED`
                   : isArchivePreview
-                    ? '2025 coverage'
+                    ? `${LATEST_ARCHIVE_YEAR} coverage`
                     : 'No data yet'}
               </span>
             </span>

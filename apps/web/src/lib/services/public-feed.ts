@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client'
 import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament, getHomeTournamentContext } from '@/lib/repositories/tournament-repo'
 import { resolveGameDivision } from '@/lib/divisions'
-import { archiveArticlesForYear } from '@/lib/historical-archive'
+import { LATEST_ARCHIVE_YEAR, archiveArticlesForYear } from '@/lib/historical-archive'
 import { guamDateStringToDate, guamDayRange } from '@/lib/datetime'
 
 export type FeedArticle = {
@@ -71,7 +71,7 @@ export async function getHomeFeed(): Promise<HomeFeed> {
       latestResultsTournament: context.latestCompletedWithGames,
       todayGames: [] as HomeFeed['todayGames'],
       liveGames: [] as HomeFeed['liveGames'],
-      latestNews: mergeArchiveArticles([], 2025, 5),
+      latestNews: mergeArchiveArticles([], LATEST_ARCHIVE_YEAR, 5),
     }
   }
 

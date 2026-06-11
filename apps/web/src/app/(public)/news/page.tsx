@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { db, withDatabaseFallback } from '@/lib/db'
 import { getActiveTournament } from '@/lib/repositories/tournament-repo'
-import { archiveArticlesForYear } from '@/lib/historical-archive'
+import { LATEST_ARCHIVE_YEAR, archiveArticlesForYear } from '@/lib/historical-archive'
 import { mergeArchiveArticles, type FeedArticle } from '@/lib/services/public-feed'
 
 export const metadata: Metadata = {
@@ -113,7 +113,7 @@ export default async function NewsPage({
       ? await withDatabaseFallback(() => db.tournament.findFirst({ where: { year: yearFilter } }), null)
       : await getActiveTournament()
 
-  const displayYear = yearFilter ?? tournament?.year ?? 2025
+  const displayYear = yearFilter ?? tournament?.year ?? LATEST_ARCHIVE_YEAR
 
   const dbNews = tournament
     ? await withDatabaseFallback(() => db.articleLink.findMany({
