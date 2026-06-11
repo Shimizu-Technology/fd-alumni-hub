@@ -27,9 +27,10 @@ module Api
 
         def update
           game = Game.find(params[:id])
-          standings_sensitive = standings_sensitive_change?(game)
+          incoming = game_params
+          standings_sensitive = standings_sensitive_change?(incoming)
 
-          if game.update(game_params)
+          if game.update(incoming)
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
             render json: {
               game: Game.includes(:home_team, :away_team).find(game.id).api_json,
@@ -69,25 +70,33 @@ module Api
             :bracketCode
           )
 
-          {
-            tournament_id: permitted[:tournament_id] || permitted[:tournamentId],
-            home_team_id: permitted[:home_team_id] || permitted[:homeTeamId],
-            away_team_id: permitted[:away_team_id] || permitted[:awayTeamId],
-            start_time: permitted[:start_time] || permitted[:startTime],
-            venue: permitted[:venue],
-            status: permitted[:status],
-            home_score: permitted[:home_score] || permitted[:homeScore],
-            away_score: permitted[:away_score] || permitted[:awayScore],
-            stream_url: permitted[:stream_url] || permitted[:streamUrl],
-            ticket_url: permitted[:ticket_url] || permitted[:ticketUrl],
-            notes: permitted[:notes],
-            division: permitted[:division],
-            bracket_code: permitted[:bracket_code] || permitted[:bracketCode]
-          }.compact
+          attrs = {}
+          assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
+          assign_param(attrs, permitted, :home_team_id, :home_team_id, :homeTeamId)
+          assign_param(attrs, permitted, :away_team_id, :away_team_id, :awayTeamId)
+          assign_param(attrs, permitted, :start_time, :start_time, :startTime)
+          assign_param(attrs, permitted, :venue, :venue)
+          assign_param(attrs, permitted, :status, :status)
+          assign_param(attrs, permitted, :home_score, :home_score, :homeScore)
+          assign_param(attrs, permitted, :away_score, :away_score, :awayScore)
+          assign_param(attrs, permitted, :stream_url, :stream_url, :streamUrl)
+          assign_param(attrs, permitted, :ticket_url, :ticket_url, :ticketUrl)
+          assign_param(attrs, permitted, :notes, :notes)
+          assign_param(attrs, permitted, :division, :division)
+          assign_param(attrs, permitted, :bracket_code, :bracket_code, :bracketCode)
+          attrs
         end
 
-        def standings_sensitive_change?(game)
-          incoming = game_params
+        def assign_param(attrs, permitted, target_key, *source_keys)
+          source_keys.each do |source_key|
+            next unless permitted.key?(source_key)
+
+            attrs[target_key] = permitted[source_key]
+            return
+          end
+        end
+
+        def standings_sensitive_change?(incoming)
           incoming.key?(:status) || incoming.key?(:home_score) || incoming.key?(:away_score) ||
             incoming.key?(:home_team_id) || incoming.key?(:away_team_id)
         end

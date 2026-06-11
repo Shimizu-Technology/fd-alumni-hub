@@ -1,12 +1,17 @@
 require "test_helper"
 
 class StandingsRecomputeTest < ActiveSupport::TestCase
+  test "tournament start and end are date-only columns" do
+    assert_equal :date, Tournament.type_for_attribute("start_date").type
+    assert_equal :date, Tournament.type_for_attribute("end_date").type
+  end
+
   test "recomputes standings from final scored games only" do
     tournament = Tournament.create!(
       name: "FD Alumni Basketball Tournament",
       year: 2026,
-      start_date: Time.zone.local(2026, 7, 3),
-      end_date: Time.zone.local(2026, 7, 24),
+      start_date: Date.new(2026, 7, 3),
+      end_date: Date.new(2026, 7, 24),
       status: "live"
     )
     class_2016 = tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")

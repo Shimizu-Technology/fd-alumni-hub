@@ -5,8 +5,8 @@ class PublicScheduleControllerTest < ActionDispatch::IntegrationTest
     tournament = Tournament.create!(
       name: "FD Alumni Basketball Tournament",
       year: 2026,
-      start_date: Time.zone.local(2026, 7, 3),
-      end_date: Time.zone.local(2026, 7, 24),
+      start_date: Date.new(2026, 7, 3),
+      end_date: Date.new(2026, 7, 24),
       status: "upcoming"
     )
     maroon_home = tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")

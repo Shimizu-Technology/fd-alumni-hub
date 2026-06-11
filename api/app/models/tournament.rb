@@ -26,8 +26,8 @@ class Tournament < ApplicationRecord
     }
   end
 
-  def self.active_for_public
-    context = home_context
+  def self.active_for_public(context = nil)
+    context ||= home_context
     upcoming = context[:upcoming_or_live]
 
     if upcoming&.games&.exists?

@@ -142,9 +142,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
 
   create_table "tournaments", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.datetime "end_date", null: false
+    t.date "end_date", null: false
     t.string "name", null: false
-    t.datetime "start_date", null: false
+    t.date "start_date", null: false
     t.string "status", default: "upcoming", null: false
     t.datetime "updated_at", null: false
     t.integer "year", null: false

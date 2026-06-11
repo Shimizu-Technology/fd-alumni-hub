@@ -82,13 +82,12 @@ module ClerkAuthenticatable
 
       whitelist = AdminWhitelist.active_for_email(email)
       if whitelist
-        return User.create!(
+        return create_whitelisted_user(
           clerk_id: clerk_id,
           email: email,
           first_name: first_name,
           last_name: last_name,
-          role: whitelist.role,
-          active: true
+          role: whitelist.role
         )
       end
     end
@@ -96,12 +95,35 @@ module ClerkAuthenticatable
     nil
   end
 
-  def update_user_from_claims(user, email, first_name, last_name, clerk_id: nil)
+  def create_whitelisted_user(clerk_id:, email:, first_name:, last_name:, role:)
+    user = User.create_or_find_by!(clerk_id: clerk_id) do |record|
+      record.email = email
+      record.first_name = first_name
+      record.last_name = last_name
+      record.role = role
+      record.active = true
+    end
+
+    sync_whitelisted_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordNotFound
+    user = User.find_by(clerk_id: clerk_id) || User.find_by("LOWER(email) = ?", email.downcase)
+    sync_whitelisted_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
+  end
+
+  def sync_whitelisted_user(user, email, first_name, last_name, clerk_id:, role:)
+    return nil unless user&.active?
+
+    update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
+    user
+  end
+
+  def update_user_from_claims(user, email, first_name, last_name, clerk_id: nil, role: nil)
     updates = {}
     updates[:clerk_id] = clerk_id if clerk_id.present? && user.clerk_id.blank?
     updates[:email] = email if email.present? && email.downcase != user.email
     updates[:first_name] = first_name if first_name.present?
     updates[:last_name] = last_name if last_name.present?
+    updates[:role] = role if role.present? && user.role != role
     user.update!(updates) if updates.any?
   end
 

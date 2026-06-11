@@ -4,7 +4,7 @@ module Api
       class HomeController < BaseController
         def show
           context = Tournament.home_context
-          tournament = Tournament.active_for_public
+          tournament = Tournament.active_for_public(context)
 
           unless tournament
             return render json: {

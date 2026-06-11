@@ -3,8 +3,8 @@ class CreateFdTournamentDomain < ActiveRecord::Migration[8.1]
     create_table :tournaments do |t|
       t.string :name, null: false
       t.integer :year, null: false
-      t.datetime :start_date, null: false
-      t.datetime :end_date, null: false
+      t.date :start_date, null: false
+      t.date :end_date, null: false
       t.string :status, null: false, default: "upcoming"
 
       t.timestamps

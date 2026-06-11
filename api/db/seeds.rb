@@ -10,8 +10,8 @@ end
 
 if ENV["FD_SEED_DEMO"] == "1"
   tournament = Tournament.find_or_create_by!(year: 2026, name: "FD Alumni Basketball Tournament") do |record|
-    record.start_date = Time.zone.local(2026, 7, 3, 0, 0, 0)
-    record.end_date = Time.zone.local(2026, 7, 24, 23, 59, 59)
+    record.start_date = Date.new(2026, 7, 3)
+    record.end_date = Date.new(2026, 7, 24)
     record.status = "upcoming"
   end
 

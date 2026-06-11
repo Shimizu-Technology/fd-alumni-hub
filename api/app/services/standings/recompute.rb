@@ -12,7 +12,7 @@ module Standings
 
     def call
       teams = @tournament.teams.to_a
-      final_games = @tournament.games.finals.to_a
+      final_games = @tournament.games.finals.includes(:home_team, :away_team).to_a
 
       rows = teams.index_with do
         { wins: 0, losses: 0, points_for: 0, points_against: 0 }

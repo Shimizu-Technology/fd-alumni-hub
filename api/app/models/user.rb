@@ -43,8 +43,8 @@ class User < ApplicationRecord
       fullName: full_name,
       role: role,
       active: active,
-      is_admin: is_admin,
-      is_staff: is_staff,
+      isAdmin: is_admin,
+      isStaff: is_staff,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
