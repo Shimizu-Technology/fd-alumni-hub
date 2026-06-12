@@ -116,11 +116,11 @@ Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; need
 
 ### Phase 4: Data migration and staging validation
 
-Planned:
+Status: **in progress on `rails-migration/phase-3-data-migration`**
 
-- Export current Next/Prisma data.
-- Import into a Rails-owned Neon branch/new DB.
-- Validate counts and critical pages:
+- Export current Next/Prisma data with `npm --workspace @fd/web run export:rails-migration`.
+- Import into Rails with `bin/rails fd:migration:import_next_snapshot[...]`.
+- Validate counts and critical records with `bin/rails fd:migration:validate_next_snapshot[...]`:
   - tournaments
   - teams
   - games
@@ -128,8 +128,13 @@ Planned:
   - article links
   - media assets
   - sponsors
+  - ingest items
+  - admin whitelist/users
+- Preserve Prisma CUID relationships with Rails `legacy_id` columns.
 - Validate Guam date rendering and score coverage.
 - Run organizer walkthrough on staging.
+
+See `docs/RAILS-DATA-MIGRATION-RUNBOOK.md` for commands and safety notes.
 
 ### Phase 5: Cutover
 
@@ -211,3 +216,7 @@ Current Next backend routes map to Rails like this:
 - No SMS/email flows.
 - No sponsor CRM beyond basic sponsor records.
 - No automatic production data imports.
+
+## Post-migration follow-ups
+
+- Add Rails/Vite S3 direct uploads for admin media assets and sponsor logos, matching the current Next.js presigned upload flow and the Shimizu starter-app AWS S3 guide. See `docs/S3-UPLOAD-SETUP.md`.

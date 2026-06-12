@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -18,22 +18,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.string "email", null: false
+    t.string "legacy_id"
     t.text "notes"
     t.string "role", default: "admin", null: false
     t.datetime "updated_at", null: false
     t.index "lower((email)::text)", name: "index_admin_whitelists_on_lower_email", unique: true
+    t.index ["legacy_id"], name: "index_admin_whitelists_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
   end
 
   create_table "article_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "excerpt"
     t.string "image_url"
+    t.string "legacy_id"
     t.datetime "published_at"
     t.string "source", null: false
     t.string "title", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.string "url", null: false
+    t.index ["legacy_id"], name: "index_article_links_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
@@ -46,6 +50,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.string "image_url"
     t.string "imported_to_id"
     t.string "kind", null: false
+    t.string "legacy_id"
     t.text "notes"
     t.string "source", null: false
     t.string "status", default: "pending", null: false
@@ -53,6 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.string "url", null: false
+    t.index ["legacy_id"], name: "index_content_ingest_items_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["source", "status"], name: "index_content_ingest_items_on_source_and_status"
     t.index ["tournament_id", "status", "kind"], name: "index_ingest_on_tournament_status_kind"
     t.index ["tournament_id", "url"], name: "index_ingest_on_tournament_and_url", unique: true
@@ -67,7 +73,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.string "division"
     t.integer "home_score"
     t.bigint "home_team_id", null: false
+    t.string "legacy_id"
     t.text "notes"
+    t.boolean "placeholder", default: false, null: false
     t.datetime "start_time", null: false
     t.string "status", default: "scheduled", null: false
     t.string "stream_url"
@@ -77,8 +85,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.string "venue"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
     t.index ["home_team_id"], name: "index_games_on_home_team_id"
+    t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["status"], name: "index_games_on_status"
     t.index ["tournament_id", "division"], name: "index_games_on_tournament_id_and_division"
+    t.index ["tournament_id", "placeholder"], name: "index_games_on_tournament_id_and_placeholder"
     t.index ["tournament_id", "start_time"], name: "index_games_on_tournament_id_and_start_time"
     t.index ["tournament_id"], name: "index_games_on_tournament_id"
   end
@@ -88,13 +98,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.text "caption"
     t.datetime "created_at", null: false
     t.string "image_url", null: false
+    t.string "legacy_id"
     t.string "source", null: false
     t.string "tags"
     t.datetime "taken_at"
     t.string "title", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url", unique: true
+    t.index ["legacy_id"], name: "index_media_assets_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
+    t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url"
     t.index ["tournament_id", "source", "taken_at"], name: "index_media_assets_on_tournament_id_and_source_and_taken_at"
     t.index ["tournament_id"], name: "index_media_assets_on_tournament_id"
   end
@@ -102,6 +114,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
   create_table "sponsors", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
+    t.string "legacy_id"
     t.string "logo_url"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
@@ -109,12 +122,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.string "tier"
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["legacy_id"], name: "index_sponsors_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "active", "position"], name: "index_sponsors_on_tournament_id_and_active_and_position"
     t.index ["tournament_id"], name: "index_sponsors_on_tournament_id"
   end
 
   create_table "standings", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "legacy_id"
     t.integer "losses", default: 0, null: false
     t.integer "points_against", default: 0, null: false
     t.integer "points_for", default: 0, null: false
@@ -122,6 +137,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.integer "wins", default: 0, null: false
+    t.index ["legacy_id"], name: "index_standings_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["team_id"], name: "index_standings_on_team_id"
     t.index ["tournament_id", "team_id"], name: "index_standings_on_tournament_id_and_team_id", unique: true
     t.index ["tournament_id", "wins", "losses"], name: "index_standings_on_tournament_id_and_wins_and_losses"
@@ -133,8 +149,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.datetime "created_at", null: false
     t.string "display_name", null: false
     t.string "division"
+    t.string "legacy_id"
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["legacy_id"], name: "index_teams_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "display_name"], name: "index_teams_on_tournament_and_display_name", unique: true
     t.index ["tournament_id", "division"], name: "index_teams_on_tournament_id_and_division"
     t.index ["tournament_id"], name: "index_teams_on_tournament_id"
@@ -143,11 +161,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
   create_table "tournaments", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "end_date", null: false
+    t.string "legacy_id"
     t.string "name", null: false
     t.date "start_date", null: false
     t.string "status", default: "upcoming", null: false
     t.datetime "updated_at", null: false
     t.integer "year", null: false
+    t.index ["legacy_id"], name: "index_tournaments_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["year", "name"], name: "index_tournaments_on_year_and_name", unique: true
     t.index ["year", "status"], name: "index_tournaments_on_year_and_status"
   end
@@ -159,10 +179,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000001) do
     t.string "email", null: false
     t.string "first_name"
     t.string "last_name"
+    t.string "legacy_id"
     t.string "role", default: "staff", null: false
     t.datetime "updated_at", null: false
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
     t.index ["clerk_id"], name: "index_users_on_clerk_id", unique: true, where: "(clerk_id IS NOT NULL)"
+    t.index ["legacy_id"], name: "index_users_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
   end
 
   add_foreign_key "article_links", "tournaments", on_delete: :cascade

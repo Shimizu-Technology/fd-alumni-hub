@@ -12,7 +12,8 @@
     "apply:historical-gap-batch1": "tsx scripts/apply-historical-gap-batch1.ts",
     "finalize:historical-gap-batch1": "tsx scripts/finalize-historical-gap-batch1.ts",
     "qa-check": "tsx scripts/qa-smoke-check.ts",
-    "import:archive-content": "tsx scripts/import-archive-content.ts"
+    "import:archive-content": "tsx scripts/import-archive-content.ts",
+    "export:rails-migration": "tsx scripts/export-rails-migration.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1001.0",

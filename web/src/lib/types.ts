@@ -41,6 +41,7 @@ export type Game = {
   notes: string | null
   division: string | null
   bracketCode: string | null
+  placeholder?: boolean
   createdAt?: string
   updatedAt?: string
   homeTeam?: TeamSummary

@@ -101,6 +101,14 @@ Authorization: Bearer dev_token_you@example.com
 - `PATCH /api/v1/admin/links/bulk`
 - `GET /api/v1/admin/missing-links`
 
-## Data safety
+## Data migration + safety
 
-Do not point this Rails API at the existing Next/Prisma production database. Phase 1 is intended for a Rails-owned local DB or Neon branch/new DB. Production data import/cutover must be an explicit operator-run step.
+Do not point this Rails API at the existing Next/Prisma production database. Rails should use a Rails-owned local DB or Neon branch/new DB.
+
+Use the operator-run migration path in `docs/RAILS-DATA-MIGRATION-RUNBOOK.md`:
+
+- export Next/Prisma data to an ignored JSON snapshot
+- import that snapshot into Rails with `bin/rails fd:migration:import_next_snapshot[...]`
+- validate with `bin/rails fd:migration:validate_next_snapshot[...]`
+
+Production data import/cutover must remain an explicit operator-run step.
