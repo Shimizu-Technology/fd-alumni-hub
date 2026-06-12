@@ -6,10 +6,14 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
     path = write_snapshot
 
     result = DataMigration::NextPrismaSnapshot::Import.call(path)
-    assert_equal 1, result[:counts]["tournaments"]
-    assert_equal 2, result[:counts]["teams"]
-    assert_equal 2, result[:counts]["games"]
-    assert_equal 2, result[:counts]["mediaAssets"]
+    assert_equal 1, result[:sourceCounts]["tournaments"]
+    assert_equal 1, result[:railsCounts]["tournaments"]
+    assert_equal 2, result[:sourceCounts]["teams"]
+    assert_equal 2, result[:railsCounts]["teams"]
+    assert_equal 2, result[:sourceCounts]["games"]
+    assert_equal 2, result[:railsCounts]["games"]
+    assert_equal 2, result[:sourceCounts]["mediaAssets"]
+    assert_equal 2, result[:railsCounts]["mediaAssets"]
 
     assert_no_difference -> { Tournament.count } do
       assert_no_difference -> { Team.count } do
@@ -39,12 +43,26 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
     assert_equal "approved", ingest_item.status
     assert_equal article.id.to_s, ingest_item.imported_to_id
     assert_equal "approved", media_ingest_item.status
-    assert media_ingest_item.imported_to_id.present?
+    assert_equal MediaAsset.find_by!(legacy_id: "next_media_1").id.to_s, media_ingest_item.imported_to_id
     assert_equal 2, MediaAsset.where(image_url: "https://example.test/media.jpg").count
 
     report = DataMigration::NextPrismaSnapshot::Validate.call(path)
     assert report[:ok], report[:issues].join("\n")
     assert_equal({ total: 2, scored: 1, percent: 50.0, finalMissingScores: 0 }, report[:scoreCoverage][:rails])
+  end
+
+  test "ambiguous media ingest inference resets approved source item to pending" do
+    payload = snapshot_payload
+    ingest = payload[:records][:contentIngestItems].find { |item| item[:id] == "next_ingest_2" }
+    ingest[:title] = "Ambiguous duplicate image"
+    path = write_snapshot(payload, "next-prisma-ambiguous-media-ingest-test.json")
+
+    DataMigration::NextPrismaSnapshot::Import.call(path)
+
+    item = ContentIngestItem.find_by!(legacy_id: "next_ingest_2")
+    assert_equal "pending", item.status
+    assert_nil item.imported_to_id
+    assert_includes item.notes, "reset to pending"
   end
 
   test "validator reports content records that reference missing tournaments" do

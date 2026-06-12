@@ -4,6 +4,18 @@ module DataMigration
   module NextPrismaSnapshot
     class Import
       FORMAT = "fd-alumni-hub-next-prisma-export"
+      TABLES = {
+        "tournaments" => Tournament,
+        "teams" => Team,
+        "games" => Game,
+        "standings" => Standing,
+        "articleLinks" => ArticleLink,
+        "mediaAssets" => MediaAsset,
+        "sponsors" => Sponsor,
+        "contentIngestItems" => ContentIngestItem,
+        "adminWhitelists" => AdminWhitelist,
+        "appUsers" => User
+      }.freeze
 
       attr_reader :path, :snapshot, :records, :id_maps
 
@@ -46,11 +58,19 @@ module DataMigration
       end
 
       def result
+        source_counts = records.transform_values(&:length)
+        rails_counts = TABLES.to_h do |record_key, model|
+          legacy_ids = records.fetch(record_key, []).filter_map { |record| record["id"] }
+          [ record_key, model.where(legacy_id: legacy_ids).count ]
+        end
+
         {
           path: path,
           importedAt: Time.current.iso8601,
           sourceExportedAt: snapshot["exportedAt"],
-          counts: records.transform_values(&:length)
+          sourceCounts: source_counts,
+          railsCounts: rails_counts,
+          counts: rails_counts
         }
       end
 
@@ -271,8 +291,18 @@ module DataMigration
         if source["kind"] == "article"
           ArticleLink.find_by(tournament_id: tournament_id, url: source["url"])
         else
-          MediaAsset.find_by(tournament_id: tournament_id, image_url: source["imageUrl"])
+          infer_media_import(source, tournament_id)
         end
+      end
+
+      def infer_media_import(source, tournament_id)
+        candidates = MediaAsset.where(tournament_id: tournament_id, image_url: source["imageUrl"])
+        return candidates.first if candidates.one?
+
+        title_matches = candidates.where(title: source["title"])
+        return title_matches.first if title_matches.one?
+
+        nil
       end
 
       def placeholder_game?(source)

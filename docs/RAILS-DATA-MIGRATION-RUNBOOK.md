@@ -48,13 +48,14 @@ DATABASE_URL=postgres:///fd_alumni_hub_api_development \
   bin/rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export.json]'
 ```
 
-The importer is idempotent. It upserts by `legacy_id` and preserves relationships by mapping Prisma CUIDs to Rails bigint IDs.
+The importer is idempotent. It upserts by `legacy_id` and preserves relationships by mapping Prisma CUIDs to Rails bigint IDs. Import output reports both snapshot `sourceCounts` and post-import `railsCounts`.
 
 Migration normalizations:
 
 - Duplicate media image URLs are preserved because the Prisma source allows them.
 - Scheduled, unscored same-team games are marked with `games.placeholder = true` as imported placeholder/TBD games and do not affect standings.
 - Source ingest items marked `approved` without an imported article/media record are reset to `pending` with a migration note so Rails preserves the invariant that approved ingest items point at imported content.
+- Media ingest fallback inference only links to an imported media asset when the image URL is unique or when duplicate image URLs have exactly one title match; ambiguous cases are reset to pending for operator review.
 
 ## 4. Validate the import
 
