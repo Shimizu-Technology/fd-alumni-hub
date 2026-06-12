@@ -2,7 +2,6 @@ class MediaAsset < ApplicationRecord
   belongs_to :tournament
 
   validates :source, :title, :image_url, presence: true
-  validates :image_url, uniqueness: { scope: :tournament_id }
 
   scope :latest, -> { order(taken_at: :desc, created_at: :desc, id: :desc) }
 

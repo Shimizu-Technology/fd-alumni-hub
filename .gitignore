@@ -6,6 +6,7 @@ node_modules/
 !web/.env.example
 .next/
 dist/
+tmp/
 .DS_Store
 
 # Local Netlify folder

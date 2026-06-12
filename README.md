@@ -32,7 +32,7 @@ api/       Rails API foundation plus public/admin JSON endpoints
 web/       Side-by-side React/Vite frontend being validated before cutover
 ```
 
-See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-go criteria, and route mapping.
+See `docs/RAILS-REACT-MIGRATION.md` for the migration rationale, phases, go/no-go criteria, and route mapping. See `docs/RAILS-DATA-MIGRATION-RUNBOOK.md` for the operator-run Next/Prisma → Rails data migration path.
 
 ## App Scaffold
 - Next.js app lives in `apps/web`
