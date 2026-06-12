@@ -216,3 +216,7 @@ Current Next backend routes map to Rails like this:
 - No SMS/email flows.
 - No sponsor CRM beyond basic sponsor records.
 - No automatic production data imports.
+
+## Post-migration follow-ups
+
+- Add Rails/Vite S3 direct uploads for admin media assets and sponsor logos, matching the current Next.js presigned upload flow and the Shimizu starter-app AWS S3 guide. See `docs/S3-UPLOAD-SETUP.md`.

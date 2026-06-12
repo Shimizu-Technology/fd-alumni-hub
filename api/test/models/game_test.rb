@@ -12,7 +12,19 @@ class GameTest < ActiveSupport::TestCase
     @team = @tournament.teams.create!(class_year_label: "TBD", display_name: "Class TBD", division: "Special")
   end
 
-  test "allows scheduled unscored placeholder games with the same team" do
+  test "allows explicitly marked placeholder games with the same team" do
+    game = @tournament.games.build(
+      home_team: @team,
+      away_team: @team,
+      start_time: Time.zone.local(2026, 7, 3, 18, 0),
+      status: "scheduled",
+      placeholder: true
+    )
+
+    assert game.valid?
+  end
+
+  test "rejects unmarked scheduled same-team games" do
     game = @tournament.games.build(
       home_team: @team,
       away_team: @team,
@@ -20,7 +32,8 @@ class GameTest < ActiveSupport::TestCase
       status: "scheduled"
     )
 
-    assert game.valid?
+    assert_not game.valid?
+    assert_includes game.errors[:away_team_id], "must be different from home team"
   end
 
   test "rejects scored same-team games" do

@@ -8,7 +8,7 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
     result = DataMigration::NextPrismaSnapshot::Import.call(path)
     assert_equal 1, result[:counts]["tournaments"]
     assert_equal 2, result[:counts]["teams"]
-    assert_equal 1, result[:counts]["games"]
+    assert_equal 2, result[:counts]["games"]
     assert_equal 2, result[:counts]["mediaAssets"]
 
     assert_no_difference -> { Tournament.count } do
@@ -29,6 +29,10 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
     assert_equal 44, game.away_score
     assert_equal "https://clutch.test/live", game.stream_url
 
+    placeholder_game = Game.find_by!(legacy_id: "next_game_placeholder")
+    assert placeholder_game.placeholder?
+    assert_equal placeholder_game.home_team_id, placeholder_game.away_team_id
+
     article = ArticleLink.find_by!(legacy_id: "next_article_1")
     ingest_item = ContentIngestItem.find_by!(legacy_id: "next_ingest_1")
     media_ingest_item = ContentIngestItem.find_by!(legacy_id: "next_ingest_2")
@@ -40,15 +44,32 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
 
     report = DataMigration::NextPrismaSnapshot::Validate.call(path)
     assert report[:ok], report[:issues].join("\n")
-    assert_equal({ total: 1, scored: 1, percent: 100.0, finalMissingScores: 0 }, report[:scoreCoverage][:rails])
+    assert_equal({ total: 2, scored: 1, percent: 50.0, finalMissingScores: 0 }, report[:scoreCoverage][:rails])
+  end
+
+  test "validator reports content records that reference missing tournaments" do
+    payload = snapshot_payload
+    payload[:records][:articleLinks].first[:tournamentId] = "missing_tournament"
+    payload[:records][:mediaAssets].first[:tournamentId] = "missing_tournament"
+    payload[:records][:sponsors].first[:tournamentId] = "missing_tournament"
+    payload[:records][:contentIngestItems].first[:tournamentId] = "missing_tournament"
+    path = write_snapshot(payload, "next-prisma-invalid-relationships-test.json")
+
+    report = DataMigration::NextPrismaSnapshot::Validate.call(path)
+
+    assert_not report[:ok]
+    assert_includes report[:issues], "article next_article_1 references missing tournament missing_tournament"
+    assert_includes report[:issues], "media asset next_media_1 references missing tournament missing_tournament"
+    assert_includes report[:issues], "sponsor next_sponsor_1 references missing tournament missing_tournament"
+    assert_includes report[:issues], "ingest item next_ingest_1 references missing tournament missing_tournament"
   end
 
   private
 
-  def write_snapshot
-    path = Rails.root.join("tmp", "next-prisma-snapshot-test.json")
+  def write_snapshot(payload = snapshot_payload, filename = "next-prisma-snapshot-test.json")
+    path = Rails.root.join("tmp", filename)
     FileUtils.mkdir_p(path.dirname)
-    File.write(path, JSON.pretty_generate(snapshot_payload))
+    File.write(path, JSON.pretty_generate(payload))
     path.to_s
   end
 
@@ -63,7 +84,7 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
       counts: {
         tournaments: 1,
         teams: 2,
-        games: 1,
+        games: 2,
         standings: 1,
         articleLinks: 1,
         mediaAssets: 2,
@@ -121,6 +142,24 @@ class NextPrismaSnapshotMigrationTest < ActiveSupport::TestCase
             notes: "phase=playoff",
             division: "Maroon",
             bracketCode: "F",
+            createdAt: now,
+            updatedAt: now
+          },
+          {
+            id: "next_game_placeholder",
+            tournamentId: "next_tournament_2025",
+            homeTeamId: "next_team_2013",
+            awayTeamId: "next_team_2013",
+            startTime: "2025-07-20T10:00:00.000Z",
+            venue: "FD Phoenix Center",
+            status: "scheduled",
+            homeScore: nil,
+            awayScore: nil,
+            streamUrl: nil,
+            ticketUrl: nil,
+            notes: "phase=playoff | placeholder=TBD",
+            division: "Special",
+            bracketCode: "TBD",
             createdAt: now,
             updatedAt: now
           }

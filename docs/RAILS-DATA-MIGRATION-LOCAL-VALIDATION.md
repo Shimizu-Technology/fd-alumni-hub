@@ -47,6 +47,7 @@ After import, a local Rails API smoke check returned:
 ## Notes
 
 - Duplicate media image URLs from the Prisma source were preserved in Rails.
-- Four scheduled, unscored same-team placeholder games were imported and remain excluded from standings.
+- Four scheduled, unscored same-team placeholder games were imported with `games.placeholder = true` and remain excluded from standings.
+- Local Rails post-import summary confirmed 93 games, 4 placeholders, 28 scored games, 104 articles, and 143 media assets.
 - Twelve source ingest items that were marked approved without an imported content reference were reset to pending with a migration note for operator review.
 - Full verification gate passed after the migration work: `./scripts/gate.sh`.

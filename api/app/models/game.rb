@@ -47,6 +47,7 @@ class Game < ApplicationRecord
       notes: notes,
       division: division,
       bracketCode: bracket_code,
+      placeholder: placeholder,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
@@ -74,13 +75,9 @@ class Game < ApplicationRecord
 
   def teams_are_distinct
     return if home_team_id.blank? || away_team_id.blank? || home_team_id != away_team_id
-    return if scheduled_unscored_placeholder?
+    return if placeholder?
 
     errors.add(:away_team_id, "must be different from home team")
-  end
-
-  def scheduled_unscored_placeholder?
-    status == "scheduled" && home_score.nil? && away_score.nil?
   end
 
   def teams_belong_to_tournament

@@ -110,7 +110,8 @@ module DataMigration
             ticket_url: blank_to_nil(source["ticketUrl"]),
             notes: blank_to_nil(source["notes"]),
             division: blank_to_nil(source["division"]),
-            bracket_code: blank_to_nil(source["bracketCode"])
+            bracket_code: blank_to_nil(source["bracketCode"]),
+            placeholder: placeholder_game?(source)
           })
           id_maps[:games][source.fetch("id")] = game.id
         end
@@ -274,6 +275,13 @@ module DataMigration
         end
       end
 
+      def placeholder_game?(source)
+        source["homeTeamId"] == source["awayTeamId"] &&
+          source["status"] == "scheduled" &&
+          source["homeScore"].nil? &&
+          source["awayScore"].nil?
+      end
+
       def each_record(key, &block)
         records.fetch(key, []).each(&block)
       end
@@ -290,7 +298,7 @@ module DataMigration
         created_at = parse_time(source["createdAt"])
         updated_at = parse_time(source["updatedAt"]) || created_at
 
-        record.assign_attributes(attrs.compact)
+        record.assign_attributes(attrs)
         record.created_at = created_at if created_at && record.new_record?
         record.save!
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000003) do
     t.bigint "home_team_id", null: false
     t.string "legacy_id"
     t.text "notes"
+    t.boolean "placeholder", default: false, null: false
     t.datetime "start_time", null: false
     t.string "status", default: "scheduled", null: false
     t.string "stream_url"
@@ -87,6 +88,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000003) do
     t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["status"], name: "index_games_on_status"
     t.index ["tournament_id", "division"], name: "index_games_on_tournament_id_and_division"
+    t.index ["tournament_id", "placeholder"], name: "index_games_on_tournament_id_and_placeholder"
     t.index ["tournament_id", "start_time"], name: "index_games_on_tournament_id_and_start_time"
     t.index ["tournament_id"], name: "index_games_on_tournament_id"
   end

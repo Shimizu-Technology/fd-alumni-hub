@@ -95,6 +95,19 @@ module DataMigration
           issues << "standing #{standing.fetch("id")} references missing tournament #{standing["tournamentId"]}" unless source_ids[:tournaments].include?(standing["tournamentId"])
           issues << "standing #{standing.fetch("id")} references missing team #{standing["teamId"]}" unless source_ids[:teams].include?(standing["teamId"])
         end
+
+        validate_tournament_references(source_ids[:tournaments], "articleLinks", "article")
+        validate_tournament_references(source_ids[:tournaments], "mediaAssets", "media asset")
+        validate_tournament_references(source_ids[:tournaments], "sponsors", "sponsor")
+        validate_tournament_references(source_ids[:tournaments], "contentIngestItems", "ingest item")
+      end
+
+      def validate_tournament_references(tournament_ids, record_key, label)
+        records.fetch(record_key, []).each do |record|
+          next if tournament_ids.include?(record["tournamentId"])
+
+          issues << "#{label} #{record.fetch("id")} references missing tournament #{record["tournamentId"]}"
+        end
       end
 
       def validate_ingest_imports

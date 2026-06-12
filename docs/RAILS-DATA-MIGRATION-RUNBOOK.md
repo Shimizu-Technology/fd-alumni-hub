@@ -53,7 +53,7 @@ The importer is idempotent. It upserts by `legacy_id` and preserves relationship
 Migration normalizations:
 
 - Duplicate media image URLs are preserved because the Prisma source allows them.
-- Scheduled, unscored same-team games are allowed as imported placeholder/TBD games and do not affect standings.
+- Scheduled, unscored same-team games are marked with `games.placeholder = true` as imported placeholder/TBD games and do not affect standings.
 - Source ingest items marked `approved` without an imported article/media record are reset to `pending` with a migration note so Rails preserves the invariant that approved ingest items point at imported content.
 
 ## 4. Validate the import
