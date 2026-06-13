@@ -111,7 +111,7 @@ class ClerkAuth
       return nil if uri.scheme.blank? || uri.host.blank?
 
       origin = +"#{uri.scheme}://#{uri.host}"
-      origin << ":#{uri.port}" unless [ 80, 443 ].include?(uri.port)
+      origin << ":#{uri.port}" unless uri.port == uri.default_port
       origin
     rescue URI::InvalidURIError => e
       Rails.logger.warn("Invalid Clerk JWKS URL: #{e.message}")

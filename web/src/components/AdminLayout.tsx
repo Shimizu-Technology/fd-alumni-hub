@@ -19,7 +19,7 @@ const adminItems = [
 
 export function AdminLayout() {
   const auth = useAuthContext()
-  const returnTo = `${window.location.pathname}${window.location.search}` || '/admin'
+  const returnTo = `${window.location.pathname}${window.location.search}`
 
   if (auth.isLoading) return <div className="admin-shell"><LoadingState label="Verifying admin access" /></div>
 

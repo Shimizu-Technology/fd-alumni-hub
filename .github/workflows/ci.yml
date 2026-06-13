@@ -71,7 +71,7 @@ jobs:
           working-directory: api
 
       - name: Security scan
-        run: bin/brakeman --no-pager
+        run: bundle exec brakeman --no-pager
 
       - name: Bundle audit
         run: bin/bundler-audit
