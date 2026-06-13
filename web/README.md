@@ -7,7 +7,9 @@ This app is additive and is not the current production frontend. Production rema
 ## Local development
 
 ```bash
-cp web/.env.example web/.env.local
+cp web/.env.example web/.env
+# Fill VITE_CLERK_PUBLISHABLE_KEY for admin auth.
+# Leave VITE_CLERK_JWT_TEMPLATE blank unless the Clerk app has a custom JWT template.
 
 # terminal 1
 cd api

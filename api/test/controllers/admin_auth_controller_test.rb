@@ -96,6 +96,12 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     assert_not_equal decoy.id.to_s, payload["id"]
   end
 
+  test "rejects dev token bypass attempts" do
+    get "/api/v1/me", headers: { "Authorization" => "Bearer dev_token_admin@example.com" }
+
+    assert_response :unauthorized
+  end
+
   test "rejects admin endpoints without auth" do
     get "/api/v1/admin/tournaments"
 

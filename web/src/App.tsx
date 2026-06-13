@@ -58,5 +58,14 @@ export function App() {
 
   if (!clerkEnabled) return content
 
-  return <ClerkProvider publishableKey={clerkKey!}>{content}</ClerkProvider>
+  return (
+    <ClerkProvider
+      publishableKey={clerkKey!}
+      afterSignOutUrl="/"
+      signInFallbackRedirectUrl="/admin"
+      signUpFallbackRedirectUrl="/admin"
+    >
+      {content}
+    </ClerkProvider>
+  )
 }

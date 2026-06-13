@@ -82,5 +82,5 @@ jobs:
       - name: Test
         env:
           RAILS_ENV: test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/fd_alumni_hub_api_test
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/fd_alumni_hub_api_test
         run: bin/rails db:test:prepare test
