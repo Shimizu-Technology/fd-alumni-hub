@@ -3,7 +3,7 @@ module Api
     module Admin
       class MediaAssetsController < BaseController
         def index
-          media_assets = MediaAsset.includes(:tournament).latest
+          media_assets = MediaAsset.includes(:tournament, game: [ :home_team, :away_team ]).latest
           media_assets = media_assets.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           render json: { mediaAssets: media_assets.limit(300).map(&:api_json) }
         end
@@ -44,6 +44,8 @@ module Api
           permitted = raw.permit(
             :tournament_id,
             :tournamentId,
+            :game_id,
+            :gameId,
             :source,
             :title,
             :image_url,
@@ -58,6 +60,7 @@ module Api
 
           attrs = {}
           assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
+          assign_param(attrs, permitted, :game_id, :game_id, :gameId)
           assign_param(attrs, permitted, :source, :source)
           assign_param(attrs, permitted, :title, :title)
           assign_param(attrs, permitted, :image_url, :image_url, :imageUrl)

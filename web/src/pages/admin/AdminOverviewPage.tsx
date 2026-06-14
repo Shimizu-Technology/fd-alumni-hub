@@ -15,7 +15,7 @@ export function AdminOverviewPage() {
       <PageHeader
         eyebrow="Admin console"
         title="Tournament operations"
-        description="Manage games, links, coverage, sponsors, and data health for the Rails-backed hub."
+        description="Set up the tournament, keep scores current, and make sure fans can find tickets, streams, coverage, and sponsor information."
       />
 
       <div className="stats-grid four">
@@ -46,7 +46,8 @@ export function AdminOverviewPage() {
 
       <Panel>
         <div className="admin-shortcuts">
-          <Link to="/admin/games">Edit games</Link>
+          <Link to="/admin/tournaments">Set tournament dates</Link>
+          <Link to="/admin/games">Edit games and scores</Link>
           <Link to="/admin/standings">Recompute standings</Link>
           <Link to="/admin/links">Bulk update links</Link>
           <Link to="/admin/ingest">Review ingest queue</Link>

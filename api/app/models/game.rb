@@ -5,6 +5,9 @@ class Game < ApplicationRecord
   belongs_to :home_team, class_name: "Team", inverse_of: :home_games
   belongs_to :away_team, class_name: "Team", inverse_of: :away_games
 
+  has_many :article_links, dependent: :nullify
+  has_many :media_assets, dependent: :nullify
+
   validates :start_time, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :home_score, :away_score, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
@@ -29,6 +32,20 @@ class Game < ApplicationRecord
 
   def fatherson_phase?
     bracket_code == "FS" || home_team&.display_name.to_s.match?(/\bFS\b/i) || away_team&.display_name.to_s.match?(/\bFS\b/i)
+  end
+
+  def summary_json
+    {
+      id: id.to_s,
+      tournamentId: tournament_id.to_s,
+      startTime: start_time&.iso8601,
+      venue: venue,
+      status: status,
+      homeScore: home_score,
+      awayScore: away_score,
+      homeTeam: team_summary(home_team),
+      awayTeam: team_summary(away_team)
+    }
   end
 
   def api_json(include_teams: true)

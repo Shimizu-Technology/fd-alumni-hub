@@ -26,7 +26,7 @@ module Api
             latestResultsTournament: context[:latest_completed_with_games]&.api_json,
             todayGames: games_scope.where(start_time: today_range).ordered.limit(20).map(&:api_json),
             liveGames: games_scope.where(status: "live").ordered.limit(10).map(&:api_json),
-            latestNews: tournament.article_links.latest.limit(5).map(&:api_json)
+            latestNews: tournament.article_links.includes(game: [ :home_team, :away_team ]).latest.limit(5).map(&:api_json)
           }
         end
       end

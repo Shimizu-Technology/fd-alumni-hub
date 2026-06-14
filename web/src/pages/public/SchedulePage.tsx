@@ -65,8 +65,8 @@ function GameCard({ game }: { game: Game }) {
         {game.bracketCode && <span>{game.bracketCode}</span>}
       </div>
       <div className="game-actions">
-        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
-        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream pending</span>}
+        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
+        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
       </div>
     </article>
   )

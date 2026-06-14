@@ -26,6 +26,18 @@ export type Team = {
 
 export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'division'>
 
+export type RelatedGameSummary = {
+  id: string
+  tournamentId: string
+  startTime: string
+  venue: string | null
+  status: GameStatus
+  homeScore: number | null
+  awayScore: number | null
+  homeTeam?: TeamSummary | null
+  awayTeam?: TeamSummary | null
+}
+
 export type Game = {
   id: string
   tournamentId: string
@@ -64,6 +76,8 @@ export type Standing = {
 export type Article = {
   id: string
   tournamentId: string
+  gameId: string | null
+  game?: RelatedGameSummary | null
   title: string
   source: string
   url: string
@@ -77,6 +91,8 @@ export type Article = {
 export type MediaAsset = {
   id: string
   tournamentId: string
+  gameId: string | null
+  game?: RelatedGameSummary | null
   source: string
   title: string
   imageUrl: string

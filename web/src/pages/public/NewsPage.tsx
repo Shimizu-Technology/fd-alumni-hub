@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
+import { gameOptionLabel } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
 
@@ -19,7 +20,7 @@ export function NewsPage() {
       />
 
       {!data?.articles.length ? (
-        <EmptyState title="No coverage links loaded" description="Use the admin news tools to add articles as organizers and media partners publish them." />
+        <EmptyState title="No coverage links posted yet" description="Tournament stories, recaps, and partner coverage will appear here as they are published." />
       ) : (
         <div className="article-grid">
           {data.articles.map((article) => (
@@ -28,6 +29,7 @@ export function NewsPage() {
               <div>
                 <span>{article.source} · {article.publishedAt ? formatGuamDate(article.publishedAt) : 'Date pending'}</span>
                 <h2>{article.title}</h2>
+                {article.game && <small>{gameOptionLabel(article.game)}</small>}
                 {article.excerpt && <p>{article.excerpt}</p>}
                 <small>Read source <IconExternal /></small>
               </div>

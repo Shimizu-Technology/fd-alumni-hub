@@ -15,7 +15,7 @@ export function StandingsPage() {
       <PageHeader
         eyebrow={data?.tournament ? `${data.tournament.year} standings` : 'Standings'}
         title="Division standings"
-        description="Records are recomputed from final scored games in Rails. Historical score coverage remains visible so operators know where gaps remain."
+        description="Records update from final scores entered by tournament staff. Score coverage shows how much of the schedule has verified results."
       />
 
       <div className="stats-grid three">

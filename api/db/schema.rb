@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -29,6 +29,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
   create_table "article_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "excerpt"
+    t.bigint "game_id"
     t.string "image_url"
     t.string "legacy_id"
     t.datetime "published_at"
@@ -37,6 +38,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.string "url", null: false
+    t.index ["game_id"], name: "index_article_links_on_game_id"
     t.index ["legacy_id"], name: "index_article_links_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
@@ -97,6 +99,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
     t.string "article_url"
     t.text "caption"
     t.datetime "created_at", null: false
+    t.bigint "game_id"
     t.string "image_url", null: false
     t.string "legacy_id"
     t.string "source", null: false
@@ -105,6 +108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
     t.string "title", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["game_id"], name: "index_media_assets_on_game_id"
     t.index ["legacy_id"], name: "index_media_assets_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url"
     t.index ["tournament_id", "source", "taken_at"], name: "index_media_assets_on_tournament_id_and_source_and_taken_at"
@@ -187,11 +191,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_000004) do
     t.index ["legacy_id"], name: "index_users_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
   end
 
+  add_foreign_key "article_links", "games", on_delete: :nullify
   add_foreign_key "article_links", "tournaments", on_delete: :cascade
   add_foreign_key "content_ingest_items", "tournaments", on_delete: :cascade
   add_foreign_key "games", "teams", column: "away_team_id"
   add_foreign_key "games", "teams", column: "home_team_id"
   add_foreign_key "games", "tournaments", on_delete: :cascade
+  add_foreign_key "media_assets", "games", on_delete: :nullify
   add_foreign_key "media_assets", "tournaments", on_delete: :cascade
   add_foreign_key "sponsors", "tournaments", on_delete: :cascade
   add_foreign_key "standings", "teams", on_delete: :cascade

@@ -7,7 +7,7 @@ module Api
           return render json: { tournament: nil, mediaAssets: [] } unless tournament
 
           limit = integer_param(:limit, default: 60, maximum: 240)
-          media_assets = tournament.media_assets.latest.limit(limit)
+          media_assets = tournament.media_assets.includes(game: [ :home_team, :away_team ]).latest.limit(limit)
 
           render json: {
             tournament: tournament.api_json,

@@ -12,6 +12,7 @@ import { GalleryPage } from './pages/public/GalleryPage'
 import { HistoryPage } from './pages/public/HistoryPage'
 import { SponsorsPage } from './pages/public/SponsorsPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
+import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
 import { AdminGamesPage } from './pages/admin/AdminGamesPage'
 import { AdminStandingsPage } from './pages/admin/AdminStandingsPage'
 import { AdminDivisionsPage } from './pages/admin/AdminDivisionsPage'
@@ -41,6 +42,7 @@ export function App() {
         </Route>
         <Route path="admin" element={<AdminLayout />}>
           <Route index element={<AdminOverviewPage />} />
+          <Route path="tournaments" element={<AdminTournamentsPage />} />
           <Route path="games" element={<AdminGamesPage />} />
           <Route path="standings" element={<AdminStandingsPage />} />
           <Route path="divisions" element={<AdminDivisionsPage />} />

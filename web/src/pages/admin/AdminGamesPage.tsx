@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
+import { gameResultLabel } from '../../lib/games'
 import type { Game, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
@@ -21,7 +22,7 @@ export function AdminGamesPage() {
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader eyebrow="Admin" title="Games" description="Create games, update scores, and maintain ticket or stream links." />
+      <PageHeader eyebrow="Admin" title="Games and scores" description="Build the schedule, enter final scores, and attach GuamTime ticket links or Clutch stream links for each game." />
       <TournamentFilter tournaments={data?.tournaments || []} value={tournamentId} onChange={setTournamentId} />
       <CreateGamePanel tournaments={data?.tournaments || []} teams={data?.teams || []} selectedTournamentId={tournamentId} onSaved={reload} />
       <Panel>
@@ -46,7 +47,7 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 
 function CreateGamePanel({ tournaments, teams, selectedTournamentId, onSaved }: { tournaments: Tournament[]; teams: Team[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {
   const defaultTournamentId = selectedTournamentId || tournaments[0]?.id || ''
-  const [form, setForm] = useState({ tournamentId: defaultTournamentId, homeTeamId: '', awayTeamId: '', startTime: '', venue: 'FD Phoenix Center', division: '', bracketCode: '', status: 'scheduled' as Game['status'] })
+  const [form, setForm] = useState({ tournamentId: defaultTournamentId, homeTeamId: '', awayTeamId: '', startTime: '', venue: '', division: '', bracketCode: '', ticketUrl: '', streamUrl: '', status: 'scheduled' as Game['status'] })
   const filteredTeams = useMemo(() => teams.filter((team) => !form.tournamentId || team.tournamentId === form.tournamentId), [teams, form.tournamentId])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -92,8 +93,11 @@ function CreateGamePanel({ tournaments, teams, selectedTournamentId, onSaved }: 
           <Field label="Away team"><select value={form.awayTeamId} onChange={(event) => setForm({ ...form, awayTeamId: event.target.value })} required><option value="">Select team</option>{filteredTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
           <Field label="Home team"><select value={form.homeTeamId} onChange={(event) => setForm({ ...form, homeTeamId: event.target.value })} required><option value="">Select team</option>{filteredTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
           <Field label="Start time (Guam)"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} required /></Field>
-          <Field label="Venue"><input value={form.venue} onChange={(event) => setForm({ ...form, venue: event.target.value })} /></Field>
-          <Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field>
+          <Field label="Venue"><input value={form.venue} onChange={(event) => setForm({ ...form, venue: event.target.value })} placeholder="FD Phoenix Center" /></Field>
+          <Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} placeholder="Maroon" /></Field>
+          <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
+          <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
+          <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="Clutch or partner stream" /></Field>
         </FormGrid>
         <button className="btn primary" type="submit" disabled={saving || !form.tournamentId}>{saving ? 'Saving' : 'Create game'}</button>
       </form>
@@ -116,13 +120,20 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
   })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
+  const projectedResult = gameResultLabel({
+    ...game,
+    homeScore: form.homeScore === '' ? null : Number(form.homeScore),
+    awayScore: form.awayScore === '' ? null : Number(form.awayScore),
+  })
 
-  const save = async () => {
+  const save = async (statusOverride?: Game['status']) => {
     setSaving(true)
     setSaveError('')
     try {
       await api.adminUpdateGame(game.id, {
         ...form,
+        status: statusOverride || form.status,
         homeScore: form.homeScore === '' ? null : Number(form.homeScore),
         awayScore: form.awayScore === '' ? null : Number(form.awayScore),
         startTime: guamLocalDateTimeInputToIso(form.startTime),
@@ -148,8 +159,12 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
         <Field label="Division"><input value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field>
         <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
       </FormGrid>
+      {projectedResult && <p className="form-note">{projectedResult}</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      <button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save game'}</button>
+      <div className="row-actions">
+        <button className="btn secondary" onClick={() => save()} disabled={saving}>{saving ? 'Saving' : 'Save game'}</button>
+        <button className="btn primary" onClick={() => save('final')} disabled={saving || !scoreComplete}>{saving ? 'Saving' : 'Save final score'}</button>
+      </div>
     </article>
   )
 }
