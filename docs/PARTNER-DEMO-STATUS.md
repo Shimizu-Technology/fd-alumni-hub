@@ -31,7 +31,7 @@ The migration branch adds a Rails API plus `/web` React/Vite frontend with publi
 | Rails public endpoints | Implemented | Home, tournaments, schedule, standings, articles, media, sponsors |
 | Rails admin endpoints | Implemented | Dashboard, games, teams, standings, articles, media, sponsors, ingest, links, missing links |
 | React/Vite public pages | Implemented | Side-by-side `/web` app |
-| React/Vite admin pages | Implemented | Clerk/dev-token protected admin console |
+| React/Vite admin pages | Implemented | Clerk-protected admin console; no dev-token bypass |
 | Production cutover | Pending | Requires staging, data migration rehearsal, and organizer approval |
 
 ### What's Pending
@@ -80,7 +80,7 @@ cd api
 bin/rails server -p 3001
 
 # Terminal 2
-cp web/.env.example web/.env.local
+cp web/.env.example web/.env
 npm run web:dev
 ```
 

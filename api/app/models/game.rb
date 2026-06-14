@@ -2,12 +2,20 @@ class Game < ApplicationRecord
   STATUSES = %w[scheduled live final].freeze
 
   belongs_to :tournament
+  belongs_to :division_record, class_name: "Division", foreign_key: :division_id, optional: true, inverse_of: false
   belongs_to :home_team, class_name: "Team", inverse_of: :home_games
   belongs_to :away_team, class_name: "Team", inverse_of: :away_games
 
+  has_many :article_links, dependent: :nullify
+  has_many :media_assets, dependent: :nullify
+
   validates :start_time, presence: true
   validates :status, inclusion: { in: STATUSES }
+  before_validation :copy_division_name_from_record
+
   validates :home_score, :away_score, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+  validate :division_record_exists
+  validate :division_record_is_available_for_tournament
   validate :teams_are_distinct
   validate :teams_belong_to_tournament
 
@@ -16,7 +24,7 @@ class Game < ApplicationRecord
   scope :finals, -> { where(status: "final").scored }
 
   def resolved_division
-    division.presence || home_team&.division
+    division_record&.name || division.presence || home_team&.resolved_division
   end
 
   def pool_phase?
@@ -29,6 +37,20 @@ class Game < ApplicationRecord
 
   def fatherson_phase?
     bracket_code == "FS" || home_team&.display_name.to_s.match?(/\bFS\b/i) || away_team&.display_name.to_s.match?(/\bFS\b/i)
+  end
+
+  def summary_json
+    {
+      id: id.to_s,
+      tournamentId: tournament_id.to_s,
+      startTime: start_time&.iso8601,
+      venue: venue,
+      status: status,
+      homeScore: home_score,
+      awayScore: away_score,
+      homeTeam: team_summary(home_team),
+      awayTeam: team_summary(away_team)
+    }
   end
 
   def api_json(include_teams: true)
@@ -45,7 +67,8 @@ class Game < ApplicationRecord
       streamUrl: stream_url,
       ticketUrl: ticket_url,
       notes: notes,
-      division: division,
+      divisionId: division_id&.to_s,
+      division: resolved_division,
       bracketCode: bracket_code,
       placeholder: placeholder,
       createdAt: created_at&.iso8601,
@@ -69,8 +92,26 @@ class Game < ApplicationRecord
       id: team.id.to_s,
       displayName: team.display_name,
       classYearLabel: team.class_year_label,
-      division: team.division
+      divisionId: team.division_id&.to_s,
+      division: team.resolved_division
     }
+  end
+
+  def copy_division_name_from_record
+    self.division = division_record.name if division_record
+  end
+
+  def division_record_exists
+    return if division_id.blank? || division_record
+
+    errors.add(:division_id, "is not valid")
+  end
+
+  def division_record_is_available_for_tournament
+    return unless division_record && tournament
+    return if division_record.available_for?(tournament)
+
+    errors.add(:division_id, "is not available for this tournament year")
   end
 
   def teams_are_distinct

@@ -30,25 +30,60 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, body.dig("counts", "games")
   end
 
-  test "admin creates and updates an article link" do
+  test "admin creates and updates an article link attached to a game" do
     post "/api/v1/admin/articles",
-      params: { article: { tournamentId: @tournament.id.to_s, title: "Opening night", source: "GSPN", url: "https://example.com/opening", publishedAt: "2026-07-03" } },
+      params: { article: { tournamentId: @tournament.id.to_s, gameId: @game.id.to_s, title: "Opening night", source: "GSPN", url: "https://example.com/opening", publishedAt: "2026-07-03" } },
       headers: auth_headers,
       as: :json
 
     assert_response :created
     body = JSON.parse(response.body)
     assert_equal "Opening night", body.dig("article", "title")
+    assert_equal @game.id.to_s, body.dig("article", "gameId")
+    assert_equal "Class of 2017", body.dig("article", "game", "awayTeam", "displayName")
 
     article = ArticleLink.find(body.dig("article", "id"))
     patch "/api/v1/admin/articles/#{article.id}",
-      params: { article: { imageUrl: "https://example.com/photo.jpg", excerpt: nil } },
+      params: { article: { imageUrl: "https://example.com/photo.jpg", excerpt: nil, gameId: nil } },
       headers: auth_headers,
       as: :json
 
     assert_response :success
-    assert_equal "https://example.com/photo.jpg", JSON.parse(response.body).dig("article", "imageUrl")
-    assert_nil ArticleLink.find(article.id).excerpt
+    payload = JSON.parse(response.body).fetch("article")
+    assert_equal "https://example.com/photo.jpg", payload["imageUrl"]
+    assert_nil payload["gameId"]
+    article.reload
+    assert_nil article.excerpt
+    assert_nil article.game_id
+  end
+
+  test "article and media game attachment must belong to the same tournament" do
+    other_tournament = Tournament.create!(
+      name: "FD Alumni Basketball Tournament",
+      year: 2027,
+      start_date: Date.new(2027, 7, 3),
+      end_date: Date.new(2027, 7, 24),
+      status: "upcoming"
+    )
+    other_team_a = other_tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018", division: "Gold")
+    other_team_b = other_tournament.teams.create!(class_year_label: "2019", display_name: "Class of 2019", division: "Gold")
+    other_game = other_tournament.games.create!(home_team: other_team_a, away_team: other_team_b, start_time: Time.zone.local(2027, 7, 3, 18, 0), status: "scheduled")
+
+    post "/api/v1/admin/articles",
+      params: { article: { tournamentId: @tournament.id.to_s, gameId: other_game.id.to_s, title: "Wrong game", source: "GSPN", url: "https://example.com/wrong-game" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"], "Game must belong to the same tournament"
+
+    post "/api/v1/admin/media-assets",
+      params: { mediaAsset: { tournamentId: @tournament.id.to_s, gameId: other_game.id.to_s, source: "GSPN", title: "Wrong media game", imageUrl: "https://example.com/wrong-media.jpg" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"], "Game must belong to the same tournament"
   end
 
   test "bulk links update only ticket and stream urls" do

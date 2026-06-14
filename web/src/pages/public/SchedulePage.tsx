@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
 import { formatGuamDateTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
+import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import type { Game } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
@@ -60,13 +61,13 @@ function GameCard({ game }: { game: Game }) {
         <TeamLine name={game.homeTeam?.displayName || 'Home team'} score={game.homeScore} showScore={scoreReady} />
       </div>
       <div className="game-meta">
-        <span>{game.venue || 'Venue TBD'}</span>
+        <span>{game.venue || DEFAULT_GAME_VENUE}</span>
         {(game.division || game.homeTeam?.division) && <span>{game.division || game.homeTeam?.division}</span>}
         {game.bracketCode && <span>{game.bracketCode}</span>}
       </div>
       <div className="game-actions">
-        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
-        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream pending</span>}
+        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
+        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
       </div>
     </article>
   )

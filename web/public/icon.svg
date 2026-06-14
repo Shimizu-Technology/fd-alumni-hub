@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FD Alumni Basketball Hub">
+  <rect width="512" height="512" rx="112" fill="#42101f"/>
+  <circle cx="256" cy="256" r="178" fill="#c89b3c"/>
+  <circle cx="256" cy="256" r="136" fill="none" stroke="#6f1d35" stroke-width="18" opacity="0.28"/>
+  <path d="M82 256h348M256 78c-50 46-78 105-78 178s28 132 78 178M256 78c50 46 78 105 78 178s-28 132-78 178" fill="none" stroke="#6f1d35" stroke-width="16" stroke-linecap="round" opacity="0.36"/>
+  <text x="256" y="286" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="126" font-weight="900" letter-spacing="-8" fill="#42101f">FD</text>
+</svg>

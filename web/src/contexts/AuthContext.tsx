@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth, useUser } from '@clerk/clerk-react'
 import { api, setAuthTokenGetter } from '../lib/api'
+import { identifyAnalyticsUser, resetAnalytics } from '../lib/analytics'
 import type { CurrentUser } from '../lib/types'
 
 type AuthContextValue = {
@@ -67,6 +68,7 @@ function ClerkBackedAuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     if (!isLoaded || !isSignedIn) {
       setUser(null)
+      resetAnalytics()
       return
     }
 
@@ -75,8 +77,10 @@ function ClerkBackedAuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await api.getCurrentUser()
       setUser(response.user)
+      identifyAnalyticsUser(response.user)
     } catch (err) {
       setUser(null)
+      resetAnalytics()
       setError(err instanceof Error ? err.message : 'Unable to verify user')
     } finally {
       setIsChecking(false)

@@ -1,12 +1,21 @@
 class Team < ApplicationRecord
   belongs_to :tournament
+  belongs_to :division_record, class_name: "Division", foreign_key: :division_id, optional: true, inverse_of: false
 
   has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :restrict_with_error, inverse_of: :home_team
   has_many :away_games, class_name: "Game", foreign_key: :away_team_id, dependent: :restrict_with_error, inverse_of: :away_team
   has_many :standings, dependent: :destroy
 
+  before_validation :copy_division_name_from_record
+
   validates :class_year_label, :display_name, presence: true
   validates :display_name, uniqueness: { scope: :tournament_id }
+  validate :division_record_exists
+  validate :division_record_is_available_for_tournament
+
+  def resolved_division
+    division_record&.name || division
+  end
 
   def api_json
     {
@@ -14,9 +23,29 @@ class Team < ApplicationRecord
       tournamentId: tournament_id.to_s,
       classYearLabel: class_year_label,
       displayName: display_name,
-      division: division,
+      divisionId: division_id&.to_s,
+      division: resolved_division,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
+  end
+
+  private
+
+  def copy_division_name_from_record
+    self.division = division_record.name if division_record
+  end
+
+  def division_record_exists
+    return if division_id.blank? || division_record
+
+    errors.add(:division_id, "is not valid")
+  end
+
+  def division_record_is_available_for_tournament
+    return unless division_record && tournament
+    return if division_record.available_for?(tournament)
+
+    errors.add(:division_id, "is not available for this tournament year")
   end
 end

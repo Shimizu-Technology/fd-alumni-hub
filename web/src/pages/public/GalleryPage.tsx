@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
+import { gameOptionLabel } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
 
@@ -19,7 +20,7 @@ export function GalleryPage() {
       />
 
       {!data?.mediaAssets.length ? (
-        <EmptyState title="No gallery assets loaded" description="Use the admin media tools to add sourced images or imported coverage assets." />
+        <EmptyState title="No gallery photos posted yet" description="Photos and visual coverage will appear here once tournament media is approved." />
       ) : (
         <div className="gallery-grid">
           {data.mediaAssets.map((asset) => (
@@ -28,6 +29,7 @@ export function GalleryPage() {
               <div>
                 <span>{asset.source}{asset.takenAt ? ` · ${formatGuamDate(asset.takenAt)}` : ''}</span>
                 <h2>{asset.title}</h2>
+                {asset.game && <small>{gameOptionLabel(asset.game)}</small>}
                 {asset.caption && <p>{asset.caption}</p>}
                 {asset.articleUrl && <a href={asset.articleUrl} target="_blank" rel="noreferrer">Source article <IconExternal /></a>}
               </div>

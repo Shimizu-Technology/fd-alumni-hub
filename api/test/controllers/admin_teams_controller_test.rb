@@ -10,7 +10,34 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
       end_date: Date.new(2026, 7, 24),
       status: "upcoming"
     )
+    @maroon = Division.create!(name: "Maroon", position: 1)
+    @future_division = Division.create!(name: "Platinum", starts_year: 2027, position: 2)
     @team = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
+  end
+
+  test "division id stores configured division name" do
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { divisionId: @maroon.id } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal @maroon.id, @team.reload.division_id
+    assert_equal "Maroon", @team.division
+
+    body = JSON.parse(response.body)
+    assert_equal @maroon.id.to_s, body.dig("team", "divisionId")
+    assert_equal "Maroon", body.dig("team", "division")
+  end
+
+  test "division id must be available for tournament year" do
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { divisionId: @future_division.id } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].join, "Division is not available for this tournament year"
   end
 
   test "explicit null division clears a team division" do

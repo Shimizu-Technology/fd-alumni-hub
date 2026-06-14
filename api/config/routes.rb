@@ -21,11 +21,13 @@ Rails.application.routes.draw do
         resources :tournaments, only: [ :index, :show, :create, :update ] do
           post :recompute_standings, path: "recompute-standings", on: :member
         end
+        resources :divisions, only: [ :index, :create, :update ]
         resources :teams, only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]
         resources :media_assets, path: "media-assets", only: [ :index, :show, :create, :update, :destroy ]
         resources :sponsors, only: [ :index, :show, :create, :update, :destroy ]
+        post "uploads/presign", to: "uploads#presign"
         resources :content_ingest_items, path: "content-ingest-items", only: [ :index, :show, :create, :update, :destroy ] do
           post :approve, on: :member
           post :reject, on: :member

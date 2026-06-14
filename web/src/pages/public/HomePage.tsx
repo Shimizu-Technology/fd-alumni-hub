@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
+import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, Panel, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
 
@@ -14,6 +15,9 @@ export function HomePage() {
 
   const tournamentLabel = data.tournament ? `${data.tournament.name} ${data.tournament.year}` : 'FD Alumni Tournament Hub'
   const featuredGames = [...data.liveGames, ...data.todayGames].slice(0, 6)
+  const heroTournament = data.upcomingOrLiveTournament || data.tournament
+  const heroStatus = heroTournament ? `${heroTournament.year} · ${heroTournament.status}` : 'Schedule pending'
+  const heroDates = heroTournament ? formatTournamentWindow(heroTournament) : 'Dates will appear once organizers publish them.'
 
   return (
     <div className="page-stack">
@@ -30,8 +34,8 @@ export function HomePage() {
         </div>
         <div className="hero-panel">
           <span>Active tournament</span>
-          <strong>{data.upcomingOrLiveTournament ? `${data.upcomingOrLiveTournament.year} ${data.upcomingOrLiveTournament.status}` : 'Awaiting 2026 schedule'}</strong>
-          <small>2026 dates shared by organizers: July 3–24.</small>
+          <strong>{heroStatus}</strong>
+          <small>{heroDates}</small>
         </div>
       </section>
 
@@ -46,14 +50,14 @@ export function HomePage() {
         <Panel>
           <div className="section-heading"><h2>Today and live</h2><Link to="/schedule">Full schedule</Link></div>
           {featuredGames.length === 0 ? (
-            <EmptyState title="No games listed for today" description="The schedule will populate once tournament data is loaded into Rails." />
+            <EmptyState title="No games scheduled for today" description="Check the full schedule for upcoming matchups, ticket links, and stream links." />
           ) : (
             <div className="compact-list">
               {featuredGames.map((game) => (
                 <Link key={game.id} to="/schedule" className="compact-row">
                   <span>{formatGuamDateTime(game.startTime)}</span>
                   <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
-                  <small>{game.venue || 'Venue TBD'}</small>
+                  <small>{game.venue || DEFAULT_GAME_VENUE}</small>
                 </Link>
               ))}
             </div>
@@ -63,7 +67,7 @@ export function HomePage() {
         <Panel>
           <div className="section-heading"><h2>Latest coverage</h2><Link to="/news">News archive</Link></div>
           {data.latestNews.length === 0 ? (
-            <EmptyState title="Coverage links coming soon" description="GSPN and partner links can be managed from the admin console." />
+            <EmptyState title="Coverage links coming soon" description="Articles and recaps will appear here as local media and organizers publish updates." />
           ) : (
             <div className="compact-list">
               {data.latestNews.map((article) => (
@@ -79,17 +83,17 @@ export function HomePage() {
       </section>
 
       <section className="partner-strip">
-        <div>
+        <a href={import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net'} target="_blank" rel="noreferrer">
           <span>Tickets</span>
-          <strong>Route fans to GuamTime when ticket links are available.</strong>
-        </div>
-        <div>
+          <strong>Buy through GuamTime when game tickets are available.</strong>
+        </a>
+        <a href={import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com'} target="_blank" rel="noreferrer">
           <span>Streams</span>
-          <strong>Send viewers to Clutch and other approved stream partners.</strong>
-        </div>
+          <strong>Watch live through Clutch or the approved stream partner for each game.</strong>
+        </a>
         <div>
           <span>Coverage</span>
-          <strong>Preserve GSPN and local media history as linked source material.</strong>
+          <strong>Catch recaps, photos, and local coverage without losing the original source.</strong>
         </div>
       </section>
     </div>

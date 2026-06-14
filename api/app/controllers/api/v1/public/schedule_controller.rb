@@ -6,7 +6,7 @@ module Api
           tournament = current_tournament
           return render json: { tournament: nil, games: [], divisions: [], phases: [] } unless tournament
 
-          games = tournament.games.includes(:home_team, :away_team).ordered.to_a
+          games = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record).ordered.to_a
           divisions = games.filter_map(&:resolved_division).uniq.sort
           phases = collect_phases(games)
 

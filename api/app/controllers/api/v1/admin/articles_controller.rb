@@ -3,7 +3,7 @@ module Api
     module Admin
       class ArticlesController < BaseController
         def index
-          articles = ArticleLink.includes(:tournament).latest
+          articles = ArticleLink.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
           articles = articles.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           render json: { articles: articles.limit(300).map(&:api_json) }
         end
@@ -41,10 +41,11 @@ module Api
 
         def article_params
           raw = params.fetch(:article, params)
-          permitted = raw.permit(:tournament_id, :tournamentId, :title, :source, :url, :published_at, :publishedAt, :image_url, :imageUrl, :excerpt)
+          permitted = raw.permit(:tournament_id, :tournamentId, :game_id, :gameId, :title, :source, :url, :published_at, :publishedAt, :image_url, :imageUrl, :excerpt)
 
           attrs = {}
           assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
+          assign_param(attrs, permitted, :game_id, :game_id, :gameId)
           assign_param(attrs, permitted, :title, :title)
           assign_param(attrs, permitted, :source, :source)
           assign_param(attrs, permitted, :url, :url)

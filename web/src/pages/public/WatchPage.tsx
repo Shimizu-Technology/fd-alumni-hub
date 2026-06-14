@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
+import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { IconExternal, IconPlay } from '../../components/Icons'
 
@@ -18,27 +19,27 @@ export function WatchPage() {
       <PageHeader
         eyebrow="Streams and tickets"
         title="Watch live and follow partner links"
-        description="This hub lists approved stream destinations when they are available. Viewers continue to watch through Clutch or the organizer-approved platform."
+        description="Find the confirmed live feed for each game. Stream buttons open Clutch or the organizer-approved platform in a new tab."
       />
 
       <Panel className="watch-hero">
         <IconPlay size={36} />
         <div>
-          <h2>Stream links appear per game</h2>
-          <p>Operators can paste Clutch or partner stream URLs in admin. Public cards then route viewers directly to the source.</p>
+          <h2>Live links appear as games are confirmed</h2>
+          <p>When a stream is ready, the game card below takes you straight to the live broadcast source.</p>
         </div>
         <a className="btn primary" href={import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com'} target="_blank" rel="noreferrer">Open Clutch <IconExternal /></a>
       </Panel>
 
       {streamGames.length === 0 ? (
-        <EmptyState title="No stream links loaded yet" description="Once approved stream URLs are attached to games, they will appear here automatically." />
+        <EmptyState title="No stream links posted yet" description="Check back closer to tipoff, or open Clutch for the latest available tournament broadcasts." />
       ) : (
         <div className="game-card-grid">
           {streamGames.map((game) => (
             <article key={game.id} className="game-card stream-card">
               <span>{formatGuamDateTime(game.startTime)}</span>
               <h2>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</h2>
-              <p>{game.venue || 'Venue TBD'}</p>
+              <p>{game.venue || DEFAULT_GAME_VENUE}</p>
               <a className="btn primary" href={game.streamUrl || '#'} target="_blank" rel="noreferrer">Watch stream <IconExternal /></a>
             </article>
           ))}
@@ -47,13 +48,13 @@ export function WatchPage() {
 
       {upcoming.length > 0 && (
         <Panel>
-          <div className="section-heading"><h2>Upcoming games awaiting stream links</h2></div>
+          <div className="section-heading"><h2>Games awaiting stream links</h2></div>
           <div className="compact-list">
             {upcoming.map((game) => (
               <div className="compact-row" key={game.id}>
                 <span>{formatGuamDateTime(game.startTime)}</span>
                 <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
-                <small>{game.venue || 'Venue TBD'}</small>
+                <small>{game.venue || DEFAULT_GAME_VENUE}</small>
               </div>
             ))}
           </div>

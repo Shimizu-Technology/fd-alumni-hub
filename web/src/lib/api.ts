@@ -1,6 +1,7 @@
 import type {
   Article,
   CurrentUser,
+  Division,
   Game,
   IngestItem,
   MediaAsset,
@@ -12,6 +13,23 @@ import type {
 } from './types'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '')
+
+export type AdminImageUploadPresign = {
+  uploadUrl: string
+  fields: Record<string, string>
+  key: string
+  publicUrl: string
+  maxBytes: number
+  expiresIn: number
+}
+
+export type AdminImageUploadPresignPayload = {
+  tournamentId: string
+  filename: string
+  contentType: string
+  byteSize: number
+  purpose?: string
+}
 
 type TokenGetter = () => Promise<string | null>
 let tokenGetter: TokenGetter | null = null
@@ -133,6 +151,10 @@ export const api = {
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
 
+  adminDivisions: (tournamentId?: string | null) => request<{ divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
+  adminCreateDivision: (payload: Partial<Division> & { tournamentId?: string | null }) => request<{ division: Division }>(`/admin/divisions${query({ tournamentId: payload.tournamentId })}`, json('POST', { division: payload })),
+  adminUpdateDivision: (id: string, payload: Partial<Division>) => request<{ division: Division }>(`/admin/divisions/${id}`, json('PATCH', { division: payload })),
+
   adminTeams: (tournamentId?: string | null) => request<{ teams: Team[] }>(`/admin/teams${query({ tournamentId })}`),
   adminCreateTeam: (payload: Partial<Team>) => request<{ team: Team }>('/admin/teams', json('POST', { team: payload })),
   adminUpdateTeam: (id: string, payload: Partial<Team>) => request<{ team: Team }>(`/admin/teams/${id}`, json('PATCH', { team: payload })),
@@ -155,6 +177,7 @@ export const api = {
   adminDeleteMedia: (id: string) => request<void>(`/admin/media-assets/${id}`, { method: 'DELETE' }),
 
   adminSponsors: (tournamentId?: string | null) => request<{ sponsors: Sponsor[] }>(`/admin/sponsors${query({ tournamentId })}`),
+  adminPresignImageUpload: (payload: AdminImageUploadPresignPayload) => request<AdminImageUploadPresign>('/admin/uploads/presign', json('POST', { upload: payload })),
   adminCreateSponsor: (payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>('/admin/sponsors', json('POST', { sponsor: payload })),
   adminUpdateSponsor: (id: string, payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>(`/admin/sponsors/${id}`, json('PATCH', { sponsor: payload })),
   adminDeleteSponsor: (id: string) => request<void>(`/admin/sponsors/${id}`, { method: 'DELETE' }),
