@@ -1,5 +1,8 @@
 import { formatGuamDate, formatGuamDateTime } from './datetime'
-import type { Game, RelatedGameSummary, Tournament } from './types'
+import type { Game, RelatedGameSummary, Tournament, Team } from './types'
+
+export const DEFAULT_GAME_VENUE = 'The Jungle'
+export const DEFAULT_DIVISIONS = ['Maroon', 'Gold', 'Platinum', 'Diamond']
 
 export function formatTournamentWindow(tournament?: Pick<Tournament, 'startDate' | 'endDate'> | null) {
   if (!tournament?.startDate || !tournament?.endDate) return 'Dates pending'
@@ -19,6 +22,18 @@ export function gameMatchupLabel(game?: Pick<Game, 'homeTeam' | 'awayTeam'> | Pi
 
 export function gameOptionLabel(game: Game | RelatedGameSummary) {
   return `${formatGuamDateTime(game.startTime)} · ${gameMatchupLabel(game)}`
+}
+
+export function divisionOptions(teams: Team[] = [], games: Array<Pick<Game, 'division'>> = []) {
+  return Array.from(new Set([
+    ...teams.map((team) => team.division).filter(Boolean),
+    ...games.map((game) => game.division).filter(Boolean),
+    ...DEFAULT_DIVISIONS,
+  ] as string[]))
+}
+
+export function teamDivision(teamId: string, teams: Team[]) {
+  return teams.find((team) => team.id === teamId)?.division || ''
 }
 
 export function gameResultLabel(game?: Pick<Game, 'homeScore' | 'awayScore' | 'homeTeam' | 'awayTeam'> | Pick<RelatedGameSummary, 'homeScore' | 'awayScore' | 'homeTeam' | 'awayTeam'> | null) {

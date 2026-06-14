@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
-import { formatTournamentWindow } from '../../lib/games'
+import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, Panel, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
 
@@ -57,7 +57,7 @@ export function HomePage() {
                 <Link key={game.id} to="/schedule" className="compact-row">
                   <span>{formatGuamDateTime(game.startTime)}</span>
                   <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
-                  <small>{game.venue || 'Venue TBD'}</small>
+                  <small>{game.venue || DEFAULT_GAME_VENUE}</small>
                 </Link>
               ))}
             </div>

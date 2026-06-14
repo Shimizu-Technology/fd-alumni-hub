@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
+import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { IconExternal, IconPlay } from '../../components/Icons'
 
@@ -38,7 +39,7 @@ export function WatchPage() {
             <article key={game.id} className="game-card stream-card">
               <span>{formatGuamDateTime(game.startTime)}</span>
               <h2>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</h2>
-              <p>{game.venue || 'Venue TBD'}</p>
+              <p>{game.venue || DEFAULT_GAME_VENUE}</p>
               <a className="btn primary" href={game.streamUrl || '#'} target="_blank" rel="noreferrer">Watch stream <IconExternal /></a>
             </article>
           ))}
@@ -53,7 +54,7 @@ export function WatchPage() {
               <div className="compact-row" key={game.id}>
                 <span>{formatGuamDateTime(game.startTime)}</span>
                 <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
-                <small>{game.venue || 'Venue TBD'}</small>
+                <small>{game.venue || DEFAULT_GAME_VENUE}</small>
               </div>
             ))}
           </div>

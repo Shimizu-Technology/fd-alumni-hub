@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { toDateInputValue } from '../../lib/datetime'
@@ -10,19 +11,25 @@ import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Pane
 type ArticleForm = { tournamentId: string; gameId: string; title: string; source: string; url: string; publishedAt: string; imageUrl: string; excerpt: string }
 
 export function AdminNewsPage() {
-  const [tournamentId, setTournamentId] = useState('')
+  const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, articles, games] = await Promise.all([api.adminTournaments(), api.adminArticles(tournamentId || null), api.adminGames(tournamentId || null)])
     return { tournaments: tournaments.tournaments, articles: articles.articles, games: games.games }
   }, [tournamentId])
 
+  useEffect(() => {
+    if (!tournamentId && data?.tournaments[0]?.id) setTournamentId(data.tournaments[0].id)
+  }, [data?.tournaments, tournamentId, setTournamentId])
+
   if (loading && !data) return <LoadingState label="Loading articles" />
   if (error) return <ErrorState message={error} onRetry={reload} />
+
+  const tournament = selectedTournament(data?.tournaments || [], tournamentId)
 
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Admin" title="News links" description="Create sourced article links, optionally attach them to a game, and publish them to the public coverage archive." />
-      <TournamentFilter tournaments={data?.tournaments || []} value={tournamentId} onChange={setTournamentId} />
+      <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <CreateArticlePanel tournaments={data?.tournaments || []} games={data?.games || []} selectedTournamentId={tournamentId} onSaved={reload} />
       <Panel>
         {!data?.articles.length ? <EmptyState title="No articles found" /> : <div className="admin-list">{data.articles.map((article) => <ArticleRow key={article.id} article={article} games={data.games} onSaved={reload} />)}</div>}
@@ -32,7 +39,7 @@ export function AdminNewsPage() {
 }
 
 function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tournament[]; value: string; onChange: (value: string) => void }) {
-  return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="">All tournaments</option>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
+  return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
 }
 
 function CreateArticlePanel({ tournaments, games, selectedTournamentId, onSaved }: { tournaments: Tournament[]; games: Game[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {

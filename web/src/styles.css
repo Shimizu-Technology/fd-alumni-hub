@@ -202,6 +202,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .admin-row-head span { display: block; color: var(--muted); margin-top: .2rem; }
 .row-actions { display: flex; gap: .55rem; flex-wrap: wrap; }
 .notice-panel { color: var(--fd-maroon); font-weight: 900; background: var(--fd-gold-100); border-color: #ead095; }
+.workflow-panel { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.workflow-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; }
+.workflow-steps span { padding: .75rem .85rem; border-radius: .9rem; background: #fff; border: 1px solid var(--line); color: var(--fd-maroon); font-weight: 900; }
 .media-admin-row, .sponsor-admin-row { grid-template-columns: 7rem 1fr; align-items: start; }
 .media-admin-row .form-grid, .sponsor-admin-row .form-grid { margin: 0; grid-column: 2; }
 .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: 2; }
@@ -214,7 +217,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .hero-card, .split-grid, .admin-shell { grid-template-columns: 1fr; }
   .admin-sidebar { position: relative; height: auto; }
   .admin-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
@@ -229,7 +232,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .hero-card { border-radius: 1.35rem; padding: 1.25rem; }
   .hero-text h1 { font-size: clamp(2.25rem, 13vw, 3.25rem); line-height: .92; }
   .hero-actions .btn, .watch-hero .btn { width: 100%; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .form-grid, .health-grid { grid-template-columns: 1fr; }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid { grid-template-columns: 1fr; }
   .site-footer { display: grid; }
   .footer-links { flex-wrap: wrap; }
   .timeline-row { grid-template-columns: 1fr; }

@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { Sponsor, Tournament } from '../../lib/types'
@@ -8,19 +9,25 @@ import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Pane
 type SponsorForm = { tournamentId?: string; name: string; logoUrl: string; targetUrl: string; tier: string; active: boolean; position: string }
 
 export function AdminSponsorsPage() {
-  const [tournamentId, setTournamentId] = useState('')
+  const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, sponsors] = await Promise.all([api.adminTournaments(), api.adminSponsors(tournamentId || null)])
     return { tournaments: tournaments.tournaments, sponsors: sponsors.sponsors }
   }, [tournamentId])
 
+  useEffect(() => {
+    if (!tournamentId && data?.tournaments[0]?.id) setTournamentId(data.tournaments[0].id)
+  }, [data?.tournaments, tournamentId, setTournamentId])
+
   if (loading && !data) return <LoadingState label="Loading sponsors" />
   if (error) return <ErrorState message={error} onRetry={reload} />
+
+  const tournament = selectedTournament(data?.tournaments || [], tournamentId)
 
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Admin" title="Sponsors" description="Manage approved sponsor placements and partner links." />
-      <TournamentFilter tournaments={data?.tournaments || []} value={tournamentId} onChange={setTournamentId} />
+      <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <CreateSponsorPanel tournaments={data?.tournaments || []} selectedTournamentId={tournamentId} onSaved={reload} />
       <Panel>{!data?.sponsors.length ? <EmptyState title="No sponsors found" /> : <div className="admin-list">{data.sponsors.map((sponsor) => <SponsorRow key={sponsor.id} sponsor={sponsor} onSaved={reload} />)}</div>}</Panel>
     </div>
@@ -28,7 +35,7 @@ export function AdminSponsorsPage() {
 }
 
 function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tournament[]; value: string; onChange: (value: string) => void }) {
-  return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}><option value="">All tournaments</option>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
+  return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
 }
 
 function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { tournaments: Tournament[]; selectedTournamentId: string; onSaved: () => Promise<void> }) {

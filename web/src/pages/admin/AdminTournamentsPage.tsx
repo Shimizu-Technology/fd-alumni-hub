@@ -1,7 +1,9 @@
+import { Link } from 'react-router-dom'
 import { useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
+import { tournamentScopedPath } from '../../lib/admin'
 import { formatTournamentWindow } from '../../lib/games'
 import type { Tournament, TournamentStatus } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
@@ -32,6 +34,17 @@ export function AdminTournamentsPage() {
         description="Create the tournament year, set dates, and choose the status that controls what fans see first. Add teams next, then build the schedule."
       />
 
+      <Panel className="workflow-panel">
+        <div className="section-heading"><h2>Recommended setup flow</h2><span>Per tournament</span></div>
+        <div className="workflow-steps">
+          <span>1. Teams and divisions</span>
+          <span>2. Schedule</span>
+          <span>3. Scores and standings</span>
+          <span>4. Tickets and streams</span>
+          <span>5. Coverage and sponsors</span>
+        </div>
+      </Panel>
+
       <CreateTournamentPanel onSaved={reload} />
 
       <Panel>
@@ -47,10 +60,10 @@ export function AdminTournamentsPage() {
 }
 
 function CreateTournamentPanel({ onSaved }: { onSaved: () => Promise<void> }) {
-  const nextYear = useMemo(() => String(new Date().getFullYear()), [])
+  const defaultYear = useMemo(() => String(new Date().getFullYear()), [])
   const [form, setForm] = useState<TournamentForm>({
     name: 'FD Alumni Basketball Tournament',
-    year: nextYear,
+    year: defaultYear,
     startDate: '',
     endDate: '',
     status: 'upcoming',
@@ -66,7 +79,7 @@ function CreateTournamentPanel({ onSaved }: { onSaved: () => Promise<void> }) {
     try {
       await api.adminCreateTournament(payloadFromForm(form))
       setMessage('Tournament created. Add teams next, then create games.')
-      setForm((current) => ({ ...current, year: String(Number(current.year || nextYear) + 1), startDate: '', endDate: '', status: 'upcoming' }))
+      setForm((current) => ({ ...current, year: String(Number(current.year || defaultYear) + 1), startDate: '', endDate: '', status: 'upcoming' }))
       await onSaved()
     } catch (err) {
       setMessage(mutationErrorMessage(err, 'Unable to create tournament'))
@@ -95,18 +108,20 @@ function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSave
     status: tournament.status,
   })
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [saveSuccess, setSaveSuccess] = useState('')
 
   const save = async () => {
     setSaving(true)
-    setMessage('')
+    setSaveError('')
+    setSaveSuccess('')
 
     try {
       await api.adminUpdateTournament(tournament.id, payloadFromForm(form))
-      setMessage('Tournament saved')
+      setSaveSuccess('Tournament saved')
       await onSaved()
     } catch (err) {
-      setMessage(mutationErrorMessage(err, 'Unable to save tournament'))
+      setSaveError(mutationErrorMessage(err, 'Unable to save tournament'))
     } finally {
       setSaving(false)
     }
@@ -122,7 +137,18 @@ function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSave
         <StatusBadge status={tournament.status} />
       </div>
       <TournamentFields form={form} setForm={setForm} />
-      {message && <p className="form-error" role="status">{message}</p>}
+      <div className="admin-shortcuts tournament-actions" aria-label={`Manage ${tournament.year} tournament`}>
+        <Link to={tournamentScopedPath('/admin/divisions', tournament.id)}>Teams and divisions</Link>
+        <Link to={tournamentScopedPath('/admin/games', tournament.id)}>Build schedule</Link>
+        <Link to={tournamentScopedPath('/admin/games', tournament.id)}>Enter scores</Link>
+        <Link to={tournamentScopedPath('/admin/standings', tournament.id)}>Standings</Link>
+        <Link to={tournamentScopedPath('/admin/links', tournament.id)}>Tickets and streams</Link>
+        <Link to={tournamentScopedPath('/admin/news', tournament.id)}>News</Link>
+        <Link to={tournamentScopedPath('/admin/media', tournament.id)}>Media</Link>
+        <Link to={tournamentScopedPath('/admin/sponsors', tournament.id)}>Sponsors</Link>
+      </div>
+      {saveSuccess && <p className="form-note" role="status">{saveSuccess}</p>}
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save tournament'}</button>
     </article>
   )

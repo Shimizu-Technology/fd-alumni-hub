@@ -7,9 +7,9 @@ import { LoadingState } from './ui'
 const adminItems = [
   { to: '/admin', label: 'Overview', end: true },
   { to: '/admin/tournaments', label: 'Tournaments' },
+  { to: '/admin/divisions', label: 'Teams' },
   { to: '/admin/games', label: 'Games' },
   { to: '/admin/standings', label: 'Standings' },
-  { to: '/admin/divisions', label: 'Divisions' },
   { to: '/admin/links', label: 'Links' },
   { to: '/admin/missing-links', label: 'Missing Links' },
   { to: '/admin/news', label: 'News' },

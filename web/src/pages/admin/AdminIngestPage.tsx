@@ -1,25 +1,32 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
+import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { IngestItem, IngestKind, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 export function AdminIngestPage() {
-  const [tournamentId, setTournamentId] = useState('')
+  const [tournamentId, setTournamentId] = useTournamentSelection()
   const [status, setStatus] = useState('pending')
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, ingest] = await Promise.all([api.adminTournaments(), api.adminIngest({ tournamentId: tournamentId || null, status: status || null })])
     return { tournaments: tournaments.tournaments, ingestItems: ingest.ingestItems }
   }, [tournamentId, status])
 
+  useEffect(() => {
+    if (!tournamentId && data?.tournaments[0]?.id) setTournamentId(data.tournaments[0].id)
+  }, [data?.tournaments, tournamentId, setTournamentId])
+
   if (loading && !data) return <LoadingState label="Loading ingest queue" />
   if (error) return <ErrorState message={error} onRetry={reload} />
+
+  const tournament = selectedTournament(data?.tournaments || [], tournamentId)
 
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Admin" title="Ingest queue" description="Review candidate article and media links before publishing them to the public archive." />
-      <Panel className="toolbar-panel"><label><span>Tournament</span><select value={tournamentId} onChange={(event) => setTournamentId(event.target.value)}><option value="">All tournaments</option>{data?.tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label><label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></label></Panel>
+      <Panel className="toolbar-panel"><label><span>Tournament</span><select value={tournament?.id || ''} onChange={(event) => setTournamentId(event.target.value)}>{data?.tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label><label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></label></Panel>
       <CreateIngestPanel tournaments={data?.tournaments || []} selectedTournamentId={tournamentId} onSaved={reload} />
       <Panel>{!data?.ingestItems.length ? <EmptyState title="No ingest items found" /> : <div className="admin-list">{data.ingestItems.map((item) => <IngestRow key={item.id} item={item} onSaved={reload} />)}</div>}</Panel>
     </div>
