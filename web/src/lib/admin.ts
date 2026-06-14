@@ -20,7 +20,13 @@ export function selectedTournament(tournaments: Tournament[], tournamentId: stri
   return tournaments.find((tournament) => tournament.id === tournamentId) || tournaments[0] || null
 }
 
-export function tournamentScopedPath(path: string, tournamentId?: string | null) {
-  if (!tournamentId) return path
-  return `${path}?tournamentId=${encodeURIComponent(tournamentId)}`
+export function tournamentScopedPath(path: string, tournamentId?: string | null, params: Record<string, string | number | null | undefined> = {}) {
+  const search = new URLSearchParams()
+  if (tournamentId) search.set('tournamentId', tournamentId)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') search.set(key, String(value))
+  })
+
+  const query = search.toString()
+  return query ? `${path}?${query}` : path
 }

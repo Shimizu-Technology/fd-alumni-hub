@@ -91,7 +91,7 @@ module Api
         end
 
         def games_scope(tournament)
-          tournament.games.includes(:home_team, :away_team).ordered
+          tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record).ordered
         end
       end
     end

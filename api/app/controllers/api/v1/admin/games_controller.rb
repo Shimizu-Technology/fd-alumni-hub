@@ -3,7 +3,7 @@ module Api
     module Admin
       class GamesController < BaseController
         def index
-          games = Game.includes(:home_team, :away_team).ordered
+          games = Game.includes(:division_record, home_team: :division_record, away_team: :division_record).ordered
           games = games.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           games = games.where(division: params[:division]) if params[:division].present?
 
@@ -11,7 +11,7 @@ module Api
         end
 
         def show
-          game = Game.includes(:home_team, :away_team).find(params[:id])
+          game = Game.includes(:division_record, home_team: :division_record, away_team: :division_record).find(params[:id])
           render json: { game: game.api_json }
         end
 
@@ -33,7 +33,7 @@ module Api
           if game.update(incoming)
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
             render json: {
-              game: Game.includes(:home_team, :away_team).find(game.id).api_json,
+              game: Game.includes(:division_record, home_team: :division_record, away_team: :division_record).find(game.id).api_json,
               recompute: recompute && { teams: recompute.teams, games: recompute.games }
             }.compact
           else
@@ -65,6 +65,8 @@ module Api
             :ticket_url,
             :ticketUrl,
             :notes,
+            :division_id,
+            :divisionId,
             :division,
             :bracket_code,
             :bracketCode
@@ -82,6 +84,7 @@ module Api
           assign_param(attrs, permitted, :stream_url, :stream_url, :streamUrl)
           assign_param(attrs, permitted, :ticket_url, :ticket_url, :ticketUrl)
           assign_param(attrs, permitted, :notes, :notes)
+          assign_param(attrs, permitted, :division_id, :division_id, :divisionId)
           assign_param(attrs, permitted, :division, :division)
           assign_param(attrs, permitted, :bracket_code, :bracket_code, :bracketCode)
           attrs

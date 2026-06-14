@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_14_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -67,12 +67,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
     t.index ["tournament_id"], name: "index_content_ingest_items_on_tournament_id"
   end
 
+  create_table "divisions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.string "slug", null: false
+    t.integer "starts_year"
+    t.datetime "updated_at", null: false
+    t.index ["active", "starts_year", "position"], name: "index_divisions_on_active_and_starts_year_and_position"
+    t.index ["slug"], name: "index_divisions_on_slug", unique: true
+  end
+
   create_table "games", force: :cascade do |t|
     t.integer "away_score"
     t.bigint "away_team_id", null: false
     t.string "bracket_code"
     t.datetime "created_at", null: false
     t.string "division"
+    t.bigint "division_id"
     t.integer "home_score"
     t.bigint "home_team_id", null: false
     t.string "legacy_id"
@@ -86,6 +99,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
     t.datetime "updated_at", null: false
     t.string "venue"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
+    t.index ["division_id"], name: "index_games_on_division_id"
     t.index ["home_team_id"], name: "index_games_on_home_team_id"
     t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["status"], name: "index_games_on_status"
@@ -153,9 +167,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
     t.datetime "created_at", null: false
     t.string "display_name", null: false
     t.string "division"
+    t.bigint "division_id"
     t.string "legacy_id"
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["division_id"], name: "index_teams_on_division_id"
     t.index ["legacy_id"], name: "index_teams_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "display_name"], name: "index_teams_on_tournament_and_display_name", unique: true
     t.index ["tournament_id", "division"], name: "index_teams_on_tournament_id_and_division"
@@ -194,6 +210,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
   add_foreign_key "article_links", "games", on_delete: :nullify
   add_foreign_key "article_links", "tournaments", on_delete: :cascade
   add_foreign_key "content_ingest_items", "tournaments", on_delete: :cascade
+  add_foreign_key "games", "divisions", on_delete: :nullify
   add_foreign_key "games", "teams", column: "away_team_id"
   add_foreign_key "games", "teams", column: "home_team_id"
   add_foreign_key "games", "tournaments", on_delete: :cascade
@@ -202,5 +219,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000001) do
   add_foreign_key "sponsors", "tournaments", on_delete: :cascade
   add_foreign_key "standings", "teams", on_delete: :cascade
   add_foreign_key "standings", "tournaments", on_delete: :cascade
+  add_foreign_key "teams", "divisions", on_delete: :nullify
   add_foreign_key "teams", "tournaments", on_delete: :cascade
 end

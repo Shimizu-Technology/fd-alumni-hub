@@ -21,6 +21,7 @@ Rails.application.routes.draw do
         resources :tournaments, only: [ :index, :show, :create, :update ] do
           post :recompute_standings, path: "recompute-standings", on: :member
         end
+        resources :divisions, only: [ :index, :create, :update ]
         resources :teams, only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]

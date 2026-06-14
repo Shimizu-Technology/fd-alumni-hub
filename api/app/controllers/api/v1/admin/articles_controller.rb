@@ -3,7 +3,7 @@ module Api
     module Admin
       class ArticlesController < BaseController
         def index
-          articles = ArticleLink.includes(:tournament, game: [ :home_team, :away_team ]).latest
+          articles = ArticleLink.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
           articles = articles.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           render json: { articles: articles.limit(300).map(&:api_json) }
         end

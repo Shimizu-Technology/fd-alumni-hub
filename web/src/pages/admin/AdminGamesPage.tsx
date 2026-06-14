@@ -3,19 +3,22 @@ import { api } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
-import { DEFAULT_GAME_VENUE, divisionOptions, gameResultLabel, teamDivision } from '../../lib/games'
-import type { Game, Team, Tournament } from '../../lib/types'
+import { DEFAULT_GAME_VENUE, divisionNameById, gameResultLabel, teamDivision } from '../../lib/games'
+import type { Division, Game, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
+
+const legacyPrefix = 'legacy:'
 
 export function AdminGamesPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, teams, games] = await Promise.all([
+    const [tournaments, teams, games, divisions] = await Promise.all([
       api.adminTournaments(),
       api.adminTeams(tournamentId || null),
       api.adminGames(tournamentId || null),
+      api.adminDivisions(tournamentId || null),
     ])
-    return { tournaments: tournaments.tournaments, teams: teams.teams, games: games.games }
+    return { tournaments: tournaments.tournaments, teams: teams.teams, games: games.games, divisions: divisions.divisions }
   }, [tournamentId])
 
   useEffect(() => {
@@ -27,19 +30,18 @@ export function AdminGamesPage() {
 
   const tournaments = data?.tournaments || []
   const currentTournament = selectedTournament(tournaments, tournamentId)
-  const divisions = divisionOptions(data?.teams || [], data?.games || [])
+  const divisions = data?.divisions || []
 
   return (
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Admin" title="Games and scores" description="Build the schedule, enter final scores, and attach GuamTime ticket links or Clutch stream links for each game. Final scores automatically refresh standings." />
       <TournamentFilter tournaments={tournaments} value={currentTournament?.id || ''} onChange={setTournamentId} />
-      <datalist id="division-options">{divisions.map((division) => <option key={division} value={division} />)}</datalist>
-      <CreateGamePanel tournament={currentTournament} teams={data?.teams || []} onSaved={reload} />
+      <CreateGamePanel tournament={currentTournament} teams={data?.teams || []} divisions={divisions} onSaved={reload} />
       <Panel>
         <div className="section-heading"><h2>Game list</h2><span>{data?.games.length || 0} games</span></div>
         {!data?.games.length ? <EmptyState title="No games found" description="Add teams first, then create each matchup in the schedule." /> : (
           <div className="admin-list">
-            {data.games.map((game) => <EditableGame key={game.id} game={game} onSaved={reload} />)}
+            {data.games.map((game) => <EditableGame key={game.id} game={game} divisions={divisions} onSaved={reload} />)}
           </div>
         )}
       </Panel>
@@ -55,14 +57,14 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
   )
 }
 
-function CreateGamePanel({ tournament, teams, onSaved }: { tournament: Tournament | null; teams: Team[]; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ homeTeamId: '', awayTeamId: '', startTime: '', division: '', bracketCode: '', ticketUrl: '', streamUrl: '', status: 'scheduled' as Game['status'] })
+function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament: Tournament | null; teams: Team[]; divisions: Division[]; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState({ homeTeamId: '', awayTeamId: '', startTime: '', divisionId: '', bracketCode: '', ticketUrl: '', streamUrl: '', status: 'scheduled' as Game['status'] })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const availableTeams = useMemo(() => teams.filter((team) => !tournament || team.tournamentId === tournament.id), [teams, tournament])
 
   useEffect(() => {
-    setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', division: '' }))
+    setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', divisionId: '' }))
   }, [tournament?.id])
 
   const submit = async (event: FormEvent) => {
@@ -73,18 +75,23 @@ function CreateGamePanel({ tournament, teams, onSaved }: { tournament: Tournamen
       return
     }
 
+    const divisionAttrs = form.divisionId ? divisionPayload(form.divisionId, divisions) : derivedDivisionPayload(form.homeTeamId, form.awayTeamId, availableTeams)
+
     setSaving(true)
     try {
       await api.adminCreateGame({
-        ...form,
         tournamentId: tournament.id,
+        homeTeamId: form.homeTeamId,
+        awayTeamId: form.awayTeamId,
+        status: form.status,
         venue: DEFAULT_GAME_VENUE,
-        division: form.division || teamDivision(form.homeTeamId, availableTeams) || teamDivision(form.awayTeamId, availableTeams) || null,
+        bracketCode: form.bracketCode,
         ticketUrl: form.ticketUrl || null,
         streamUrl: form.streamUrl || null,
         startTime: guamLocalDateTimeInputToIso(form.startTime),
+        ...divisionAttrs,
       })
-      setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', startTime: '', bracketCode: '', ticketUrl: '', streamUrl: '' }))
+      setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', startTime: '', divisionId: '', bracketCode: '', ticketUrl: '', streamUrl: '' }))
       setMessage('Game created')
       await onSaved()
     } catch (err) {
@@ -104,7 +111,7 @@ function CreateGamePanel({ tournament, teams, onSaved }: { tournament: Tournamen
             <Field label="Away team"><select value={form.awayTeamId} onChange={(event) => setForm({ ...form, awayTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
             <Field label="Home team"><select value={form.homeTeamId} onChange={(event) => setForm({ ...form, homeTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
             <Field label="Start time (Guam)"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} required /></Field>
-            <Field label="Division"><input list="division-options" value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} placeholder="Derives from team if blank" /></Field>
+            <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
             <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
             <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
             <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="Clutch or partner stream" /></Field>
@@ -116,14 +123,13 @@ function CreateGamePanel({ tournament, teams, onSaved }: { tournament: Tournamen
   )
 }
 
-function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<void> }) {
+function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Division[]; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({
     status: game.status,
     homeScore: game.homeScore?.toString() || '',
     awayScore: game.awayScore?.toString() || '',
     startTime: toLocalDateTimeInputValue(game.startTime),
-    venue: game.venue || DEFAULT_GAME_VENUE,
-    division: game.division || '',
+    divisionId: divisionValueFor(game, divisions),
     bracketCode: game.bracketCode || '',
     ticketUrl: game.ticketUrl || '',
     streamUrl: game.streamUrl || '',
@@ -143,11 +149,16 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
     setSaveError('')
     try {
       await api.adminUpdateGame(game.id, {
-        ...form,
         status: statusOverride || form.status,
         homeScore: form.homeScore === '' ? null : Number(form.homeScore),
         awayScore: form.awayScore === '' ? null : Number(form.awayScore),
         startTime: guamLocalDateTimeInputToIso(form.startTime),
+        bracketCode: form.bracketCode,
+        ticketUrl: form.ticketUrl || null,
+        streamUrl: form.streamUrl || null,
+        notes: form.notes || null,
+        venue: game.venue || DEFAULT_GAME_VENUE,
+        ...divisionPayload(form.divisionId, divisions),
       })
       await onSaved()
     } catch (err) {
@@ -167,7 +178,7 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
         <Field label="Start"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></Field>
         <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} /></Field>
         <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} /></Field>
-        <Field label="Division"><input list="division-options" value={form.division} onChange={(event) => setForm({ ...form, division: event.target.value })} /></Field>
+        <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={game.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
         <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
       </FormGrid>
       {projectedResult && <p className="form-note">{projectedResult}</p>}
@@ -178,4 +189,37 @@ function EditableGame({ game, onSaved }: { game: Game; onSaved: () => Promise<vo
       </div>
     </article>
   )
+}
+
+function DivisionSelect({ value, divisions, currentName, onChange }: { value: string; divisions: Division[]; currentName?: string | null; onChange: (value: string) => void }) {
+  const hasCurrentName = currentName && !divisions.some((division) => division.name === currentName)
+  return (
+    <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <option value="">Use team division</option>
+      {divisions.map((division) => <option key={division.id} value={division.id}>{division.name}</option>)}
+      {hasCurrentName && <option value={`${legacyPrefix}${currentName}`}>{currentName} (not in current division settings)</option>}
+    </select>
+  )
+}
+
+function divisionValueFor(game: Game, divisions: Division[]) {
+  if (game.divisionId) return game.divisionId
+  const matchingDivision = divisions.find((division) => division.name === game.division)
+  if (matchingDivision) return matchingDivision.id
+  return game.division ? `${legacyPrefix}${game.division}` : ''
+}
+
+function divisionPayload(value: string, divisions: Division[]) {
+  if (!value) return { divisionId: null, division: null }
+  if (value.startsWith(legacyPrefix)) return { divisionId: null, division: value.slice(legacyPrefix.length) }
+
+  return { divisionId: value, division: divisionNameById(value, divisions) || null }
+}
+
+function derivedDivisionPayload(homeTeamId: string, awayTeamId: string, teams: Team[]) {
+  const homeTeam = teams.find((team) => team.id === homeTeamId)
+  const awayTeam = teams.find((team) => team.id === awayTeamId)
+  const sourceTeam = homeTeam?.division ? homeTeam : awayTeam?.division ? awayTeam : null
+
+  return { divisionId: sourceTeam?.divisionId || null, division: sourceTeam ? teamDivision(sourceTeam.id, teams) || null : null }
 }

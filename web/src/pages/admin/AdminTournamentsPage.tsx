@@ -139,8 +139,8 @@ function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSave
       <TournamentFields form={form} setForm={setForm} />
       <div className="admin-shortcuts tournament-actions" aria-label={`Manage ${tournament.year} tournament`}>
         <Link to={tournamentScopedPath('/admin/divisions', tournament.id)}>Teams and divisions</Link>
-        <Link to={tournamentScopedPath('/admin/games', tournament.id)}>Build schedule</Link>
-        <Link to={tournamentScopedPath('/admin/games', tournament.id)}>Enter scores</Link>
+        <Link to={tournamentScopedPath('/admin/games', tournament.id, { mode: 'schedule' })}>Build schedule</Link>
+        <Link to={tournamentScopedPath('/admin/games', tournament.id, { mode: 'scores' })}>Enter scores</Link>
         <Link to={tournamentScopedPath('/admin/standings', tournament.id)}>Standings</Link>
         <Link to={tournamentScopedPath('/admin/links', tournament.id)}>Tickets and streams</Link>
         <Link to={tournamentScopedPath('/admin/news', tournament.id)}>News</Link>

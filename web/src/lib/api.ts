@@ -1,6 +1,7 @@
 import type {
   Article,
   CurrentUser,
+  Division,
   Game,
   IngestItem,
   MediaAsset,
@@ -132,6 +133,10 @@ export const api = {
   adminTournaments: () => request<{ tournaments: Tournament[] }>('/admin/tournaments'),
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
+
+  adminDivisions: (tournamentId?: string | null) => request<{ divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
+  adminCreateDivision: (payload: Partial<Division> & { tournamentId?: string | null }) => request<{ division: Division }>(`/admin/divisions${query({ tournamentId: payload.tournamentId })}`, json('POST', { division: payload })),
+  adminUpdateDivision: (id: string, payload: Partial<Division>) => request<{ division: Division }>(`/admin/divisions/${id}`, json('PATCH', { division: payload })),
 
   adminTeams: (tournamentId?: string | null) => request<{ teams: Team[] }>(`/admin/teams${query({ tournamentId })}`),
   adminCreateTeam: (payload: Partial<Team>) => request<{ team: Team }>('/admin/teams', json('POST', { team: payload })),

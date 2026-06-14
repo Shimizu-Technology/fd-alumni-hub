@@ -3,6 +3,18 @@ export type GameStatus = 'scheduled' | 'live' | 'final'
 export type IngestStatus = 'pending' | 'approved' | 'rejected'
 export type IngestKind = 'article' | 'media'
 
+export type Division = {
+  id: string
+  name: string
+  slug: string
+  startsYear: number | null
+  position: number
+  active: boolean
+  available?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type Tournament = {
   id: string
   name: string
@@ -19,12 +31,13 @@ export type Team = {
   tournamentId: string
   classYearLabel: string
   displayName: string
+  divisionId?: string | null
   division: string | null
   createdAt?: string
   updatedAt?: string
 }
 
-export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'division'>
+export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'divisionId' | 'division'>
 
 export type RelatedGameSummary = {
   id: string
@@ -51,6 +64,7 @@ export type Game = {
   streamUrl: string | null
   ticketUrl: string | null
   notes: string | null
+  divisionId?: string | null
   division: string | null
   bracketCode: string | null
   placeholder?: boolean

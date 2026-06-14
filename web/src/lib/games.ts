@@ -1,15 +1,19 @@
 import { formatGuamDate, formatGuamDateTime } from './datetime'
-import type { Game, RelatedGameSummary, Tournament, Team } from './types'
+import type { Division, Game, RelatedGameSummary, Tournament, Team } from './types'
 
 export const DEFAULT_GAME_VENUE = 'The Jungle'
-export const DEFAULT_DIVISIONS = ['Maroon', 'Gold', 'Platinum', 'Diamond']
 
 export function formatTournamentWindow(tournament?: Pick<Tournament, 'startDate' | 'endDate'> | null) {
   if (!tournament?.startDate || !tournament?.endDate) return 'Dates pending'
 
-  const start = formatGuamDate(tournament.startDate, { year: undefined })
+  if (tournament.startDate === tournament.endDate) {
+    return formatGuamDate(tournament.endDate, { year: 'numeric' })
+  }
+
+  const sameYear = tournament.startDate.slice(0, 4) === tournament.endDate.slice(0, 4)
+  const start = formatGuamDate(tournament.startDate, { year: sameYear ? undefined : 'numeric' })
   const end = formatGuamDate(tournament.endDate, { year: 'numeric' })
-  return start === end ? end : `${start}–${end}`
+  return `${start}–${end}`
 }
 
 export function gameMatchupLabel(game?: Pick<Game, 'homeTeam' | 'awayTeam'> | Pick<RelatedGameSummary, 'homeTeam' | 'awayTeam'> | null) {
@@ -24,12 +28,16 @@ export function gameOptionLabel(game: Game | RelatedGameSummary) {
   return `${formatGuamDateTime(game.startTime)} · ${gameMatchupLabel(game)}`
 }
 
-export function divisionOptions(teams: Team[] = [], games: Array<Pick<Game, 'division'>> = []) {
-  return Array.from(new Set([
-    ...teams.map((team) => team.division).filter(Boolean),
-    ...games.map((game) => game.division).filter(Boolean),
-    ...DEFAULT_DIVISIONS,
-  ] as string[]))
+export function divisionSelectOptions(divisions: Division[], currentName?: string | null) {
+  const options = divisions.map((division) => ({ id: division.id, name: division.name }))
+  if (currentName && !options.some((division) => division.name === currentName)) {
+    options.push({ id: '', name: currentName })
+  }
+  return options
+}
+
+export function divisionNameById(divisionId: string | null | undefined, divisions: Division[]) {
+  return divisions.find((division) => division.id === divisionId)?.name || ''
 }
 
 export function teamDivision(teamId: string, teams: Team[]) {
