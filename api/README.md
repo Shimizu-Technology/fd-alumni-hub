@@ -9,8 +9,10 @@ The current Next.js app in `apps/web` remains the production/fallback app until 
 ```bash
 cd api
 cp .env.example .env
+# Fill CLERK_JWKS_URL, CLERK_SECRET_KEY, and FD_ADMIN_EMAIL for local admin auth.
 bundle install
 bin/rails db:create db:migrate
+bin/rails db:seed
 bin/rails server -p 3001
 ```
 
@@ -56,11 +58,7 @@ Admin routes use Clerk JWTs with an allowlist:
 - `CLERK_JWKS_URL` or `CLERK_ISSUER` configures JWT verification.
 - `CLERK_SECRET_KEY` is optional fallback for email lookup when JWT claims omit email.
 
-Development-only tokens are supported for local API checks when a user already exists:
-
-```http
-Authorization: Bearer dev_token_you@example.com
-```
+Local admin testing should use real Clerk sign-in with an allowlisted email. Seed the allowlist with `FD_ADMIN_EMAIL=you@example.com bin/rails db:seed`, then sign in through the React/Vite app.
 
 ## Admin endpoints
 

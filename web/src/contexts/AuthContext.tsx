@@ -13,7 +13,6 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
-const DEV_AUTH_EMAIL = import.meta.env.VITE_DEV_AUTH_EMAIL as string | undefined
 const CLERK_JWT_TEMPLATE = import.meta.env.VITE_CLERK_JWT_TEMPLATE as string | undefined
 
 export function useAuthContext() {
@@ -24,46 +23,25 @@ export function useAuthContext() {
 
 export function AuthProvider({ children, isClerkEnabled }: { children: ReactNode; isClerkEnabled: boolean }) {
   if (isClerkEnabled) return <ClerkBackedAuthProvider>{children}</ClerkBackedAuthProvider>
-  return <DevAuthProvider>{children}</DevAuthProvider>
+  return <ClerkRequiredAuthProvider>{children}</ClerkRequiredAuthProvider>
 }
 
-function DevAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(Boolean(DEV_AUTH_EMAIL))
-
+function ClerkRequiredAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    setAuthTokenGetter(async () => (DEV_AUTH_EMAIL ? `dev_token_${DEV_AUTH_EMAIL}` : null))
+    setAuthTokenGetter(null)
     return () => setAuthTokenGetter(null)
   }, [])
 
-  const refreshUser = async () => {
-    if (!DEV_AUTH_EMAIL) return
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await api.getCurrentUser()
-      setUser(response.user)
-    } catch (err) {
-      setUser(null)
-      setError(err instanceof Error ? err.message : 'Unable to verify dev user')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void refreshUser()
-  }, [])
+  const refreshUser = async () => {}
 
   const value = useMemo<AuthContextValue>(() => ({
     isClerkEnabled: false,
-    isSignedIn: Boolean(DEV_AUTH_EMAIL),
-    isLoading,
-    user,
-    error,
+    isSignedIn: false,
+    isLoading: false,
+    user: null,
+    error: 'Clerk is not configured. Add VITE_CLERK_PUBLISHABLE_KEY before using admin routes.',
     refreshUser,
-  }), [isLoading, user, error])
+  }), [])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

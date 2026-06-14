@@ -19,6 +19,7 @@ const adminItems = [
 
 export function AdminLayout() {
   const auth = useAuthContext()
+  const returnTo = `${window.location.pathname}${window.location.search}`
 
   if (auth.isLoading) return <div className="admin-shell"><LoadingState label="Verifying admin access" /></div>
 
@@ -29,7 +30,7 @@ export function AdminLayout() {
           <IconShield size={32} />
           <h1>Admin access</h1>
           <p>Sign in with an allowlisted organizer account to manage tournament data.</p>
-          <SignInButton mode="modal" forceRedirectUrl="/admin">
+          <SignInButton mode="modal" forceRedirectUrl={returnTo}>
             <button className="btn primary">Sign in</button>
           </SignInButton>
         </div>
@@ -47,7 +48,7 @@ export function AdminLayout() {
           {auth.isClerkEnabled ? (
             <SignOutButton><button className="btn secondary">Sign out</button></SignOutButton>
           ) : (
-            <p className="muted">Set VITE_DEV_AUTH_EMAIL to a Rails development user for local admin access.</p>
+            <p className="muted">Configure Clerk before using admin routes.</p>
           )}
         </div>
       </div>

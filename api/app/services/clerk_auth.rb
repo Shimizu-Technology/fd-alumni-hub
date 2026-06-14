@@ -1,3 +1,5 @@
+require "uri"
+
 class ClerkAuth
   JWKS_CACHE_KEY = "clerk_jwks"
   JWKS_CACHE_TTL = 1.hour
@@ -9,12 +11,6 @@ class ClerkAuth
 
       if Rails.env.test? && token.start_with?("test_token_")
         return handle_test_token(token)
-      end
-
-      if token.start_with?("dev_token_")
-        return nil unless Rails.env.development?
-
-        return handle_dev_token(token)
       end
 
       jwks = fetch_jwks
@@ -94,13 +90,32 @@ class ClerkAuth
 
     def jwks_url
       ENV.fetch("CLERK_JWKS_URL", nil).presence || begin
-        issuer = expected_issuer
+        issuer = configured_issuer
         issuer.present? ? "#{issuer}/.well-known/jwks.json" : nil
       end
     end
 
     def expected_issuer
+      configured_issuer || issuer_from_jwks_url
+    end
+
+    def configured_issuer
       ENV.fetch("CLERK_ISSUER", nil).presence
+    end
+
+    def issuer_from_jwks_url
+      raw_url = ENV.fetch("CLERK_JWKS_URL", nil).presence
+      return nil unless raw_url
+
+      uri = URI.parse(raw_url)
+      return nil if uri.scheme.blank? || uri.host.blank?
+
+      origin = +"#{uri.scheme}://#{uri.host}"
+      origin << ":#{uri.port}" unless uri.port == uri.default_port
+      origin
+    rescue URI::InvalidURIError => e
+      Rails.logger.warn("Invalid Clerk JWKS URL: #{e.message}")
+      nil
     end
 
     def expected_audience
@@ -118,19 +133,6 @@ class ClerkAuth
 
       {
         "sub" => user.clerk_id.presence || "test_clerk_#{user.id}",
-        "email" => user.email,
-        "first_name" => user.first_name,
-        "last_name" => user.last_name
-      }
-    end
-
-    def handle_dev_token(token)
-      email = token.delete_prefix("dev_token_").downcase
-      user = User.find_by("LOWER(email) = ?", email)
-      return nil unless user
-
-      {
-        "sub" => user.clerk_id.presence || "dev_clerk_#{user.id}",
         "email" => user.email,
         "first_name" => user.first_name,
         "last_name" => user.last_name
