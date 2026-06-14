@@ -5,6 +5,7 @@ import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { Sponsor, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 
 type SponsorForm = { tournamentId?: string; name: string; logoUrl: string; targetUrl: string; tier: string; active: boolean; position: string }
 
@@ -76,7 +77,7 @@ function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { to
 }
 
 function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState<SponsorForm>({ name: sponsor.name, logoUrl: sponsor.logoUrl || '', targetUrl: sponsor.targetUrl || '', tier: sponsor.tier || '', active: sponsor.active, position: String(sponsor.position) })
+  const [form, setForm] = useState<SponsorForm>({ tournamentId: sponsor.tournamentId, name: sponsor.name, logoUrl: sponsor.logoUrl || '', targetUrl: sponsor.targetUrl || '', tier: sponsor.tier || '', active: sponsor.active, position: String(sponsor.position) })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [mutationError, setMutationError] = useState('')
@@ -110,7 +111,17 @@ function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Pro
 }
 
 function SponsorFields({ form, setForm, tournaments, includeTournament = false }: { form: SponsorForm; setForm: Dispatch<SetStateAction<SponsorForm>>; tournaments?: Tournament[]; includeTournament?: boolean }) {
-  return <FormGrid>{includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}<Field label="Name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field><Field label="Tier"><input value={form.tier} onChange={(event) => setForm({ ...form, tier: event.target.value })} /></Field><Field label="Logo URL"><input value={form.logoUrl} onChange={(event) => setForm({ ...form, logoUrl: event.target.value })} /></Field><Field label="Target URL"><input value={form.targetUrl} onChange={(event) => setForm({ ...form, targetUrl: event.target.value })} /></Field><Field label="Position"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field><label className="check-field"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /> Active</label></FormGrid>
+  return (
+    <FormGrid>
+      {includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}
+      <Field label="Name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field>
+      <Field label="Tier"><input value={form.tier} onChange={(event) => setForm({ ...form, tier: event.target.value })} /></Field>
+      <ImageUrlUploadField label="Logo URL" value={form.logoUrl} tournamentId={form.tournamentId} purpose="sponsor-logo" onChange={(logoUrl) => setForm({ ...form, logoUrl })} help="Upload a sponsor logo to S3 or paste a hosted logo URL." />
+      <Field label="Target URL"><input value={form.targetUrl} onChange={(event) => setForm({ ...form, targetUrl: event.target.value })} /></Field>
+      <Field label="Position"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
+      <label className="check-field"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /> Active</label>
+    </FormGrid>
+  )
 }
 
 function cleanSponsor(form: SponsorForm) {

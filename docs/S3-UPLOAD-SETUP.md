@@ -2,7 +2,7 @@
 
 The current Next.js app uses presigned POST uploads for media assets in Admin > Media.
 
-The Rails-backed `/web` app should get the same capability before production cutover so admins can upload gallery images and sponsor logos directly from the app instead of pasting image URLs.
+The Rails-backed `/web` app now has the same public-image upload capability for admin image URL fields. Admins can still paste manually hosted URLs, or choose a local image and let the browser upload directly to S3 before saving the record.
 
 ## Required env vars
 
@@ -11,6 +11,9 @@ The Rails-backed `/web` app should get the same capability before production cut
 - `S3_ACCESS_KEY_ID`
 - `S3_SECRET_ACCESS_KEY`
 - `S3_PUBLIC_BASE_URL` (optional; if omitted, defaults to standard S3 URL)
+- `S3_IMAGE_UPLOAD_MAX_BYTES` (optional; defaults to `10485760` / 10MB)
+
+`AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_S3_PUBLIC_BASE_URL` are also supported as aliases to match the Shimizu starter S3 guide.
 
 ## Minimal IAM permissions
 
@@ -34,16 +37,22 @@ Allow browser uploads from app origins (dev + prod), methods `POST,GET,HEAD`.
 3. Browser uploads file directly to S3 using returned form fields
 4. App stores resulting public image URL in `MediaAsset.imageUrl`
 
-## Rails/Vite follow-up
+## Rails/Vite flow
 
-Implement after the data migration/staging work:
+1. Admin chooses an image in a supported admin form.
+2. App calls `POST /api/v1/admin/uploads/presign` with `tournamentId`, `filename`, `contentType`, `byteSize`, and upload `purpose`.
+3. Rails validates staff auth, tournament, `image/*` MIME, and max size, then returns presigned S3 POST fields and a public URL.
+4. Browser uploads the file directly to S3.
+5. The form stores the returned public URL in the existing image URL field.
+6. Admin saves the record normally.
 
-1. Add Rails S3 configuration using the Brain-Dump starter-app AWS S3 guide.
-2. Add a Rails admin presign endpoint for public image uploads.
-3. Add upload controls in `/web` admin media and sponsor forms.
-4. Store the resulting public URL in `MediaAsset.image_url` or `Sponsor.logo_url`.
-5. Keep manual URL entry as a fallback.
-6. Validate file type (`image/*`), size limits, and least-privilege IAM permissions.
+Implemented upload controls currently cover:
+- sponsor `logoUrl`
+- media asset `imageUrl`
+- article `imageUrl`
+- ingest candidate `imageUrl`
+
+Manual URL entry remains available for every field.
 
 Good implementation references: existing Shimizu Rails/Vite projects with S3 upload flows such as Marianas Open and Aire Services.
 

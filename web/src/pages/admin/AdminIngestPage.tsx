@@ -5,6 +5,7 @@ import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { IngestItem, IngestKind, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
+import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 
 export function AdminIngestPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
@@ -67,7 +68,23 @@ function CreateIngestPanel({ tournaments, selectedTournamentId, onSaved }: { tou
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add candidate</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><FormGrid><Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field><Field label="Kind"><select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as IngestKind })}><option value="article">Article</option><option value="media">Media</option></select></Field><Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} /></Field><Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field><Field label="URL"><input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} required /></Field><Field label="Image URL"><input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} /></Field><Field label="Excerpt"><input value={form.excerpt} onChange={(event) => setForm({ ...form, excerpt: event.target.value })} /></Field></FormGrid><button className="btn primary" type="submit" disabled={!form.tournamentId}>Add candidate</button></form></Panel>
+  return (
+    <Panel>
+      <div className="section-heading"><h2>Add candidate</h2>{message && <span>{message}</span>}</div>
+      <form onSubmit={submit}>
+        <FormGrid>
+          <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>
+          <Field label="Kind"><select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as IngestKind })}><option value="article">Article</option><option value="media">Media</option></select></Field>
+          <Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} /></Field>
+          <Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field>
+          <Field label="URL"><input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} required /></Field>
+          <ImageUrlUploadField label="Image URL" value={form.imageUrl} tournamentId={form.tournamentId} purpose="ingest-image" onChange={(imageUrl) => setForm({ ...form, imageUrl })} help="Upload a candidate image to S3 or paste the source image URL." />
+          <Field label="Excerpt"><input value={form.excerpt} onChange={(event) => setForm({ ...form, excerpt: event.target.value })} /></Field>
+        </FormGrid>
+        <button className="btn primary" type="submit" disabled={!form.tournamentId}>Add candidate</button>
+      </form>
+    </Panel>
+  )
 }
 
 function IngestRow({ item, onSaved }: { item: IngestItem; onSaved: () => Promise<void> }) {

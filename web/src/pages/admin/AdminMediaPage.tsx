@@ -7,6 +7,7 @@ import { toDateInputValue } from '../../lib/datetime'
 import { gameOptionLabel } from '../../lib/games'
 import type { Game, MediaAsset, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 
 type MediaForm = { tournamentId?: string; gameId: string; source: string; title: string; imageUrl: string; articleUrl: string; caption: string; tags: string; takenAt: string }
 
@@ -116,7 +117,19 @@ function MediaRow({ asset, games, onSaved }: { asset: MediaAsset; games: Game[];
 function MediaFields({ form, setForm, tournaments, games = [], includeTournament = false }: { form: MediaForm; setForm: Dispatch<SetStateAction<MediaForm>>; tournaments?: Tournament[]; games?: Game[]; includeTournament?: boolean }) {
   const availableGames = games.filter((game) => !form.tournamentId || game.tournamentId === form.tournamentId)
 
-  return <FormGrid>{includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value, gameId: '' })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}<Field label="Related game"><select value={form.gameId} onChange={(event) => setForm({ ...form, gameId: event.target.value })}><option value="">Tournament-level photo</option>{availableGames.map((game) => <option key={game.id} value={game.id}>{gameOptionLabel(game)}</option>)}</select></Field><Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field><Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} required /></Field><Field label="Image URL"><input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} required /></Field><Field label="Article URL"><input value={form.articleUrl} onChange={(event) => setForm({ ...form, articleUrl: event.target.value })} /></Field><Field label="Taken"><input type="date" value={form.takenAt} onChange={(event) => setForm({ ...form, takenAt: event.target.value })} /></Field><Field label="Tags"><input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} /></Field><Field label="Caption"><input value={form.caption} onChange={(event) => setForm({ ...form, caption: event.target.value })} /></Field></FormGrid>
+  return (
+    <FormGrid>
+      {includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value, gameId: '' })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}
+      <Field label="Related game"><select value={form.gameId} onChange={(event) => setForm({ ...form, gameId: event.target.value })}><option value="">Tournament-level photo</option>{availableGames.map((game) => <option key={game.id} value={game.id}>{gameOptionLabel(game)}</option>)}</select></Field>
+      <Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field>
+      <Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} required /></Field>
+      <ImageUrlUploadField label="Image URL" value={form.imageUrl} tournamentId={form.tournamentId} purpose="media-asset" onChange={(imageUrl) => setForm({ ...form, imageUrl })} required help="Upload a gallery image to S3 or paste a public media URL." />
+      <Field label="Article URL"><input value={form.articleUrl} onChange={(event) => setForm({ ...form, articleUrl: event.target.value })} /></Field>
+      <Field label="Taken"><input type="date" value={form.takenAt} onChange={(event) => setForm({ ...form, takenAt: event.target.value })} /></Field>
+      <Field label="Tags"><input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} /></Field>
+      <Field label="Caption"><input value={form.caption} onChange={(event) => setForm({ ...form, caption: event.target.value })} /></Field>
+    </FormGrid>
+  )
 }
 
 function cleanMedia(form: MediaForm) {

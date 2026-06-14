@@ -7,6 +7,7 @@ import { toDateInputValue } from '../../lib/datetime'
 import { gameOptionLabel } from '../../lib/games'
 import type { Article, Game, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 
 type ArticleForm = { tournamentId: string; gameId: string; title: string; source: string; url: string; publishedAt: string; imageUrl: string; excerpt: string }
 
@@ -116,5 +117,16 @@ function ArticleRow({ article, games, onSaved }: { article: Article; games: Game
 function ArticleFields({ form, setForm, tournaments, games = [], includeTournament = false }: { form: ArticleForm; setForm: Dispatch<SetStateAction<ArticleForm>>; tournaments?: Tournament[]; games?: Game[]; includeTournament?: boolean }) {
   const availableGames = games.filter((game) => !form.tournamentId || game.tournamentId === form.tournamentId)
 
-  return <FormGrid>{includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value, gameId: '' })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}<Field label="Related game"><select value={form.gameId} onChange={(event) => setForm({ ...form, gameId: event.target.value })}><option value="">Tournament-level article</option>{availableGames.map((game) => <option key={game.id} value={game.id}>{gameOptionLabel(game)}</option>)}</select></Field><Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field><Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} required /></Field><Field label="URL"><input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} required /></Field><Field label="Published"><input type="date" value={form.publishedAt} onChange={(event) => setForm({ ...form, publishedAt: event.target.value })} /></Field><Field label="Image URL"><input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} /></Field><Field label="Excerpt"><input value={form.excerpt} onChange={(event) => setForm({ ...form, excerpt: event.target.value })} /></Field></FormGrid>
+  return (
+    <FormGrid>
+      {includeTournament && tournaments && <Field label="Tournament"><select value={form.tournamentId} onChange={(event) => setForm({ ...form, tournamentId: event.target.value, gameId: '' })}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year}</option>)}</select></Field>}
+      <Field label="Related game"><select value={form.gameId} onChange={(event) => setForm({ ...form, gameId: event.target.value })}><option value="">Tournament-level article</option>{availableGames.map((game) => <option key={game.id} value={game.id}>{gameOptionLabel(game)}</option>)}</select></Field>
+      <Field label="Title"><input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required /></Field>
+      <Field label="Source"><input value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })} required /></Field>
+      <Field label="URL"><input value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} required /></Field>
+      <Field label="Published"><input type="date" value={form.publishedAt} onChange={(event) => setForm({ ...form, publishedAt: event.target.value })} /></Field>
+      <ImageUrlUploadField label="Image URL" value={form.imageUrl} tournamentId={form.tournamentId} purpose="article-image" onChange={(imageUrl) => setForm({ ...form, imageUrl })} help="Upload an article image to S3 or paste a publisher image URL." />
+      <Field label="Excerpt"><input value={form.excerpt} onChange={(event) => setForm({ ...form, excerpt: event.target.value })} /></Field>
+    </FormGrid>
+  )
 }

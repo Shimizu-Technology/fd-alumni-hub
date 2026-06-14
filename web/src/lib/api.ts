@@ -14,6 +14,23 @@ import type {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '')
 
+export type AdminImageUploadPresign = {
+  uploadUrl: string
+  fields: Record<string, string>
+  key: string
+  publicUrl: string
+  maxBytes: number
+  expiresIn: number
+}
+
+export type AdminImageUploadPresignPayload = {
+  tournamentId: string
+  filename: string
+  contentType: string
+  byteSize: number
+  purpose?: string
+}
+
 type TokenGetter = () => Promise<string | null>
 let tokenGetter: TokenGetter | null = null
 
@@ -160,6 +177,7 @@ export const api = {
   adminDeleteMedia: (id: string) => request<void>(`/admin/media-assets/${id}`, { method: 'DELETE' }),
 
   adminSponsors: (tournamentId?: string | null) => request<{ sponsors: Sponsor[] }>(`/admin/sponsors${query({ tournamentId })}`),
+  adminPresignImageUpload: (payload: AdminImageUploadPresignPayload) => request<AdminImageUploadPresign>('/admin/uploads/presign', json('POST', { upload: payload })),
   adminCreateSponsor: (payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>('/admin/sponsors', json('POST', { sponsor: payload })),
   adminUpdateSponsor: (id: string, payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>(`/admin/sponsors/${id}`, json('PATCH', { sponsor: payload })),
   adminDeleteSponsor: (id: string) => request<void>(`/admin/sponsors/${id}`, { method: 'DELETE' }),
