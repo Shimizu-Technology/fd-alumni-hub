@@ -60,7 +60,9 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 function DivisionSettingsPanel({ tournament, divisions, allDivisions, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; onSaved: () => Promise<void> }) {
   const nextPosition = useMemo(() => Math.max(0, ...allDivisions.map((division) => division.position)) + 1, [allDivisions])
   const [form, setForm] = useState({ name: '', startsYear: '', position: '1' })
-  const [message, setMessage] = useState('')
+  const [saveSuccess, setSaveSuccess] = useState('')
+  const [saveError, setSaveError] = useState('')
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     setForm((current) => ({ ...current, startsYear: tournament ? String(tournament.year) : '', position: String(nextPosition) }))
@@ -68,9 +70,10 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, onSaved }:
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    setMessage('')
+    setSaveSuccess('')
+    setSaveError('')
     if (!tournament) {
-      setMessage('Select a tournament before adding a division')
+      setSaveError('Select a tournament before adding a division')
       return
     }
 
@@ -82,29 +85,43 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, onSaved }:
         active: true,
       })
       setForm((current) => ({ ...current, name: '', position: String(nextPosition + 1) }))
-      setMessage('Division added')
+      setSaveSuccess('Division added')
       await onSaved()
     } catch (err) {
-      setMessage(mutationErrorMessage(err, 'Unable to add division'))
+      setSaveError(mutationErrorMessage(err, 'Unable to add division'))
     }
   }
 
   return (
-    <Panel>
-      <div className="section-heading"><h2>Division settings</h2>{message && <span>{message}</span>}</div>
+    <Panel className="collapsible-panel">
+      <div className="section-heading collapsible-heading">
+        <div>
+          <h2>Division settings</h2>
+          <p>Rarely changed. Current tournament divisions are shown below.</p>
+        </div>
+        <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+          {open ? 'Hide settings' : 'Edit settings'}
+        </button>
+      </div>
       <div className="division-pill-list" aria-label="Available divisions for selected tournament">
         {divisions.map((division) => <span key={division.id}>{division.name}</span>)}
       </div>
-      <form onSubmit={submit} className="stacked-form">
-        <p className="form-note">Adding a new division defaults to {tournament ? `${tournament.year} and future tournaments` : 'the selected tournament year'}.</p>
-        <FormGrid>
-          <Field label="Division name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Diamond" required /></Field>
-          <Field label="Starting year"><input type="number" value={form.startsYear} onChange={(event) => setForm({ ...form, startsYear: event.target.value })} placeholder="All years if blank" /></Field>
-          <Field label="Display order"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
-        </FormGrid>
-        <button className="btn secondary" type="submit">Add division</button>
-      </form>
-      {allDivisions.length > 0 && <div className="admin-list compact-admin-list">{allDivisions.map((division) => <EditableDivision key={division.id} division={division} onSaved={onSaved} />)}</div>}
+      {saveSuccess && <p className="form-note" role="status">{saveSuccess}</p>}
+      {saveError && <p className="form-error" role="alert">{saveError}</p>}
+      {open && (
+        <div className="collapsible-body">
+          <form onSubmit={submit} className="stacked-form">
+            <p className="form-note">Adding a new division defaults to {tournament ? `${tournament.year} and future tournaments` : 'the selected tournament year'}. Renaming a division updates teams and games assigned to that division; create a new division for future-only changes.</p>
+            <FormGrid>
+              <Field label="Division name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Diamond" required /></Field>
+              <Field label="Starting year"><input type="number" value={form.startsYear} onChange={(event) => setForm({ ...form, startsYear: event.target.value })} placeholder="All years if blank" /></Field>
+              <Field label="Display order"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
+            </FormGrid>
+            <button className="btn secondary" type="submit">Add division</button>
+          </form>
+          {allDivisions.length > 0 && <div className="admin-list compact-admin-list">{allDivisions.map((division) => <EditableDivision key={division.id} division={division} onSaved={onSaved} />)}</div>}
+        </div>
+      )}
     </Panel>
   )
 }
