@@ -4,7 +4,7 @@ export type ChampionRecord = {
   runnerUp?: string
   score?: string
   source: string
-  status?: 'completed' | 'cancelled' | 'unknown'
+  status?: 'upcoming' | 'live' | 'completed' | 'cancelled' | 'unknown'
   note?: string
 }
 

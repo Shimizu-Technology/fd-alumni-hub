@@ -82,7 +82,5 @@ function mergeHistoryRecords(records: ChampionRecord[], tournaments: Tournament[
 }
 
 function historyStatusForTournament(tournament: Tournament): ChampionRecord['status'] {
-  if (tournament.status === 'completed') return 'completed'
-  if (tournament.status === 'cancelled') return 'cancelled'
-  return 'unknown'
+  return tournament.status
 }
