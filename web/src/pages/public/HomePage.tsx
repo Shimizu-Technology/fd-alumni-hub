@@ -21,21 +21,23 @@ export function HomePage() {
 
   return (
     <div className="page-stack">
-      <section className="hero-card">
+      <section className="hero-card public-hero-card">
         <div className="hero-text">
           <p className="eyebrow">Central hub · FD Alumni Basketball</p>
-          <h1>Schedule, standings, streams, tickets, and tournament history in one place.</h1>
-          <p>{tournamentLabel}. Built to guide alumni and fans to the right partner destinations while keeping tournament context clear.</p>
+          <h1>Schedules, scores, streams, and stories from The Jungle.</h1>
+          <p>{tournamentLabel}. A clean guide for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
           <div className="hero-actions">
             <Link className="btn primary" to="/schedule"><IconCalendar /> View schedule <IconArrowRight /></Link>
-            <Link className="btn ghost" to="/standings"><IconTrophy /> Standings</Link>
-            <Link className="btn ghost" to="/watch"><IconPlay /> Watch</Link>
+            <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
+            <Link className="btn secondary" to="/watch"><IconPlay /> Watch</Link>
           </div>
         </div>
         <div className="hero-panel">
           <span>Active tournament</span>
           <strong>{heroStatus}</strong>
           <small>{heroDates}</small>
+          <div className="hero-panel-rule" aria-hidden="true" />
+          <small>Game times, ticket links, stream links, and coverage stay organized in one place.</small>
         </div>
       </section>
 

@@ -19,10 +19,10 @@ export function PublicLayout() {
   return (
     <div className="site-shell">
       <header className="site-header">
-        <NavLink to="/" className="brand" onClick={() => setOpen(false)}>
-          <span className="brand-mark">FD</span>
+        <NavLink to="/" className="brand public-brand" onClick={() => setOpen(false)}>
+          <span className="brand-crest" aria-hidden="true"><img src="/brand/fd-crest.png" alt="" /></span>
           <span>
-            <strong>FD Alumni Basketball</strong>
+            <strong>FD Alumni Basketball Hub</strong>
             <small>Central Tournament Hub</small>
           </span>
         </NavLink>
@@ -52,7 +52,7 @@ export function PublicLayout() {
       <footer className="site-footer">
         <div>
           <strong>FD Alumni Basketball Hub</strong>
-          <p>Your guide to the schedule, standings, tickets, streams, coverage, sponsors, and tournament history.</p>
+          <p>A central guide to schedule, standings, tickets, streams, coverage, sponsors, and tournament history.</p>
         </div>
         <div className="footer-links">
           <a href={import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net'} target="_blank" rel="noreferrer">GuamTime</a>

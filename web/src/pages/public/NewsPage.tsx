@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
@@ -25,7 +26,7 @@ export function NewsPage() {
         <div className="article-grid">
           {data.articles.map((article) => (
             <a key={article.id} className="article-card" href={article.url} target="_blank" rel="noreferrer">
-              {article.imageUrl ? <img src={article.imageUrl} alt="" loading="lazy" /> : <div className="image-placeholder">FD</div>}
+              <ArticleImage src={article.imageUrl} />
               <div>
                 <span>{article.source} · {article.publishedAt ? formatGuamDate(article.publishedAt) : 'Date pending'}</span>
                 <h2>{article.title}</h2>
@@ -39,4 +40,12 @@ export function NewsPage() {
       )}
     </div>
   )
+}
+
+function ArticleImage({ src }: { src?: string | null }) {
+  const [failed, setFailed] = useState(false)
+
+  if (!src || failed) return <div className="image-placeholder">FD</div>
+
+  return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />
 }
