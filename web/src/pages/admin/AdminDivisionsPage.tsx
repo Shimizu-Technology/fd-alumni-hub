@@ -5,7 +5,7 @@ import { selectedTournament, tournamentScopedPath, useTournamentSelection } from
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { divisionNameById } from '../../lib/games'
-import type { Division, Team, Tournament } from '../../lib/types'
+import type { Division, RosterEntry, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 const legacyPrefix = 'legacy:'
@@ -215,7 +215,101 @@ function EditableTeam({ team, divisions, onSaved }: { team: Team; divisions: Div
     }
   }
 
-  return <article className="admin-row-card"><FormGrid><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></Field><Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={team.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field></FormGrid>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save team'}</button></article>
+  return <article className="admin-row-card team-admin-card"><FormGrid><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></Field><Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={team.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field></FormGrid>{saveError && <p className="form-error" role="alert">{saveError}</p>}<button className="btn secondary" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save team'}</button><RosterEditor team={team} entries={team.rosterEntries || []} onSaved={onSaved} /></article>
+}
+
+function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterEntry[]; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState({ name: '', jerseyNumber: '', position: '', nickname: '', sortOrder: String(entries.length + 1) })
+  const [open, setOpen] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    setForm((current) => ({ ...current, sortOrder: String(entries.length + 1) }))
+  }, [entries.length])
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setMessage('')
+    try {
+      await api.adminCreateRosterEntry({ teamId: team.id, name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || entries.length + 1), active: true })
+      setForm({ name: '', jerseyNumber: '', position: '', nickname: '', sortOrder: String(entries.length + 2) })
+      setMessage('Roster player added')
+      await onSaved()
+    } catch (err) {
+      setMessage(mutationErrorMessage(err, 'Unable to add roster player'))
+    }
+  }
+
+  return (
+    <div className="roster-admin-panel">
+      <div className="section-heading compact-heading">
+        <div><h3>Roster</h3><p className="muted">Optional public roster for {team.displayName}.</p></div>
+        <button className="btn secondary small" type="button" onClick={() => setOpen((value) => !value)}>{open ? 'Hide roster' : `Edit roster (${entries.length})`}</button>
+      </div>
+      {message && <p className="form-note">{message}</p>}
+      {open && (
+        <div className="collapsible-body">
+          <form onSubmit={submit}>
+            <FormGrid>
+              <Field label="Name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Player name" required /></Field>
+              <Field label="Jersey #"><input value={form.jerseyNumber} onChange={(event) => setForm({ ...form, jerseyNumber: event.target.value })} /></Field>
+              <Field label="Position"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} placeholder="G / F / C" /></Field>
+              <Field label="Nickname"><input value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></Field>
+              <Field label="Sort order"><input type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} /></Field>
+            </FormGrid>
+            <button className="btn secondary small" type="submit">Add roster player</button>
+          </form>
+          {entries.length ? <div className="admin-list compact-admin-list">{entries.map((entry) => <EditableRosterEntry key={entry.id} entry={entry} onSaved={onSaved} />)}</div> : <EmptyState title="Roster empty" description="Add players if organizers provide roster details." />}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditableRosterEntry({ entry, onSaved }: { entry: RosterEntry; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState({ name: entry.name, jerseyNumber: entry.jerseyNumber || '', position: entry.position || '', nickname: entry.nickname || '', sortOrder: String(entry.sortOrder), active: entry.active })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const save = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      await api.adminUpdateRosterEntry(entry.id, { name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || 0), active: form.active })
+      await onSaved()
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to save roster player'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async () => {
+    setSaving(true)
+    setError('')
+    try {
+      await api.adminDeleteRosterEntry(entry.id)
+      await onSaved()
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to remove roster player'))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <article className="admin-row-card roster-admin-row">
+      <FormGrid>
+        <Field label="Name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required /></Field>
+        <Field label="Jersey #"><input value={form.jerseyNumber} onChange={(event) => setForm({ ...form, jerseyNumber: event.target.value })} /></Field>
+        <Field label="Position"><input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
+        <Field label="Nickname"><input value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></Field>
+        <Field label="Order"><input type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} /></Field>
+      </FormGrid>
+      <label className="check-field"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /> Public</label>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="row-actions"><button className="btn secondary small" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save player'}</button><button className="btn danger small" onClick={remove} disabled={saving}>Remove</button></div>
+    </article>
+  )
 }
 
 function DivisionSelect({ value, divisions, currentName, onChange, required }: { value: string; divisions: Division[]; currentName?: string | null; onChange: (value: string) => void; required?: boolean }) {

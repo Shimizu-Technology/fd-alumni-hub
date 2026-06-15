@@ -1,0 +1,82 @@
+class PredictionPoll < ApplicationRecord
+  POLL_TYPES = %w[game tournament].freeze
+  STATUSES = %w[open closed].freeze
+
+  belongs_to :tournament
+  belongs_to :game, optional: true
+  has_many :prediction_votes, dependent: :destroy
+
+  validates :poll_type, inclusion: { in: POLL_TYPES }
+  validates :status, inclusion: { in: STATUSES }
+  validates :question, presence: true
+  validate :game_poll_has_game
+  validate :game_belongs_to_tournament
+
+  scope :ordered, -> { order(:poll_type, :game_id, :id) }
+  scope :open_for_voting, -> { where(status: "open").where("closes_at IS NULL OR closes_at > ?", Time.current) }
+
+  def open_for_voting?
+    status == "open" && (closes_at.blank? || closes_at.future?)
+  end
+
+  def option_teams
+    @option_teams ||= begin
+      if poll_type == "game" && game
+        [ game.away_team, game.home_team ].compact
+      else
+        tournament.teams.includes(:division_record).order(:division, :display_name, :id)
+      end
+    end
+  end
+
+  def api_json(voter_token_hash: nil)
+    selected_team_id = voter_token_hash.present? ? prediction_votes.find_by(voter_token_hash: voter_token_hash)&.team_id : nil
+    totals_by_team = prediction_votes.group(:team_id).count
+    total_votes = totals_by_team.values.sum
+    results_visible = show_results? || selected_team_id.present? || !open_for_voting?
+
+    {
+      id: id.to_s,
+      tournamentId: tournament_id.to_s,
+      gameId: game_id&.to_s,
+      pollType: poll_type,
+      question: question,
+      status: status,
+      open: open_for_voting?,
+      showResults: show_results,
+      closesAt: closes_at&.iso8601,
+      totalVotes: results_visible ? total_votes : nil,
+      resultsVisible: results_visible,
+      selectedTeamId: selected_team_id&.to_s,
+      game: game&.summary_json,
+      options: option_teams.map { |team| option_json(team, totals_by_team, total_votes, selected_team_id, results_visible) },
+      createdAt: created_at&.iso8601,
+      updatedAt: updated_at&.iso8601
+    }
+  end
+
+  private
+
+  def option_json(team, totals_by_team, total_votes, selected_team_id, results_visible)
+    votes = totals_by_team[team.id] || 0
+    {
+      teamId: team.id.to_s,
+      displayName: team.display_name,
+      classYearLabel: team.class_year_label,
+      division: team.resolved_division,
+      selected: selected_team_id == team.id,
+      votes: results_visible ? votes : nil,
+      percent: results_visible && total_votes.positive? ? ((votes.to_f / total_votes) * 100).round : nil
+    }
+  end
+
+  def game_poll_has_game
+    errors.add(:game, "is required for game prediction polls") if poll_type == "game" && game.blank?
+  end
+
+  def game_belongs_to_tournament
+    return if game.blank? || tournament_id.blank? || game.tournament_id == tournament_id
+
+    errors.add(:game, "must belong to the selected tournament")
+  end
+end

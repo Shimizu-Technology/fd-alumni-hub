@@ -8,6 +8,8 @@ class Tournament < ApplicationRecord
   has_many :media_assets, dependent: :destroy
   has_many :sponsors, dependent: :destroy
   has_many :content_ingest_items, dependent: :destroy
+  has_many :game_day_notes, dependent: :destroy
+  has_many :prediction_polls, dependent: :destroy
 
   validates :name, presence: true
   validates :year, presence: true, numericality: { only_integer: true }

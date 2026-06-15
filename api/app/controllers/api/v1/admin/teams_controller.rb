@@ -3,7 +3,7 @@ module Api
     module Admin
       class TeamsController < BaseController
         def index
-          teams = Team.includes(:tournament, :division_record).order(:tournament_id, :division, :display_name)
+          teams = Team.includes(:tournament, :division_record, :roster_entries).order(:tournament_id, :division, :display_name)
           teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
 
           render json: { teams: teams.map(&:api_json) }

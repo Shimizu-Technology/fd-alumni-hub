@@ -56,6 +56,7 @@ const navSections: NavSection[] = [
     items: [
       { to: '/admin/divisions', label: 'Teams', icon: IconUsers },
       { to: '/admin/games', label: 'Games', icon: IconCalendar },
+      { to: '/admin/game-day', label: 'Game Day', icon: IconHome },
       { to: '/admin/standings', label: 'Standings', icon: IconChart },
     ],
   },

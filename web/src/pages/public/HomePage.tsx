@@ -27,7 +27,8 @@ export function HomePage() {
           <h1>Schedules, scores, streams, and stories from The Jungle.</h1>
           <p>{tournamentLabel}. A clean guide for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
           <div className="hero-actions">
-            <Link className="btn primary" to="/schedule"><IconCalendar /> View schedule <IconArrowRight /></Link>
+            <Link className="btn primary" to="/today"><IconCalendar /> Today at The Jungle <IconArrowRight /></Link>
+            <Link className="btn secondary" to="/schedule">Schedule</Link>
             <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
             <Link className="btn secondary" to="/watch"><IconPlay /> Watch</Link>
           </div>

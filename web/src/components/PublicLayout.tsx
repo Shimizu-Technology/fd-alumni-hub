@@ -4,6 +4,7 @@ import { IconClose, IconMenu, IconShield } from './Icons'
 
 const navItems = [
   { to: '/', label: 'Home' },
+  { to: '/today', label: 'Today' },
   { to: '/schedule', label: 'Schedule' },
   { to: '/standings', label: 'Standings' },
   { to: '/watch', label: 'Watch' },

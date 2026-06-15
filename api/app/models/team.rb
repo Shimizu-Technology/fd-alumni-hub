@@ -5,6 +5,8 @@ class Team < ApplicationRecord
   has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :restrict_with_error, inverse_of: :home_team
   has_many :away_games, class_name: "Game", foreign_key: :away_team_id, dependent: :restrict_with_error, inverse_of: :away_team
   has_many :standings, dependent: :destroy
+  has_many :roster_entries, dependent: :destroy
+  has_many :prediction_votes, dependent: :destroy
 
   before_validation :copy_division_name_from_record
 
@@ -17,8 +19,8 @@ class Team < ApplicationRecord
     division_record&.name || division
   end
 
-  def api_json
-    {
+  def api_json(include_roster: true)
+    payload = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
       classYearLabel: class_year_label,
@@ -28,6 +30,9 @@ class Team < ApplicationRecord
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
+
+    payload[:rosterEntries] = roster_entries.ordered.map(&:api_json) if include_roster
+    payload
   end
 
   private

@@ -3,8 +3,11 @@ import type {
   CurrentUser,
   Division,
   Game,
+  GameDayNote,
   IngestItem,
   MediaAsset,
+  PredictionPoll,
+  RosterEntry,
   ScoreCoverage,
   Sponsor,
   Standing,
@@ -128,6 +131,18 @@ export const api = {
     liveGames: Game[]
     latestNews: Article[]
   }>('/public/home'),
+  publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>
+    request<{
+      tournament: Tournament | null
+      date: string
+      gameDayNote: GameDayNote | null
+      games: Game[]
+      predictionPolls: PredictionPoll[]
+      sponsors: Sponsor[]
+      lastUpdatedAt: string | null
+    }>(`/public/today${query(params)}`, voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
+  publicVotePrediction: (pollId: string, payload: { teamId: string; voterToken: string }) =>
+    request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null } = {}) =>
@@ -158,6 +173,21 @@ export const api = {
   adminTeams: (tournamentId?: string | null) => request<{ teams: Team[] }>(`/admin/teams${query({ tournamentId })}`),
   adminCreateTeam: (payload: Partial<Team>) => request<{ team: Team }>('/admin/teams', json('POST', { team: payload })),
   adminUpdateTeam: (id: string, payload: Partial<Team>) => request<{ team: Team }>(`/admin/teams/${id}`, json('PATCH', { team: payload })),
+  adminCreateRosterEntry: (payload: Partial<RosterEntry>) => request<{ rosterEntry: RosterEntry }>('/admin/roster-entries', json('POST', { rosterEntry: payload })),
+  adminUpdateRosterEntry: (id: string, payload: Partial<RosterEntry>) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries/${id}`, json('PATCH', { rosterEntry: payload })),
+  adminDeleteRosterEntry: (id: string) => request<void>(`/admin/roster-entries/${id}`, { method: 'DELETE' }),
+
+  adminGameDay: (params: { tournamentId?: string | null; date?: string | null } = {}) => request<{
+    tournament: Tournament
+    date: string
+    gameDayNote: GameDayNote | null
+    games: Game[]
+    predictionPolls: PredictionPoll[]
+  }>(`/admin/game-day-notes${query(params)}`),
+  adminSaveGameDayNote: (payload: Partial<GameDayNote>) => request<{ gameDayNote: GameDayNote }>('/admin/game-day-notes', json('POST', { gameDayNote: payload })),
+  adminPredictionPolls: (tournamentId?: string | null) => request<{ tournament: Tournament; predictionPolls: PredictionPoll[] }>(`/admin/prediction-polls${query({ tournamentId })}`),
+  adminCreatePredictionPoll: (payload: Partial<PredictionPoll>) => request<{ predictionPoll: PredictionPoll }>('/admin/prediction-polls', json('POST', { predictionPoll: payload })),
+  adminUpdatePredictionPoll: (id: string, payload: Partial<PredictionPoll>) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls/${id}`, json('PATCH', { predictionPoll: payload })),
 
   adminGames: (tournamentId?: string | null) => request<{ games: Game[] }>(`/admin/games${query({ tournamentId })}`),
   adminCreateGame: (payload: Partial<Game>) => request<{ game: Game }>('/admin/games', json('POST', { game: payload })),

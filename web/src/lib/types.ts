@@ -33,11 +33,38 @@ export type Team = {
   displayName: string
   divisionId?: string | null
   division: string | null
+  rosterEntries?: RosterEntry[]
   createdAt?: string
   updatedAt?: string
 }
 
-export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'divisionId' | 'division'>
+export type RosterEntry = {
+  id: string
+  teamId: string
+  name: string
+  jerseyNumber: string | null
+  position: string | null
+  nickname: string | null
+  sortOrder: number
+  active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type GameDayNote = {
+  id: string
+  tournamentId: string
+  date: string
+  hostClass: string | null
+  foodMenu: string | null
+  announcement: string | null
+  sponsorShoutout: string | null
+  active: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'divisionId' | 'division'> & { rosterEntries?: RosterEntry[] }
 
 export type RelatedGameSummary = {
   id: string
@@ -128,6 +155,35 @@ export type Sponsor = {
   tier: string | null
   active: boolean
   position: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type PredictionOption = {
+  teamId: string
+  displayName: string
+  classYearLabel: string
+  division: string | null
+  selected: boolean
+  votes: number | null
+  percent: number | null
+}
+
+export type PredictionPoll = {
+  id: string
+  tournamentId: string
+  gameId: string | null
+  pollType: 'game' | 'tournament'
+  question: string
+  status: 'open' | 'closed'
+  open: boolean
+  showResults: boolean
+  closesAt: string | null
+  totalVotes: number | null
+  resultsVisible: boolean
+  selectedTeamId: string | null
+  game?: RelatedGameSummary | null
+  options: PredictionOption[]
   createdAt?: string
   updatedAt?: string
 }

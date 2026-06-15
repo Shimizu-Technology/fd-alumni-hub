@@ -8,6 +8,10 @@ Rails.application.routes.draw do
 
       namespace :public do
         resource :home, only: :show, controller: :home
+        resource :today, only: :show, controller: :today
+        resources :prediction_polls, path: "prediction-polls", only: [] do
+          post :vote, to: "prediction_votes#create"
+        end
         resources :tournaments, only: [ :index, :show ]
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"
@@ -23,6 +27,9 @@ Rails.application.routes.draw do
         end
         resources :divisions, only: [ :index, :create, :update ]
         resources :teams, only: [ :index, :create, :update ]
+        resources :roster_entries, path: "roster-entries", only: [ :create, :update, :destroy ]
+        resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ]
+        resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]
         resources :media_assets, path: "media-assets", only: [ :index, :show, :create, :update, :destroy ]

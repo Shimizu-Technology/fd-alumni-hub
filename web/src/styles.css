@@ -226,6 +226,42 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .watch-hero svg { color: var(--fd-maroon); }
 .watch-hero h2 { margin: 0; }
 .watch-hero p { margin: .25rem 0 0; color: var(--muted); }
+.today-schedule-callout { grid-template-columns: minmax(0, 1fr) auto; }
+.today-brief-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, .9fr) minmax(0, 1.3fr); gap: .8rem; }
+.today-brief-card { display: grid; gap: .35rem; }
+.today-brief-card span, .prediction-card-head span { color: var(--fd-maroon); font-size: .76rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.today-brief-card strong { font-size: clamp(1.1rem, 2vw, 1.45rem); line-height: 1.2; }
+.today-brief-card small { color: var(--muted); }
+.today-game-list { display: grid; gap: 1rem; }
+.today-game-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .72fr); gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1.2rem; background: #fff; box-shadow: 0 12px 34px rgba(66,16,31,.06); }
+.today-game-main { display: grid; align-content: start; gap: .75rem; }
+.today-game-main h2 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: -.045em; }
+.today-game-main p { margin: 0; color: var(--muted); font-weight: 700; }
+.roster-details { border-top: 1px solid var(--line); padding-top: .75rem; }
+.roster-details summary { color: var(--fd-maroon); cursor: pointer; font-weight: 900; }
+.roster-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin-top: .7rem; }
+.roster-columns h3 { margin: 0 0 .4rem; font-size: .95rem; }
+.roster-columns ul { display: grid; gap: .35rem; list-style: none; margin: 0; padding: 0; }
+.roster-columns li { display: flex; flex-wrap: wrap; gap: .35rem; align-items: baseline; padding: .45rem .55rem; border-radius: .7rem; background: var(--surface-strong); }
+.roster-columns li span { color: var(--fd-maroon); font-weight: 900; }
+.roster-columns li small { color: var(--muted); }
+.prediction-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+.prediction-card, .prediction-empty { display: grid; gap: .7rem; align-content: start; padding: .9rem; border-radius: 1rem; background: var(--surface-strong); border: 1px solid var(--line); }
+.prediction-card.compact { background: #fffaf3; }
+.prediction-card-head { display: grid; gap: .25rem; }
+.prediction-card-head strong { font-size: 1rem; line-height: 1.25; }
+.prediction-options { display: grid; gap: .5rem; }
+.prediction-options button { width: 100%; display: grid; gap: .2rem; text-align: left; border: 1px solid var(--line); border-radius: .85rem; background: #fff; color: var(--ink); padding: .65rem .75rem; cursor: pointer; }
+.prediction-options button:hover:not(:disabled), .prediction-options button.selected { border-color: rgba(111,29,53,.45); background: var(--fd-maroon-50); }
+.prediction-options button:disabled { cursor: not-allowed; }
+.prediction-options button span { font-weight: 900; }
+.prediction-options button small, .prediction-note, .prediction-empty { color: var(--muted); }
+.team-admin-card, .roster-admin-panel, .admin-prediction-stack { display: grid; gap: .85rem; }
+.roster-admin-panel { padding-top: .8rem; border-top: 1px solid var(--line); }
+.roster-admin-row { gap: .65rem; background: var(--surface-strong); }
+.prediction-admin-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.prediction-admin-row p { margin: .25rem 0 0; }
+.prediction-admin-controls { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; justify-content: flex-end; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .admin-shell { min-height: 100vh; background: radial-gradient(circle at top right, rgba(200,155,60,.14), transparent 28rem), var(--paper); }
@@ -321,7 +357,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 @media (max-width: 980px) {
   .desktop-nav, .admin-link { display: none; }
   .mobile-only { display: grid; }
-  .hero-card, .split-grid { grid-template-columns: 1fr; }
+  .hero-card, .split-grid, .today-game-card, .prediction-admin-row { grid-template-columns: 1fr; }
   .admin-sidebar-desktop { display: none; }
   .admin-mobile-topbar { position: sticky; top: 0; z-index: 35; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid rgba(111,29,53,.12); background: rgba(255,250,245,.94); backdrop-filter: blur(16px); }
   .admin-mobile-topbar div { display: grid; text-align: center; line-height: 1.1; }
@@ -334,7 +370,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-mobile-close { position: absolute; top: .9rem; right: .85rem; z-index: 2; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 1px solid rgba(255,255,255,.14); border-radius: .85rem; color: rgba(255,255,255,.8); background: rgba(255,255,255,.08); }
   .admin-content, .admin-content.sidebar-collapsed { margin-left: 0; padding: 1rem clamp(.85rem, 3vw, 1.25rem) 2.5rem; }
   .admin-topbar { display: none; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .compact-admin-row { grid-template-columns: 1fr; }
@@ -361,7 +397,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .hero-actions .btn, .watch-hero .btn { width: 100%; }
   .section-heading { align-items: flex-start; flex-wrap: wrap; }
   .panel, .state-card, .stat-card { border-radius: 1.1rem; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero { grid-template-columns: 1fr; }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row { grid-template-columns: 1fr; }
   .archive-hero img { justify-self: start; }
   .timeline-link-row { grid-template-columns: 1fr auto; }
   .timeline-link-row .timeline-year { grid-column: 1 / -1; }
@@ -373,6 +409,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-content, .admin-content.sidebar-collapsed { padding: .75rem .75rem 2rem; }
   .admin-page .page-header h1 { font-size: clamp(2rem, 11vw, 3rem); }
   .admin-row-head { align-items: flex-start; }
+  .prediction-admin-controls { justify-content: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
   .game-detail-summary, .score-entry-panel .form-grid { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
