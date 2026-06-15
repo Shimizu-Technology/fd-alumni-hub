@@ -111,11 +111,11 @@ button:disabled { opacity: .62; cursor: progress; }
 .partner-strip strong { display: block; margin-top: .4rem; line-height: 1.35; }
 
 .toolbar-panel { display: flex; gap: 1rem; flex-wrap: wrap; align-items: end; }
-.toolbar-panel label, .field { display: grid; gap: .35rem; min-width: min(100%, 12rem); }
+.toolbar-panel label, .field { display: grid; align-content: start; align-self: start; gap: .35rem; min-width: min(100%, 12rem); }
 .field span, .toolbar-panel label span { font-size: .78rem; color: var(--muted); font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 input, select, textarea { width: 100%; min-height: 2.75rem; border: 1px solid var(--line); border-radius: .85rem; background: #fff; padding: .75rem .85rem; color: var(--ink); }
 input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.26); border-color: var(--fd-gold); }
-.form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin-bottom: 1rem; }
+.form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: .85rem; margin-bottom: 1rem; }
 .check-field { align-self: end; display: flex; gap: .55rem; align-items: center; font-weight: 800; color: var(--fd-maroon); padding-bottom: .7rem; }
 .check-field input { width: auto; }
 .form-error { margin: -.25rem 0 .2rem; color: var(--danger); font-weight: 800; }
@@ -245,6 +245,17 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .admin-row-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
 .admin-row-head span { display: block; color: var(--muted); margin-top: .2rem; }
 .row-actions { display: flex; gap: .55rem; flex-wrap: wrap; }
+.game-admin-card { gap: 1rem; }
+.game-detail-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; margin: 0; }
+.game-detail-summary div { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--surface-strong); }
+.game-detail-summary dt { margin-bottom: .25rem; color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.game-detail-summary dd { margin: 0; overflow: hidden; color: var(--ink); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+.game-detail-summary a { color: var(--fd-maroon); font-weight: 900; }
+.score-entry-panel { display: grid; gap: .7rem; padding: .9rem; border: 1px solid rgba(111,29,53,.12); border-radius: 1rem; background: #fffaf3; }
+.score-entry-panel .form-grid { max-width: 40rem; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 0; }
+.game-detail-editor { display: grid; gap: .85rem; padding: .95rem; border: 1px dashed rgba(111,29,53,.24); border-radius: 1rem; background: #fff; }
+.compact-heading { margin-bottom: 0; }
+.compact-heading h3 { margin: 0; font-size: 1rem; }
 .notice-panel { color: var(--fd-maroon); font-weight: 900; background: var(--fd-gold-100); border-color: #ead095; }
 .workflow-panel { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
 .workflow-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; }
@@ -279,6 +290,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-topbar { display: none; }
   .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .compact-admin-row { grid-template-columns: 1fr; }
 }
 
@@ -302,6 +314,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-page .page-header h1 { font-size: clamp(2rem, 11vw, 3rem); }
   .admin-row-head { align-items: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
+  .game-detail-summary, .score-entry-panel .form-grid { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
 }

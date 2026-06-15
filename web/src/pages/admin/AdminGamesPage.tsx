@@ -124,7 +124,148 @@ function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament
 }
 
 function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Division[]; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(gameFormState(game, divisions))
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
+  const detailsDirty = gameDetailsChanged(form, game, divisions)
+  const projectedResult = gameResultLabel({
+    ...game,
+    homeScore: form.homeScore === '' ? null : Number(form.homeScore),
+    awayScore: form.awayScore === '' ? null : Number(form.awayScore),
+  })
+
+  useEffect(() => {
+    setForm(gameFormState(game, divisions))
+  }, [game, divisions])
+
+  const saveScores = async (statusOverride?: Game['status']) => {
+    if (detailsDirty) {
+      setEditingDetails(true)
+      setSaveError('Save or cancel game detail changes before saving scores.')
+      return
+    }
+
+    setSaving(true)
+    setSaveError('')
+    try {
+      const nextStatus = statusOverride || form.status
+      await api.adminUpdateGame(game.id, {
+        status: nextStatus,
+        homeScore: form.homeScore === '' ? null : Number(form.homeScore),
+        awayScore: form.awayScore === '' ? null : Number(form.awayScore),
+      })
+      if (statusOverride) setForm((current) => ({ ...current, status: statusOverride }))
+      await onSaved()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to save score')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveDetails = async () => {
+    setSaving(true)
+    setSaveError('')
+    try {
+      await api.adminUpdateGame(game.id, {
+        status: form.status,
+        startTime: guamLocalDateTimeInputToIso(form.startTime),
+        bracketCode: form.bracketCode,
+        ticketUrl: form.ticketUrl || null,
+        streamUrl: form.streamUrl || null,
+        notes: form.notes || null,
+        venue: game.venue || DEFAULT_GAME_VENUE,
+        ...divisionPayload(form.divisionId, divisions),
+      })
+      setEditingDetails(false)
+      await onSaved()
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Unable to save game details')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cancelDetails = () => {
+    setForm(gameFormState(game, divisions))
+    setEditingDetails(false)
+    setSaveError('')
+  }
+
+  return (
+    <article className="admin-row-card game-admin-card">
+      <div className="admin-row-head">
+        <div>
+          <strong>{game.awayTeam?.displayName} at {game.homeTeam?.displayName}</strong>
+          <span>{formatGuamDateTime(game.startTime)} · {game.venue || DEFAULT_GAME_VENUE}</span>
+        </div>
+        <StatusBadge status={game.status} />
+      </div>
+
+      <GameDetailsSummary game={game} />
+
+      <div className="score-entry-panel" aria-label={`Score entry for ${game.awayTeam?.displayName} at ${game.homeTeam?.displayName}`}>
+        <FormGrid>
+          <Field label="Away score"><input type="number" value={form.awayScore} onChange={(event) => setForm({ ...form, awayScore: event.target.value })} /></Field>
+          <Field label="Home score"><input type="number" value={form.homeScore} onChange={(event) => setForm({ ...form, homeScore: event.target.value })} /></Field>
+        </FormGrid>
+        {projectedResult && <p className="form-note">{projectedResult}</p>}
+        {saveError && <p className="form-error" role="alert">{saveError}</p>}
+        <div className="row-actions">
+          <button className="btn secondary" onClick={() => saveScores()} disabled={saving}>{saving ? 'Saving' : 'Save scores'}</button>
+          <button className="btn primary" onClick={() => saveScores('final')} disabled={saving || !scoreComplete}>{saving ? 'Saving' : 'Save final score'}</button>
+          <button className="btn secondary" type="button" onClick={() => setEditingDetails((value) => !value)} aria-expanded={editingDetails}>{editingDetails ? 'Hide game details' : 'Edit game details'}</button>
+        </div>
+      </div>
+
+      {editingDetails && (
+        <div className="game-detail-editor">
+          <div className="section-heading compact-heading"><h3>Game details</h3><span>Schedule, links, status</span></div>
+          <FormGrid>
+            <Field label="Status"><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as Game['status'] })}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="final">Final</option></select></Field>
+            <Field label="Start"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></Field>
+            <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} /></Field>
+            <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} /></Field>
+            <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={game.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
+            <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
+          </FormGrid>
+          <div className="row-actions">
+            <button className="btn secondary" type="button" onClick={cancelDetails} disabled={saving}>Cancel</button>
+            <button className="btn primary" type="button" onClick={saveDetails} disabled={saving}>{saving ? 'Saving' : 'Save game details'}</button>
+          </div>
+        </div>
+      )}
+    </article>
+  )
+}
+
+function GameDetailsSummary({ game }: { game: Game }) {
+  return (
+    <dl className="game-detail-summary">
+      <div><dt>Division</dt><dd>{game.division || 'Use team division'}</dd></div>
+      <div><dt>Bracket</dt><dd>{game.bracketCode || 'Not set'}</dd></div>
+      <div><dt>Tickets</dt><dd>{game.ticketUrl ? <a href={game.ticketUrl} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
+      <div><dt>Stream</dt><dd>{game.streamUrl ? <a href={game.streamUrl} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
+    </dl>
+  )
+}
+
+function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, divisions: Division[]) {
+  const persisted = gameFormState(game, divisions)
+
+  return form.status !== persisted.status ||
+    form.startTime !== persisted.startTime ||
+    form.divisionId !== persisted.divisionId ||
+    form.bracketCode !== persisted.bracketCode ||
+    form.ticketUrl !== persisted.ticketUrl ||
+    form.streamUrl !== persisted.streamUrl ||
+    form.notes !== persisted.notes
+}
+
+function gameFormState(game: Game, divisions: Division[]) {
+  return {
     status: game.status,
     homeScore: game.homeScore?.toString() || '',
     awayScore: game.awayScore?.toString() || '',
@@ -134,61 +275,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
     ticketUrl: game.ticketUrl || '',
     streamUrl: game.streamUrl || '',
     notes: game.notes || '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
-  const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
-  const projectedResult = gameResultLabel({
-    ...game,
-    homeScore: form.homeScore === '' ? null : Number(form.homeScore),
-    awayScore: form.awayScore === '' ? null : Number(form.awayScore),
-  })
-
-  const save = async (statusOverride?: Game['status']) => {
-    setSaving(true)
-    setSaveError('')
-    try {
-      await api.adminUpdateGame(game.id, {
-        status: statusOverride || form.status,
-        homeScore: form.homeScore === '' ? null : Number(form.homeScore),
-        awayScore: form.awayScore === '' ? null : Number(form.awayScore),
-        startTime: guamLocalDateTimeInputToIso(form.startTime),
-        bracketCode: form.bracketCode,
-        ticketUrl: form.ticketUrl || null,
-        streamUrl: form.streamUrl || null,
-        notes: form.notes || null,
-        venue: game.venue || DEFAULT_GAME_VENUE,
-        ...divisionPayload(form.divisionId, divisions),
-      })
-      await onSaved()
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Unable to save game')
-    } finally {
-      setSaving(false)
-    }
   }
-
-  return (
-    <article className="admin-row-card">
-      <div className="admin-row-head"><div><strong>{game.awayTeam?.displayName} at {game.homeTeam?.displayName}</strong><span>{formatGuamDateTime(game.startTime)} · {game.venue || DEFAULT_GAME_VENUE}</span></div><StatusBadge status={game.status} /></div>
-      <FormGrid>
-        <Field label="Status"><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as Game['status'] })}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="final">Final</option></select></Field>
-        <Field label="Away score"><input type="number" value={form.awayScore} onChange={(event) => setForm({ ...form, awayScore: event.target.value })} /></Field>
-        <Field label="Home score"><input type="number" value={form.homeScore} onChange={(event) => setForm({ ...form, homeScore: event.target.value })} /></Field>
-        <Field label="Start"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></Field>
-        <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} /></Field>
-        <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} /></Field>
-        <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={game.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
-        <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
-      </FormGrid>
-      {projectedResult && <p className="form-note">{projectedResult}</p>}
-      {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      <div className="row-actions">
-        <button className="btn secondary" onClick={() => save()} disabled={saving}>{saving ? 'Saving' : 'Save game'}</button>
-        <button className="btn primary" onClick={() => save('final')} disabled={saving || !scoreComplete}>{saving ? 'Saving' : 'Save final score'}</button>
-      </div>
-    </article>
-  )
 }
 
 function DivisionSelect({ value, divisions, currentName, onChange }: { value: string; divisions: Division[]; currentName?: string | null; onChange: (value: string) => void }) {
