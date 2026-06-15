@@ -215,8 +215,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .archive-media-strip div { padding: .8rem; display: grid; gap: .2rem; }
 .archive-media-strip span { color: var(--muted); font-size: .82rem; font-weight: 800; }
 .archive-sponsor-list { display: flex; flex-wrap: wrap; gap: .7rem; }
-.archive-sponsor-list a { display: inline-flex; align-items: center; gap: .6rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; }
-.archive-sponsor-list span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--surface-strong); overflow: hidden; }
+.archive-sponsor-list a, .archive-sponsor-badge { display: inline-flex; align-items: center; gap: .6rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; }
+.archive-sponsor-badge { cursor: default; }
+.archive-sponsor-logo { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--surface-strong); overflow: hidden; }
 .archive-sponsor-list img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .watch-hero { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
 .watch-hero svg { color: var(--fd-maroon); }

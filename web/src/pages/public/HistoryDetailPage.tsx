@@ -10,12 +10,12 @@ import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function HistoryDetailPage() {
   const { year = '' } = useParams()
-  const numericYear = Number(year)
-  const championRecord = CHAMPIONS.find((record) => record.year === numericYear)
+  const numericYear = parseArchiveYear(year)
+  const championRecord = numericYear ? CHAMPIONS.find((record) => record.year === numericYear) : undefined
   const { data, loading, error, reload } = useAsync(async () => {
-    if (!Number.isFinite(numericYear) || numericYear <= 0) throw new Error('Choose a valid tournament year')
+    if (!numericYear) throw new Error('Choose a valid tournament year')
 
-    const [schedule, standings, articles, media, sponsors] = await Promise.all([
+    const [scheduleResult, standingsResult, articlesResult, mediaResult, sponsorsResult] = await Promise.allSettled([
       api.publicSchedule({ year: numericYear }),
       api.publicStandings({ year: numericYear }),
       api.publicArticles({ year: numericYear, limit: 200 }),
@@ -23,7 +23,13 @@ export function HistoryDetailPage() {
       api.publicSponsors({ year: numericYear }),
     ])
 
-    return { schedule, standings, articles, media, sponsors }
+    return {
+      schedule: settledValue(scheduleResult, emptyScheduleArchive()),
+      standings: settledValue(standingsResult, emptyStandingsArchive()),
+      articles: settledValue(articlesResult, emptyArticlesArchive()),
+      media: settledValue(mediaResult, emptyMediaArchive()),
+      sponsors: settledValue(sponsorsResult, emptySponsorsArchive()),
+    }
   }, [numericYear])
 
   if (loading && !data) return <LoadingState label="Loading tournament archive" />
@@ -42,7 +48,7 @@ export function HistoryDetailPage() {
     <div className="page-stack archive-detail-page">
       <PageHeader
         eyebrow="Tournament archive"
-        title={`${numericYear} FD Alumni Basketball`}
+        title={`${numericYear || year} FD Alumni Basketball`}
         description={tournament ? `${formatTournamentWindow(tournament)} · ${archiveDescription(championRecord)}` : archiveDescription(championRecord)}
         actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
       />
@@ -84,6 +90,43 @@ export function HistoryDetailPage() {
       <ArchiveSponsors sponsors={sponsors} />
     </div>
   )
+}
+
+type ScheduleArchive = Awaited<ReturnType<typeof api.publicSchedule>>
+type StandingsArchive = Awaited<ReturnType<typeof api.publicStandings>>
+type ArticlesArchive = Awaited<ReturnType<typeof api.publicArticles>>
+type MediaArchive = Awaited<ReturnType<typeof api.publicMedia>>
+type SponsorsArchive = Awaited<ReturnType<typeof api.publicSponsors>>
+
+function parseArchiveYear(value: string) {
+  if (!/^\d{4}$/.test(value)) return null
+
+  const parsed = Number(value)
+  return parsed >= 1900 && parsed <= 2200 ? parsed : null
+}
+
+function settledValue<T>(result: PromiseSettledResult<T>, fallback: T) {
+  return result.status === 'fulfilled' ? result.value : fallback
+}
+
+function emptyScheduleArchive(): ScheduleArchive {
+  return { tournament: null, games: [], divisions: [], phases: [] }
+}
+
+function emptyStandingsArchive(): StandingsArchive {
+  return { tournament: null, standings: [], divisions: [], scoreCoverage: { scoredGames: 0, totalGames: 0, percent: 0 } }
+}
+
+function emptyArticlesArchive(): ArticlesArchive {
+  return { tournament: null, articles: [] }
+}
+
+function emptyMediaArchive(): MediaArchive {
+  return { tournament: null, mediaAssets: [] }
+}
+
+function emptySponsorsArchive(): SponsorsArchive {
+  return { tournament: null, sponsors: [] }
 }
 
 function archiveDescription(record: (typeof CHAMPIONS)[number] | undefined) {
@@ -170,8 +213,18 @@ function ArchiveSponsors({ sponsors }: { sponsors: Sponsor[] }) {
     <Panel>
       <div className="section-heading"><h2>Sponsors</h2><span>{sponsors.length}</span></div>
       <div className="archive-sponsor-list">
-        {sponsors.map((sponsor) => <a key={sponsor.id} href={sponsor.targetUrl || '#'} target={sponsor.targetUrl ? '_blank' : undefined} rel="noreferrer"><span>{sponsor.logoUrl ? <img src={sponsor.logoUrl} alt="" loading="lazy" /> : sponsor.name.slice(0, 2)}</span><strong>{sponsor.name}</strong></a>)}
+        {sponsors.map((sponsor) => <ArchiveSponsorBadge key={sponsor.id} sponsor={sponsor} />)}
       </div>
     </Panel>
   )
+}
+
+function ArchiveSponsorBadge({ sponsor }: { sponsor: Sponsor }) {
+  const content = <><span className="archive-sponsor-logo">{sponsor.logoUrl ? <img src={sponsor.logoUrl} alt="" loading="lazy" /> : sponsor.name.slice(0, 2)}</span><strong>{sponsor.name}</strong></>
+
+  if (sponsor.targetUrl) {
+    return <a href={sponsor.targetUrl} target="_blank" rel="noreferrer">{content}</a>
+  }
+
+  return <span className="archive-sponsor-badge">{content}</span>
 }
