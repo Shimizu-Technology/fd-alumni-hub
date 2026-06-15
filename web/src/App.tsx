@@ -10,6 +10,7 @@ import { WatchPage } from './pages/public/WatchPage'
 import { NewsPage } from './pages/public/NewsPage'
 import { GalleryPage } from './pages/public/GalleryPage'
 import { HistoryPage } from './pages/public/HistoryPage'
+import { HistoryDetailPage } from './pages/public/HistoryDetailPage'
 import { SponsorsPage } from './pages/public/SponsorsPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
@@ -38,6 +39,7 @@ export function App() {
           <Route path="news" element={<NewsPage />} />
           <Route path="gallery" element={<GalleryPage />} />
           <Route path="history" element={<HistoryPage />} />
+          <Route path="history/:year" element={<HistoryDetailPage />} />
           <Route path="sponsors" element={<SponsorsPage />} />
         </Route>
         <Route path="admin" element={<AdminLayout />}>

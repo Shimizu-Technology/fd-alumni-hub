@@ -21,18 +21,22 @@ export function HomePage() {
 
   return (
     <div className="page-stack">
-      <section className="hero-card">
+      <section className="hero-card public-hero-card">
         <div className="hero-text">
+          <div className="hero-brand-lockup">
+            <img src="/brand/fd-logo-banner.png" alt="Father Dueñas Memorial School" />
+          </div>
           <p className="eyebrow">Central hub · FD Alumni Basketball</p>
-          <h1>Schedule, standings, streams, tickets, and tournament history in one place.</h1>
-          <p>{tournamentLabel}. Built to guide alumni and fans to the right partner destinations while keeping tournament context clear.</p>
+          <h1>Every game night, score, stream, and story from The Jungle.</h1>
+          <p>{tournamentLabel}. Built for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
           <div className="hero-actions">
             <Link className="btn primary" to="/schedule"><IconCalendar /> View schedule <IconArrowRight /></Link>
-            <Link className="btn ghost" to="/standings"><IconTrophy /> Standings</Link>
-            <Link className="btn ghost" to="/watch"><IconPlay /> Watch</Link>
+            <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
+            <Link className="btn secondary" to="/watch"><IconPlay /> Watch</Link>
           </div>
         </div>
         <div className="hero-panel">
+          <img src="/brand/fd-crest.png" alt="" aria-hidden="true" />
           <span>Active tournament</span>
           <strong>{heroStatus}</strong>
           <small>{heroDates}</small>
