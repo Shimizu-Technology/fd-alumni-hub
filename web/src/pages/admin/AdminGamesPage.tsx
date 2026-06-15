@@ -129,6 +129,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
+  const detailsDirty = gameDetailsChanged(form, game, divisions)
   const projectedResult = gameResultLabel({
     ...game,
     homeScore: form.homeScore === '' ? null : Number(form.homeScore),
@@ -140,10 +141,16 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   }, [game, divisions])
 
   const saveScores = async (statusOverride?: Game['status']) => {
+    if (detailsDirty) {
+      setEditingDetails(true)
+      setSaveError('Save or cancel game detail changes before saving scores.')
+      return
+    }
+
     setSaving(true)
     setSaveError('')
     try {
-      const nextStatus = statusOverride || game.status
+      const nextStatus = statusOverride || form.status
       await api.adminUpdateGame(game.id, {
         status: nextStatus,
         homeScore: form.homeScore === '' ? null : Number(form.homeScore),
@@ -237,13 +244,24 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 function GameDetailsSummary({ game }: { game: Game }) {
   return (
     <dl className="game-detail-summary">
-      <div><dt>Start</dt><dd>{formatGuamDateTime(game.startTime)}</dd></div>
       <div><dt>Division</dt><dd>{game.division || 'Use team division'}</dd></div>
       <div><dt>Bracket</dt><dd>{game.bracketCode || 'Not set'}</dd></div>
       <div><dt>Tickets</dt><dd>{game.ticketUrl ? <a href={game.ticketUrl} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
       <div><dt>Stream</dt><dd>{game.streamUrl ? <a href={game.streamUrl} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
     </dl>
   )
+}
+
+function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, divisions: Division[]) {
+  const persisted = gameFormState(game, divisions)
+
+  return form.status !== persisted.status ||
+    form.startTime !== persisted.startTime ||
+    form.divisionId !== persisted.divisionId ||
+    form.bracketCode !== persisted.bracketCode ||
+    form.ticketUrl !== persisted.ticketUrl ||
+    form.streamUrl !== persisted.streamUrl ||
+    form.notes !== persisted.notes
 }
 
 function gameFormState(game: Game, divisions: Division[]) {
