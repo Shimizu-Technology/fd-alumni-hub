@@ -68,14 +68,14 @@ function mergeHistoryRecords(records: ChampionRecord[], tournaments: Tournament[
 
   tournaments.forEach((tournament) => {
     const existing = byYear.get(tournament.year)
-    byYear.set(tournament.year, {
+    const databaseRecord: HistoryRecord = {
       year: tournament.year,
-      source: existing?.source || 'Tournament database',
-      status: existing?.status || historyStatusForTournament(tournament),
-      note: existing?.note || (tournament.status === 'completed' ? undefined : `${tournament.status} tournament`),
-      ...existing,
-      tournamentId: tournament.id,
-    })
+      source: 'Tournament database',
+      status: historyStatusForTournament(tournament),
+      note: tournament.status === 'completed' ? undefined : `${tournament.status} tournament`,
+    }
+
+    byYear.set(tournament.year, existing ? { ...existing, tournamentId: tournament.id } : { ...databaseRecord, tournamentId: tournament.id })
   })
 
   return Array.from(byYear.values()).sort((a, b) => b.year - a.year)

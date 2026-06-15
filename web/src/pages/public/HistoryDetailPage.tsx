@@ -24,6 +24,7 @@ export function HistoryDetailPage() {
     ])
 
     return {
+      year: numericYear,
       schedule: settledValue(scheduleResult, emptyScheduleArchive()),
       standings: settledValue(standingsResult, emptyStandingsArchive()),
       articles: settledValue(articlesResult, emptyArticlesArchive()),
@@ -32,16 +33,18 @@ export function HistoryDetailPage() {
     }
   }, [numericYear])
 
-  if (loading && !data) return <LoadingState label="Loading tournament archive" />
+  const archiveData = data?.year === numericYear ? data : null
+
+  if (loading && !archiveData) return <LoadingState label="Loading tournament archive" />
   if (error) return <ErrorState message={error} onRetry={reload} />
 
-  const tournament = data?.schedule.tournament || data?.standings.tournament || data?.articles.tournament || data?.media.tournament || data?.sponsors.tournament || null
-  const games = data?.schedule.games || []
-  const articles = data?.articles.articles || []
-  const mediaAssets = data?.media.mediaAssets || []
-  const sponsors = data?.sponsors.sponsors || []
-  const standings = data?.standings.standings || []
-  const scoreCoverage = data?.standings.scoreCoverage
+  const tournament = archiveData?.schedule.tournament || archiveData?.standings.tournament || archiveData?.articles.tournament || archiveData?.media.tournament || archiveData?.sponsors.tournament || null
+  const games = archiveData?.schedule.games || []
+  const articles = archiveData?.articles.articles || []
+  const mediaAssets = archiveData?.media.mediaAssets || []
+  const sponsors = archiveData?.sponsors.sponsors || []
+  const standings = archiveData?.standings.standings || []
+  const scoreCoverage = archiveData?.standings.scoreCoverage
   const finalGames = games.filter((game) => game.status === 'final' && game.homeScore !== null && game.awayScore !== null)
 
   return (
@@ -80,7 +83,7 @@ export function HistoryDetailPage() {
           {!games.length ? <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the Rails archive yet." /> : <ArchiveGameList games={games} />}
         </Panel>
         <Panel>
-          <div className="section-heading"><h2>Standings snapshot</h2><span>{standings.length} teams</span></div>
+          <div className="section-heading"><h2>Standings snapshot</h2><span>{visibleCountLabel(standings.length, Math.min(standings.length, 12), 'teams')}</span></div>
           {!standings.length ? <EmptyState title="Standings pending" description="Standings appear here when verified results are available for this tournament." /> : <ArchiveStandings standings={standings} />}
         </Panel>
       </section>
@@ -107,6 +110,11 @@ function parseArchiveYear(value: string) {
 
 function settledValue<T>(result: PromiseSettledResult<T>, fallback: T) {
   return result.status === 'fulfilled' ? result.value : fallback
+}
+
+function visibleCountLabel(total: number, visible: number, noun?: string) {
+  const suffix = noun ? ` ${noun}` : ''
+  return total > visible ? `${visible} of ${total}${suffix}` : `${total}${suffix}`
 }
 
 function emptyScheduleArchive(): ScheduleArchive {
@@ -174,12 +182,14 @@ function ArchiveStandings({ standings }: { standings: Standing[] }) {
 }
 
 function ArchiveArticles({ articles }: { articles: Article[] }) {
+  const visibleArticles = articles.slice(0, 9)
+
   return (
     <Panel>
-      <div className="section-heading"><h2>Coverage from this tournament</h2><span>{articles.length}</span></div>
+      <div className="section-heading"><h2>Coverage from this tournament</h2><span>{visibleCountLabel(articles.length, visibleArticles.length)}</span></div>
       {!articles.length ? <EmptyState title="Coverage pending" description="Articles and recaps will appear here as the archive is verified." /> : (
         <div className="archive-card-grid">
-          {articles.slice(0, 9).map((article) => (
+          {visibleArticles.map((article) => (
             <a key={article.id} className="archive-link-card" href={article.url} target="_blank" rel="noreferrer">
               <span>{article.source}{article.publishedAt ? ` · ${formatGuamDate(article.publishedAt)}` : ''}</span>
               <strong>{article.title}</strong>
@@ -194,12 +204,14 @@ function ArchiveArticles({ articles }: { articles: Article[] }) {
 }
 
 function ArchiveMedia({ mediaAssets }: { mediaAssets: MediaAsset[] }) {
+  const visibleMedia = mediaAssets.slice(0, 8)
+
   return (
     <Panel>
-      <div className="section-heading"><h2>Photos and media</h2><span>{mediaAssets.length}</span></div>
+      <div className="section-heading"><h2>Photos and media</h2><span>{visibleCountLabel(mediaAssets.length, visibleMedia.length)}</span></div>
       {!mediaAssets.length ? <EmptyState title="Media pending" description="Photos will appear here when this tournament's media archive is available." /> : (
         <div className="archive-media-strip">
-          {mediaAssets.slice(0, 8).map((asset) => <article key={asset.id}><img src={asset.imageUrl} alt={asset.caption || asset.title} loading="lazy" /><div><strong>{asset.title}</strong><span>{asset.source}</span></div></article>)}
+          {visibleMedia.map((asset) => <article key={asset.id}><img src={asset.imageUrl} alt={asset.caption || asset.title} loading="lazy" /><div><strong>{asset.title}</strong><span>{asset.source}</span></div></article>)}
         </div>
       )}
     </Panel>
