@@ -3,7 +3,7 @@ module Api
     module Public
       class PredictionVotesController < BaseController
         def create
-          poll = PredictionPoll.find(params[:prediction_poll_id])
+          poll = prediction_poll_for_vote(params[:prediction_poll_id])
           token = vote_params[:voterToken].to_s.strip
           return render json: { error: "Voter token is required" }, status: :unprocessable_entity if token.blank?
 
@@ -38,8 +38,16 @@ module Api
           vote
         end
 
+        def prediction_poll_for_vote(id)
+          PredictionPoll
+            .includes({ tournament: { teams: :division_record } }, game: [ :home_team, :away_team ])
+            .find(id)
+        end
+
         def prediction_poll_for_response(id)
-          PredictionPoll.includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ]).find(id)
+          PredictionPoll
+            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .find(id)
         end
       end
     end
