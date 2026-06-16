@@ -11,10 +11,11 @@ module Api
             .includes(:division_record, home_team: [ :division_record, :roster_entries ], away_team: [ :division_record, :roster_entries ])
             .where(start_time: day.beginning_of_day..day.end_of_day)
             .ordered
+            .to_a
           note = tournament.game_day_notes.active.find_by(date: day)
-          polls = relevant_polls(tournament, games)
+          polls = relevant_polls(tournament, games).to_a
           voter_hash = voter_token_hash
-          last_updated_at = [ note&.updated_at, games.maximum(:updated_at), polls.maximum(:updated_at) ].compact.max
+          last_updated_at = latest_updated_at(note, games, polls)
 
           render json: {
             tournament: tournament.api_json,
@@ -39,7 +40,14 @@ module Api
 
         def relevant_polls(tournament, games)
           game_ids = games.map(&:id)
-          tournament.prediction_polls.includes(:prediction_votes, :game).where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ]).ordered
+          tournament.prediction_polls
+            .includes(:prediction_votes, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ])
+            .ordered
+        end
+
+        def latest_updated_at(*record_groups)
+          record_groups.flatten.compact.filter_map(&:updated_at).max
         end
 
         def voter_token_hash
