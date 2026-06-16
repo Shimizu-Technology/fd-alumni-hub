@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -157,7 +157,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000001) do
     t.index ["game_id", "poll_type"], name: "index_prediction_polls_on_game_id_and_poll_type", unique: true, where: "(game_id IS NOT NULL)"
     t.index ["game_id"], name: "index_prediction_polls_on_game_id"
     t.index ["status", "closes_at"], name: "index_prediction_polls_on_status_and_closes_at"
-    t.index ["tournament_id", "poll_type"], name: "index_prediction_polls_on_tournament_id_and_poll_type"
+    t.index ["tournament_id", "poll_type"], name: "index_prediction_polls_on_unique_tournament_poll", unique: true, where: "((poll_type)::text = 'tournament'::text)"
     t.index ["tournament_id"], name: "index_prediction_polls_on_tournament_id"
   end
 

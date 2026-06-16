@@ -11,7 +11,7 @@ module Api
           vote.team_id = vote_params[:teamId]
 
           if vote.save
-            render json: { predictionPoll: poll.reload.api_json(voter_token_hash: vote.voter_token_hash) }
+            render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json(voter_token_hash: vote.voter_token_hash) }
           else
             render json: { errors: vote.errors.full_messages }, status: :unprocessable_entity
           end
@@ -25,6 +25,10 @@ module Api
             permitted[:teamId] ||= permitted[:team_id]
             permitted[:voterToken] ||= permitted[:voter_token]
           end
+        end
+
+        def prediction_poll_for_response(id)
+          PredictionPoll.includes(:prediction_votes, :tournament, game: [ { home_team: :division_record }, { away_team: :division_record } ]).find(id)
         end
       end
     end

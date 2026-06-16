@@ -15,6 +15,25 @@ class PredictionPollTest < ActiveSupport::TestCase
     @poll = @tournament.prediction_polls.create!(game: @game, poll_type: "game", question: "Who wins this game?")
   end
 
+  test "allows only one tournament prediction poll per tournament" do
+    @tournament.prediction_polls.create!(poll_type: "tournament", question: "Who wins the tournament?")
+    duplicate = @tournament.prediction_polls.build(poll_type: "tournament", question: "Who wins it now?")
+
+    assert_not duplicate.valid?
+    assert_includes duplicate.errors[:poll_type], "already has a tournament prediction poll"
+  end
+
+  test "database has unique tournament prediction poll index" do
+    index = ActiveRecord::Base.connection.indexes(:prediction_polls).find do |candidate|
+      candidate.name == "index_prediction_polls_on_unique_tournament_poll"
+    end
+
+    assert index
+    assert index.unique
+    assert_equal [ "tournament_id", "poll_type" ], index.columns
+    assert_match "tournament", index.where.to_s
+  end
+
   test "api_json uses preloaded prediction votes for selected vote and totals" do
     voter_hash = PredictionVote.token_hash("device-1")
     @poll.prediction_votes.create!(team: @away, voter_token_hash: voter_hash)

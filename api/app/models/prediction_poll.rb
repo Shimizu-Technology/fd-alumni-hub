@@ -11,6 +11,7 @@ class PredictionPoll < ApplicationRecord
   validates :question, presence: true
   validate :game_poll_has_game
   validate :game_belongs_to_tournament
+  validate :single_tournament_poll
 
   scope :ordered, -> { order(:poll_type, :game_id, :id) }
   scope :open_for_voting, -> { where(status: "open").where("closes_at IS NULL OR closes_at > ?", Time.current) }
@@ -101,5 +102,13 @@ class PredictionPoll < ApplicationRecord
     return if game.blank? || tournament_id.blank? || game.tournament_id == tournament_id
 
     errors.add(:game, "must belong to the selected tournament")
+  end
+
+  def single_tournament_poll
+    return unless poll_type == "tournament" && tournament_id.present?
+
+    existing_poll = PredictionPoll.where(tournament_id: tournament_id, poll_type: "tournament")
+    existing_poll = existing_poll.where.not(id: id) if id.present?
+    errors.add(:poll_type, "already has a tournament prediction poll") if existing_poll.exists?
   end
 end

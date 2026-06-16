@@ -13,10 +13,10 @@ module Api
           attrs = prediction_poll_params.except(:tournament_id)
           game_id = attrs.delete(:game_id)
           poll = admin_tournament.prediction_polls.build(attrs)
-          poll.game = admin_tournament.games.find(game_id) if game_id.present?
+          poll.game = admin_tournament.games.find(game_id) if poll.poll_type == "game" && game_id.present?
 
           if poll.save
-            render json: { predictionPoll: poll.api_json }, status: :created
+            render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json }, status: :created
           else
             render_errors(poll)
           end
@@ -26,7 +26,7 @@ module Api
           poll = admin_tournament.prediction_polls.find(params[:id])
 
           if poll.update(prediction_poll_params.except(:tournament_id, :game_id, :poll_type))
-            render json: { predictionPoll: poll.api_json }
+            render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json }
           else
             render_errors(poll)
           end
@@ -56,6 +56,10 @@ module Api
           return "Who wins this game?" if attrs[:poll_type] == "game"
 
           "Who wins the tournament?"
+        end
+
+        def prediction_poll_for_response(id)
+          PredictionPoll.includes(:prediction_votes, :tournament, game: [ { home_team: :division_record }, { away_team: :division_record } ]).find(id)
         end
       end
     end

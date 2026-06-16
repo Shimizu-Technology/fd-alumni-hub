@@ -13,7 +13,7 @@ module Api
           team = Team.new(team_params)
 
           if team.save
-            render json: { team: team.api_json }, status: :created
+            render json: { team: team_for_response(team.id).api_json }, status: :created
           else
             render_errors(team)
           end
@@ -23,13 +23,17 @@ module Api
           team = Team.find(params[:id])
 
           if team.update(team_params)
-            render json: { team: team.api_json }
+            render json: { team: team_for_response(team.id).api_json }
           else
             render_errors(team)
           end
         end
 
         private
+
+        def team_for_response(id)
+          Team.includes(:tournament, :division_record, :roster_entries).find(id)
+        end
 
         def team_params
           raw = params.fetch(:team, params)
