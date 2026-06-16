@@ -41,7 +41,7 @@ module Api
         def relevant_polls(tournament, games)
           game_ids = games.map(&:id)
           tournament.prediction_polls
-            .includes(:prediction_votes, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
             .where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ])
             .ordered
         end

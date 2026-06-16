@@ -28,7 +28,7 @@ module Api
         end
 
         def prediction_poll_for_response(id)
-          PredictionPoll.includes(:prediction_votes, :tournament, game: [ { home_team: :division_record }, { away_team: :division_record } ]).find(id)
+          PredictionPoll.includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ]).find(id)
         end
       end
     end

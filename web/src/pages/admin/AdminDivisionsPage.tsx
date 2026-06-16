@@ -222,6 +222,7 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
   const [form, setForm] = useState({ name: '', jerseyNumber: '', position: '', nickname: '', sortOrder: String(entries.length + 1) })
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     setForm((current) => ({ ...current, sortOrder: String(entries.length + 1) }))
@@ -229,6 +230,9 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    if (saving) return
+
+    setSaving(true)
     setMessage('')
     try {
       await api.adminCreateRosterEntry({ teamId: team.id, name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || entries.length + 1), active: true }, team.tournamentId)
@@ -237,6 +241,8 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
       await onSaved()
     } catch (err) {
       setMessage(mutationErrorMessage(err, 'Unable to add roster player'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -257,7 +263,7 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
               <Field label="Nickname"><input value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></Field>
               <Field label="Sort order"><input type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} /></Field>
             </FormGrid>
-            <button className="btn secondary small" type="submit">Add roster player</button>
+            <button className="btn secondary small" type="submit" disabled={saving}>{saving ? 'Adding player' : 'Add roster player'}</button>
           </form>
           {entries.length ? <div className="admin-list compact-admin-list">{entries.map((entry) => <EditableRosterEntry key={entry.id} entry={entry} tournamentId={team.tournamentId} onSaved={onSaved} />)}</div> : <EmptyState title="Roster empty" description="Add players if organizers provide roster details." />}
         </div>

@@ -24,6 +24,8 @@ class PredictionPoll < ApplicationRecord
     @option_teams ||= begin
       if poll_type == "game" && game
         [ game.away_team, game.home_team ].compact
+      elsif tournament.association(:teams).loaded?
+        tournament.teams.sort_by { |team| [ team.division.to_s, team.display_name.to_s, team.id || 0 ] }
       else
         tournament.teams.includes(:division_record).order(:division, :display_name, :id)
       end
