@@ -116,6 +116,27 @@ class AdminGameDayControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "invalid game-day note date returns validation error" do
+    assert_no_difference -> { GameDayNote.count } do
+      post "/api/v1/admin/game-day-notes?tournamentId=#{@tournament.id}",
+        params: { gameDayNote: { date: "next-Friday", hostClass: "Class of 2006" } },
+        headers: auth_headers,
+        as: :json
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"], "Date must be a valid ISO 8601 date"
+
+    note = @tournament.game_day_notes.create!(date: Date.new(2026, 7, 3), host_class: "Original host")
+    patch "/api/v1/admin/game-day-notes/#{note.id}?tournamentId=#{@tournament.id}",
+      params: { gameDayNote: { date: "bad-date", hostClass: "Changed host" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_equal "Original host", note.reload.host_class
+  end
+
   private
 
   def build_other_tournament_context

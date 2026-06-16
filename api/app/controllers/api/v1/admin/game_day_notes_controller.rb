@@ -2,6 +2,10 @@ module Api
   module V1
     module Admin
       class GameDayNotesController < BaseController
+        class InvalidDateParam < StandardError; end
+
+        rescue_from InvalidDateParam, with: :render_invalid_date
+
         def index
           tournament = admin_tournament
           date = requested_date || Time.zone.today
@@ -62,8 +66,18 @@ module Api
           assign_param(attrs, permitted, :announcement, :announcement)
           assign_param(attrs, permitted, :sponsor_shoutout, :sponsor_shoutout, :sponsorShoutout)
           assign_param(attrs, permitted, :active, :active)
-          attrs[:date] = Date.iso8601(attrs[:date]) if attrs[:date].is_a?(String) && attrs[:date].present?
+          attrs[:date] = parse_note_date(attrs[:date]) if attrs[:date].is_a?(String) && attrs[:date].present?
           attrs
+        end
+
+        def parse_note_date(value)
+          Date.iso8601(value)
+        rescue ArgumentError
+          raise InvalidDateParam
+        end
+
+        def render_invalid_date
+          render json: { errors: [ "Date must be a valid ISO 8601 date" ] }, status: :unprocessable_entity
         end
       end
     end
