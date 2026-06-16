@@ -7,10 +7,9 @@ module Api
           token = vote_params[:voterToken].to_s.strip
           return render json: { error: "Voter token is required" }, status: :unprocessable_entity if token.blank?
 
-          vote = poll.prediction_votes.find_or_initialize_by(voter_token_hash: PredictionVote.token_hash(token))
-          vote.team_id = vote_params[:teamId]
+          vote = persist_vote(poll, PredictionVote.token_hash(token), vote_params[:teamId])
 
-          if vote.save
+          if vote.errors.empty?
             render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json(voter_token_hash: vote.voter_token_hash) }
           else
             render json: { errors: vote.errors.full_messages }, status: :unprocessable_entity
@@ -25,6 +24,18 @@ module Api
             permitted[:teamId] ||= permitted[:team_id]
             permitted[:voterToken] ||= permitted[:voter_token]
           end
+        end
+
+        def persist_vote(poll, voter_token_hash, team_id)
+          vote = poll.prediction_votes.find_or_initialize_by(voter_token_hash: voter_token_hash)
+          vote.team_id = team_id
+          vote.save
+          vote
+        rescue ActiveRecord::RecordNotUnique
+          vote = poll.prediction_votes.find_by!(voter_token_hash: voter_token_hash)
+          vote.team_id = team_id
+          vote.save
+          vote
         end
 
         def prediction_poll_for_response(id)

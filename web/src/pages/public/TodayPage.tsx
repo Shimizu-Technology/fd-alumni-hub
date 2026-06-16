@@ -21,8 +21,8 @@ export function TodayPage() {
     return base.map((poll) => pollOverrides[poll.id] || poll)
   }, [data?.predictionPolls, pollOverrides])
 
-  const tournamentPolls = polls.filter((poll) => poll.pollType === 'tournament')
-  const gamePolls = new Map(polls.filter((poll) => poll.pollType === 'game' && poll.gameId).map((poll) => [poll.gameId!, poll]))
+  const tournamentPolls = useMemo(() => polls.filter((poll) => poll.pollType === 'tournament'), [polls])
+  const gamePolls = useMemo(() => new Map(polls.filter((poll) => poll.pollType === 'game' && poll.gameId).map((poll) => [poll.gameId!, poll])), [polls])
 
   const vote = async (poll: PredictionPoll, teamId: string) => {
     setVoteError('')
