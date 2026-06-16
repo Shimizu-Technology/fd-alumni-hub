@@ -97,7 +97,7 @@ class Game < ApplicationRecord
       division: team.resolved_division
     }
 
-    payload[:rosterEntries] = team.roster_entries.active.ordered.map(&:api_json) if include_roster
+    payload[:rosterEntries] = team.roster_entries_api_json(active_only: true) if include_roster
     payload
   end
 

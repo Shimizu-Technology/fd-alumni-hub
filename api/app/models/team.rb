@@ -31,11 +31,27 @@ class Team < ApplicationRecord
       updatedAt: updated_at&.iso8601
     }
 
-    payload[:rosterEntries] = roster_entries.ordered.map(&:api_json) if include_roster
+    payload[:rosterEntries] = roster_entries_api_json if include_roster
     payload
   end
 
+  def roster_entries_api_json(active_only: false)
+    roster_entries_for_api(active_only: active_only).map(&:api_json)
+  end
+
   private
+
+  def roster_entries_for_api(active_only: false)
+    return roster_entries_scope(active_only: active_only).ordered.to_a unless association(:roster_entries).loaded?
+
+    entries = roster_entries.to_a
+    entries = entries.select(&:active?) if active_only
+    entries.sort_by { |entry| [ entry.sort_order || 0, entry.jersey_number.to_s, entry.name.to_s, entry.id || 0 ] }
+  end
+
+  def roster_entries_scope(active_only: false)
+    active_only ? roster_entries.active : roster_entries
+  end
 
   def copy_division_name_from_record
     self.division = division_record.name if division_record
