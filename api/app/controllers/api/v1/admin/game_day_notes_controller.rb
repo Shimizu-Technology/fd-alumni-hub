@@ -31,7 +31,7 @@ module Api
         end
 
         def update
-          note = GameDayNote.find(params[:id])
+          note = admin_tournament.game_day_notes.find(params[:id])
 
           if note.update(note_params.except(:date, :tournament_id))
             render json: { gameDayNote: note.api_json }

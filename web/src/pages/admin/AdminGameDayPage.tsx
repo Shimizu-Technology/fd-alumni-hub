@@ -122,7 +122,7 @@ function PredictionAdminPanel({ tournament, games, polls, onSaved }: { tournamen
   const updatePoll = async (poll: PredictionPoll, payload: Partial<PredictionPoll>) => {
     setMessage('')
     try {
-      await api.adminUpdatePredictionPoll(poll.id, payload)
+      await api.adminUpdatePredictionPoll(poll.id, payload, poll.tournamentId)
       setMessage('Prediction poll updated')
       await onSaved()
     } catch (err) {

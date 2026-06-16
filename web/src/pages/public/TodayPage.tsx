@@ -55,7 +55,7 @@ export function TodayPage() {
           <span>Food / menu</span>
           <strong>{data?.gameDayNote?.foodMenu || 'Food notes pending'}</strong>
         </Panel>
-        <Panel className="today-brief-card wide">
+        <Panel className="today-brief-card today-brief-card--wide">
           <span>Announcements</span>
           <strong>{data?.gameDayNote?.announcement || 'No announcements posted yet.'}</strong>
           {data?.lastUpdatedAt && <small>Last updated {formatGuamDateTime(data.lastUpdatedAt)}</small>}

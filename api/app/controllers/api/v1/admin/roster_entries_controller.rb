@@ -13,7 +13,7 @@ module Api
         end
 
         def update
-          roster_entry = RosterEntry.find(params[:id])
+          roster_entry = roster_entry_scope.find(params[:id])
 
           if roster_entry.update(roster_entry_params.except(:team_id))
             render json: { rosterEntry: roster_entry.api_json }
@@ -23,11 +23,15 @@ module Api
         end
 
         def destroy
-          RosterEntry.find(params[:id]).destroy!
+          roster_entry_scope.find(params[:id]).destroy!
           head :no_content
         end
 
         private
+
+        def roster_entry_scope
+          RosterEntry.joins(:team).where(teams: { tournament_id: admin_tournament.id })
+        end
 
         def roster_entry_params
           raw = params.fetch(:rosterEntry, params.fetch(:roster_entry, params))

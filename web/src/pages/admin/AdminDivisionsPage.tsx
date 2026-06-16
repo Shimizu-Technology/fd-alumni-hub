@@ -259,14 +259,14 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
             </FormGrid>
             <button className="btn secondary small" type="submit">Add roster player</button>
           </form>
-          {entries.length ? <div className="admin-list compact-admin-list">{entries.map((entry) => <EditableRosterEntry key={entry.id} entry={entry} onSaved={onSaved} />)}</div> : <EmptyState title="Roster empty" description="Add players if organizers provide roster details." />}
+          {entries.length ? <div className="admin-list compact-admin-list">{entries.map((entry) => <EditableRosterEntry key={entry.id} entry={entry} tournamentId={team.tournamentId} onSaved={onSaved} />)}</div> : <EmptyState title="Roster empty" description="Add players if organizers provide roster details." />}
         </div>
       )}
     </div>
   )
 }
 
-function EditableRosterEntry({ entry, onSaved }: { entry: RosterEntry; onSaved: () => Promise<void> }) {
+function EditableRosterEntry({ entry, tournamentId, onSaved }: { entry: RosterEntry; tournamentId: string; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({ name: entry.name, jerseyNumber: entry.jerseyNumber || '', position: entry.position || '', nickname: entry.nickname || '', sortOrder: String(entry.sortOrder), active: entry.active })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -275,7 +275,7 @@ function EditableRosterEntry({ entry, onSaved }: { entry: RosterEntry; onSaved: 
     setSaving(true)
     setError('')
     try {
-      await api.adminUpdateRosterEntry(entry.id, { name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || 0), active: form.active })
+      await api.adminUpdateRosterEntry(entry.id, { name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || 0), active: form.active }, tournamentId)
       await onSaved()
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to save roster player'))
@@ -288,7 +288,7 @@ function EditableRosterEntry({ entry, onSaved }: { entry: RosterEntry; onSaved: 
     setSaving(true)
     setError('')
     try {
-      await api.adminDeleteRosterEntry(entry.id)
+      await api.adminDeleteRosterEntry(entry.id, tournamentId)
       await onSaved()
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to remove roster player'))

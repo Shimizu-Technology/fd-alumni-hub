@@ -20,7 +20,7 @@ module Api
         end
 
         def update
-          poll = PredictionPoll.find(params[:id])
+          poll = admin_tournament.prediction_polls.find(params[:id])
 
           if poll.update(prediction_poll_params.except(:tournament_id, :game_id, :poll_type))
             render json: { predictionPoll: poll.api_json }
