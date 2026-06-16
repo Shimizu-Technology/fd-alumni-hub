@@ -30,8 +30,9 @@ class PredictionPoll < ApplicationRecord
   end
 
   def api_json(voter_token_hash: nil)
-    selected_team_id = voter_token_hash.present? ? prediction_votes.find_by(voter_token_hash: voter_token_hash)&.team_id : nil
-    totals_by_team = prediction_votes.group(:team_id).count
+    preloaded_votes = preloaded_prediction_votes
+    selected_team_id = selected_team_id_for(voter_token_hash, preloaded_votes)
+    totals_by_team = prediction_vote_totals(preloaded_votes)
     total_votes = totals_by_team.values.sum
     results_visible = show_results? || selected_team_id.present? || !open_for_voting?
 
@@ -56,6 +57,28 @@ class PredictionPoll < ApplicationRecord
   end
 
   private
+
+  def preloaded_prediction_votes
+    prediction_votes.to_a if association(:prediction_votes).loaded?
+  end
+
+  def selected_team_id_for(voter_token_hash, preloaded_votes)
+    return nil if voter_token_hash.blank?
+
+    if preloaded_votes
+      preloaded_votes.find { |vote| vote.voter_token_hash == voter_token_hash }&.team_id
+    else
+      prediction_votes.find_by(voter_token_hash: voter_token_hash)&.team_id
+    end
+  end
+
+  def prediction_vote_totals(preloaded_votes)
+    return prediction_votes.group(:team_id).count unless preloaded_votes
+
+    preloaded_votes.each_with_object(Hash.new(0)) do |vote, totals|
+      totals[vote.team_id] += 1
+    end
+  end
 
   def option_json(team, totals_by_team, total_votes, selected_team_id, results_visible)
     votes = totals_by_team[team.id] || 0
