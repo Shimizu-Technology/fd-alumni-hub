@@ -34,6 +34,8 @@ export function AdminGameDayPage() {
   const tournaments = data?.tournaments || []
   const tournament = selectedTournament(tournaments, tournamentId) || data?.gameDay.tournament || null
   const gameDay = data?.gameDay
+  const selectedDate = date || gameDay?.date || ''
+  const gameDayNote = gameDay?.date === selectedDate ? gameDay?.gameDayNote || null : null
 
   return (
     <div className="page-stack admin-page">
@@ -49,7 +51,7 @@ export function AdminGameDayPage() {
         <label><span>Game day</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
       </Panel>
 
-      <GameDayNoteForm tournament={tournament} date={date || gameDay?.date || ''} note={gameDay?.gameDayNote || null} onSaved={reload} />
+      <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={reload} />
       <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={reload} />
     </div>
   )
@@ -68,7 +70,7 @@ function GameDayNoteForm({ tournament, date, note, onSaved }: { tournament: Tour
       sponsorShoutout: note?.sponsorShoutout || '',
       active: note?.active ?? true,
     })
-  }, [note?.id, note?.updatedAt])
+  }, [date, note?.id, note?.updatedAt])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
