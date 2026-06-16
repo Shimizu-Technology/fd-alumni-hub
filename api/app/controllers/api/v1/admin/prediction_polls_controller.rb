@@ -10,7 +10,10 @@ module Api
         end
 
         def create
-          poll = PredictionPoll.new(prediction_poll_params)
+          attrs = prediction_poll_params.except(:tournament_id)
+          game_id = attrs.delete(:game_id)
+          poll = admin_tournament.prediction_polls.build(attrs)
+          poll.game = admin_tournament.games.find(game_id) if game_id.present?
 
           if poll.save
             render json: { predictionPoll: poll.api_json }, status: :created

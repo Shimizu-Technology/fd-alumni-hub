@@ -19,7 +19,7 @@ module Api
 
         def create
           tournament = admin_tournament
-          attrs = note_params.merge(tournament: tournament)
+          attrs = note_params.except(:tournament_id)
           note = tournament.game_day_notes.find_or_initialize_by(date: attrs[:date] || Time.zone.today)
           created = note.new_record?
 

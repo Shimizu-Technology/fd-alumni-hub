@@ -3,7 +3,9 @@ module Api
     module Admin
       class RosterEntriesController < BaseController
         def create
-          roster_entry = RosterEntry.new(roster_entry_params)
+          attrs = roster_entry_params
+          team = admin_tournament.teams.find(attrs.delete(:team_id))
+          roster_entry = team.roster_entries.build(attrs)
 
           if roster_entry.save
             render json: { rosterEntry: roster_entry.api_json }, status: :created

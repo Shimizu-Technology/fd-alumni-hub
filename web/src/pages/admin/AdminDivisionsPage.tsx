@@ -231,7 +231,7 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
     event.preventDefault()
     setMessage('')
     try {
-      await api.adminCreateRosterEntry({ teamId: team.id, name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || entries.length + 1), active: true })
+      await api.adminCreateRosterEntry({ teamId: team.id, name: form.name, jerseyNumber: form.jerseyNumber, position: form.position, nickname: form.nickname, sortOrder: Number(form.sortOrder || entries.length + 1), active: true }, team.tournamentId)
       setForm({ name: '', jerseyNumber: '', position: '', nickname: '', sortOrder: String(entries.length + 2) })
       setMessage('Roster player added')
       await onSaved()
