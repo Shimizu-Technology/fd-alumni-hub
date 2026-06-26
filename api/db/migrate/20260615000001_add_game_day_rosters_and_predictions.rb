@@ -34,7 +34,6 @@ class AddGameDayRostersAndPredictions < ActiveRecord::Migration[8.1]
       t.string :poll_type, null: false
       t.string :question, null: false
       t.string :status, null: false, default: "open"
-      t.boolean :show_results, null: false, default: true
       t.datetime :closes_at
 
       t.timestamps

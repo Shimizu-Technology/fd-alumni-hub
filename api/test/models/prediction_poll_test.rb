@@ -34,14 +34,13 @@ class PredictionPollTest < ActiveSupport::TestCase
     assert_match "tournament", index.where.to_s
   end
 
-  test "api_json always exposes prediction totals" do
-    @poll.update!(show_results: false)
+  test "api_json exposes prediction totals" do
     @poll.prediction_votes.create!(team: @away, voter_token_hash: PredictionVote.token_hash("device-1"))
 
     payload = @poll.reload.api_json
 
-    assert_equal true, payload[:showResults]
-    assert_equal true, payload[:resultsVisible]
+    assert_not payload.key?(:showResults)
+    assert_not payload.key?(:resultsVisible)
     assert_equal 1, payload[:totalVotes]
     assert_equal 1, payload[:options].find { |option| option[:teamId] == @away.id.to_s }[:votes]
   end

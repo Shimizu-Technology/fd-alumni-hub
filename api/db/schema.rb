@@ -150,7 +150,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
     t.bigint "game_id"
     t.string "poll_type", null: false
     t.string "question", null: false
-    t.boolean "show_results", default: true, null: false
     t.string "status", default: "open", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false

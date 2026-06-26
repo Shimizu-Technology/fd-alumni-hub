@@ -37,7 +37,6 @@ class PredictionPoll < ApplicationRecord
     selected_team_id = selected_team_id_for(voter_token_hash, preloaded_votes)
     totals_by_team = prediction_vote_totals(preloaded_votes)
     total_votes = totals_by_team.values.sum
-    results_visible = true
 
     {
       id: id.to_s,
@@ -47,13 +46,11 @@ class PredictionPoll < ApplicationRecord
       question: question,
       status: status,
       open: open_for_voting?,
-      showResults: true,
       closesAt: closes_at&.iso8601,
-      totalVotes: results_visible ? total_votes : nil,
-      resultsVisible: results_visible,
+      totalVotes: total_votes,
       selectedTeamId: selected_team_id&.to_s,
       game: game&.summary_json,
-      options: option_teams.map { |team| option_json(team, totals_by_team, total_votes, selected_team_id, results_visible) },
+      options: option_teams.map { |team| option_json(team, totals_by_team, total_votes, selected_team_id) },
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
@@ -83,7 +80,7 @@ class PredictionPoll < ApplicationRecord
     end
   end
 
-  def option_json(team, totals_by_team, total_votes, selected_team_id, results_visible)
+  def option_json(team, totals_by_team, total_votes, selected_team_id)
     votes = totals_by_team[team.id] || 0
     {
       teamId: team.id.to_s,
@@ -91,8 +88,8 @@ class PredictionPoll < ApplicationRecord
       classYearLabel: team.class_year_label,
       division: team.resolved_division,
       selected: selected_team_id == team.id,
-      votes: results_visible ? votes : nil,
-      percent: results_visible && total_votes.positive? ? ((votes.to_f / total_votes) * 100).round : nil
+      votes: votes,
+      percent: total_votes.positive? ? ((votes.to_f / total_votes) * 100).round : nil
     }
   end
 

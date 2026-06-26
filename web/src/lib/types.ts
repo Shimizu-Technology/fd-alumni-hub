@@ -177,10 +177,8 @@ export type PredictionPoll = {
   question: string
   status: 'open' | 'closed'
   open: boolean
-  showResults: boolean
   closesAt: string | null
   totalVotes: number | null
-  resultsVisible: boolean
   selectedTeamId: string | null
   game?: RelatedGameSummary | null
   options: PredictionOption[]

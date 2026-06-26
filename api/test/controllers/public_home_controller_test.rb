@@ -25,6 +25,6 @@ class PublicHomeControllerTest < ActionDispatch::IntegrationTest
     assert_equal "BBQ plates", body.dig("gameDayNote", "foodMenu")
     assert_equal @game.id.to_s, body.dig("todayGames", 0, "id")
     assert_equal @poll.id.to_s, body.dig("predictionPolls", 0, "id")
-    assert_equal true, body.dig("predictionPolls", 0, "resultsVisible")
+    assert_nil body.dig("predictionPolls", 0, "resultsVisible")
   end
 end
