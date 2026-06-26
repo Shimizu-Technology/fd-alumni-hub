@@ -17,7 +17,7 @@ module Api
             date: date.iso8601,
             gameDayNote: note&.api_json,
             games: games.map(&:api_json),
-            predictionPolls: tournament.prediction_polls.includes(:prediction_votes, :game).ordered.map(&:api_json)
+            predictionPolls: prediction_polls_for_admin(tournament).map(&:api_json)
           }
         end
 
@@ -45,6 +45,12 @@ module Api
         end
 
         private
+
+        def prediction_polls_for_admin(tournament)
+          tournament.prediction_polls
+            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .ordered
+        end
 
         def requested_date
           return nil if params[:date].blank?

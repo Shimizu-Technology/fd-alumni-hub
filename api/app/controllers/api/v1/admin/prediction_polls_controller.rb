@@ -4,7 +4,9 @@ module Api
       class PredictionPollsController < BaseController
         def index
           tournament = admin_tournament
-          polls = tournament.prediction_polls.includes(:prediction_votes, :game).ordered
+          polls = tournament.prediction_polls
+            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .ordered
 
           render json: { tournament: tournament.api_json, predictionPolls: polls.map(&:api_json) }
         end
