@@ -126,6 +126,12 @@ button:disabled { opacity: .62; cursor: progress; }
 .home-today-note strong { color: var(--ink); line-height: 1.2; }
 .home-today-note p { margin: 0; color: var(--ink); font-weight: 850; line-height: 1.35; }
 .home-today-note small { color: var(--fd-maroon); font-weight: 900; }
+.home-poll-callout, .home-poll-teaser { display: grid; gap: .7rem; margin-bottom: .85rem; padding: .9rem; border-radius: 1rem; border: 1px solid var(--line); background: var(--surface-strong); }
+.home-poll-callout { border-color: rgba(111,29,53,.18); background: linear-gradient(135deg, #fff, #fff8ea); }
+.home-poll-copy { display: grid; gap: .18rem; }
+.home-poll-copy span { color: var(--fd-maroon); font-size: .72rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.home-poll-copy strong, .home-poll-teaser strong { color: var(--ink); line-height: 1.2; }
+.home-poll-copy small, .home-poll-teaser span { color: var(--muted); font-weight: 750; line-height: 1.35; }
 .partner-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
 .partner-strip div, .partner-strip a { padding: 1.1rem; border-radius: 1.25rem; background: var(--surface-strong); border: 1px solid var(--line); transition: transform .16s ease, border-color .16s ease; }
 .partner-strip a:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.32); }

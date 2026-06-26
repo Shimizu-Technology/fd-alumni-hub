@@ -37,7 +37,7 @@ class PredictionPoll < ApplicationRecord
     selected_team_id = selected_team_id_for(voter_token_hash, preloaded_votes)
     totals_by_team = prediction_vote_totals(preloaded_votes)
     total_votes = totals_by_team.values.sum
-    results_visible = show_results? || selected_team_id.present? || !open_for_voting?
+    results_visible = true
 
     {
       id: id.to_s,
@@ -47,7 +47,7 @@ class PredictionPoll < ApplicationRecord
       question: question,
       status: status,
       open: open_for_voting?,
-      showResults: show_results,
+      showResults: true,
       closesAt: closes_at&.iso8601,
       totalVotes: results_visible ? total_votes : nil,
       resultsVisible: results_visible,

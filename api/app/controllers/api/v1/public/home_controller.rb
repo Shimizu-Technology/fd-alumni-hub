@@ -14,23 +14,45 @@ module Api
               todayGames: [],
               liveGames: [],
               latestNews: [],
-              gameDayNote: nil
+              gameDayNote: nil,
+              predictionPolls: []
             }
           end
 
           today_range = Time.zone.now.beginning_of_day..Time.zone.now.end_of_day
           games_scope = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record)
+          today_games = games_scope.where(start_time: today_range).ordered.limit(20).to_a
+          live_games = games_scope.where(status: "live").ordered.limit(10).to_a
           game_day_note = tournament.game_day_notes.find_by(date: Time.zone.today, active: true)
+          polls = relevant_polls(tournament, today_games).to_a
 
           render json: {
             tournament: tournament.api_json,
             upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
             latestResultsTournament: context[:latest_completed_with_games]&.api_json,
-            todayGames: games_scope.where(start_time: today_range).ordered.limit(20).map(&:api_json),
-            liveGames: games_scope.where(status: "live").ordered.limit(10).map(&:api_json),
+            todayGames: today_games.map(&:api_json),
+            liveGames: live_games.map(&:api_json),
             latestNews: tournament.article_links.includes(game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest.limit(5).map(&:api_json),
-            gameDayNote: game_day_note&.api_json
+            gameDayNote: game_day_note&.api_json,
+            predictionPolls: polls.map { |poll| poll.api_json(voter_token_hash: voter_token_hash) }
           }
+        end
+
+        private
+
+        def relevant_polls(tournament, today_games)
+          game_ids = today_games.map(&:id)
+          tournament.prediction_polls
+            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ])
+            .ordered
+        end
+
+        def voter_token_hash
+          token = request.headers["X-FD-Voter-Token"].to_s.strip
+          return nil if token.blank?
+
+          PredictionVote.token_hash(token)
         end
       end
     end

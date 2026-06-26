@@ -123,7 +123,7 @@ function query(params: Record<string, string | number | null | undefined>) {
 export const api = {
   getCurrentUser: () => request<{ user: CurrentUser }>('/me'),
 
-  publicHome: () => request<{
+  publicHome: (voterToken?: string | null) => request<{
     tournament: Tournament | null
     upcomingOrLiveTournament: Tournament | null
     latestResultsTournament: Tournament | null
@@ -131,7 +131,8 @@ export const api = {
     liveGames: Game[]
     latestNews: Article[]
     gameDayNote: GameDayNote | null
-  }>('/public/home'),
+    predictionPolls: PredictionPoll[]
+  }>('/public/home', voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
   publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>
     request<{
       tournament: Tournament | null

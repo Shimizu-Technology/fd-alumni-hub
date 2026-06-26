@@ -9,6 +9,8 @@ import { useAsync } from '../../lib/hooks'
 import type { Game, GameDayNote, PredictionPoll, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
+const gameDayRefreshIntervalMs = 10_000
+
 export function AdminGameDayPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [date, setDate] = useState('')
@@ -28,8 +30,18 @@ export function AdminGameDayPage() {
     if (!date && data?.gameDay.date) setDate(data.gameDay.date)
   }, [data?.gameDay.date, date])
 
+  useEffect(() => {
+    if (!data) return undefined
+
+    const intervalId = window.setInterval(() => {
+      void reload()
+    }, gameDayRefreshIntervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [data, reload])
+
   if (loading && !data) return <LoadingState label="Loading game-day controls" />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  if (error && !data) return <ErrorState message={error} onRetry={reload} />
 
   const tournaments = data?.tournaments || []
   const tournament = selectedTournament(tournaments, tournamentId) || data?.gameDay.tournament || null
@@ -169,7 +181,6 @@ function PredictionPollControls({ poll, onUpdate }: { poll: PredictionPoll; onUp
       <StatusBadge status={poll.status} />
       <span className="muted">{poll.totalVotes ?? 0} votes</span>
       <button className="btn secondary small" onClick={() => onUpdate(poll, { status: poll.status === 'open' ? 'closed' : 'open' })}>{poll.status === 'open' ? 'Close voting' : 'Reopen voting'}</button>
-      <button className="btn secondary small" onClick={() => onUpdate(poll, { showResults: !poll.showResults })}>{poll.showResults ? 'Hide results' : 'Show results'}</button>
     </div>
   )
 }

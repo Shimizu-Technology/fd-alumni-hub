@@ -6,7 +6,7 @@ module Api
           teams = Team.includes(:tournament, :division_record, :roster_entries).order(:tournament_id, :division, :display_name)
           teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
 
-          render json: { teams: teams.map(&:api_json) }
+          render json: { teams: teams.map { |team| team.api_json(include_roster: true) } }
         end
 
         def create
@@ -14,7 +14,7 @@ module Api
           team = admin_tournament.teams.build(attrs.except(:tournament_id))
 
           if team.save
-            render json: { team: team_for_response(team.id).api_json }, status: :created
+            render json: { team: team_for_response(team.id).api_json(include_roster: true) }, status: :created
           else
             render_errors(team)
           end
@@ -24,7 +24,7 @@ module Api
           team = admin_tournament.teams.find(params[:id])
 
           if team.update(team_params.except(:tournament_id))
-            render json: { team: team_for_response(team.id).api_json }
+            render json: { team: team_for_response(team.id).api_json(include_roster: true) }
           else
             render_errors(team)
           end

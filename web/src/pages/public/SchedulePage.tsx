@@ -4,6 +4,7 @@ import { api } from '../../lib/api'
 import { formatGuamDateTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
+import { externalHref } from '../../lib/urls'
 import type { Game } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
@@ -75,8 +76,8 @@ function GameCard({ game }: { game: Game }) {
         {game.bracketCode && <span>{game.bracketCode}</span>}
       </div>
       <div className="game-actions">
-        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
-        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
+        {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
+        {game.streamUrl ? <a className="btn secondary small" href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
       </div>
     </article>
   )

@@ -12,6 +12,23 @@ class GameTest < ActiveSupport::TestCase
     @team = @tournament.teams.create!(class_year_label: "TBD", display_name: "Class TBD", division: "Special")
   end
 
+  test "api json normalizes partner links without a scheme" do
+    opponent = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Special")
+    game = @tournament.games.create!(
+      home_team: @team,
+      away_team: opponent,
+      start_time: Time.zone.local(2026, 7, 3, 18, 0),
+      status: "scheduled",
+      ticket_url: "guamtime.net/tickets/fd",
+      stream_url: "clutchguam.com/live/fd"
+    )
+
+    payload = game.api_json
+
+    assert_equal "https://guamtime.net/tickets/fd", payload[:ticketUrl]
+    assert_equal "https://clutchguam.com/live/fd", payload[:streamUrl]
+  end
+
   test "allows explicitly marked placeholder games with the same team" do
     game = @tournament.games.build(
       home_team: @team,

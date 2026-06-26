@@ -19,7 +19,7 @@ class Team < ApplicationRecord
     division_record&.name || division
   end
 
-  def api_json(include_roster: true)
+  def api_json(include_roster: false)
     payload = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,

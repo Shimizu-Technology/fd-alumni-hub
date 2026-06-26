@@ -1,17 +1,56 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
+import { externalHref } from '../../lib/urls'
+import { readOrCreateVoterToken } from '../../lib/voter'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, Panel, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
-import type { Game, GameDayNote } from '../../lib/types'
+import { PredictionPollCard } from '../../components/PredictionPollCard'
+import type { Game, GameDayNote, PredictionPoll } from '../../lib/types'
+
+const homeRefreshIntervalMs = 15_000
 
 export function HomePage() {
-  const { data, loading, error, reload } = useAsync(() => api.publicHome(), [])
+  const [voterToken] = useState(readOrCreateVoterToken)
+  const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
+  const [voteError, setVoteError] = useState('')
+  const { data, loading, error, reload } = useAsync(() => api.publicHome(voterToken), [voterToken])
 
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  useEffect(() => {
+    setPollOverrides({})
+  }, [data])
+
+  useEffect(() => {
+    if (!data) return undefined
+
+    const intervalId = window.setInterval(() => {
+      void reload()
+    }, homeRefreshIntervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [data, reload])
+
+  const homePolls = useMemo(() => {
+    const base = data?.predictionPolls || []
+    return base.map((poll) => pollOverrides[poll.id] || poll)
+  }, [data?.predictionPolls, pollOverrides])
+  const featuredPoll = useMemo(() => featuredPollForHome(homePolls), [homePolls])
+
+  const vote = async (poll: PredictionPoll, teamId: string) => {
+    setVoteError('')
+    try {
+      const result = await api.publicVotePrediction(poll.id, { teamId, voterToken })
+      setPollOverrides((current) => ({ ...current, [poll.id]: result.predictionPoll }))
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : 'Unable to save prediction')
+    }
+  }
+
+  if (loading && !data) return <LoadingState />
+  if (error && !data) return <ErrorState message={error} onRetry={reload} />
   if (!data) return <EmptyState title="Tournament data unavailable" />
 
   const tournamentLabel = data.tournament ? `${data.tournament.name} ${data.tournament.year}` : 'FD Alumni Tournament Hub'
@@ -71,6 +110,22 @@ export function HomePage() {
               {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
             </div>
           )}
+          {featuredPoll ? (
+            <div className="home-poll-callout">
+              <div className="home-poll-copy">
+                <span>Fan prediction</span>
+                <strong>{featuredPoll.pollType === 'tournament' ? 'Vote on the tournament winner.' : 'Vote on today’s matchup.'}</strong>
+                <small>No sign-in required. Results refresh automatically.</small>
+              </div>
+              {voteError && <p className="form-error" role="alert">{voteError}</p>}
+              <PredictionPollCard poll={featuredPoll} onVote={vote} compact />
+            </div>
+          ) : (
+            <div className="home-poll-teaser">
+              <strong>Fan predictions</strong>
+              <span>Polls open from the Today guide on game day. Vote with one tap when matchups are ready.</span>
+            </div>
+          )}
           {featuredGames.length === 0 ? (
             <EmptyState title="No games scheduled for today" description="Open the Today guide for game-day notes, or check the full schedule for upcoming matchups." action={<Link className="btn secondary" to="/today">See what’s posted today <IconArrowRight /></Link>} />
           ) : (
@@ -105,11 +160,11 @@ export function HomePage() {
       </section>
 
       <section className="partner-strip">
-        <a href={import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net'} target="_blank" rel="noreferrer">
+        <a href={externalHref(import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net') || undefined} target="_blank" rel="noreferrer">
           <span>Tickets</span>
           <strong>Buy through GuamTime when game tickets are available.</strong>
         </a>
-        <a href={import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com'} target="_blank" rel="noreferrer">
+        <a href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">
           <span>Streams</span>
           <strong>Watch live through Clutch or the approved stream partner for each game.</strong>
         </a>
@@ -120,6 +175,10 @@ export function HomePage() {
       </section>
     </div>
   )
+}
+
+function featuredPollForHome(polls: PredictionPoll[]) {
+  return polls.find((poll) => poll.open && poll.pollType === 'game') || polls.find((poll) => poll.open) || polls[0] || null
 }
 
 function featuredGamesForHome(liveGames: Game[], todayGames: Game[]) {

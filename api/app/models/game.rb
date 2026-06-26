@@ -65,8 +65,8 @@ class Game < ApplicationRecord
       status: status,
       homeScore: home_score,
       awayScore: away_score,
-      streamUrl: stream_url,
-      ticketUrl: ticket_url,
+      streamUrl: external_url(stream_url),
+      ticketUrl: external_url(ticket_url),
       notes: notes,
       divisionId: division_id&.to_s,
       division: resolved_division,
@@ -85,6 +85,15 @@ class Game < ApplicationRecord
   end
 
   private
+
+  def external_url(value)
+    url = value.to_s.strip
+    return nil if url.blank?
+    return "https:#{url}" if url.start_with?("//")
+    return url if url.match?(/\A[a-z][a-z0-9+.-]*:/i)
+
+    "https://#{url}"
+  end
 
   def team_summary(team, include_roster: false)
     return nil unless team

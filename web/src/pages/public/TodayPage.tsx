@@ -1,20 +1,37 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
+import { externalHref } from '../../lib/urls'
+import { readOrCreateVoterToken } from '../../lib/voter'
 import type { Game, PredictionPoll, RosterEntry } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
+import { PredictionPollCard } from '../../components/PredictionPollCard'
 
-const voterTokenKey = 'fd-alumni-voter-token'
+const todayRefreshIntervalMs = 10_000
 
 export function TodayPage() {
   const [voterToken] = useState(readOrCreateVoterToken)
   const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
   const [voteError, setVoteError] = useState('')
   const { data, loading, error, reload } = useAsync(() => api.publicToday({}, voterToken), [voterToken])
+
+  useEffect(() => {
+    setPollOverrides({})
+  }, [data])
+
+  useEffect(() => {
+    if (!data) return undefined
+
+    const intervalId = window.setInterval(() => {
+      void reload()
+    }, todayRefreshIntervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [data, reload])
 
   const polls = useMemo(() => {
     const base = data?.predictionPolls || []
@@ -35,7 +52,7 @@ export function TodayPage() {
   }
 
   if (loading && !data) return <LoadingState label="Loading today at The Jungle" />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  if (error && !data) return <ErrorState message={error} onRetry={reload} />
 
   return (
     <div className="page-stack today-page">
@@ -98,8 +115,8 @@ function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPo
         <h2>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</h2>
         <p>{game.venue || DEFAULT_GAME_VENUE}</p>
         <div className="game-actions">
-          {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
-          {game.streamUrl ? <a className="btn primary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream pending</span>}
+          {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
+          {game.streamUrl ? <a className="btn primary small" href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream pending</span>}
         </div>
         <RosterDetails game={game} />
       </div>
@@ -128,51 +145,6 @@ function RosterList({ title, entries }: { title: string; entries: RosterEntry[] 
   return <div><h3>{title}</h3>{entries.length ? <ul>{entries.map((entry) => <li key={entry.id}>{entry.jerseyNumber && <span>#{entry.jerseyNumber}</span>}<strong>{entry.name}</strong>{entry.nickname && <small>“{entry.nickname}”</small>}{entry.position && <small>{entry.position}</small>}</li>)}</ul> : <p className="muted">Roster pending</p>}</div>
 }
 
-function PredictionPollCard({ poll, onVote, compact = false }: { poll: PredictionPoll; onVote: (poll: PredictionPoll, teamId: string) => Promise<void>; compact?: boolean }) {
-  const [savingTeamId, setSavingTeamId] = useState<string | null>(null)
-
-  const choose = async (teamId: string) => {
-    setSavingTeamId(teamId)
-    try {
-      await onVote(poll, teamId)
-    } finally {
-      setSavingTeamId(null)
-    }
-  }
-
-  return (
-    <div className={`prediction-card ${compact ? 'compact' : ''}`}>
-      <div className="prediction-card-head">
-        <span>{poll.open ? 'Voting open' : 'Voting closed'}</span>
-        <strong>{poll.question}</strong>
-      </div>
-      <div className="prediction-options">
-        {poll.options.map((option) => (
-          <button key={option.teamId} type="button" className={option.selected ? 'selected' : ''} onClick={() => choose(option.teamId)} disabled={!poll.open || savingTeamId !== null}>
-            <span>{option.displayName}</span>
-            {poll.resultsVisible && <small>{option.percent ?? 0}% · {option.votes ?? 0} votes</small>}
-            {!poll.resultsVisible && <small>Vote to reveal</small>}
-          </button>
-        ))}
-      </div>
-      {poll.selectedTeamId && poll.open && <small className="prediction-note">Vote saved. Tap another team to change it.</small>}
-    </div>
-  )
-}
-
 function activeRoster(entries?: RosterEntry[]) {
   return (entries || []).filter((entry) => entry.active)
-}
-
-function readOrCreateVoterToken() {
-  try {
-    const existing = window.localStorage.getItem(voterTokenKey)
-    if (existing) return existing
-
-    const token = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    window.localStorage.setItem(voterTokenKey, token)
-    return token
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`
-  }
 }

@@ -4,6 +4,7 @@ import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, divisionNameById, gameResultLabel, teamDivision } from '../../lib/games'
+import { externalHref } from '../../lib/urls'
 import type { Division, Game, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
@@ -109,8 +110,8 @@ function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament
         status: form.status,
         venue: DEFAULT_GAME_VENUE,
         bracketCode: form.bracketCode,
-        ticketUrl: form.ticketUrl || null,
-        streamUrl: form.streamUrl || null,
+        ticketUrl: externalHref(form.ticketUrl),
+        streamUrl: externalHref(form.streamUrl),
         startTime: guamLocalDateTimeInputToIso(`${form.startDate}T${form.startTime}`),
         ...divisionAttrs,
       })
@@ -214,8 +215,8 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
         status: form.status,
         startTime: guamLocalDateTimeInputToIso(form.startTime),
         bracketCode: form.bracketCode,
-        ticketUrl: form.ticketUrl || null,
-        streamUrl: form.streamUrl || null,
+        ticketUrl: externalHref(form.ticketUrl),
+        streamUrl: externalHref(form.streamUrl),
         notes: form.notes || null,
         venue: game.venue || DEFAULT_GAME_VENUE,
         ...divisionPayload(form.divisionId, divisions),
@@ -287,8 +288,8 @@ function GameDetailsSummary({ game }: { game: Game }) {
     <dl className="game-detail-summary">
       <div><dt>Division</dt><dd>{game.division || 'Use team division'}</dd></div>
       <div><dt>Bracket</dt><dd>{game.bracketCode || 'Not set'}</dd></div>
-      <div><dt>Tickets</dt><dd>{game.ticketUrl ? <a href={game.ticketUrl} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
-      <div><dt>Stream</dt><dd>{game.streamUrl ? <a href={game.streamUrl} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
+      <div><dt>Tickets</dt><dd>{game.ticketUrl ? <a href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
+      <div><dt>Stream</dt><dd>{game.streamUrl ? <a href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
     </dl>
   )
 }
