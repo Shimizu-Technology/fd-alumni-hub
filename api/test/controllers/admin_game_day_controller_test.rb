@@ -116,6 +116,20 @@ class AdminGameDayControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "duplicate tournament prediction poll returns validation error" do
+    @tournament.prediction_polls.create!(poll_type: "tournament", question: "Who wins the tournament?")
+
+    assert_no_difference -> { PredictionPoll.count } do
+      post "/api/v1/admin/prediction-polls?tournamentId=#{@tournament.id}",
+        params: { predictionPoll: { pollType: "tournament" } },
+        headers: auth_headers,
+        as: :json
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].join, "tournament prediction poll"
+  end
+
   test "invalid game-day note date returns validation error" do
     assert_no_difference -> { GameDayNote.count } do
       post "/api/v1/admin/game-day-notes?tournamentId=#{@tournament.id}",

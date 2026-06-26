@@ -130,6 +130,7 @@ export const api = {
     todayGames: Game[]
     liveGames: Game[]
     latestNews: Article[]
+    gameDayNote: GameDayNote | null
   }>('/public/home'),
   publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>
     request<{

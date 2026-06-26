@@ -89,7 +89,7 @@ export function TodayPage() {
 
 function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPoll; onVote: (poll: PredictionPoll, teamId: string) => Promise<void> }) {
   return (
-    <article className="today-game-card">
+    <article className={poll ? 'today-game-card' : 'today-game-card today-game-card--no-poll'}>
       <div className="today-game-main">
         <div className="game-card-top">
           <span>{formatGuamDateTime(game.startTime)}</span>
@@ -103,7 +103,7 @@ function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPo
         </div>
         <RosterDetails game={game} />
       </div>
-      {poll ? <PredictionPollCard poll={poll} onVote={onVote} compact /> : <div className="prediction-empty">Predictions will appear here when voting opens.</div>}
+      {poll && <PredictionPollCard poll={poll} onVote={onVote} compact />}
     </article>
   )
 }

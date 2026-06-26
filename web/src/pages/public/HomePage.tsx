@@ -5,6 +5,7 @@ import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, Panel, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
+import type { Game, GameDayNote } from '../../lib/types'
 
 export function HomePage() {
   const { data, loading, error, reload } = useAsync(() => api.publicHome(), [])
@@ -14,7 +15,9 @@ export function HomePage() {
   if (!data) return <EmptyState title="Tournament data unavailable" />
 
   const tournamentLabel = data.tournament ? `${data.tournament.name} ${data.tournament.year}` : 'FD Alumni Tournament Hub'
-  const featuredGames = [...data.liveGames, ...data.todayGames].slice(0, 6)
+  const featuredGames = featuredGamesForHome(data.liveGames, data.todayGames)
+  const gameDayNote = data.gameDayNote
+  const hasGameDayNote = hasHomeGameDayNote(gameDayNote)
   const heroTournament = data.upcomingOrLiveTournament || data.tournament
   const heroStatus = heroTournament ? `${heroTournament.year} · ${heroTournament.status}` : 'Schedule pending'
   const heroDates = heroTournament ? formatTournamentWindow(heroTournament) : 'Dates will appear once organizers publish them.'
@@ -51,13 +54,29 @@ export function HomePage() {
 
       <section className="split-grid">
         <Panel>
-          <div className="section-heading"><h2>Today and live</h2><Link to="/schedule">Full schedule</Link></div>
+          <div className="section-heading home-today-heading">
+            <h2>Today at The Jungle</h2>
+            <div className="section-actions">
+              <Link className="btn secondary small" to="/today">Open Today guide <IconArrowRight /></Link>
+              <Link to="/schedule">Full schedule</Link>
+            </div>
+          </div>
+          {hasGameDayNote && (
+            <div className="home-today-note">
+              <div className="home-today-note-grid">
+                {gameDayNote.hostClass && <div><span>Host class</span><strong>{gameDayNote.hostClass}</strong></div>}
+                {gameDayNote.foodMenu && <div><span>Food / menu</span><strong>{gameDayNote.foodMenu}</strong></div>}
+              </div>
+              {gameDayNote.announcement && <p>{gameDayNote.announcement}</p>}
+              {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
+            </div>
+          )}
           {featuredGames.length === 0 ? (
-            <EmptyState title="No games scheduled for today" description="Check the full schedule for upcoming matchups, ticket links, and stream links." />
+            <EmptyState title="No games scheduled for today" description="Open the Today guide for game-day notes, or check the full schedule for upcoming matchups." action={<Link className="btn secondary" to="/today">See what’s posted today <IconArrowRight /></Link>} />
           ) : (
             <div className="compact-list">
               {featuredGames.map((game) => (
-                <Link key={game.id} to="/schedule" className="compact-row">
+                <Link key={game.id} to="/today" className="compact-row">
                   <span>{formatGuamDateTime(game.startTime)}</span>
                   <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
                   <small>{game.venue || DEFAULT_GAME_VENUE}</small>
@@ -101,4 +120,19 @@ export function HomePage() {
       </section>
     </div>
   )
+}
+
+function featuredGamesForHome(liveGames: Game[], todayGames: Game[]) {
+  const seenGameIds = new Set<string>()
+
+  return [...liveGames, ...todayGames].filter((game) => {
+    if (seenGameIds.has(game.id)) return false
+
+    seenGameIds.add(game.id)
+    return true
+  }).slice(0, 6)
+}
+
+function hasHomeGameDayNote(note: GameDayNote | null): note is GameDayNote {
+  return Boolean(note?.hostClass || note?.foodMenu || note?.announcement || note?.sponsorShoutout)
 }

@@ -8,7 +8,7 @@ import type { Division, Game, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 const legacyPrefix = 'legacy:'
-const commonTipoffTimes = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30']
+const tipoffQuickTimes = ['11:00', '12:00', '13:15', '13:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30']
 type GameSortOption = 'startAsc' | 'startDesc' | 'matchup' | 'status'
 
 export function AdminGamesPage() {
@@ -134,7 +134,7 @@ function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament
             <Field label="Away team"><select value={form.awayTeamId} onChange={(event) => setForm({ ...form, awayTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
             <Field label="Home team"><select value={form.homeTeamId} onChange={(event) => setForm({ ...form, homeTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
             <Field label="Game date (Guam)"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></Field>
-            <Field label="Tipoff time"><select value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} required>{commonTipoffTimes.map((time) => <option key={time} value={time}>{timeLabel(time)}</option>)}</select><small className="field-help">Guam time. Use game details after creation for unusual times.</small></Field>
+            <TipoffTimeField value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} />
             <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
             <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
             <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
@@ -144,6 +144,23 @@ function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament
         </form>
       )}
     </Panel>
+  )
+}
+
+function TipoffTimeField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="field tipoff-field">
+      <label htmlFor="create-game-tipoff-time">Tipoff time (Guam)</label>
+      <input id="create-game-tipoff-time" type="time" value={value} onChange={(event) => onChange(event.target.value)} step={60} required />
+      <small className="field-help">Type any Guam tipoff time, or use a shortcut below for common weekday and weekend starts.</small>
+      <div className="time-shortcuts" aria-label="Common tipoff time shortcuts">
+        {tipoffQuickTimes.map((time) => (
+          <button key={time} type="button" className={value === time ? 'time-chip selected' : 'time-chip'} onClick={() => onChange(time)}>
+            {timeLabel(time)}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

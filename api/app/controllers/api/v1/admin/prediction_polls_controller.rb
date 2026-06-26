@@ -22,6 +22,8 @@ module Api
           else
             render_errors(poll)
           end
+        rescue ActiveRecord::RecordNotUnique
+          render_prediction_poll_uniqueness_error
         end
 
         def update
@@ -35,6 +37,10 @@ module Api
         end
 
         private
+
+        def render_prediction_poll_uniqueness_error
+          render json: { errors: [ "A tournament prediction poll already exists for this tournament" ] }, status: :unprocessable_entity
+        end
 
         def prediction_poll_params
           raw = params.fetch(:predictionPoll, params.fetch(:prediction_poll, params))
