@@ -3,6 +3,7 @@ import { api } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
+import { externalHref } from '../../lib/urls'
 import type { Game, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
 
@@ -28,7 +29,7 @@ export function AdminLinksPage() {
   const save = async () => {
     const updates = (data?.games || [])
       .filter((game) => drafts[game.id] && (drafts[game.id].ticketUrl !== (game.ticketUrl || '') || drafts[game.id].streamUrl !== (game.streamUrl || '')))
-      .map((game) => ({ id: game.id, ticketUrl: drafts[game.id].ticketUrl || null, streamUrl: drafts[game.id].streamUrl || null }))
+      .map((game) => ({ id: game.id, ticketUrl: externalHref(drafts[game.id].ticketUrl), streamUrl: externalHref(drafts[game.id].streamUrl) }))
 
     if (!updates.length) {
       setMessage('No link changes to save')

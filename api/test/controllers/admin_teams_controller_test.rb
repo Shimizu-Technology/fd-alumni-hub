@@ -53,6 +53,32 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_nil body.dig("team", "division")
   end
 
+  test "team can be deleted when it has no games" do
+    removable = @tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018", division: "Gold")
+
+    delete "/api/v1/admin/teams/#{removable.id}",
+      params: { tournamentId: @tournament.id },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :no_content
+    assert_not Team.exists?(removable.id)
+  end
+
+  test "team with games cannot be deleted" do
+    opponent = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
+    @tournament.games.create!(home_team: @team, away_team: opponent, start_time: Time.zone.local(2026, 7, 3, 18, 30), status: "scheduled")
+
+    delete "/api/v1/admin/teams/#{@team.id}",
+      params: { tournamentId: @tournament.id },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert Team.exists?(@team.id)
+    assert_includes JSON.parse(response.body)["errors"].join, "Cannot delete record"
+  end
+
   test "missing team returns JSON 404" do
     patch "/api/v1/admin/teams/999999",
       params: { team: { division: "Gold" } },

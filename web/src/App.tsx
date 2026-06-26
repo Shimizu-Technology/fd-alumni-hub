@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { PublicLayout } from './components/PublicLayout'
 import { AdminLayout } from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
+import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
 import { StandingsPage } from './pages/public/StandingsPage'
 import { WatchPage } from './pages/public/WatchPage'
@@ -15,6 +16,7 @@ import { SponsorsPage } from './pages/public/SponsorsPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
 import { AdminGamesPage } from './pages/admin/AdminGamesPage'
+import { AdminGameDayPage } from './pages/admin/AdminGameDayPage'
 import { AdminStandingsPage } from './pages/admin/AdminStandingsPage'
 import { AdminDivisionsPage } from './pages/admin/AdminDivisionsPage'
 import { AdminLinksPage } from './pages/admin/AdminLinksPage'
@@ -33,6 +35,7 @@ export function App() {
       <Routes>
         <Route element={<PublicLayout />}>
           <Route index element={<HomePage />} />
+          <Route path="today" element={<TodayPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="standings" element={<StandingsPage />} />
           <Route path="watch" element={<WatchPage />} />
@@ -46,6 +49,7 @@ export function App() {
           <Route index element={<AdminOverviewPage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
           <Route path="games" element={<AdminGamesPage />} />
+          <Route path="game-day" element={<AdminGameDayPage />} />
           <Route path="standings" element={<AdminStandingsPage />} />
           <Route path="divisions" element={<AdminDivisionsPage />} />
           <Route path="links" element={<AdminLinksPage />} />

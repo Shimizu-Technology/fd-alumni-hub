@@ -1,11 +1,13 @@
+import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
 import { formatGuamDateTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
+import { externalHref } from '../../lib/urls'
 import type { Game } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
-import { IconExternal } from '../../components/Icons'
+import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function SchedulePage() {
   const [division, setDivision] = useState('')
@@ -24,6 +26,14 @@ export function SchedulePage() {
         title="Tournament schedule"
         description="Game times are shown for Guam. Ticket and stream buttons route to partner platforms when links are available."
       />
+
+      <Panel className="watch-hero today-schedule-callout">
+        <div>
+          <h2>Today at The Jungle</h2>
+          <p>Mobile-first game-day info, roster notes, live links, and fan predictions.</p>
+        </div>
+        <Link className="btn primary" to="/today">Open Today <IconArrowRight /></Link>
+      </Panel>
 
       <Panel className="toolbar-panel">
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
@@ -66,8 +76,8 @@ function GameCard({ game }: { game: Game }) {
         {game.bracketCode && <span>{game.bracketCode}</span>}
       </div>
       <div className="game-actions">
-        {game.ticketUrl ? <a className="btn secondary small" href={game.ticketUrl} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
-        {game.streamUrl ? <a className="btn secondary small" href={game.streamUrl} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
+        {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
+        {game.streamUrl ? <a className="btn secondary small" href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
       </div>
     </article>
   )

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_14_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,6 +79,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000002) do
     t.index ["slug"], name: "index_divisions_on_slug", unique: true
   end
 
+  create_table "game_day_notes", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.text "announcement"
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.text "food_menu"
+    t.string "host_class"
+    t.text "sponsor_shoutout"
+    t.bigint "tournament_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["date", "active"], name: "index_game_day_notes_on_date_and_active"
+    t.index ["tournament_id", "date"], name: "index_game_day_notes_on_tournament_id_and_date", unique: true
+    t.index ["tournament_id"], name: "index_game_day_notes_on_tournament_id"
+  end
+
   create_table "games", force: :cascade do |t|
     t.integer "away_score"
     t.bigint "away_team_id", null: false
@@ -127,6 +142,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000002) do
     t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url"
     t.index ["tournament_id", "source", "taken_at"], name: "index_media_assets_on_tournament_id_and_source_and_taken_at"
     t.index ["tournament_id"], name: "index_media_assets_on_tournament_id"
+  end
+
+  create_table "prediction_polls", force: :cascade do |t|
+    t.datetime "closes_at"
+    t.datetime "created_at", null: false
+    t.bigint "game_id"
+    t.string "poll_type", null: false
+    t.string "question", null: false
+    t.string "status", default: "open", null: false
+    t.bigint "tournament_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["game_id", "poll_type"], name: "index_prediction_polls_on_game_id_and_poll_type", unique: true, where: "(game_id IS NOT NULL)"
+    t.index ["game_id"], name: "index_prediction_polls_on_game_id"
+    t.index ["status", "closes_at"], name: "index_prediction_polls_on_status_and_closes_at"
+    t.index ["tournament_id", "poll_type"], name: "index_prediction_polls_on_unique_tournament_poll", unique: true, where: "((poll_type)::text = 'tournament'::text)"
+    t.index ["tournament_id"], name: "index_prediction_polls_on_tournament_id"
+  end
+
+  create_table "prediction_votes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "prediction_poll_id", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "voter_token_hash", null: false
+    t.index ["prediction_poll_id", "team_id"], name: "index_prediction_votes_on_prediction_poll_id_and_team_id"
+    t.index ["prediction_poll_id", "voter_token_hash"], name: "index_prediction_votes_on_poll_and_token_hash", unique: true
+    t.index ["prediction_poll_id"], name: "index_prediction_votes_on_prediction_poll_id"
+    t.index ["team_id"], name: "index_prediction_votes_on_team_id"
+  end
+
+  create_table "roster_entries", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "jersey_number"
+    t.string "name", null: false
+    t.string "nickname"
+    t.string "position"
+    t.integer "sort_order", default: 0, null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["team_id", "active", "sort_order"], name: "index_roster_entries_on_team_id_and_active_and_sort_order"
+    t.index ["team_id", "name"], name: "index_roster_entries_on_team_id_and_name"
+    t.index ["team_id"], name: "index_roster_entries_on_team_id"
   end
 
   create_table "sponsors", force: :cascade do |t|
@@ -210,12 +268,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_14_000002) do
   add_foreign_key "article_links", "games", on_delete: :nullify
   add_foreign_key "article_links", "tournaments", on_delete: :cascade
   add_foreign_key "content_ingest_items", "tournaments", on_delete: :cascade
+  add_foreign_key "game_day_notes", "tournaments", on_delete: :cascade
   add_foreign_key "games", "divisions", on_delete: :nullify
   add_foreign_key "games", "teams", column: "away_team_id"
   add_foreign_key "games", "teams", column: "home_team_id"
   add_foreign_key "games", "tournaments", on_delete: :cascade
   add_foreign_key "media_assets", "games", on_delete: :nullify
   add_foreign_key "media_assets", "tournaments", on_delete: :cascade
+  add_foreign_key "prediction_polls", "games", on_delete: :cascade
+  add_foreign_key "prediction_polls", "tournaments", on_delete: :cascade
+  add_foreign_key "prediction_votes", "prediction_polls", on_delete: :cascade
+  add_foreign_key "prediction_votes", "teams", on_delete: :cascade
+  add_foreign_key "roster_entries", "teams", on_delete: :cascade
   add_foreign_key "sponsors", "tournaments", on_delete: :cascade
   add_foreign_key "standings", "teams", on_delete: :cascade
   add_foreign_key "standings", "tournaments", on_delete: :cascade

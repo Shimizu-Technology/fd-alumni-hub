@@ -1,20 +1,62 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
+import { externalHref } from '../../lib/urls'
+import { readOrCreateVoterToken } from '../../lib/voter'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { EmptyState, ErrorState, LoadingState, Panel, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
+import { PredictionPollCard } from '../../components/PredictionPollCard'
+import type { Game, GameDayNote, PredictionPoll } from '../../lib/types'
+
+const homeRefreshIntervalMs = 15_000
 
 export function HomePage() {
-  const { data, loading, error, reload } = useAsync(() => api.publicHome(), [])
+  const [voterToken] = useState(readOrCreateVoterToken)
+  const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
+  const [voteError, setVoteError] = useState('')
+  const { data, loading, error, reload } = useAsync(() => api.publicHome(voterToken), [voterToken])
 
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  useEffect(() => {
+    setPollOverrides({})
+  }, [data])
+
+  useEffect(() => {
+    if (!data) return undefined
+
+    const intervalId = window.setInterval(() => {
+      void reload()
+    }, homeRefreshIntervalMs)
+
+    return () => window.clearInterval(intervalId)
+  }, [data, reload])
+
+  const homePolls = useMemo(() => {
+    const base = data?.predictionPolls || []
+    return base.map((poll) => pollOverrides[poll.id] || poll)
+  }, [data?.predictionPolls, pollOverrides])
+  const featuredPoll = useMemo(() => featuredPollForHome(homePolls), [homePolls])
+
+  const vote = async (poll: PredictionPoll, teamId: string) => {
+    setVoteError('')
+    try {
+      const result = await api.publicVotePrediction(poll.id, { teamId, voterToken })
+      setPollOverrides((current) => ({ ...current, [poll.id]: result.predictionPoll }))
+    } catch (err) {
+      setVoteError(err instanceof Error ? err.message : 'Unable to save prediction')
+    }
+  }
+
+  if (loading && !data) return <LoadingState />
+  if (error && !data) return <ErrorState message={error} onRetry={reload} />
   if (!data) return <EmptyState title="Tournament data unavailable" />
 
   const tournamentLabel = data.tournament ? `${data.tournament.name} ${data.tournament.year}` : 'FD Alumni Tournament Hub'
-  const featuredGames = [...data.liveGames, ...data.todayGames].slice(0, 6)
+  const featuredGames = featuredGamesForHome(data.liveGames, data.todayGames)
+  const gameDayNote = data.gameDayNote
+  const hasGameDayNote = hasHomeGameDayNote(gameDayNote)
   const heroTournament = data.upcomingOrLiveTournament || data.tournament
   const heroStatus = heroTournament ? `${heroTournament.year} · ${heroTournament.status}` : 'Schedule pending'
   const heroDates = heroTournament ? formatTournamentWindow(heroTournament) : 'Dates will appear once organizers publish them.'
@@ -27,7 +69,8 @@ export function HomePage() {
           <h1>Schedules, scores, streams, and stories from The Jungle.</h1>
           <p>{tournamentLabel}. A clean guide for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
           <div className="hero-actions">
-            <Link className="btn primary" to="/schedule"><IconCalendar /> View schedule <IconArrowRight /></Link>
+            <Link className="btn primary" to="/today"><IconCalendar /> Today at The Jungle <IconArrowRight /></Link>
+            <Link className="btn secondary" to="/schedule">Schedule</Link>
             <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
             <Link className="btn secondary" to="/watch"><IconPlay /> Watch</Link>
           </div>
@@ -50,13 +93,45 @@ export function HomePage() {
 
       <section className="split-grid">
         <Panel>
-          <div className="section-heading"><h2>Today and live</h2><Link to="/schedule">Full schedule</Link></div>
+          <div className="section-heading home-today-heading">
+            <h2>Today at The Jungle</h2>
+            <div className="section-actions">
+              <Link className="btn secondary small" to="/today">Open Today guide <IconArrowRight /></Link>
+              <Link to="/schedule">Full schedule</Link>
+            </div>
+          </div>
+          {hasGameDayNote && (
+            <div className="home-today-note">
+              <div className="home-today-note-grid">
+                {gameDayNote.hostClass && <div><span>Host class</span><strong>{gameDayNote.hostClass}</strong></div>}
+                {gameDayNote.foodMenu && <div><span>Food / menu</span><strong>{gameDayNote.foodMenu}</strong></div>}
+              </div>
+              {gameDayNote.announcement && <p>{gameDayNote.announcement}</p>}
+              {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
+            </div>
+          )}
+          {featuredPoll ? (
+            <div className="home-poll-callout">
+              <div className="home-poll-copy">
+                <span>Fan prediction</span>
+                <strong>{featuredPoll.pollType === 'tournament' ? 'Vote on the tournament winner.' : 'Vote on today’s matchup.'}</strong>
+                <small>No sign-in required. Results refresh automatically.</small>
+              </div>
+              {voteError && <p className="form-error" role="alert">{voteError}</p>}
+              <PredictionPollCard poll={featuredPoll} onVote={vote} compact />
+            </div>
+          ) : (
+            <div className="home-poll-teaser">
+              <strong>Fan predictions</strong>
+              <span>Polls open from the Today guide on game day. Vote with one tap when matchups are ready.</span>
+            </div>
+          )}
           {featuredGames.length === 0 ? (
-            <EmptyState title="No games scheduled for today" description="Check the full schedule for upcoming matchups, ticket links, and stream links." />
+            <EmptyState title="No games scheduled for today" description="Open the Today guide for game-day notes, or check the full schedule for upcoming matchups." action={<Link className="btn secondary" to="/today">See what’s posted today <IconArrowRight /></Link>} />
           ) : (
             <div className="compact-list">
               {featuredGames.map((game) => (
-                <Link key={game.id} to="/schedule" className="compact-row">
+                <Link key={game.id} to="/today" className="compact-row">
                   <span>{formatGuamDateTime(game.startTime)}</span>
                   <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
                   <small>{game.venue || DEFAULT_GAME_VENUE}</small>
@@ -85,11 +160,11 @@ export function HomePage() {
       </section>
 
       <section className="partner-strip">
-        <a href={import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net'} target="_blank" rel="noreferrer">
+        <a href={externalHref(import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net') || undefined} target="_blank" rel="noreferrer">
           <span>Tickets</span>
           <strong>Buy through GuamTime when game tickets are available.</strong>
         </a>
-        <a href={import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com'} target="_blank" rel="noreferrer">
+        <a href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">
           <span>Streams</span>
           <strong>Watch live through Clutch or the approved stream partner for each game.</strong>
         </a>
@@ -100,4 +175,23 @@ export function HomePage() {
       </section>
     </div>
   )
+}
+
+function featuredPollForHome(polls: PredictionPoll[]) {
+  return polls.find((poll) => poll.open && poll.pollType === 'game') || polls.find((poll) => poll.open) || polls[0] || null
+}
+
+function featuredGamesForHome(liveGames: Game[], todayGames: Game[]) {
+  const seenGameIds = new Set<string>()
+
+  return [...liveGames, ...todayGames].filter((game) => {
+    if (seenGameIds.has(game.id)) return false
+
+    seenGameIds.add(game.id)
+    return true
+  }).slice(0, 6)
+}
+
+function hasHomeGameDayNote(note: GameDayNote | null): note is GameDayNote {
+  return Boolean(note?.hostClass || note?.foodMenu || note?.announcement || note?.sponsorShoutout)
 }

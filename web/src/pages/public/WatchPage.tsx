@@ -2,6 +2,7 @@ import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
+import { externalHref } from '../../lib/urls'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { IconExternal, IconPlay } from '../../components/Icons'
 
@@ -28,7 +29,7 @@ export function WatchPage() {
           <h2>Live links appear as games are confirmed</h2>
           <p>When a stream is ready, the game card below takes you straight to the live broadcast source.</p>
         </div>
-        <a className="btn primary" href={import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com'} target="_blank" rel="noreferrer">Open Clutch <IconExternal /></a>
+        <a className="btn primary" href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">Open Clutch <IconExternal /></a>
       </Panel>
 
       {streamGames.length === 0 ? (
@@ -40,7 +41,7 @@ export function WatchPage() {
               <span>{formatGuamDateTime(game.startTime)}</span>
               <h2>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</h2>
               <p>{game.venue || DEFAULT_GAME_VENUE}</p>
-              <a className="btn primary" href={game.streamUrl || '#'} target="_blank" rel="noreferrer">Watch stream <IconExternal /></a>
+              <a className="btn primary" href={externalHref(game.streamUrl) || '#'} target="_blank" rel="noreferrer">Watch stream <IconExternal /></a>
             </article>
           ))}
         </div>

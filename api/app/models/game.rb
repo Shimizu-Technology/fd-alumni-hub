@@ -8,6 +8,7 @@ class Game < ApplicationRecord
 
   has_many :article_links, dependent: :nullify
   has_many :media_assets, dependent: :nullify
+  has_many :prediction_polls, dependent: :destroy
 
   validates :start_time, presence: true
   validates :status, inclusion: { in: STATUSES }
@@ -53,7 +54,7 @@ class Game < ApplicationRecord
     }
   end
 
-  def api_json(include_teams: true)
+  def api_json(include_teams: true, include_rosters: false)
     payload = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
@@ -64,8 +65,8 @@ class Game < ApplicationRecord
       status: status,
       homeScore: home_score,
       awayScore: away_score,
-      streamUrl: stream_url,
-      ticketUrl: ticket_url,
+      streamUrl: external_url(stream_url),
+      ticketUrl: external_url(ticket_url),
       notes: notes,
       divisionId: division_id&.to_s,
       division: resolved_division,
@@ -76,8 +77,8 @@ class Game < ApplicationRecord
     }
 
     if include_teams
-      payload[:homeTeam] = team_summary(home_team)
-      payload[:awayTeam] = team_summary(away_team)
+      payload[:homeTeam] = team_summary(home_team, include_roster: include_rosters)
+      payload[:awayTeam] = team_summary(away_team, include_roster: include_rosters)
     end
 
     payload
@@ -85,16 +86,28 @@ class Game < ApplicationRecord
 
   private
 
-  def team_summary(team)
+  def external_url(value)
+    url = value.to_s.strip
+    return nil if url.blank?
+    return "https:#{url}" if url.start_with?("//")
+    return url if url.match?(/\A[a-z][a-z0-9+.-]*:/i)
+
+    "https://#{url}"
+  end
+
+  def team_summary(team, include_roster: false)
     return nil unless team
 
-    {
+    payload = {
       id: team.id.to_s,
       displayName: team.display_name,
       classYearLabel: team.class_year_label,
       divisionId: team.division_id&.to_s,
       division: team.resolved_division
     }
+
+    payload[:rosterEntries] = team.roster_entries_api_json(active_only: true) if include_roster
+    payload
   end
 
   def copy_division_name_from_record
