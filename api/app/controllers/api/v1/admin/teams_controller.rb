@@ -10,7 +10,8 @@ module Api
         end
 
         def create
-          team = Team.new(team_params)
+          attrs = team_params
+          team = admin_tournament.teams.build(attrs.except(:tournament_id))
 
           if team.save
             render json: { team: team_for_response(team.id).api_json }, status: :created
@@ -20,10 +21,20 @@ module Api
         end
 
         def update
-          team = Team.find(params[:id])
+          team = admin_tournament.teams.find(params[:id])
 
-          if team.update(team_params)
+          if team.update(team_params.except(:tournament_id))
             render json: { team: team_for_response(team.id).api_json }
+          else
+            render_errors(team)
+          end
+        end
+
+        def destroy
+          team = admin_tournament.teams.find(params[:id])
+
+          if team.destroy
+            head :no_content
           else
             render_errors(team)
           end

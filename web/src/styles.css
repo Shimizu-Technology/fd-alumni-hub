@@ -321,8 +321,30 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .admin-shortcuts { display: flex; flex-wrap: wrap; gap: .65rem; }
 .admin-shortcuts a { padding: .75rem .95rem; border-radius: 999px; background: var(--fd-maroon-50); color: var(--fd-maroon); font-weight: 900; }
 .admin-list { display: grid; gap: .85rem; }
+.team-card-list, .game-admin-list { margin-top: 1rem; }
+.team-toolbar, .game-toolbar { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.team-toolbar label:first-child, .game-toolbar label:first-child { flex: 1 1 18rem; }
 .compact-admin-list { margin-top: 1rem; }
 .admin-row-card { padding: 1rem; border: 1px solid var(--line); border-radius: 1.15rem; background: #fff; display: grid; gap: .85rem; }
+.team-summary-card { position: relative; overflow: hidden; border-color: rgba(111,29,53,.16); box-shadow: 0 16px 38px rgba(66,16,31,.07); }
+.team-summary-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: .32rem; background: linear-gradient(180deg, var(--fd-maroon), var(--fd-gold)); }
+.team-card-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; padding: .2rem 0 .75rem .55rem; border-bottom: 1px solid var(--line); }
+.team-card-header h3 { margin: .15rem 0 .2rem; font-size: clamp(1.25rem, 2vw, 1.7rem); letter-spacing: -.05em; }
+.team-card-header p { margin: 0; color: var(--muted); font-weight: 800; }
+.team-card-kicker { display: inline-flex; width: fit-content; border-radius: 999px; background: var(--fd-maroon-50); color: var(--fd-maroon); padding: .32rem .55rem; font-size: .72rem; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; }
+.team-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
+.team-facts-grid div { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
+.team-facts-grid span { display: block; color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.team-facts-grid strong { display: block; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-edit-panel { display: grid; gap: .7rem; padding: .9rem; border: 1px dashed rgba(111,29,53,.22); border-radius: 1rem; background: #fffaf3; }
+.team-edit-panel .form-grid { margin-bottom: 0; }
+.roster-manager-body { gap: .8rem; }
+.roster-table-wrap { max-height: 20rem; overflow: auto; border: 1px solid var(--line); border-radius: 1rem; background: #fff; }
+.roster-admin-table { min-width: 760px; }
+.roster-admin-table td, .roster-admin-table th { white-space: nowrap; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 1rem; background: rgba(23,20,26,.42); backdrop-filter: blur(6px); }
+.modal-card { width: min(42rem, 100%); max-height: min(90vh, 48rem); overflow: auto; border: 1px solid rgba(255,255,255,.74); border-radius: 1.25rem; background: var(--surface); box-shadow: 0 30px 90px rgba(23,20,26,.28); padding: 1.1rem; }
+.roster-modal form { display: grid; gap: .75rem; }
 .compact-admin-row { grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; }
 .compact-admin-row .form-grid { margin: 0; }
 .admin-row-head { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
@@ -373,7 +395,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-topbar { display: none; }
   .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .game-detail-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-detail-summary, .team-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .compact-admin-row { grid-template-columns: 1fr; }
 }
 
@@ -412,7 +434,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-row-head { align-items: flex-start; }
   .prediction-admin-controls { justify-content: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
-  .game-detail-summary, .score-entry-panel .form-grid { grid-template-columns: 1fr; }
+  .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
 }
