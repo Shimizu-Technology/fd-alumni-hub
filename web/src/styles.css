@@ -384,6 +384,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .link-toolbar label:first-child, .missing-toolbar label:first-child, .article-toolbar label:first-child { flex: 1 1 18rem; }
 .link-admin-list, .article-admin-list { margin-top: 1rem; }
 .focused-filter-note { display: flex; justify-content: space-between; gap: .75rem; align-items: center; margin-bottom: .8rem; padding: .75rem .85rem; border: 1px solid rgba(111,29,53,.18); border-radius: .95rem; background: var(--fd-maroon-50); color: var(--fd-maroon); font-weight: 900; }
+.draft-filter-note { background: #fff8ea; border-color: rgba(210,163,57,.42); color: #5d4210; }
+.draft-badge { width: fit-content; padding: .3rem .55rem; border-radius: 999px; background: #fff8ea; color: #5d4210; font-size: .7rem; font-weight: 950; letter-spacing: .07em; text-transform: uppercase; }
 .missing-gap-list { margin-top: .5rem; }
 .missing-gap-row { grid-template-columns: minmax(0, .7fr) minmax(20rem, 1.3fr); align-items: start; }
 .missing-gap-main { display: grid; gap: .2rem; }

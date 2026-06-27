@@ -48,6 +48,7 @@ export function AdminLinksPage() {
   const currentPage = Math.min(page, Math.max(1, Math.ceil(visibleGames.length / linksPageSize)))
   const pagedGames = useMemo(() => visibleGames.slice((currentPage - 1) * linksPageSize, currentPage * linksPageSize), [visibleGames, currentPage])
   const focusedGame = focusGameId ? (data?.games || []).find((game) => game.id === focusGameId) : null
+  const unsavedCount = useMemo(() => (data?.games || []).filter((game) => hasLinkDraftChanges(game, linkDraftForGame(game, drafts))).length, [data?.games, drafts])
 
   const clearFocus = () => {
     const next = new URLSearchParams(searchParams)
@@ -114,10 +115,14 @@ export function AdminLinksPage() {
           <span>{visibleGames.length} of {data?.games.length || 0}</span>
         </div>
         {focusedGame && <div className="focused-filter-note"><span>Focused from Missing Links: {gameMatchupLabel(focusedGame)}</span><button className="btn secondary small" type="button" onClick={clearFocus}>Show all games</button></div>}
+        {unsavedCount > 0 && <div className="focused-filter-note draft-filter-note"><span>{unsavedCount} {unsavedCount === 1 ? 'game has' : 'games have'} unsaved link changes. Edited rows stay visible while filters are active until you save.</span><button className="btn primary small" type="button" onClick={save}>Save changes</button></div>}
         <LinkToolbar query={query} filter={filter} sort={sort} onQueryChange={setQuery} onFilterChange={setFilter} onSortChange={setSort} />
         {!data?.games.length ? <EmptyState title="No games found" description="Create games before attaching ticket and stream links." /> : null}
         {data?.games.length && !visibleGames.length ? <EmptyState title="No games match those filters" description="Clear search, focus, or link filters to see more games." /> : null}
-        {pagedGames.length > 0 && <div className="admin-list link-admin-list">{pagedGames.map((game) => <LinkRow key={game.id} game={game} value={drafts[game.id] || { ticketUrl: '', streamUrl: '' }} onChange={(value) => setDrafts((prev) => ({ ...prev, [game.id]: value }))} />)}</div>}
+        {pagedGames.length > 0 && <div className="admin-list link-admin-list">{pagedGames.map((game) => {
+          const value = linkDraftForGame(game, drafts)
+          return <LinkRow key={game.id} game={game} value={value} dirty={hasLinkDraftChanges(game, value)} onChange={(nextValue) => setDrafts((prev) => ({ ...prev, [game.id]: nextValue }))} />
+        })}</div>}
         <PaginationControls page={currentPage} pageSize={linksPageSize} total={visibleGames.length} onPageChange={setPage} />
       </Panel>
     </div>
@@ -160,10 +165,10 @@ function LinkToolbar({ query, filter, sort, onQueryChange, onFilterChange, onSor
   )
 }
 
-function LinkRow({ game, value, onChange }: { game: Game; value: LinkDraft; onChange: (value: LinkDraft) => void }) {
+function LinkRow({ game, value, dirty, onChange }: { game: Game; value: LinkDraft; dirty: boolean; onChange: (value: LinkDraft) => void }) {
   return (
     <article className="admin-row-card link-admin-row">
-      <div className="admin-row-head"><div><strong>{gameMatchupLabel(game)}</strong><span>{formatGuamDateTime(game.startTime)}</span></div></div>
+      <div className="admin-row-head"><div><strong>{gameMatchupLabel(game)}</strong><span>{formatGuamDateTime(game.startTime)}</span></div>{dirty && <span className="draft-badge">Unsaved changes</span>}</div>
       <FormGrid>
         <Field label="GuamTime ticket URL"><input value={value.ticketUrl} onChange={(event) => onChange({ ...value, ticketUrl: event.target.value })} /></Field>
         <Field label="Clutch / stream URL"><input value={value.streamUrl} onChange={(event) => onChange({ ...value, streamUrl: event.target.value })} /></Field>
@@ -186,10 +191,9 @@ function filterAndSortLinkGames(games: Game[], drafts: Record<string, LinkDraft>
         (filter === 'missingStreams' && !hasStream) ||
         (filter === 'missingEither' && (!hasTicket || !hasStream)) ||
         (filter === 'complete' && hasTicket && hasStream)
-      if (!matchesFilter) return false
-
       const searchable = [ gameMatchupLabel(game), formatGuamDateTime(game.startTime), game.bracketCode || '', draft.ticketUrl, draft.streamUrl ].join(' ').toLowerCase()
-      return !normalizedQuery || searchable.includes(normalizedQuery)
+      const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery)
+      return matchesQuery && (matchesFilter || hasLinkDraftChanges(game, draft))
     })
     .slice()
     .sort((a, b) => compareLinkGames(a, b, sort, drafts))
@@ -210,5 +214,14 @@ function linkStatusValue(game: Game, drafts: Record<string, LinkDraft>, key: key
 function linkDraftForGame(game: Game, drafts: Record<string, LinkDraft>) {
   return Object.prototype.hasOwnProperty.call(drafts, game.id)
     ? drafts[game.id]
-    : { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' }
+    : persistedLinkDraft(game)
+}
+
+function hasLinkDraftChanges(game: Game, draft: LinkDraft) {
+  const persisted = persistedLinkDraft(game)
+  return draft.ticketUrl !== persisted.ticketUrl || draft.streamUrl !== persisted.streamUrl
+}
+
+function persistedLinkDraft(game: Game) {
+  return { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' }
 }
