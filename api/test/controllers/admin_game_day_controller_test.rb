@@ -46,6 +46,36 @@ class AdminGameDayControllerTest < ActionDispatch::IntegrationTest
     assert_equal "10", @home.roster_entries.first.jersey_number
   end
 
+  test "staff can bulk add roster entries atomically" do
+    assert_difference -> { @home.roster_entries.count }, 2 do
+      post "/api/v1/admin/roster-entries/bulk?tournamentId=#{@tournament.id}",
+        params: { rosterEntries: [
+          { teamId: @home.id, name: "Juan Duenas", jerseyNumber: "10", position: "G", sortOrder: 1 },
+          { teamId: @home.id, name: "Jose Cruz", jerseyNumber: "23", position: "F", sortOrder: 2 }
+        ] },
+        headers: auth_headers,
+        as: :json
+    end
+
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert_equal 2, body["created"]
+    assert_equal [ "Juan Duenas", "Jose Cruz" ], @home.roster_entries.ordered.pluck(:name)
+
+    assert_no_difference -> { @home.roster_entries.count } do
+      post "/api/v1/admin/roster-entries/bulk?tournamentId=#{@tournament.id}",
+        params: { rosterEntries: [
+          { teamId: @home.id, name: "Valid Player", sortOrder: 3 },
+          { teamId: @home.id, name: "", sortOrder: 4 }
+        ] },
+        headers: auth_headers,
+        as: :json
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).dig("errors", 0, "errors").join, "Name can't be blank"
+  end
+
   test "admin updates and deletes are scoped to selected tournament" do
     other_tournament, other_home, other_game = build_other_tournament_context
     other_note = other_tournament.game_day_notes.create!(date: Date.new(2025, 7, 3), host_class: "Other host")

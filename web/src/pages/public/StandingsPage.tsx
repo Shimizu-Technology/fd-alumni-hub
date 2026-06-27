@@ -31,7 +31,19 @@ export function StandingsPage() {
       {!data?.standings.length ? (
         <EmptyState title="No standings yet" description="Standings appear after games have final scores and the recompute job has run." />
       ) : (
-        <Panel>
+        <Panel className="standings-panel">
+          <div className="standings-mobile-list" aria-label="Mobile standings list">
+            {data.standings.map((standing, index) => (
+              <article className="standing-mobile-card" key={standing.id}>
+                <div><span>#{index + 1}</span><strong>{standing.team.displayName}</strong><small>{standing.team.division || 'Division pending'}</small></div>
+                <dl>
+                  <div><dt>W</dt><dd>{standing.wins}</dd></div>
+                  <div><dt>L</dt><dd>{standing.losses}</dd></div>
+                  <div><dt>Diff</dt><dd>{standing.pointDifferential > 0 ? `+${standing.pointDifferential}` : standing.pointDifferential}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
           <div className="table-wrap">
             <table className="data-table standings-table">
               <thead><tr><th>Rank</th><th>Team</th><th>Division</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>Diff</th></tr></thead>

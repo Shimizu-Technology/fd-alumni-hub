@@ -50,7 +50,7 @@ export function AdminDivisionsPage() {
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
       <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} onSaved={reload} />
-      <CreateTeamPanel tournament={tournament} divisions={divisions} onSaved={reload} />
+      <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} onSaved={reload} />
       <Panel>
         <div className="section-heading">
           <div>
@@ -187,10 +187,15 @@ function EditableDivision({ division, onSaved }: { division: Division; onSaved: 
   )
 }
 
-function CreateTeamPanel({ tournament, divisions, onSaved }: { tournament: Tournament | null; divisions: Division[]; onSaved: () => Promise<void> }) {
+function CreateTeamPanel({ tournament, teamsCount, divisions, onSaved }: { tournament: Tournament | null; teamsCount: number; divisions: Division[]; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({ classYearLabel: '', displayName: '', divisionId: '' })
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [open, setOpen] = useState(teamsCount === 0)
+
+  useEffect(() => {
+    if (teamsCount === 0) setOpen(true)
+  }, [teamsCount])
 
   useEffect(() => {
     setForm((current) => ({ ...current, divisionId: divisions[0]?.id || '' }))
@@ -222,7 +227,35 @@ function CreateTeamPanel({ tournament, divisions, onSaved }: { tournament: Tourn
     }
   }
 
-  return <Panel><div className="section-heading"><h2>Add team</h2>{message && <span>{message}</span>}</div>{!tournament ? <EmptyState title="Choose a tournament first" /> : <form onSubmit={submit}><p className="form-note">Tournament: {tournament.year}</p><FormGrid><Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="Class of 2016/17" required /></Field><Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="2016/17" required /></Field><Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} required /></Field></FormGrid><button className="btn primary" type="submit" disabled={!divisions.length || saving}>{saving ? 'Creating' : 'Create team'}</button></form>}</Panel>
+  return (
+    <Panel className="collapsible-panel admin-create-panel">
+      <div className="section-heading collapsible-heading">
+        <div>
+          <h2>Add team</h2>
+          <p>Usually only needed before schedule import or when organizers approve a late team.</p>
+        </div>
+        <div className="section-actions">
+          {message && <span>{message}</span>}
+          <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+            {open ? 'Hide add team' : 'Add team'}
+          </button>
+        </div>
+      </div>
+      {open && (!tournament ? <EmptyState title="Choose a tournament first" /> : (
+        <div className="collapsible-body">
+          <form onSubmit={submit}>
+            <p className="form-note">Tournament: {tournament.year}</p>
+            <FormGrid>
+              <Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="Class of 2016/17" required /></Field>
+              <Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="2016/17" required /></Field>
+              <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} required /></Field>
+            </FormGrid>
+            <button className="btn primary" type="submit" disabled={!divisions.length || saving}>{saving ? 'Creating' : 'Create team'}</button>
+          </form>
+        </div>
+      ))}
+    </Panel>
+  )
 }
 
 function TeamToolbar({ query, division, sort, divisions, onQueryChange, onDivisionChange, onSortChange }: { query: string; division: string; sort: TeamSortOption; divisions: string[]; onQueryChange: (value: string) => void; onDivisionChange: (value: string) => void; onSortChange: (value: TeamSortOption) => void }) {
@@ -327,10 +360,12 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
   const [message, setMessage] = useState('')
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null)
   const [adding, setAdding] = useState(false)
+  const [bulkAdding, setBulkAdding] = useState(false)
 
   const closeModal = () => {
     setEditingEntry(null)
     setAdding(false)
+    setBulkAdding(false)
   }
 
   return (
@@ -342,9 +377,24 @@ function RosterEditor({ team, entries, onSaved }: { team: Team; entries: RosterE
       {message && <p className="form-note">{message}</p>}
       {open && (
         <div className="collapsible-body roster-manager-body">
-          <div className="row-actions"><button className="btn secondary small" type="button" onClick={() => setAdding(true)}>Add player</button></div>
+          <div className="row-actions">
+            <button className="btn secondary small" type="button" onClick={() => setAdding(true)}>Add player</button>
+            <button className="btn secondary small" type="button" onClick={() => setBulkAdding(true)}>Bulk add roster</button>
+          </div>
           {entries.length ? <RosterTable entries={entries} onEdit={setEditingEntry} /> : <EmptyState title="Roster empty" description="Add players if organizers provide roster details." />}
         </div>
+      )}
+      {bulkAdding && (
+        <BulkRosterModal
+          team={team}
+          existingCount={entries.length}
+          onClose={closeModal}
+          onSaved={async (action) => {
+            setMessage(action)
+            closeModal()
+            await onSaved()
+          }}
+        />
       )}
       {(adding || editingEntry) && (
         <RosterEntryModal
@@ -390,6 +440,75 @@ function RosterTable({ entries, onEdit }: { entries: RosterEntry[]; onEdit: (ent
           ))}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+type BulkRosterDraft = {
+  name: string
+  jerseyNumber: string
+  position: string
+  nickname: string
+  sortOrder: number
+}
+
+function BulkRosterModal({ team, existingCount, onClose, onSaved }: { team: Team; existingCount: number; onClose: () => void; onSaved: (message: string) => Promise<void> }) {
+  const [rawText, setRawText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const drafts = useMemo(() => parseBulkRoster(rawText, existingCount), [rawText, existingCount])
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault()
+    setError('')
+    if (!drafts.length) {
+      setError('Paste at least one player name before saving.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const response = await api.adminBulkRosterEntries(drafts.map((draft) => ({ teamId: team.id, ...draft, active: true })), team.tournamentId)
+      await onSaved(`Added ${response.created} roster ${response.created === 1 ? 'player' : 'players'}`)
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to bulk add roster players'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <div className="modal-card roster-modal bulk-roster-modal" role="dialog" aria-modal="true" aria-label={`Bulk add roster players to ${team.displayName}`}>
+        <div className="section-heading compact-heading">
+          <div>
+            <h2>Bulk add roster</h2>
+            <p className="muted">{team.displayName}</p>
+          </div>
+          <button className="btn secondary small" type="button" onClick={onClose} disabled={saving}>Close</button>
+        </div>
+        <form onSubmit={save}>
+          <Field label="Paste roster lines">
+            <textarea
+              value={rawText}
+              onChange={(event) => setRawText(event.target.value)}
+              placeholder={'23, John Cruz, G, JC\n12, Mike Santos, F\nDavid Perez'}
+              rows={8}
+            />
+          </Field>
+          <p className="field-help">One player per line. Commas are recommended: jersey number, full name, position, nickname. Name-only lines also work.</p>
+          {drafts.length > 0 && (
+            <div className="roster-table-wrap bulk-roster-preview" role="region" aria-label="Bulk roster preview" tabIndex={0}>
+              <table className="data-table roster-admin-table">
+                <thead><tr><th>Sort</th><th>Name</th><th>Jersey #</th><th>Position</th><th>Nickname</th></tr></thead>
+                <tbody>{drafts.map((draft) => <tr key={`${draft.sortOrder}-${draft.name}`}><td>{draft.sortOrder}</td><td><strong>{draft.name}</strong></td><td>{draft.jerseyNumber || '—'}</td><td>{draft.position || '—'}</td><td>{draft.nickname || '—'}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="btn primary" type="submit" disabled={saving || !drafts.length}>{saving ? 'Adding roster' : drafts.length ? `Add ${drafts.length} ${drafts.length === 1 ? 'player' : 'players'}` : 'Add roster players'}</button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -462,6 +581,43 @@ function RosterEntryModal({ team, entry, nextSortOrder, onClose, onSaved }: { te
       </div>
     </div>
   )
+}
+
+function parseBulkRoster(value: string, existingCount: number): BulkRosterDraft[] {
+  return value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => parseRosterLine(line, existingCount + index + 1))
+    .filter((entry): entry is BulkRosterDraft => Boolean(entry?.name))
+}
+
+function parseRosterLine(line: string, sortOrder: number): BulkRosterDraft | null {
+  const commaParts = line.split(',').map((part) => part.trim()).filter(Boolean)
+
+  if (commaParts.length > 1) {
+    const first = normalizeJerseyNumber(commaParts[0])
+    if (first) {
+      return { jerseyNumber: first, name: commaParts[1] || '', position: commaParts[2] || '', nickname: commaParts.slice(3).join(', '), sortOrder }
+    }
+
+    const jerseyNumber = normalizeJerseyNumber(commaParts[1])
+    if (jerseyNumber) {
+      return { name: commaParts[0] || '', jerseyNumber, position: commaParts[2] || '', nickname: commaParts.slice(3).join(', '), sortOrder }
+    }
+
+    return { name: commaParts[0] || '', jerseyNumber: '', position: commaParts[1] || '', nickname: commaParts.slice(2).join(', '), sortOrder }
+  }
+
+  const jerseyMatch = line.match(/^#?(\d{1,3})\s+(.+)$/)
+  if (jerseyMatch) return { jerseyNumber: jerseyMatch[1], name: jerseyMatch[2].trim(), position: '', nickname: '', sortOrder }
+
+  return { name: line, jerseyNumber: '', position: '', nickname: '', sortOrder }
+}
+
+function normalizeJerseyNumber(value: string) {
+  const match = value.trim().match(/^#?(\d{1,3})$/)
+  return match?.[1] || ''
 }
 
 function DivisionSelect({ value, divisions, currentName, onChange, required }: { value: string; divisions: Division[]; currentName?: string | null; onChange: (value: string) => void; required?: boolean }) {

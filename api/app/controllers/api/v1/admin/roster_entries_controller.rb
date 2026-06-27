@@ -14,6 +14,56 @@ module Api
           end
         end
 
+        def bulk
+          entries_payload = bulk_roster_entry_params
+          return render json: { errors: [ "rosterEntries must be an array" ] }, status: :bad_request unless entries_payload
+
+          created = []
+          errors = []
+
+          begin
+            RosterEntry.transaction do
+              entries_payload.each_with_index do |payload, index|
+                attrs = roster_entry_attrs(payload)
+                team_id = attrs.delete(:team_id)
+                team = team_id.present? ? admin_tournament.teams.find_by(id: team_id) : nil
+
+                if team.nil?
+                  errors << { index: index, errors: [ "Team not found" ] }
+                  next
+                end
+
+                roster_entry = team.roster_entries.build(attrs)
+                if roster_entry.valid?
+                  created << { index: index, roster_entry: roster_entry }
+                else
+                  errors << { index: index, errors: roster_entry.errors.full_messages }
+                end
+              end
+
+              raise ActiveRecord::Rollback if errors.any?
+
+              created.each do |entry|
+                roster_entry = entry[:roster_entry]
+                next if roster_entry.save
+
+                errors << { index: entry[:index], errors: roster_entry.errors.full_messages.presence || [ "Unable to save roster entry" ] }
+                raise ActiveRecord::Rollback
+              end
+            end
+          rescue ActiveRecord::ActiveRecordError => e
+            Rails.logger.warn("Bulk roster entry save failed: #{e.class}: #{e.message}")
+            errors << { index: nil, errors: [ "Unable to save roster entries" ] } if errors.empty?
+          end
+
+          if errors.any?
+            render json: { errors: errors }, status: :unprocessable_entity
+          else
+            roster_entries = created.map { |entry| entry[:roster_entry] }
+            render json: { created: roster_entries.length, rosterEntries: roster_entries.map(&:api_json) }, status: :created
+          end
+        end
+
         def update
           roster_entry = roster_entry_scope.find(params[:id])
 
@@ -37,8 +87,23 @@ module Api
 
         def roster_entry_params
           raw = params.fetch(:rosterEntry, params.fetch(:roster_entry, params))
-          permitted = raw.permit(:team_id, :teamId, :name, :jersey_number, :jerseyNumber, :position, :nickname, :sort_order, :sortOrder, :active)
+          roster_entry_attrs(permit_roster_entry(raw))
+        end
 
+        def bulk_roster_entry_params
+          raw_entries = params[:rosterEntries] || params[:roster_entries]
+          return unless raw_entries.is_a?(Array)
+
+          raw_entries.map { |entry| permit_roster_entry(entry) }
+        end
+
+        def permit_roster_entry(raw_entry)
+          raw_hash = raw_entry.respond_to?(:to_unsafe_h) ? raw_entry.to_unsafe_h : raw_entry
+          raw_hash = {} unless raw_hash.is_a?(Hash)
+          ActionController::Parameters.new(raw_hash).permit(:team_id, :teamId, :name, :jersey_number, :jerseyNumber, :position, :nickname, :sort_order, :sortOrder, :active)
+        end
+
+        def roster_entry_attrs(permitted)
           attrs = {}
           assign_param(attrs, permitted, :team_id, :team_id, :teamId)
           assign_param(attrs, permitted, :name, :name)

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
-import { formatGuamDateTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
+import { formatGuamDateTime, formatGuamTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { externalHref } from '../../lib/urls'
@@ -20,31 +20,38 @@ export function SchedulePage() {
   if (error) return <ErrorState message={error} onRetry={reload} />
 
   return (
-    <div className="page-stack">
+    <div className="page-stack schedule-page">
       <PageHeader
         eyebrow={data?.tournament ? `${data.tournament.year} tournament` : 'Schedule'}
         title="Tournament schedule"
         description="Game times are shown for Guam. Ticket and stream buttons route to partner platforms when links are available."
+        actions={<Link className="btn secondary" to="/info">Rules and ticket info <IconArrowRight /></Link>}
       />
 
-      <Panel className="watch-hero today-schedule-callout">
+      <Panel className="watch-hero today-schedule-callout compact-callout">
         <div>
           <h2>Today at The Jungle</h2>
-          <p>Mobile-first game-day info, roster notes, live links, and fan predictions.</p>
+          <p>Game-day notes, roster details, live links, and fan predictions.</p>
         </div>
         <Link className="btn primary" to="/today">Open Today <IconArrowRight /></Link>
       </Panel>
 
-      <Panel className="toolbar-panel">
+      <Panel className="toolbar-panel schedule-filter-panel">
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
       </Panel>
+
+      {grouped.length > 1 && (
+        <nav className="schedule-day-jump" aria-label="Schedule day shortcuts">
+          {grouped.map(([day, games]) => <a key={day} href={`#${dayAnchorId(day)}`}><strong>{shortDayLabel(day)}</strong><span>{games.length}</span></a>)}
+        </nav>
+      )}
 
       {grouped.length === 0 ? (
         <EmptyState title="No games match this view" description="Clear filters or check back once organizers load the next schedule." />
       ) : (
         grouped.map(([day, games]) => (
-          <section className="day-section" key={day}>
+          <section className="day-section" key={day} id={dayAnchorId(day)}>
             <h2>{day}</h2>
             <div className="game-card-grid">
               {games.map((game) => <GameCard key={game.id} game={game} />)}
@@ -63,7 +70,7 @@ function GameCard({ game }: { game: Game }) {
   return (
     <article className="game-card">
       <div className="game-card-top">
-        <span>{formatGuamDateTime(game.startTime)}</span>
+        <span className="game-time-mobile">{formatGuamTime(game.startTime)}</span><span className="game-time-full">{formatGuamDateTime(game.startTime)}</span>
         <StatusBadge status={resultPending ? 'result-pending' : game.status} />
       </div>
       <div className="matchup">
@@ -94,6 +101,14 @@ function groupGamesByDay(games: Game[]) {
     groups.set(key, [...(groups.get(key) || []), game])
   })
   return Array.from(groups.entries())
+}
+
+function dayAnchorId(day: string) {
+  return `schedule-${day.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+}
+
+function shortDayLabel(day: string) {
+  return day.replace(/^[^,]+,\s*/, '')
 }
 
 function labelPhase(phase: string) {
