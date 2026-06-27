@@ -177,9 +177,9 @@ function filterAndSortLinkGames(games: Game[], drafts: Record<string, LinkDraft>
     .filter((game) => {
       if (focusGameId && game.id !== focusGameId) return false
 
-      const draft = drafts[game.id] || { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' }
-      const hasTicket = Boolean(draft.ticketUrl || game.ticketUrl)
-      const hasStream = Boolean(draft.streamUrl || game.streamUrl)
+      const draft = linkDraftForGame(game, drafts)
+      const hasTicket = Boolean(draft.ticketUrl)
+      const hasStream = Boolean(draft.streamUrl)
       const matchesFilter = filter === 'all' ||
         (filter === 'missingTickets' && !hasTicket) ||
         (filter === 'missingStreams' && !hasStream) ||
@@ -203,7 +203,11 @@ function compareLinkGames(a: Game, b: Game, sort: LinkSort, drafts: Record<strin
 }
 
 function linkStatusValue(game: Game, drafts: Record<string, LinkDraft>, key: keyof LinkDraft) {
-  const draftValue = drafts[game.id]?.[key]
-  const persistedValue = key === 'ticketUrl' ? game.ticketUrl : game.streamUrl
-  return draftValue || persistedValue ? 1 : 0
+  return linkDraftForGame(game, drafts)[key] ? 1 : 0
+}
+
+function linkDraftForGame(game: Game, drafts: Record<string, LinkDraft>) {
+  return Object.prototype.hasOwnProperty.call(drafts, game.id)
+    ? drafts[game.id]
+    : { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' }
 }
