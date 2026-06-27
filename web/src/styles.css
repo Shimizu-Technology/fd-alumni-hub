@@ -54,7 +54,7 @@ h1, h2, h3, .brand strong, .btn, .stat-card strong { font-family: "Sora", "Sourc
 .site-footer .site-credit { color: rgba(255,255,255,.58); font-size: .9rem; }
 .site-credit a { color: var(--fd-gold-100); font-weight: 900; }
 .site-credit a:hover { color: #fff; }
-.footer-links { display: flex; gap: 1rem; align-items: center; font-weight: 800; color: var(--fd-gold-100); }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 1rem; align-items: center; font-weight: 800; color: var(--fd-gold-100); }
 
 .page-stack { display: grid; gap: 1.1rem; }
 .page-header { display: flex; gap: 1rem; justify-content: space-between; align-items: end; margin-bottom: .25rem; }
