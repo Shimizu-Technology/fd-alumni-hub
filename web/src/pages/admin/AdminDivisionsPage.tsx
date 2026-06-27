@@ -468,10 +468,8 @@ function BulkRosterModal({ team, existingCount, onClose, onSaved }: { team: Team
 
     setSaving(true)
     try {
-      for (const draft of drafts) {
-        await api.adminCreateRosterEntry({ teamId: team.id, ...draft, active: true }, team.tournamentId)
-      }
-      await onSaved(`Added ${drafts.length} roster ${drafts.length === 1 ? 'player' : 'players'}`)
+      const response = await api.adminBulkRosterEntries(drafts.map((draft) => ({ teamId: team.id, ...draft, active: true })), team.tournamentId)
+      await onSaved(`Added ${response.created} roster ${response.created === 1 ? 'player' : 'players'}`)
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to bulk add roster players'))
     } finally {
@@ -603,7 +601,12 @@ function parseRosterLine(line: string, sortOrder: number): BulkRosterDraft | nul
       return { jerseyNumber: first, name: commaParts[1] || '', position: commaParts[2] || '', nickname: commaParts.slice(3).join(', '), sortOrder }
     }
 
-    return { name: commaParts[0] || '', jerseyNumber: normalizeJerseyNumber(commaParts[1]) || commaParts[1] || '', position: commaParts[2] || '', nickname: commaParts.slice(3).join(', '), sortOrder }
+    const jerseyNumber = normalizeJerseyNumber(commaParts[1])
+    if (jerseyNumber) {
+      return { name: commaParts[0] || '', jerseyNumber, position: commaParts[2] || '', nickname: commaParts.slice(3).join(', '), sortOrder }
+    }
+
+    return { name: commaParts[0] || '', jerseyNumber: '', position: commaParts[1] || '', nickname: commaParts.slice(2).join(', '), sortOrder }
   }
 
   const jerseyMatch = line.match(/^#?(\d{1,3})\s+(.+)$/)

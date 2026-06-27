@@ -77,6 +77,7 @@ Local admin testing should use real Clerk sign-in with an allowlisted email. See
 - `PATCH /api/v1/admin/teams/:id`
 - `DELETE /api/v1/admin/teams/:id`
 - `POST /api/v1/admin/roster-entries`
+- `POST /api/v1/admin/roster-entries/bulk`
 - `PATCH /api/v1/admin/roster-entries/:id`
 - `DELETE /api/v1/admin/roster-entries/:id`
 - `GET /api/v1/admin/game-day-notes`

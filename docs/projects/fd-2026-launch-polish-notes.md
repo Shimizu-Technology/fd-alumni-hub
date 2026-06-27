@@ -11,7 +11,7 @@ Implemented direction:
 - Keep Add Team and Add Game available, but collapsed by default once records exist.
 - Use the schedule importer as the primary way to populate a season schedule.
 - Keep manual game/team creation for late organizer changes, playoff placeholders, make-up games, or emergency corrections.
-- Support bulk roster entry from pasted team lists so organizers are not forced to open the single-player modal repeatedly.
+- Support atomic bulk roster entry from pasted team lists so organizers are not forced to open the single-player modal repeatedly and failed batches do not partially write players.
 - Support applying one common GuamTime ticket link across the schedule, then manually overriding championship or special-session games later.
 
 ## Ticket link guidance

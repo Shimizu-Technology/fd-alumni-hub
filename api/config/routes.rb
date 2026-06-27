@@ -27,7 +27,9 @@ Rails.application.routes.draw do
         end
         resources :divisions, only: [ :index, :create, :update ]
         resources :teams, only: [ :index, :create, :update, :destroy ]
-        resources :roster_entries, path: "roster-entries", only: [ :create, :update, :destroy ]
+        resources :roster_entries, path: "roster-entries", only: [ :create, :update, :destroy ] do
+          post :bulk, on: :collection
+        end
         resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ]
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]

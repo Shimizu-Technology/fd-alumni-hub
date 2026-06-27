@@ -177,6 +177,7 @@ export const api = {
   adminUpdateTeam: (id: string, payload: Partial<Team>, tournamentId?: string | null) => request<{ team: Team }>(`/admin/teams/${id}${query({ tournamentId })}`, json('PATCH', { team: payload })),
   adminDeleteTeam: (id: string, tournamentId?: string | null) => request<void>(`/admin/teams/${id}${query({ tournamentId })}`, { method: 'DELETE' }),
   adminCreateRosterEntry: (payload: Partial<RosterEntry>, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries${query({ tournamentId })}`, json('POST', { rosterEntry: payload })),
+  adminBulkRosterEntries: (payload: Array<Partial<RosterEntry>>, tournamentId?: string | null) => request<{ created: number; rosterEntries: RosterEntry[] }>(`/admin/roster-entries/bulk${query({ tournamentId })}`, json('POST', { rosterEntries: payload })),
   adminUpdateRosterEntry: (id: string, payload: Partial<RosterEntry>, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries/${id}${query({ tournamentId })}`, json('PATCH', { rosterEntry: payload })),
   adminDeleteRosterEntry: (id: string, tournamentId?: string | null) => request<void>(`/admin/roster-entries/${id}${query({ tournamentId })}`, { method: 'DELETE' }),
 

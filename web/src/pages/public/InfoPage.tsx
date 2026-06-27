@@ -56,7 +56,7 @@ export function InfoPage() {
       <section className="info-section-grid">
         <InfoListCard icon={<IconShield />} title="Roster and eligibility" items={eligibilityHighlights} />
         <InfoListCard icon={<IconTrophy />} title="Game format" items={gameRuleHighlights} />
-        <InfoListCard icon={<IconShield />} title="Conduct and operations" items={conductHighlights} />
+        <InfoListCard icon={<IconCalendar />} title="Conduct and operations" items={conductHighlights} />
       </section>
 
       <Panel className="notice-panel rules-note-panel">
