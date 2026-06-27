@@ -56,7 +56,7 @@ bin/rails server -p 3001
 
 # terminal 2
 cp web/.env.example web/.env.local
-npm run web:dev
+npm run dev
 ```
 
 Rails public routes include home, today/game-day, tournaments, schedule, standings, articles, media assets, sponsors, and anonymous prediction voting.

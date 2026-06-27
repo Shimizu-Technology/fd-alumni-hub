@@ -16,13 +16,13 @@ cd api
 bin/rails server -p 3001
 
 # terminal 2
-npm run web:dev
+npm run dev
 ```
 
 ## Build
 
 ```bash
-npm run web:build
+npm run build
 ```
 
 ## Routes
