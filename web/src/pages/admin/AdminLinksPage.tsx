@@ -176,7 +176,7 @@ function filterAndSortLinkGames(games: Game[], drafts: Record<string, LinkDraft>
   const normalizedQuery = query.trim().toLowerCase()
   return games
     .filter((game) => {
-      if (focusGameId && game.id !== focusGameId) return false
+      if (focusGameId) return game.id === focusGameId
 
       const draft = linkDraftForGame(game, drafts)
       const hasTicket = Boolean(draft.ticketUrl)

@@ -21,27 +21,31 @@ export function AdminGameDayPage() {
     ])
     return { tournaments: tournaments.tournaments, allGames: games.games }
   }, [tournamentId])
-  const gameDayState = useAsync(() => api.adminGameDay({ tournamentId: tournamentId || null, date: date || null }), [tournamentId, date])
+  const gameDayOptions = useMemo(() => scheduledGameDayOptions(setup.data?.allGames || []), [setup.data?.allGames])
+  const gameDayQueryDate = date || gameDayOptions[0] || ''
+  const gameDayState = useAsync(async () => {
+    if (!tournamentId || !gameDayQueryDate) return emptyGameDayPayload(gameDayQueryDate)
+
+    return api.adminGameDay({ tournamentId, date: gameDayQueryDate })
+  }, [tournamentId, gameDayQueryDate])
 
   useEffect(() => {
     if (!tournamentId && setup.data?.tournaments[0]?.id) setTournamentId(setup.data.tournaments[0].id)
   }, [setup.data?.tournaments, tournamentId, setTournamentId])
 
-  const gameDayOptions = useMemo(() => scheduledGameDayOptions(setup.data?.allGames || []), [setup.data?.allGames])
+  useEffect(() => {
+    if (!date && gameDayOptions[0]) setDate(gameDayOptions[0])
+  }, [date, gameDayOptions])
 
   useEffect(() => {
-    if (!date) setDate(gameDayOptions[0] || gameDayState.data?.date || '')
-  }, [gameDayState.data?.date, date, gameDayOptions])
-
-  useEffect(() => {
-    if (!gameDayState.data) return undefined
+    if (!gameDayState.data || !gameDayQueryDate) return undefined
 
     const intervalId = window.setInterval(() => {
       void gameDayState.reload()
     }, gameDayRefreshIntervalMs)
 
     return () => window.clearInterval(intervalId)
-  }, [gameDayState.data, gameDayState.reload])
+  }, [gameDayQueryDate, gameDayState.data, gameDayState.reload])
 
   if ((setup.loading && !setup.data) || (gameDayState.loading && !gameDayState.data)) return <LoadingState label="Loading game-day controls" />
   if (setup.error && !setup.data) return <ErrorState message={setup.error} onRetry={setup.reload} />
@@ -50,7 +54,7 @@ export function AdminGameDayPage() {
   const tournaments = setup.data?.tournaments || []
   const tournament = selectedTournament(tournaments, tournamentId) || gameDayState.data?.tournament || null
   const gameDay = gameDayState.data
-  const selectedDate = date || gameDay?.date || ''
+  const selectedDate = date || gameDay?.date || gameDayQueryDate || ''
   const gameDayNote = gameDay?.date === selectedDate ? gameDay?.gameDayNote || null : null
 
   return (
@@ -76,6 +80,10 @@ export function AdminGameDayPage() {
       <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />
     </div>
   )
+}
+
+function emptyGameDayPayload(date: string) {
+  return { tournament: null as Tournament | null, date, gameDayNote: null as GameDayNote | null, games: [] as Game[], predictionPolls: [] as PredictionPoll[] }
 }
 
 function scheduledGameDayOptions(games: Game[]) {
