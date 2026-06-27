@@ -45,13 +45,9 @@ export function AdminLinksPage() {
   }, [query, filter, sort, focusGameId, tournamentId])
 
   const visibleGames = useMemo(() => filterAndSortLinkGames(data?.games || [], drafts, query, filter, sort, focusGameId), [data?.games, drafts, query, filter, sort, focusGameId])
-  const pagedGames = useMemo(() => visibleGames.slice((page - 1) * linksPageSize, page * linksPageSize), [visibleGames, page])
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(visibleGames.length / linksPageSize)))
+  const pagedGames = useMemo(() => visibleGames.slice((currentPage - 1) * linksPageSize, currentPage * linksPageSize), [visibleGames, currentPage])
   const focusedGame = focusGameId ? (data?.games || []).find((game) => game.id === focusGameId) : null
-
-  useEffect(() => {
-    const pageCount = Math.max(1, Math.ceil(visibleGames.length / linksPageSize))
-    if (page > pageCount) setPage(pageCount)
-  }, [page, visibleGames.length])
 
   const clearFocus = () => {
     const next = new URLSearchParams(searchParams)
@@ -122,7 +118,7 @@ export function AdminLinksPage() {
         {!data?.games.length ? <EmptyState title="No games found" description="Create games before attaching ticket and stream links." /> : null}
         {data?.games.length && !visibleGames.length ? <EmptyState title="No games match those filters" description="Clear search, focus, or link filters to see more games." /> : null}
         {pagedGames.length > 0 && <div className="admin-list link-admin-list">{pagedGames.map((game) => <LinkRow key={game.id} game={game} value={drafts[game.id] || { ticketUrl: '', streamUrl: '' }} onChange={(value) => setDrafts((prev) => ({ ...prev, [game.id]: value }))} />)}</div>}
-        <PaginationControls page={page} pageSize={linksPageSize} total={visibleGames.length} onPageChange={setPage} />
+        <PaginationControls page={currentPage} pageSize={linksPageSize} total={visibleGames.length} onPageChange={setPage} />
       </Panel>
     </div>
   )
