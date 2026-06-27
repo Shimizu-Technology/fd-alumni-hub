@@ -1,17 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
+import { gameMatchupLabel } from '../../lib/games'
 import { externalHref } from '../../lib/urls'
 import type { Game, Tournament } from '../../lib/types'
-import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, PaginationControls, Panel } from '../../components/ui'
+
+const linksPageSize = 12
+type LinkFilter = 'all' | 'missingTickets' | 'missingStreams' | 'missingEither' | 'complete'
+type LinkSort = 'startAsc' | 'startDesc' | 'matchup' | 'tickets' | 'streams'
+type LinkDraft = { ticketUrl: string; streamUrl: string }
 
 export function AdminLinksPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tournamentId, setTournamentId] = useTournamentSelection()
-  const [drafts, setDrafts] = useState<Record<string, { ticketUrl: string; streamUrl: string }>>({})
+  const [drafts, setDrafts] = useState<Record<string, LinkDraft>>({})
   const [commonTicketUrl, setCommonTicketUrl] = useState('')
   const [message, setMessage] = useState('')
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<LinkFilter>('all')
+  const [sort, setSort] = useState<LinkSort>('startAsc')
+  const [page, setPage] = useState(1)
+  const focusGameId = searchParams.get('gameId') || ''
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, links] = await Promise.all([api.adminTournaments(), api.adminLinks(tournamentId || null)])
     return { tournaments: tournaments.tournaments, games: links.games, tournament: links.tournament }
@@ -22,10 +35,24 @@ export function AdminLinksPage() {
   }, [data?.tournaments, tournamentId, setTournamentId])
 
   useEffect(() => {
-    const next: Record<string, { ticketUrl: string; streamUrl: string }> = {}
+    const next: Record<string, LinkDraft> = {}
     data?.games.forEach((game) => { next[game.id] = { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' } })
     setDrafts(next)
   }, [data?.games])
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, filter, sort, focusGameId, tournamentId])
+
+  const visibleGames = useMemo(() => filterAndSortLinkGames(data?.games || [], drafts, query, filter, sort, focusGameId), [data?.games, drafts, query, filter, sort, focusGameId])
+  const pagedGames = useMemo(() => visibleGames.slice((page - 1) * linksPageSize, page * linksPageSize), [visibleGames, page])
+  const focusedGame = focusGameId ? (data?.games || []).find((game) => game.id === focusGameId) : null
+
+  const clearFocus = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('gameId')
+    setSearchParams(next, { replace: true })
+  }
 
   const applyCommonTicketUrl = (mode: 'missing' | 'all') => {
     const normalizedUrl = externalHref(commonTicketUrl)
@@ -78,7 +105,19 @@ export function AdminLinksPage() {
       <TicketBulkPanel value={commonTicketUrl} gamesCount={data?.games.length || 0} onChange={setCommonTicketUrl} onApply={applyCommonTicketUrl} />
       {message && <Panel className="notice-panel">{message}</Panel>}
       <Panel>
-        {!data?.games.length ? <EmptyState title="No games found" description="Create games before attaching ticket and stream links." /> : <div className="admin-list">{data.games.map((game) => <LinkRow key={game.id} game={game} value={drafts[game.id] || { ticketUrl: '', streamUrl: '' }} onChange={(value) => setDrafts((prev) => ({ ...prev, [game.id]: value }))} />)}</div>}
+        <div className="section-heading">
+          <div>
+            <h2>Game links</h2>
+            <p className="muted">Search, filter, and page through the schedule without losing unsaved link edits.</p>
+          </div>
+          <span>{visibleGames.length} of {data?.games.length || 0}</span>
+        </div>
+        {focusedGame && <div className="focused-filter-note"><span>Focused from Missing Links: {gameMatchupLabel(focusedGame)}</span><button className="btn secondary small" type="button" onClick={clearFocus}>Show all games</button></div>}
+        <LinkToolbar query={query} filter={filter} sort={sort} onQueryChange={setQuery} onFilterChange={setFilter} onSortChange={setSort} />
+        {!data?.games.length ? <EmptyState title="No games found" description="Create games before attaching ticket and stream links." /> : null}
+        {data?.games.length && !visibleGames.length ? <EmptyState title="No games match those filters" description="Clear search, focus, or link filters to see more games." /> : null}
+        {pagedGames.length > 0 && <div className="admin-list link-admin-list">{pagedGames.map((game) => <LinkRow key={game.id} game={game} value={drafts[game.id] || { ticketUrl: '', streamUrl: '' }} onChange={(value) => setDrafts((prev) => ({ ...prev, [game.id]: value }))} />)}</div>}
+        <PaginationControls page={page} pageSize={linksPageSize} total={visibleGames.length} onPageChange={setPage} />
       </Panel>
     </div>
   )
@@ -110,6 +149,61 @@ function TicketBulkPanel({ value, gamesCount, onChange, onApply }: { value: stri
   )
 }
 
-function LinkRow({ game, value, onChange }: { game: Game; value: { ticketUrl: string; streamUrl: string }; onChange: (value: { ticketUrl: string; streamUrl: string }) => void }) {
-  return <article className="admin-row-card"><div className="admin-row-head"><div><strong>{game.awayTeam?.displayName} at {game.homeTeam?.displayName}</strong><span>{formatGuamDateTime(game.startTime)}</span></div></div><FormGrid><Field label="GuamTime ticket URL"><input value={value.ticketUrl} onChange={(event) => onChange({ ...value, ticketUrl: event.target.value })} /></Field><Field label="Clutch / stream URL"><input value={value.streamUrl} onChange={(event) => onChange({ ...value, streamUrl: event.target.value })} /></Field></FormGrid></article>
+function LinkToolbar({ query, filter, sort, onQueryChange, onFilterChange, onSortChange }: { query: string; filter: LinkFilter; sort: LinkSort; onQueryChange: (value: string) => void; onFilterChange: (value: LinkFilter) => void; onSortChange: (value: LinkSort) => void }) {
+  return (
+    <div className="link-toolbar toolbar-panel">
+      <label><span>Search games</span><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Team, date, bracket, link" /></label>
+      <label><span>Link status</span><select value={filter} onChange={(event) => onFilterChange(event.target.value as LinkFilter)}><option value="all">All games</option><option value="missingTickets">Missing tickets</option><option value="missingStreams">Missing streams</option><option value="missingEither">Missing either link</option><option value="complete">Ticket and stream posted</option></select></label>
+      <label><span>Sort</span><select value={sort} onChange={(event) => onSortChange(event.target.value as LinkSort)}><option value="startAsc">Start time · earliest</option><option value="startDesc">Start time · latest</option><option value="matchup">Matchup</option><option value="tickets">Ticket status</option><option value="streams">Stream status</option></select></label>
+    </div>
+  )
+}
+
+function LinkRow({ game, value, onChange }: { game: Game; value: LinkDraft; onChange: (value: LinkDraft) => void }) {
+  return (
+    <article className="admin-row-card link-admin-row">
+      <div className="admin-row-head"><div><strong>{gameMatchupLabel(game)}</strong><span>{formatGuamDateTime(game.startTime)}</span></div></div>
+      <FormGrid>
+        <Field label="GuamTime ticket URL"><input value={value.ticketUrl} onChange={(event) => onChange({ ...value, ticketUrl: event.target.value })} /></Field>
+        <Field label="Clutch / stream URL"><input value={value.streamUrl} onChange={(event) => onChange({ ...value, streamUrl: event.target.value })} /></Field>
+      </FormGrid>
+    </article>
+  )
+}
+
+function filterAndSortLinkGames(games: Game[], drafts: Record<string, LinkDraft>, query: string, filter: LinkFilter, sort: LinkSort, focusGameId: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  return games
+    .filter((game) => {
+      if (focusGameId && game.id !== focusGameId) return false
+
+      const draft = drafts[game.id] || { ticketUrl: game.ticketUrl || '', streamUrl: game.streamUrl || '' }
+      const hasTicket = Boolean(draft.ticketUrl || game.ticketUrl)
+      const hasStream = Boolean(draft.streamUrl || game.streamUrl)
+      const matchesFilter = filter === 'all' ||
+        (filter === 'missingTickets' && !hasTicket) ||
+        (filter === 'missingStreams' && !hasStream) ||
+        (filter === 'missingEither' && (!hasTicket || !hasStream)) ||
+        (filter === 'complete' && hasTicket && hasStream)
+      if (!matchesFilter) return false
+
+      const searchable = [ gameMatchupLabel(game), formatGuamDateTime(game.startTime), game.bracketCode || '', draft.ticketUrl, draft.streamUrl ].join(' ').toLowerCase()
+      return !normalizedQuery || searchable.includes(normalizedQuery)
+    })
+    .slice()
+    .sort((a, b) => compareLinkGames(a, b, sort, drafts))
+}
+
+function compareLinkGames(a: Game, b: Game, sort: LinkSort, drafts: Record<string, LinkDraft>) {
+  if (sort === 'startDesc') return new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+  if (sort === 'matchup') return gameMatchupLabel(a).localeCompare(gameMatchupLabel(b), undefined, { numeric: true })
+  if (sort === 'tickets') return linkStatusValue(a, drafts, 'ticketUrl') - linkStatusValue(b, drafts, 'ticketUrl') || new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  if (sort === 'streams') return linkStatusValue(a, drafts, 'streamUrl') - linkStatusValue(b, drafts, 'streamUrl') || new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+}
+
+function linkStatusValue(game: Game, drafts: Record<string, LinkDraft>, key: keyof LinkDraft) {
+  const draftValue = drafts[game.id]?.[key]
+  const persistedValue = key === 'ticketUrl' ? game.ticketUrl : game.streamUrl
+  return draftValue || persistedValue ? 1 : 0
 }

@@ -63,3 +63,21 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function FormGrid({ children }: { children: ReactNode }) {
   return <div className="form-grid">{children}</div>
 }
+
+export function PaginationControls({ page, pageSize, total, onPageChange }: { page: number; pageSize: number; total: number; onPageChange: (page: number) => void }) {
+  if (total <= pageSize) return null
+
+  const pageCount = Math.ceil(total / pageSize)
+  const start = (page - 1) * pageSize + 1
+  const end = Math.min(page * pageSize, total)
+
+  return (
+    <div className="pagination-controls" role="navigation" aria-label="Pagination">
+      <span>{start}–{end} of {total}</span>
+      <div className="row-actions">
+        <button className="btn secondary small" type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1}>Previous</button>
+        <button className="btn secondary small" type="button" onClick={() => onPageChange(Math.min(pageCount, page + 1))} disabled={page >= pageCount}>Next</button>
+      </div>
+    </div>
+  )
+}

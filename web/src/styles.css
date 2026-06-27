@@ -152,6 +152,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .form-error { margin: -.25rem 0 .2rem; color: var(--danger); font-weight: 800; }
 .form-note { margin: -.25rem 0 .2rem; color: var(--success); font-weight: 900; }
 .field-help { color: var(--muted); font-size: .76rem; font-weight: 700; line-height: 1.35; }
+.pagination-controls { display: flex; justify-content: space-between; gap: .85rem; align-items: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.pagination-controls > span { color: var(--muted); font-weight: 900; }
 .tipoff-field { min-width: min(100%, 16rem); }
 .time-shortcuts { display: flex; flex-wrap: wrap; gap: .4rem; }
 .time-chip { min-height: 2rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); padding: .38rem .58rem; font-size: .78rem; font-weight: 900; cursor: pointer; transition: background .16s ease, border-color .16s ease, transform .16s ease; }
@@ -378,6 +380,28 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .bulk-ticket-actions .row-actions { justify-content: flex-end; }
 .bulk-roster-modal { width: min(54rem, 100%); }
 .bulk-roster-preview { max-height: 18rem; }
+.link-toolbar, .missing-toolbar, .article-toolbar { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.link-toolbar label:first-child, .missing-toolbar label:first-child, .article-toolbar label:first-child { flex: 1 1 18rem; }
+.link-admin-list, .article-admin-list { margin-top: 1rem; }
+.focused-filter-note { display: flex; justify-content: space-between; gap: .75rem; align-items: center; margin-bottom: .8rem; padding: .75rem .85rem; border: 1px solid rgba(111,29,53,.18); border-radius: .95rem; background: var(--fd-maroon-50); color: var(--fd-maroon); font-weight: 900; }
+.missing-gap-list { margin-top: .5rem; }
+.missing-gap-row { grid-template-columns: minmax(0, .8fr) minmax(18rem, 1.2fr); align-items: center; }
+.missing-gap-main { display: grid; gap: .2rem; }
+.missing-gap-actions { display: grid; gap: .55rem; }
+.missing-gap-actions .field { min-width: 0; }
+.article-fields-layout { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1rem; align-items: start; }
+.article-fields-layout .form-grid { margin-bottom: 1rem; }
+.article-image-preview { overflow: hidden; display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); color: var(--muted); font-weight: 900; text-align: center; }
+.article-image-preview img { width: 100%; height: 100%; object-fit: cover; }
+.article-image-preview.compact { width: 8.5rem; min-height: 6.25rem; aspect-ratio: 4 / 3; flex: 0 0 auto; }
+.article-summary-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1rem; align-items: start; }
+.article-summary-main { min-width: 0; display: grid; gap: .35rem; }
+.article-summary-main span { color: var(--fd-maroon); font-size: .75rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.article-summary-main h3 { margin: 0; font-size: 1.15rem; letter-spacing: -.035em; }
+.article-summary-main p { margin: 0; color: var(--muted); line-height: 1.4; }
+.article-summary-main small { color: var(--muted); font-weight: 750; }
+.article-summary-main a { color: var(--fd-maroon); font-weight: 900; display: inline-flex; align-items: center; gap: .35rem; width: fit-content; }
+.article-summary-actions { justify-content: flex-end; }
 .game-day-toolbar-panel { align-items: end; }
 .game-day-date-jump { flex: 1 1 100%; display: flex; gap: .45rem; overflow-x: auto; padding-top: .2rem; }
 .game-day-date-jump button { flex: 0 0 auto; min-height: 2.25rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); padding: .45rem .7rem; font-weight: 900; cursor: pointer; }
@@ -509,6 +533,10 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .schedule-page .link-muted { display: grid; place-items: center; min-height: 2rem; border: 1px dashed var(--line); border-radius: 999px; font-size: .76rem; text-align: center; }
   .standings-panel .table-wrap { display: none; }
   .standings-mobile-list { display: grid; gap: .65rem; }
+  .focused-filter-note, .article-summary-card { grid-template-columns: 1fr; display: grid; }
+  .article-fields-layout, .missing-gap-row { grid-template-columns: 1fr; }
+  .article-image-preview.compact { width: 100%; }
+  .article-summary-actions { justify-content: flex-start; }
   .bulk-ticket-actions .row-actions { justify-content: flex-start; }
   .site-footer { display: grid; }
   .footer-links { flex-wrap: wrap; }
