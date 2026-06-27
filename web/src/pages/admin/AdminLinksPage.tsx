@@ -48,6 +48,11 @@ export function AdminLinksPage() {
   const pagedGames = useMemo(() => visibleGames.slice((page - 1) * linksPageSize, page * linksPageSize), [visibleGames, page])
   const focusedGame = focusGameId ? (data?.games || []).find((game) => game.id === focusGameId) : null
 
+  useEffect(() => {
+    const pageCount = Math.max(1, Math.ceil(visibleGames.length / linksPageSize))
+    if (page > pageCount) setPage(pageCount)
+  }, [page, visibleGames.length])
+
   const clearFocus = () => {
     const next = new URLSearchParams(searchParams)
     next.delete('gameId')
