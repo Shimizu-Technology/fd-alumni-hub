@@ -10,5 +10,8 @@
     "web:dev": "npm --workspace @fd/react-web run dev",
     "web:build": "npm --workspace @fd/react-web run build",
     "web:preview": "npm --workspace @fd/react-web run preview"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.61.1"
   }
 }

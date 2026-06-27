@@ -2,5 +2,5 @@
 # The legacy Next.js app has been archived under archive/legacy-next-app.
 [build]
   base = "."
-  command = "npm run build"
+  command = "npm ci --include=optional && npm run build"
   publish = "web/dist"

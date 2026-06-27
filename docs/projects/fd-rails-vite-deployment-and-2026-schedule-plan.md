@@ -81,7 +81,7 @@ Recommended Netlify build settings are committed in `netlify.toml`:
 
 ```bash
 Base directory: .
-Build command: npm run build
+Build command: npm ci --include=optional && npm run build
 Publish directory: web/dist
 ```
 
