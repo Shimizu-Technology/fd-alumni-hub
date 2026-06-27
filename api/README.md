@@ -2,7 +2,7 @@
 
 Rails API for the phased Rails + React migration.
 
-The current Next.js app in `apps/web` remains the production/fallback app until the side-by-side React/Vite app in `/web` is validated and intentionally cut over.
+The active frontend is the React/Vite app in `/web`. The original Next.js/Prisma app has been archived under `archive/legacy-next-app` for historical/migration reference only.
 
 ## Local setup
 
@@ -116,7 +116,7 @@ Local admin testing should use real Clerk sign-in with an allowlisted email. See
 
 ## Data migration + safety
 
-Do not point this Rails API at the existing Next/Prisma production database. Rails should use a Rails-owned local DB or Neon branch/new DB.
+Do not point this Rails API at the archived Next/Prisma production database. Rails should use a Rails-owned local DB or Neon branch/new DB.
 
 Use the operator-run migration path in `docs/RAILS-DATA-MIGRATION-RUNBOOK.md`:
 

@@ -29,37 +29,32 @@ Use partner-friendly language such as **central hub** unless FDMSAA/organizers a
 
 ```txt
 fd-alumni-hub/
-  apps/web/  Current Next.js app, retained as 2026 fallback during migration
-  api/       New Rails API backend
-  web/       Future React/Vite frontend
+  api/                       Rails API backend
+  web/                       React/Vite frontend
+  archive/legacy-next-app/   Archived original Next.js/Prisma app
 ```
 
-Deployment target after cutover:
+Deployment target:
 
 ```txt
 web  -> Netlify
-api  -> Render or Rails deploy target
+api  -> Render
 db   -> Neon PostgreSQL
 ```
 
 ## Migration rule
 
-This is a phased migration, not a big-bang rewrite.
-
-> Keep the current Next.js app live until the Rails + React version reaches public and admin parity.
-
-The current production app remains the fallback for 2026 until we intentionally cut over.
+This started as a phased migration, not a big-bang rewrite. As of the Rails/Vite staging deployment work, the original Next.js app has been archived and removed from the active workspace/CI/deploy path.
 
 ## Phases
 
-### Phase 0: Preserve the working Next app
+### Phase 0: Preserve then archive the working Next app
 
-Status: **complete; merged in PR #31**
+Status: **complete**
 
-- Keep `apps/web` and Netlify production behavior unchanged.
-- Document the migration plan and go/no-go criteria.
-- Add the Rails API in parallel, without changing the current public deployment.
-- Do not run production migrations/imports automatically.
+- Preserved the Next.js app during Rails/Vite build-out.
+- Archived it under `archive/legacy-next-app` once the Rails/Vite app became the active deployment path.
+- Removed it from the active npm workspace, CI gate, and Netlify config.
 
 ### Phase 1: Rails API foundation
 
@@ -87,7 +82,7 @@ Scope:
 
 ### Phase 2: React/Vite public frontend
 
-Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; not cut over**
+Status: **active frontend**
 
 - Created `/web` React/Vite app.
 - Ported public pages from the current Next app:
@@ -104,7 +99,7 @@ Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; not 
 
 ### Phase 3: Admin workflows
 
-Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; needs staging validation**
+Status: **active frontend/admin path; staging validation in progress**
 
 - Admin dashboard.
 - Teams/divisions editor.
@@ -116,9 +111,9 @@ Status: **implemented side-by-side on `rails-migration/phase-2-web-parity`; need
 
 ### Phase 4: Data migration and staging validation
 
-Status: **in progress on `rails-migration/phase-3-data-migration`**
+Status: **in progress**
 
-- Export current Next/Prisma data with `npm --workspace @fd/web run export:rails-migration`.
+- Export archived Next/Prisma data when needed using the legacy scripts retained under `archive/legacy-next-app`.
 - Import into Rails with `bin/rails fd:migration:import_next_snapshot[...]`.
 - Validate counts and critical records with `bin/rails fd:migration:validate_next_snapshot[...]`:
   - tournaments
@@ -138,13 +133,12 @@ See `docs/RAILS-DATA-MIGRATION-RUNBOOK.md` for commands and safety notes.
 
 ### Phase 5: Cutover
 
-Planned only after parity:
+Status: **deployment in progress**
 
-- Final data export/import.
-- Point production frontend to React/Vite build.
-- Point frontend env to Rails API.
-- Smoke test public pages and admin updates.
-- Keep old Next app available as rollback/fallback until after the tournament.
+- Rails API deploys to Render.
+- React/Vite deploys to Netlify from `web/`.
+- Frontend env points to the Rails API.
+- Smoke test public pages and admin updates before wide sharing.
 
 ## Verification gate
 
@@ -156,8 +150,6 @@ Use one command before opening or updating migration PRs:
 
 Current gate coverage:
 
-- Next app ESLint
-- Next app production build
 - React/Vite app TypeScript build
 - Rails API RuboCop
 - Rails API tests
@@ -173,13 +165,12 @@ Cut over only if all are true:
 - Mobile UX is production-ready.
 - Guam timezone behavior is correct.
 - Staging has been reviewed by organizers.
-- Current Next app remains available as fallback.
 
-If those are not true, use the current Next app for 2026 and continue Rails/React for 2027.
+If those are not true, pause wider sharing until Rails/Vite staging issues are fixed.
 
 ## Data safety
 
-- The current Next app and production Neon data are not changed by Phase 0/1.
+- The archived Next/Prisma code and old database should remain read-only migration references.
 - Rails migrations apply only to the new Rails database target.
 - Data imports must remain explicit operator-run tasks.
 - Do not automatically run archive imports or score imports during deploy.

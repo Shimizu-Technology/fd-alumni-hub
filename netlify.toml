@@ -1,7 +1,6 @@
+# React/Vite frontend deployment for the Rails-backed FD Alumni Basketball Hub.
+# The legacy Next.js app has been archived under archive/legacy-next-app.
 [build]
   base = "."
-  command = "npm ci --include=optional && npm --workspace @fd/web install --no-save lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu && npm --workspace @fd/web exec prisma generate && npm --workspace @fd/web run build"
-  publish = "apps/web/.next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  command = "npm run build"
+  publish = "web/dist"

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# CORS is intentionally configured for the future React/Vite frontend while
-# keeping the current Next.js app untouched as the production fallback.
+# CORS is intentionally configured for the React/Vite frontend. Production has
+# no fallback origins, so deployed frontend origins must be listed explicitly.
 default_local_origins = %w[
   http://localhost:3000
   http://127.0.0.1:3000

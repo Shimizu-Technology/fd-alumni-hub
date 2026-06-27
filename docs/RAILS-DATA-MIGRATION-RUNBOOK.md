@@ -1,6 +1,6 @@
 # Rails Data Migration Runbook
 
-This runbook covers the operator-run migration from the current Next/Prisma database to the Rails-owned database.
+This runbook covers the operator-run migration from the archived Next/Prisma database to the Rails-owned database.
 
 ## Safety model
 
@@ -10,12 +10,15 @@ This runbook covers the operator-run migration from the current Next/Prisma data
 - Keep `db/seeds.rb` for demo/local seed data only; real tournament data comes from this import path.
 - Snapshot files live under `tmp/fd-migration/` and are ignored by git.
 
-## 1. Export from Next/Prisma
+## 1. Export from archived Next/Prisma
 
-Use either `SOURCE_DATABASE_URL` or the existing `DATABASE_URL` loaded by `scripts/with-env.mjs`.
+The legacy Next.js app is archived under `archive/legacy-next-app` and is no longer part of the root npm workspace. If an old Prisma snapshot is needed, install and run the export script from the archive directory with `SOURCE_DATABASE_URL` or `DATABASE_URL` pointed at the read-only legacy database.
 
 ```bash
-node scripts/with-env.mjs npm --workspace @fd/web run export:rails-migration -- --out tmp/fd-migration/next-prisma-export.json
+cd archive/legacy-next-app
+npm install
+SOURCE_DATABASE_URL=<legacy-read-only-database-url> \
+  npm run export:rails-migration -- --out ../../tmp/fd-migration/next-prisma-export.json
 ```
 
 The export includes:

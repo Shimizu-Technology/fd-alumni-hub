@@ -5,7 +5,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const appRoot = resolve(repoRoot, 'apps/web')
+// Legacy helper retained for archived Next/Prisma migration scripts.
+const appRoot = resolve(repoRoot, 'archive/legacy-next-app')
 const mode = process.env.NODE_ENV || 'development'
 
 function parseDotenv(content) {
