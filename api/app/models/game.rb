@@ -37,7 +37,8 @@ class Game < ApplicationRecord
   end
 
   def fatherson_phase?
-    bracket_code == "FS" || home_team&.display_name.to_s.match?(/\bFS\b/i) || away_team&.display_name.to_s.match?(/\bFS\b/i)
+    notes.to_s.include?("phase=fatherson") || bracket_code.to_s.start_with?("FS") ||
+      home_team&.display_name.to_s.match?(/\bFS\b/i) || away_team&.display_name.to_s.match?(/\bFS\b/i)
   end
 
   def summary_json
