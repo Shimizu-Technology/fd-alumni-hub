@@ -133,4 +133,4 @@ Structured schedule data lives in `../data/schedules/fd-2026-pool-play-2026-06-2
 bin/rails fd:schedule:import_2026
 ```
 
-The import is idempotent and also runs from `db:seed` unless `FD_SEED_2026_SCHEDULE=0` is set. Normal seed runs create missing games and preserve existing game edits. To intentionally apply a revised source schedule over existing games, run `FD_SCHEDULE_IMPORT_OVERWRITE=1 bin/rails fd:schedule:import_2026`. It imports confirmed pool/father-son schedule rows and intentionally skips rows without a confirmed time/team matchup.
+The import is idempotent and also runs from `db:seed` unless `FD_SEED_2026_SCHEDULE=0` is set. Normal seed runs create missing games and preserve existing tournament, team, and game edits. To intentionally apply a revised source schedule over existing records, run `FD_SCHEDULE_IMPORT_OVERWRITE=1 bin/rails fd:schedule:import_2026`. It imports confirmed pool/father-son schedule rows and intentionally skips rows without a confirmed time/team matchup.

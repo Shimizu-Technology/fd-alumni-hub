@@ -163,7 +163,7 @@ The importer is safe to run repeatedly:
 - Creates/updates the 2026 tournament.
 - Creates/updates schedule teams using stable `legacy_id`s.
 - Creates missing games using stable `legacy_id`s.
-- Preserves existing game status, scores, teams, and tipoff times on normal seed runs so later deploys do not accidentally revert organizer/admin edits.
+- Preserves existing tournament dates, team display labels, game status, scores, teams, and tipoff times on normal seed runs so later deploys do not accidentally revert organizer/admin edits.
 - Recomputes standings after import.
 
 If the source schedule JSON is intentionally revised and should overwrite existing game matchups/times, run:

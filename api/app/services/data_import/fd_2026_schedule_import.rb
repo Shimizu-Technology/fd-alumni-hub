@@ -49,8 +49,10 @@ module DataImport
       tournament = Tournament.find_by(year: attrs.fetch("year")) || Tournament.new(year: attrs.fetch("year"))
       tournament.name = attrs.fetch("name") if tournament.name.blank?
       tournament.legacy_id ||= "fd-#{attrs.fetch("year")}-tournament"
-      tournament.start_date = Date.iso8601(attrs.fetch("startDate"))
-      tournament.end_date = Date.iso8601(attrs.fetch("endDate"))
+      source_start_date = Date.iso8601(attrs.fetch("startDate"))
+      source_end_date = Date.iso8601(attrs.fetch("endDate"))
+      tournament.start_date = source_start_date if tournament.new_record? || overwrite? || tournament.start_date.blank?
+      tournament.end_date = source_end_date if tournament.new_record? || overwrite? || tournament.end_date.blank?
       tournament.status = attrs.fetch("status") if tournament.new_record?
       tournament.save!
       tournament
@@ -66,8 +68,8 @@ module DataImport
       legacy_id = team_legacy_id(label)
       team = Team.find_by(legacy_id: legacy_id) || tournament.teams.find_by(display_name: label) || tournament.teams.build
       team.legacy_id ||= legacy_id
-      team.class_year_label = label
-      team.display_name = label
+      team.class_year_label = label if team.new_record? || overwrite? || team.class_year_label.blank?
+      team.display_name = label if team.new_record? || overwrite? || team.display_name.blank?
       team.save!
       team
     end
