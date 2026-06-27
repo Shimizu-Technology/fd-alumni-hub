@@ -184,6 +184,16 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .data-table th { text-align: left; color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .09em; }
 .data-table th, .data-table td { padding: .85rem; border-bottom: 1px solid var(--line); }
 .data-table td small { display: block; color: var(--muted); margin-top: .15rem; }
+.standings-mobile-list { display: none; }
+.standing-mobile-card { display: grid; gap: .75rem; padding: .85rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; }
+.standing-mobile-card > div { display: grid; gap: .1rem; }
+.standing-mobile-card span { color: var(--fd-maroon); font-size: .78rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.standing-mobile-card strong { font-size: 1.15rem; letter-spacing: -.035em; }
+.standing-mobile-card small { color: var(--muted); font-weight: 750; }
+.standing-mobile-card dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: 0; }
+.standing-mobile-card dl div { padding: .6rem; border-radius: .8rem; background: var(--surface-strong); }
+.standing-mobile-card dt { color: var(--muted); font-size: .7rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.standing-mobile-card dd { margin: .15rem 0 0; color: var(--ink); font-weight: 950; }
 
 .article-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .article-card { overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 1.35rem; box-shadow: 0 14px 36px rgba(66,16,31,.07); }
@@ -245,6 +255,22 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .watch-hero h2 { margin: 0; }
 .watch-hero p { margin: .25rem 0 0; color: var(--muted); }
 .today-schedule-callout { grid-template-columns: minmax(0, 1fr) auto; }
+.compact-callout { padding-block: .95rem; }
+.schedule-filter-panel { align-items: end; }
+.schedule-day-jump { display: flex; gap: .5rem; overflow-x: auto; padding: .15rem .05rem .45rem; scroll-padding-inline: .5rem; }
+.schedule-day-jump a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .45rem; min-height: 2.45rem; padding: .55rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; box-shadow: 0 10px 24px rgba(66,16,31,.05); }
+.schedule-day-jump span { display: grid; place-items: center; min-width: 1.45rem; height: 1.45rem; border-radius: 999px; background: var(--fd-maroon-50); font-size: .74rem; }
+.game-time-mobile { display: none; }
+.info-hero-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(18rem, .85fr); gap: .9rem; }
+.info-section-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; }
+.info-feature-card, .info-list-card { display: grid; align-content: start; gap: .75rem; }
+.info-feature-card h2, .info-list-card h2 { margin: 0; letter-spacing: -.045em; }
+.info-feature-card p { margin: 0; color: var(--muted); line-height: 1.55; }
+.ticket-info-card { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.info-card-icon { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: .9rem; background: var(--fd-maroon-50); color: var(--fd-maroon); }
+.info-list-card ul { display: grid; gap: .55rem; margin: 0; padding-left: 1.1rem; color: var(--muted); line-height: 1.45; }
+.info-list-card li::marker { color: var(--fd-maroon); }
+.rules-note-panel { line-height: 1.45; }
 .today-brief-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
 .today-brief-card { display: grid; gap: .35rem; }
 .today-brief-card--wide { grid-column: 1 / -1; }
@@ -343,6 +369,16 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .team-card-list, .game-admin-list { margin-top: 1rem; }
 .team-toolbar, .game-toolbar { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
 .team-toolbar label:first-child, .game-toolbar label:first-child { flex: 1 1 18rem; }
+.admin-create-panel .collapsible-heading { margin-bottom: 0; }
+.bulk-link-panel { background: linear-gradient(135deg, #fff, #fff8ea); }
+.bulk-ticket-actions { display: grid; grid-template-columns: minmax(16rem, 1fr) auto; gap: .8rem; align-items: end; }
+.bulk-ticket-actions .row-actions { justify-content: flex-end; }
+.bulk-roster-modal { width: min(54rem, 100%); }
+.bulk-roster-preview { max-height: 18rem; }
+.game-day-toolbar-panel { align-items: end; }
+.game-day-date-jump { flex: 1 1 100%; display: flex; gap: .45rem; overflow-x: auto; padding-top: .2rem; }
+.game-day-date-jump button { flex: 0 0 auto; min-height: 2.25rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); padding: .45rem .7rem; font-weight: 900; cursor: pointer; }
+.game-day-date-jump button.selected { background: var(--fd-maroon); color: #fff; border-color: var(--fd-maroon); }
 .compact-admin-list { margin-top: 1rem; }
 .admin-row-card { padding: 1rem; border: 1px solid var(--line); border-radius: 1.15rem; background: #fff; display: grid; gap: .85rem; }
 .team-summary-card { position: relative; overflow: hidden; border-color: rgba(111,29,53,.16); box-shadow: 0 16px 38px rgba(66,16,31,.07); }
@@ -412,7 +448,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-mobile-close { position: absolute; top: .9rem; right: .85rem; z-index: 2; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 1px solid rgba(255,255,255,.14); border-radius: .85rem; color: rgba(255,255,255,.8); background: rgba(255,255,255,.08); }
   .admin-content, .admin-content.sidebar-collapsed { margin-left: 0; padding: 1rem clamp(.85rem, 3vw, 1.25rem) 2.5rem; }
   .admin-topbar { display: none; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid, .info-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .info-hero-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-detail-summary, .team-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .compact-admin-row { grid-template-columns: 1fr; }
@@ -440,11 +477,36 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .section-heading { align-items: flex-start; flex-wrap: wrap; }
   .section-actions { width: 100%; justify-content: flex-start; }
   .panel, .state-card, .stat-card { border-radius: 1.1rem; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row { grid-template-columns: 1fr; }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row, .info-section-grid, .bulk-ticket-actions { grid-template-columns: 1fr; }
   .archive-hero img { justify-self: start; }
   .timeline-link-row { grid-template-columns: 1fr auto; }
   .timeline-link-row .timeline-year { grid-column: 1 / -1; }
   .archive-game-row { align-items: flex-start; flex-direction: column; }
+  .schedule-page .page-header { gap: .65rem; padding: .95rem; }
+  .schedule-page .page-header h1 { font-size: clamp(2rem, 9vw, 2.45rem); line-height: 1; }
+  .schedule-page .page-header p { margin: .45rem 0 0; font-size: .95rem; line-height: 1.42; }
+  .schedule-page .page-actions .btn { width: 100%; }
+  .schedule-page .compact-callout { grid-template-columns: 1fr; padding: .85rem; gap: .75rem; }
+  .schedule-page .compact-callout h2 { font-size: 1.2rem; }
+  .schedule-page .compact-callout p { font-size: .94rem; line-height: 1.4; }
+  .schedule-filter-panel { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; padding: .85rem; }
+  .schedule-filter-panel label { min-width: 0; }
+  .schedule-day-jump { position: sticky; top: 4.1rem; z-index: 12; margin-inline: -.75rem; padding: .45rem .75rem; background: rgba(246,239,232,.94); backdrop-filter: blur(12px); border-block: 1px solid rgba(232,220,213,.72); }
+  .schedule-day-jump a { min-height: 2.25rem; padding: .45rem .65rem; font-size: .9rem; }
+  .day-section { scroll-margin-top: 7.5rem; }
+  .day-section h2 { margin: .65rem 0 .6rem; font-size: 1.55rem; }
+  .schedule-page .game-card { gap: .65rem; padding: .82rem; border-radius: 1rem; }
+  .schedule-page .game-card-top { align-items: center; }
+  .game-time-mobile { display: inline; }
+  .game-time-full { display: none; }
+  .schedule-page .team-line { padding: .55rem .6rem; }
+  .schedule-page .game-meta { gap: .35rem; font-size: .78rem; }
+  .schedule-page .game-actions { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .schedule-page .game-actions .btn { width: 100%; }
+  .schedule-page .link-muted { display: grid; place-items: center; min-height: 2rem; border: 1px dashed var(--line); border-radius: 999px; font-size: .76rem; text-align: center; }
+  .standings-panel .table-wrap { display: none; }
+  .standings-mobile-list { display: grid; gap: .65rem; }
+  .bulk-ticket-actions .row-actions { justify-content: flex-start; }
   .site-footer { display: grid; }
   .footer-links { flex-wrap: wrap; }
   .timeline-row { grid-template-columns: 1fr; }

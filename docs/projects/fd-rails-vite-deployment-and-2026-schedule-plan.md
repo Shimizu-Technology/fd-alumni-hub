@@ -204,6 +204,8 @@ Build this only if roster delegation becomes necessary for launch. It should be 
 
 ## 6. Recommended next steps
 
+Future schedule automation note: OCR/upload should build on the structured importer by producing a human-reviewed schedule preview and JSON snapshot before writing games. Do not let OCR silently mutate production schedules.
+
 1. Merge the 2026 schedule import PR.
 2. Create Rails staging Neon DB.
 3. Deploy Rails API staging to Render.

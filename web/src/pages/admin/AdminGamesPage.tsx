@@ -46,7 +46,7 @@ export function AdminGamesPage() {
     <div className="page-stack admin-page">
       <PageHeader eyebrow="Admin" title="Games and scores" description="Build the schedule, enter final scores, and attach GuamTime ticket links or Clutch stream links for each game. Final scores automatically refresh standings." />
       <TournamentFilter tournaments={tournaments} value={currentTournament?.id || ''} onChange={setTournamentId} />
-      <CreateGamePanel tournament={currentTournament} teams={data?.teams || []} divisions={divisions} onSaved={reload} />
+      <CreateGamePanel tournament={currentTournament} teams={data?.teams || []} gamesCount={games.length} divisions={divisions} onSaved={reload} />
       <Panel>
         <div className="section-heading"><h2>Game list</h2><span>{visibleGames.length} of {games.length} games</span></div>
         <GameToolbar query={gameQuery} status={statusFilter} division={divisionFilter} sort={gameSort} divisions={divisionOptions} onQueryChange={setGameQuery} onStatusChange={setStatusFilter} onDivisionChange={setDivisionFilter} onSortChange={setGameSort} />
@@ -81,11 +81,16 @@ function GameToolbar({ query, status, division, sort, divisions, onQueryChange, 
   )
 }
 
-function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament: Tournament | null; teams: Team[]; divisions: Division[]; onSaved: () => Promise<void> }) {
+function CreateGamePanel({ tournament, teams, gamesCount, divisions, onSaved }: { tournament: Tournament | null; teams: Team[]; gamesCount: number; divisions: Division[]; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState({ homeTeamId: '', awayTeamId: '', startDate: guamTodayInputValue(), startTime: '18:30', divisionId: '', bracketCode: '', ticketUrl: '', streamUrl: '', status: 'scheduled' as Game['status'] })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [open, setOpen] = useState(gamesCount === 0)
   const availableTeams = useMemo(() => teams.filter((team) => !tournament || team.tournamentId === tournament.id), [teams, tournament])
+
+  useEffect(() => {
+    if (gamesCount === 0) setOpen(true)
+  }, [gamesCount])
 
   useEffect(() => {
     setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', divisionId: '' }))
@@ -126,24 +131,37 @@ function CreateGamePanel({ tournament, teams, divisions, onSaved }: { tournament
   }
 
   return (
-    <Panel>
-      <div className="section-heading"><h2>Add game</h2>{message && <span>{message}</span>}</div>
-      {!tournament ? <EmptyState title="Choose a tournament first" /> : (
-        <form onSubmit={submit}>
-          <p className="form-note">Tournament: {tournament.year}. Venue defaults to {DEFAULT_GAME_VENUE}.</p>
-          <FormGrid>
-            <Field label="Away team"><select value={form.awayTeamId} onChange={(event) => setForm({ ...form, awayTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
-            <Field label="Home team"><select value={form.homeTeamId} onChange={(event) => setForm({ ...form, homeTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
-            <Field label="Game date (Guam)"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></Field>
-            <TipoffTimeField value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} />
-            <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
-            <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
-            <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
-            <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="Clutch or partner stream" /></Field>
-          </FormGrid>
-          <button className="btn primary" type="submit" disabled={saving || availableTeams.length < 2}>{saving ? 'Saving' : 'Create game'}</button>
-        </form>
-      )}
+    <Panel className="collapsible-panel admin-create-panel">
+      <div className="section-heading collapsible-heading">
+        <div>
+          <h2>Add game</h2>
+          <p>Rarely needed after the schedule import. Open this only for make-up games, playoff placeholders, or organizer revisions.</p>
+        </div>
+        <div className="section-actions">
+          {message && <span>{message}</span>}
+          <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+            {open ? 'Hide add game' : 'Add game'}
+          </button>
+        </div>
+      </div>
+      {open && (!tournament ? <EmptyState title="Choose a tournament first" /> : (
+        <div className="collapsible-body">
+          <form onSubmit={submit}>
+            <p className="form-note">Tournament: {tournament.year}. Venue defaults to {DEFAULT_GAME_VENUE}.</p>
+            <FormGrid>
+              <Field label="Away team"><select value={form.awayTeamId} onChange={(event) => setForm({ ...form, awayTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
+              <Field label="Home team"><select value={form.homeTeamId} onChange={(event) => setForm({ ...form, homeTeamId: event.target.value })} required><option value="">Select team</option>{availableTeams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></Field>
+              <Field label="Game date (Guam)"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></Field>
+              <TipoffTimeField value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} />
+              <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
+              <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
+              <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
+              <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="Clutch or partner stream" /></Field>
+            </FormGrid>
+            <button className="btn primary" type="submit" disabled={saving || availableTeams.length < 2}>{saving ? 'Saving' : 'Create game'}</button>
+          </form>
+        </div>
+      ))}
     </Panel>
   )
 }

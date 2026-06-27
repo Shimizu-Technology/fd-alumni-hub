@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { selectedTournament, tournamentScopedPath, useTournamentSelection } from '../../lib/admin'
-import { formatGuamDateTime, toDateInputValue } from '../../lib/datetime'
+import { formatGuamDate, formatGuamDateTime, toDateInputValue, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -15,20 +15,23 @@ export function AdminGameDayPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [date, setDate] = useState('')
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, gameDay] = await Promise.all([
+    const [tournaments, gameDay, games] = await Promise.all([
       api.adminTournaments(),
       api.adminGameDay({ tournamentId: tournamentId || null, date: date || null }),
+      api.adminGames(tournamentId || null),
     ])
-    return { tournaments: tournaments.tournaments, gameDay }
+    return { tournaments: tournaments.tournaments, gameDay, allGames: games.games }
   }, [tournamentId, date])
 
   useEffect(() => {
     if (!tournamentId && data?.tournaments[0]?.id) setTournamentId(data.tournaments[0].id)
   }, [data?.tournaments, tournamentId, setTournamentId])
 
+  const gameDayOptions = useMemo(() => scheduledGameDayOptions(data?.allGames || []), [data?.allGames])
+
   useEffect(() => {
-    if (!date && data?.gameDay.date) setDate(data.gameDay.date)
-  }, [data?.gameDay.date, date])
+    if (!date) setDate(gameDayOptions[0] || data?.gameDay.date || '')
+  }, [data?.gameDay.date, date, gameDayOptions])
 
   useEffect(() => {
     if (!data) return undefined
@@ -58,15 +61,24 @@ export function AdminGameDayPage() {
         actions={<Link className="btn secondary" to="/today">View Today page</Link>}
       />
 
-      <Panel className="toolbar-panel">
+      <Panel className="toolbar-panel game-day-toolbar-panel">
         <label><span>Tournament</span><select value={tournament?.id || ''} onChange={(event) => setTournamentId(event.target.value)}>{tournaments.map((item) => <option key={item.id} value={item.id}>{item.year} · {item.name}</option>)}</select></label>
         <label><span>Game day</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+        {gameDayOptions.length > 0 && (
+          <div className="game-day-date-jump" aria-label="Scheduled game-day shortcuts">
+            {gameDayOptions.map((option) => <button key={option} type="button" className={option === selectedDate ? 'selected' : ''} onClick={() => setDate(option)}>{formatGuamDate(option, { weekday: 'short', year: undefined })}</button>)}
+          </div>
+        )}
       </Panel>
 
       <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={reload} />
       <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={reload} />
     </div>
   )
+}
+
+function scheduledGameDayOptions(games: Game[]) {
+  return Array.from(new Set(games.map((game) => toLocalDateTimeInputValue(game.startTime).slice(0, 10)).filter(Boolean))).sort()
 }
 
 function GameDayNoteForm({ tournament, date, note, onSaved }: { tournament: Tournament | null; date: string; note: GameDayNote | null; onSaved: () => Promise<void> }) {
@@ -157,7 +169,7 @@ function PredictionAdminPanel({ tournament, games, polls, onSaved }: { tournamen
             {tournamentPoll ? <PredictionPollControls poll={tournamentPoll} onUpdate={updatePoll} /> : <button className="btn secondary" onClick={() => createPoll({ tournamentId: tournament.id, pollType: 'tournament', question: 'Who wins the tournament?' })}>Open tournament poll</button>}
           </article>
 
-          {!games.length ? <EmptyState title="No games on selected date" description="Game prediction controls appear once games exist for this date." /> : games.map((game) => {
+          {!games.length ? <EmptyState title="No games on selected date" description="Use a game-day shortcut above or choose a date with scheduled games." /> : games.map((game) => {
             const poll = gamePolls.get(game.id)
             return (
               <article className="admin-row-card prediction-admin-row" key={game.id}>

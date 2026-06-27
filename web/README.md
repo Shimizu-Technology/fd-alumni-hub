@@ -33,6 +33,7 @@ Public parity:
 - `/schedule`
 - `/standings`
 - `/watch`
+- `/info`
 - `/news`
 - `/gallery`
 - `/history`
@@ -52,3 +53,5 @@ Admin parity:
 - `/admin/ingest`
 
 Deployment planning for the Rails/Vite cutover lives in `docs/projects/fd-rails-vite-deployment-and-2026-schedule-plan.md`.
+
+2026 launch polish, by-laws review notes, and future OCR schedule import planning live in `docs/projects/fd-2026-launch-polish-notes.md`.
