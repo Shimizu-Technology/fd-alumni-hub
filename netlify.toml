@@ -1,7 +1,7 @@
+# React/Vite staging Netlify config.
+# This branch intentionally differs from main because main's netlify.toml still
+# deploys the legacy Next.js production fallback in apps/web.
 [build]
-  base = "."
-  command = "npm ci --include=optional && npm --workspace @fd/web install --no-save lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu && npm --workspace @fd/web exec prisma generate && npm --workspace @fd/web run build"
-  publish = "apps/web/.next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
