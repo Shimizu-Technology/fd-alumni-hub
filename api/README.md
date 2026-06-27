@@ -16,6 +16,8 @@ bin/rails db:seed
 bin/rails server -p 3001
 ```
 
+`db:seed` imports the 2026 organizer pool-play schedule by default. Set `FD_SEED_2026_SCHEDULE=0` only for special blank-database testing.
+
 Optional local demo seed:
 
 ```bash
@@ -40,6 +42,8 @@ curl http://localhost:3001/health
 ## Public endpoints
 
 - `GET /api/v1/public/home`
+- `GET /api/v1/public/today`
+- `POST /api/v1/public/prediction-polls/:prediction_poll_id/vote`
 - `GET /api/v1/public/tournaments`
 - `GET /api/v1/public/schedule`
 - `GET /api/v1/public/standings`
@@ -71,6 +75,16 @@ Local admin testing should use real Clerk sign-in with an allowlisted email. See
 - `GET /api/v1/admin/teams`
 - `POST /api/v1/admin/teams`
 - `PATCH /api/v1/admin/teams/:id`
+- `DELETE /api/v1/admin/teams/:id`
+- `POST /api/v1/admin/roster-entries`
+- `PATCH /api/v1/admin/roster-entries/:id`
+- `DELETE /api/v1/admin/roster-entries/:id`
+- `GET /api/v1/admin/game-day-notes`
+- `POST /api/v1/admin/game-day-notes`
+- `PATCH /api/v1/admin/game-day-notes/:id`
+- `GET /api/v1/admin/prediction-polls`
+- `POST /api/v1/admin/prediction-polls`
+- `PATCH /api/v1/admin/prediction-polls/:id`
 - `GET /api/v1/admin/games`
 - `GET /api/v1/admin/games/:id`
 - `POST /api/v1/admin/games`
@@ -110,3 +124,13 @@ Use the operator-run migration path in `docs/RAILS-DATA-MIGRATION-RUNBOOK.md`:
 - validate with `bin/rails fd:migration:validate_next_snapshot[...]`
 
 Production data import/cutover must remain an explicit operator-run step.
+
+## 2026 schedule import
+
+Structured schedule data lives in `../data/schedules/fd-2026-pool-play-2026-06-27.json`.
+
+```bash
+bin/rails fd:schedule:import_2026
+```
+
+The import is idempotent and also runs from `db:seed` unless `FD_SEED_2026_SCHEDULE=0` is set. Normal seed runs create missing games and preserve existing game edits. To intentionally apply a revised source schedule over existing games, run `FD_SCHEDULE_IMPORT_OVERWRITE=1 bin/rails fd:schedule:import_2026`. It imports confirmed pool/father-son schedule rows and intentionally skips rows without a confirmed time/team matchup.
