@@ -115,7 +115,7 @@ export function AdminLinksPage() {
           <span>{visibleGames.length} of {data?.games.length || 0}</span>
         </div>
         {focusedGame && <div className="focused-filter-note"><span>Focused from Missing Links: {gameMatchupLabel(focusedGame)}</span><button className="btn secondary small" type="button" onClick={clearFocus}>Show all games</button></div>}
-        {unsavedCount > 0 && <div className="focused-filter-note draft-filter-note"><span>{unsavedCount} {unsavedCount === 1 ? 'game has' : 'games have'} unsaved link changes. Edited rows stay visible while filters are active until you save.</span><button className="btn primary small" type="button" onClick={save}>Save changes</button></div>}
+        {unsavedCount > 0 && <div className="focused-filter-note draft-filter-note"><span>{unsavedCount} {unsavedCount === 1 ? 'game has' : 'games have'} unsaved link changes. Drafts are preserved until you save; clear search or filters to review every pending row.</span><button className="btn primary small" type="button" onClick={save}>Save changes</button></div>}
         <LinkToolbar query={query} filter={filter} sort={sort} onQueryChange={setQuery} onFilterChange={setFilter} onSortChange={setSort} />
         {!data?.games.length ? <EmptyState title="No games found" description="Create games before attaching ticket and stream links." /> : null}
         {data?.games.length && !visibleGames.length ? <EmptyState title="No games match those filters" description="Clear search, focus, or link filters to see more games." /> : null}
