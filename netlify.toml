@@ -4,3 +4,8 @@
   base = "."
   command = "npm ci --include=optional && npm run build"
   publish = "web/dist"
+
+[build.environment]
+  # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.
+  # Skip that runtime explicitly now that this repo deploys the Vite build.
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
