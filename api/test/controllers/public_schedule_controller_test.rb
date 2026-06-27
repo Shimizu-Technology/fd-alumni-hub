@@ -29,6 +29,14 @@ class PublicScheduleControllerTest < ActionDispatch::IntegrationTest
       division: "Gold",
       notes: "phase=playoff"
     )
+    tournament.games.create!(
+      home_team: maroon_home,
+      away_team: gold_home,
+      start_time: Time.zone.local(2026, 7, 5, 18, 0),
+      status: "scheduled",
+      bracket_code: "FS01",
+      notes: "phase=fatherson"
+    )
 
     get "/api/v1/public/schedule", params: { year: 2026, division: "Maroon", phase: "pool" }
 
@@ -36,7 +44,7 @@ class PublicScheduleControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_equal "2026", body.dig("tournament", "year").to_s
     assert_equal [ "Gold", "Maroon" ], body["divisions"]
-    assert_equal [ "pool", "playoff" ], body["phases"]
+    assert_equal [ "pool", "playoff", "fatherson" ], body["phases"]
     assert_equal 1, body["games"].length
     assert_equal "Class of 2016", body.dig("games", 0, "homeTeam", "displayName")
   end

@@ -29,6 +29,7 @@ npm run web:build
 
 Public parity:
 - `/`
+- `/today`
 - `/schedule`
 - `/standings`
 - `/watch`
@@ -40,6 +41,7 @@ Public parity:
 Admin parity:
 - `/admin`
 - `/admin/games`
+- `/admin/game-day`
 - `/admin/standings`
 - `/admin/divisions`
 - `/admin/links`
@@ -48,3 +50,5 @@ Admin parity:
 - `/admin/media`
 - `/admin/sponsors`
 - `/admin/ingest`
+
+Deployment planning for the Rails/Vite cutover lives in `docs/projects/fd-rails-vite-deployment-and-2026-schedule-plan.md`.

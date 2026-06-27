@@ -91,5 +91,10 @@ cp web/.env.example web/.env.local
 npm run web:dev
 ```
 
-Rails public routes include home, tournaments, schedule, standings, articles, media assets, and sponsors.
-Rails admin routes now cover dashboard, tournaments, teams, games, standings recompute, articles, media assets, sponsors, ingest review, bulk links, and missing-link/data-health checks.
+Rails public routes include home, today/game-day, tournaments, schedule, standings, articles, media assets, sponsors, and anonymous prediction voting.
+Rails admin routes now cover dashboard, tournaments, teams/rosters, games, game-day notes/polls, standings recompute, articles, media assets, sponsors, ingest review, bulk links, and missing-link/data-health checks.
+
+Deployment/schedule planning doc:
+- `docs/projects/fd-rails-vite-deployment-and-2026-schedule-plan.md`
+
+The Rails seed path now idempotently imports the 2026 organizer pool-play schedule from `data/schedules/fd-2026-pool-play-2026-06-27.json` unless `FD_SEED_2026_SCHEDULE=0` is set.

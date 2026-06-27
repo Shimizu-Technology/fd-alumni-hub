@@ -16,6 +16,11 @@ if ENV["FD_ADMIN_EMAIL"].present?
   end
 end
 
+if ENV.fetch("FD_SEED_2026_SCHEDULE", "1") == "1"
+  result = DataImport::Fd2026ScheduleImport.call
+  puts "Seeded 2026 schedule: #{result[:games]} games, #{result[:teams]} teams, #{result[:skippedRows]} skipped source rows"
+end
+
 if ENV["FD_SEED_DEMO"] == "1"
   tournament = Tournament.find_or_create_by!(year: 2026, name: "FD Alumni Basketball Tournament") do |record|
     record.start_date = Date.new(2026, 7, 3)
