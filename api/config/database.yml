@@ -14,5 +14,19 @@ test:
   url: <%= ENV["TEST_DATABASE_URL"] %>
 
 production:
-  <<: *default
-  url: <%= ENV["DATABASE_URL"] %>
+  primary: &primary_production
+    <<: *default
+    url: <%= ENV["DATABASE_URL"] %>
+  # Rails 8 loads the Solid Cache/Queue/Cable models in production when these
+  # gems are bundled, even though this API currently uses memory cache, async
+  # jobs, and async cable. Point those named connections at the primary DB so
+  # boot can resolve them, but keep database tasks on the primary config only.
+  cache:
+    <<: *primary_production
+    database_tasks: false
+  queue:
+    <<: *primary_production
+    database_tasks: false
+  cable:
+    <<: *primary_production
+    database_tasks: false
