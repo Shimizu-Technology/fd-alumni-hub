@@ -26,11 +26,7 @@ Public copy should avoid hard-coding prices unless organizers provide final publ
 
 ## By-laws review summary
 
-Source reviewed locally:
-
-```text
-/Users/leonshimizu/Desktop/2026 FD Alumni By-Laws_Basketball.pdf
-```
+Source reviewed: organizer-provided `2026 FD Alumni By-Laws_Basketball.pdf`.
 
 Useful public-facing highlights:
 

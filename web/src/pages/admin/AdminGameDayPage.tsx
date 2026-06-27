@@ -14,41 +14,42 @@ const gameDayRefreshIntervalMs = 10_000
 export function AdminGameDayPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [date, setDate] = useState('')
-  const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, gameDay, games] = await Promise.all([
+  const setup = useAsync(async () => {
+    const [tournaments, games] = await Promise.all([
       api.adminTournaments(),
-      api.adminGameDay({ tournamentId: tournamentId || null, date: date || null }),
       api.adminGames(tournamentId || null),
     ])
-    return { tournaments: tournaments.tournaments, gameDay, allGames: games.games }
-  }, [tournamentId, date])
+    return { tournaments: tournaments.tournaments, allGames: games.games }
+  }, [tournamentId])
+  const gameDayState = useAsync(() => api.adminGameDay({ tournamentId: tournamentId || null, date: date || null }), [tournamentId, date])
 
   useEffect(() => {
-    if (!tournamentId && data?.tournaments[0]?.id) setTournamentId(data.tournaments[0].id)
-  }, [data?.tournaments, tournamentId, setTournamentId])
+    if (!tournamentId && setup.data?.tournaments[0]?.id) setTournamentId(setup.data.tournaments[0].id)
+  }, [setup.data?.tournaments, tournamentId, setTournamentId])
 
-  const gameDayOptions = useMemo(() => scheduledGameDayOptions(data?.allGames || []), [data?.allGames])
-
-  useEffect(() => {
-    if (!date) setDate(gameDayOptions[0] || data?.gameDay.date || '')
-  }, [data?.gameDay.date, date, gameDayOptions])
+  const gameDayOptions = useMemo(() => scheduledGameDayOptions(setup.data?.allGames || []), [setup.data?.allGames])
 
   useEffect(() => {
-    if (!data) return undefined
+    if (!date) setDate(gameDayOptions[0] || gameDayState.data?.date || '')
+  }, [gameDayState.data?.date, date, gameDayOptions])
+
+  useEffect(() => {
+    if (!gameDayState.data) return undefined
 
     const intervalId = window.setInterval(() => {
-      void reload()
+      void gameDayState.reload()
     }, gameDayRefreshIntervalMs)
 
     return () => window.clearInterval(intervalId)
-  }, [data, reload])
+  }, [gameDayState.data, gameDayState.reload])
 
-  if (loading && !data) return <LoadingState label="Loading game-day controls" />
-  if (error && !data) return <ErrorState message={error} onRetry={reload} />
+  if ((setup.loading && !setup.data) || (gameDayState.loading && !gameDayState.data)) return <LoadingState label="Loading game-day controls" />
+  if (setup.error && !setup.data) return <ErrorState message={setup.error} onRetry={setup.reload} />
+  if (gameDayState.error && !gameDayState.data) return <ErrorState message={gameDayState.error} onRetry={gameDayState.reload} />
 
-  const tournaments = data?.tournaments || []
-  const tournament = selectedTournament(tournaments, tournamentId) || data?.gameDay.tournament || null
-  const gameDay = data?.gameDay
+  const tournaments = setup.data?.tournaments || []
+  const tournament = selectedTournament(tournaments, tournamentId) || gameDayState.data?.tournament || null
+  const gameDay = gameDayState.data
   const selectedDate = date || gameDay?.date || ''
   const gameDayNote = gameDay?.date === selectedDate ? gameDay?.gameDayNote || null : null
 
@@ -71,8 +72,8 @@ export function AdminGameDayPage() {
         )}
       </Panel>
 
-      <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={reload} />
-      <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={reload} />
+      <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={gameDayState.reload} />
+      <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />
     </div>
   )
 }
