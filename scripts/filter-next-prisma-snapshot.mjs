@@ -3,10 +3,12 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
 function usage() {
-  console.error(`Usage: node scripts/filter-next-prisma-snapshot.mjs --in <snapshot.json> --out <filtered.json> [--max-year 2025] [--min-year 2000] [--years 2024,2025] [--include-admin]
+  console.error(`Usage: node scripts/filter-next-prisma-snapshot.mjs --in <snapshot.json> --out <filtered.json> [--max-year 2025] [--min-year 2000] [--years 2024,2025] [--include-admin] [--allow-missing-relations]
 
 Creates a relationship-safe Next/Prisma snapshot subset for Rails import.
-Defaults are intentionally production-safe for this repo: historical years only (--max-year 2025) and no old admin/user records.`)
+Defaults are intentionally production-safe for this repo: historical years only (--max-year 2025) and no old admin/user records.
+
+By default, the script exits if selected games or standings reference teams that are not in the filtered snapshot. Use --allow-missing-relations only when intentionally producing a partial snapshot.`)
 }
 
 function optionValue(name) {
@@ -31,6 +33,33 @@ function requiredOption(name) {
   return value
 }
 
+function parseIntegerOption(name, fallback = null) {
+  const raw = optionValue(name)
+  if (raw === undefined) return fallback
+
+  if (!/^\d+$/.test(raw.trim())) {
+    console.error(`${name} must be an integer`)
+    process.exit(1)
+  }
+
+  return Number(raw)
+}
+
+function parseYearList() {
+  const raw = optionValue('--years')
+  if (raw === undefined) return undefined
+
+  const values = raw.split(',').map((value) => value.trim())
+  const invalid = values.filter((value) => !/^\d{4}$/.test(value))
+
+  if (invalid.length > 0) {
+    console.error(`--years contains non-integer year values: ${invalid.join(', ')}`)
+    process.exit(1)
+  }
+
+  return values.map(Number)
+}
+
 function recordYear(record) {
   const year = Number(record?.year)
   return Number.isInteger(year) ? year : null
@@ -48,26 +77,39 @@ function sortCounts(records) {
   return Object.fromEntries(Object.entries(records).map(([key, value]) => [key, value.length]))
 }
 
-const inputPath = resolve(process.cwd(), requiredOption('--in'))
-const outputPath = resolve(process.cwd(), requiredOption('--out'))
-const maxYear = Number(optionValue('--max-year') || 2025)
-const minYearValue = optionValue('--min-year')
-const minYear = minYearValue ? Number(minYearValue) : null
-const explicitYears = optionValue('--years')
-  ?.split(',')
-  .map((value) => Number(value.trim()))
-  .filter((value) => Number.isInteger(value))
+function describeRecords(records, formatter) {
+  return records.slice(0, 10).map(formatter).join('\n')
+}
+
+function failOnMissingRelations({ missingTeamGames, missingStandingTeams }) {
+  const messages = []
+
+  if (missingTeamGames.length > 0) {
+    messages.push(`Selected games reference missing teams (${missingTeamGames.length}):`)
+    messages.push(describeRecords(missingTeamGames, (game) => `  - game ${game.id} homeTeamId=${game.homeTeamId} awayTeamId=${game.awayTeamId}`))
+  }
+
+  if (missingStandingTeams.length > 0) {
+    messages.push(`Selected standings reference missing teams (${missingStandingTeams.length}):`)
+    messages.push(describeRecords(missingStandingTeams, (standing) => `  - standing ${standing.id} teamId=${standing.teamId}`))
+  }
+
+  if (messages.length === 0) return
+
+  console.error(messages.join('\n'))
+  console.error('Refusing to silently drop related records. Re-export the source snapshot or pass --allow-missing-relations for an intentional partial snapshot.')
+  process.exit(1)
+}
+
+const inputArg = requiredOption('--in')
+const outputArg = requiredOption('--out')
+const inputPath = resolve(process.cwd(), inputArg)
+const outputPath = resolve(process.cwd(), outputArg)
+const maxYear = parseIntegerOption('--max-year', 2025)
+const minYear = parseIntegerOption('--min-year')
+const explicitYears = parseYearList()
 const includeAdmin = hasFlag('--include-admin')
-
-if (!explicitYears?.length && !Number.isInteger(maxYear)) {
-  console.error('--max-year must be an integer when --years is not provided')
-  process.exit(1)
-}
-
-if (minYear !== null && !Number.isInteger(minYear)) {
-  console.error('--min-year must be an integer')
-  process.exit(1)
-}
+const allowMissingRelations = hasFlag('--allow-missing-relations')
 
 const snapshot = JSON.parse(await readFile(inputPath, 'utf8'))
 if (snapshot.format !== 'fd-alumni-hub-next-prisma-export' || Number(snapshot.version) !== 1) {
@@ -87,10 +129,17 @@ const selectedTournaments = (sourceRecords.tournaments || []).filter((tournament
 const tournamentIds = byId(selectedTournaments)
 const selectedTeams = filterByTournament(sourceRecords.teams || [], tournamentIds)
 const teamIds = byId(selectedTeams)
-const selectedGames = filterByTournament(sourceRecords.games || [], tournamentIds)
-  .filter((game) => teamIds.has(game.homeTeamId) && teamIds.has(game.awayTeamId))
-const selectedStandings = filterByTournament(sourceRecords.standings || [], tournamentIds)
-  .filter((standing) => teamIds.has(standing.teamId))
+const candidateGames = filterByTournament(sourceRecords.games || [], tournamentIds)
+const missingTeamGames = candidateGames.filter((game) => !teamIds.has(game.homeTeamId) || !teamIds.has(game.awayTeamId))
+const selectedGames = candidateGames.filter((game) => teamIds.has(game.homeTeamId) && teamIds.has(game.awayTeamId))
+const candidateStandings = filterByTournament(sourceRecords.standings || [], tournamentIds)
+const missingStandingTeams = candidateStandings.filter((standing) => !teamIds.has(standing.teamId))
+const selectedStandings = candidateStandings.filter((standing) => teamIds.has(standing.teamId))
+
+if (!allowMissingRelations) {
+  failOnMissingRelations({ missingTeamGames, missingStandingTeams })
+}
+
 const selectedArticles = filterByTournament(sourceRecords.articleLinks || [], tournamentIds)
 const selectedMedia = filterByTournament(sourceRecords.mediaAssets || [], tournamentIds)
 const selectedSponsors = filterByTournament(sourceRecords.sponsors || [], tournamentIds)
@@ -118,7 +167,12 @@ const filtered = {
     minYear,
     years: explicitYears || null,
     includeAdmin,
-    sourcePath: inputPath,
+    allowMissingRelations,
+    sourceFile: inputArg,
+    droppedRelationships: {
+      gamesMissingTeams: missingTeamGames.length,
+      standingsMissingTeams: missingStandingTeams.length,
+    },
   },
   counts: sortCounts(records),
   records,
@@ -130,4 +184,7 @@ await writeFile(outputPath, `${JSON.stringify(filtered, null, 2)}\n`)
 const years = selectedTournaments.map((tournament) => tournament.year).sort((a, b) => a - b)
 console.log(`Filtered Next/Prisma snapshot written to ${outputPath}`)
 console.log(`Years: ${years.join(', ') || '(none)'}`)
+if (missingTeamGames.length > 0 || missingStandingTeams.length > 0) {
+  console.warn(`Dropped records with missing relationships: games=${missingTeamGames.length}, standings=${missingStandingTeams.length}`)
+}
 console.table(filtered.counts)

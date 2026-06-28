@@ -99,24 +99,35 @@ Before importing into production:
 
 1. Create a Neon backup/branch for the Rails production database.
 2. Confirm the filtered snapshot excludes 2026 and admin/user records unless intentionally included.
-3. Run the import once with the Rails production `DATABASE_URL`.
+3. Prefer running from the Render Shell, where `RAILS_ENV`, `DATABASE_URL`, and `SECRET_KEY_BASE` are already provided by the service environment. Do not paste `SECRET_KEY_BASE` or database credentials inline on a command line.
 
 ```bash
-cd api
-RAILS_ENV=production \
-DATABASE_URL=<rails-production-neon-url> \
-SECRET_KEY_BASE=<render-secret-key-base> \
-  bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+cd ~/project/src/api
+bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
 ```
 
 Then validate and spot-check counts:
 
 ```bash
-RAILS_ENV=production DATABASE_URL=<rails-production-neon-url> SECRET_KEY_BASE=<render-secret-key-base> \
-  bundle exec rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+bundle exec rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+bundle exec rails runner 'puts "Tournaments=#{Tournament.count} Games=#{Game.count} Articles=#{ArticleLink.count} Media=#{MediaAsset.count}"'
+```
 
-RAILS_ENV=production DATABASE_URL=<rails-production-neon-url> SECRET_KEY_BASE=<render-secret-key-base> \
-  bundle exec rails runner 'puts "Tournaments=#{Tournament.count} Games=#{Game.count} Articles=#{ArticleLink.count} Media=#{MediaAsset.count}"'
+If an operator must run against production from a trusted workstation instead of Render Shell, put secrets in a private env file first and source it locally; keep that file out of git and remove it after use:
+
+```bash
+cat > tmp/fd-migration/rails-production-import.env <<'EOF'
+export RAILS_ENV=production
+export DATABASE_URL='<rails-production-neon-url>'
+export SECRET_KEY_BASE='<render-secret-key-base>'
+EOF
+chmod 600 tmp/fd-migration/rails-production-import.env
+
+set -a
+. tmp/fd-migration/rails-production-import.env
+set +a
+cd api
+bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
 ```
 
 ## 7. Run Rails-backed frontend locally
