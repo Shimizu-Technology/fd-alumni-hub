@@ -1,12 +1,13 @@
-const CACHE_NAME = 'fd-alumni-hub-v1';
+const CACHE_NAME = 'fd-alumni-hub-v2';
 const OFFLINE_URL = '/offline.html';
 const CORE_ASSETS = [OFFLINE_URL, '/manifest.json', '/favicon.svg', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(CORE_ASSETS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -21,7 +22,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+      fetch(event.request).catch(() =>
+        caches.match(OFFLINE_URL).then((response) => response || new Response('Offline', { status: 503 }))
+      )
     );
   }
 });

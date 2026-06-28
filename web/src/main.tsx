@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { App } from './App'
+import { SeoManager } from './components/SeoManager'
 import { PostHogPageView, PostHogProvider } from './providers/PostHogProvider'
 import './styles.css'
 
@@ -9,6 +10,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <PostHogProvider>
       <BrowserRouter>
+        <SeoManager />
         <PostHogPageView />
         <App />
       </BrowserRouter>

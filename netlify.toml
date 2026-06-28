@@ -6,6 +6,8 @@
   publish = "web/dist"
 
 [build.environment]
+  # Public production URL used for canonical/SEO metadata in the Vite bundle.
+  VITE_SITE_URL = "https://fd-alumni-tourney.netlify.app"
   # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.
   # Skip that runtime explicitly now that this repo deploys the Vite build.
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
