@@ -30,24 +30,34 @@ h1, h2, h3, .brand strong, .btn, .stat-card strong { font-family: "Sora", "Sourc
 
 .site-shell { position: relative; min-height: 100vh; display: flex; flex-direction: column; background: radial-gradient(circle at 7% 7rem, rgba(200,155,60,.2), transparent 18rem), linear-gradient(180deg, var(--fd-maroon-900) 0, var(--fd-maroon-800) 22rem, var(--paper) 22rem, var(--paper) 100%); }
 .site-shell::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,.05), transparent 16rem); }
-.site-header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 1.1rem; justify-content: space-between; padding: .75rem clamp(1rem, 4vw, 3rem); background: rgba(66, 16, 31, .97); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255, 255, 255, .12); color: #fff; }
+.site-header { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: minmax(15rem, auto) minmax(0, 1fr) auto; align-items: center; gap: clamp(.65rem, 1.4vw, 1.1rem); padding: .75rem clamp(1rem, 4vw, 3rem); background: rgba(66, 16, 31, .97); backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255, 255, 255, .12); color: #fff; }
 .brand, .admin-brand { display: inline-flex; align-items: center; gap: .75rem; font-weight: 800; }
+.public-brand { min-width: 0; justify-self: start; }
+.public-brand > span:last-child { min-width: 0; }
 .brand small { display: block; color: rgba(255,255,255,.62); font-weight: 800; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
-.public-brand strong { color: #fff; letter-spacing: -.03em; }
-.brand-crest { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,.16); overflow: hidden; }
+.public-brand strong { display: block; color: #fff; letter-spacing: -.03em; white-space: nowrap; }
+.brand-crest { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border-radius: .9rem; background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,.16); overflow: hidden; flex: 0 0 auto; }
 .brand-crest img { width: 2.35rem; height: 2.35rem; object-fit: contain; }
 .brand-mark { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 1rem; color: #fff; background: linear-gradient(135deg, var(--fd-maroon), var(--fd-maroon-900)); box-shadow: 0 12px 30px rgba(111,29,53,.22); font-weight: 900; letter-spacing: -.04em; }
-.desktop-nav { display: flex; gap: .18rem; align-items: center; }
-.desktop-nav a, .admin-link { padding: .58rem .78rem; border-radius: 999px; color: rgba(255,255,255,.76); font-weight: 800; font-size: .94rem; }
+.desktop-nav { min-width: 0; display: flex; justify-content: center; gap: .18rem; align-items: center; }
+.desktop-nav a, .admin-link { flex: 0 0 auto; padding: .58rem .78rem; border-radius: 999px; color: rgba(255,255,255,.76); font-weight: 800; font-size: .94rem; white-space: nowrap; }
 .desktop-nav a.active, .desktop-nav a:hover, .admin-link:hover { color: #fff; background: rgba(255,255,255,.12); }
-.header-actions { display: flex; align-items: center; gap: .5rem; }
+.header-actions { justify-self: end; display: flex; align-items: center; gap: .5rem; }
 .admin-link { display: inline-flex; gap: .35rem; align-items: center; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); }
 .icon-button { border: 0; background: #fff; border-radius: .85rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center; color: var(--fd-maroon); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
 .mobile-only { display: none; }
-.mobile-menu { position: fixed; inset: 0; z-index: 40; background: rgba(23,20,26,.38); display: flex; justify-content: flex-end; }
-.mobile-menu-panel { width: min(22rem, 90vw); background: #fff; padding: 1rem; display: grid; align-content: start; gap: .5rem; box-shadow: -20px 0 60px rgba(23,20,26,.18); }
-.mobile-menu-panel a { padding: .9rem 1rem; border-radius: .9rem; font-weight: 800; color: var(--fd-maroon); }
+.menu-button { width: auto; min-width: 2.75rem; padding: 0 .82rem; grid-auto-flow: column; gap: .42rem; font-weight: 900; }
+.menu-button span { font-size: .88rem; }
+.mobile-menu { position: fixed; inset: 0; z-index: 40; background: rgba(23,20,26,.46); backdrop-filter: blur(4px); display: flex; justify-content: flex-end; padding: .7rem; }
+.mobile-menu-backdrop { position: absolute; inset: 0; border: 0; background: transparent; cursor: pointer; }
+.mobile-menu-panel { position: relative; width: min(24rem, 92vw); max-height: calc(100dvh - 1.4rem); overflow: auto; background: #fff; border: 1px solid rgba(255,255,255,.78); border-radius: 1.35rem; padding: .8rem; display: grid; align-content: start; gap: .75rem; box-shadow: -20px 0 60px rgba(23,20,26,.22); }
+.mobile-menu-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .7rem; align-items: center; padding: .35rem .35rem .7rem; border-bottom: 1px solid var(--line); }
+.mobile-menu-head strong { display: block; color: var(--ink); font-family: "Sora", "Source Sans 3", ui-sans-serif, system-ui, sans-serif; line-height: 1.1; letter-spacing: -.035em; }
+.mobile-menu-head small { display: block; margin-top: .15rem; color: var(--muted); font-size: .68rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.mobile-menu-links { display: grid; gap: .35rem; }
+.mobile-menu-panel a { min-height: 3rem; display: flex; align-items: center; gap: .45rem; padding: .85rem 1rem; border-radius: .95rem; font-weight: 900; color: var(--fd-maroon); }
 .mobile-menu-panel a.active { background: var(--fd-maroon-50); }
+.mobile-admin-link { margin-top: .15rem; border: 1px solid rgba(111,29,53,.16); background: var(--surface-strong); }
 .site-main { position: relative; z-index: 1; flex: 1; width: min(1160px, calc(100% - 2.5rem)); margin: 0 auto; padding: clamp(1.3rem, 3.4vw, 2.75rem) 0 clamp(2rem, 5vw, 4rem); color: var(--ink); }
 .site-footer { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 1rem; padding: 2rem clamp(1rem, 4vw, 3rem); background: var(--fd-maroon-900); border-top: 1px solid rgba(255,255,255,.12); color: #fff; }
 .site-footer p { color: rgba(255,255,255,.72); margin: .35rem 0 0; max-width: 46rem; }
@@ -466,6 +476,19 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .media-admin-row img, .sponsor-admin-row img { width: 7rem; aspect-ratio: 1; object-fit: cover; border-radius: .9rem; border: 1px solid var(--line); }
 .sponsor-admin-row img { object-fit: contain; background: var(--surface-strong); padding: .6rem; }
 
+@media (max-width: 1320px) {
+  .site-header { grid-template-columns: minmax(14rem, auto) minmax(0, 1fr) auto; }
+  .desktop-nav { justify-content: flex-end; }
+  .desktop-nav a, .admin-link { padding: .54rem .66rem; font-size: .9rem; }
+  .desktop-nav a:nth-child(n+7) { display: none; }
+  .mobile-only { display: grid; }
+}
+
+@media (max-width: 1120px) {
+  .site-header { grid-template-columns: minmax(0, 1fr) auto; }
+  .desktop-nav, .admin-link { display: none; }
+}
+
 @media (max-width: 980px) {
   .desktop-nav, .admin-link { display: none; }
   .mobile-only { display: grid; }
@@ -491,7 +514,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
 @media (max-width: 680px) {
   .site-shell { background: radial-gradient(circle at 0 5rem, rgba(200,155,60,.16), transparent 14rem), linear-gradient(180deg, var(--fd-maroon-900) 0, var(--fd-maroon-800) 13rem, var(--paper) 13rem, var(--paper) 100%); }
-  .site-header { padding: .75rem .9rem; }
+  .site-header { grid-template-columns: minmax(0, 1fr) auto; padding: .75rem .9rem; }
   .site-main { width: min(100% - 1.5rem, 1180px); padding-top: .85rem; }
   .brand { gap: .55rem; min-width: 0; }
   .brand strong { display: block; max-width: 15rem; overflow: hidden; font-size: .98rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
@@ -557,4 +580,10 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
+}
+
+@media (max-width: 420px) {
+  .menu-button { width: 2.75rem; padding: 0; }
+  .menu-button span { display: none; }
+  .brand strong { max-width: 11.5rem; }
 }
