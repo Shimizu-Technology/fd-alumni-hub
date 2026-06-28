@@ -341,7 +341,17 @@ function EditableTeam({ team, divisions, classOptions, onSaved }: { team: Team; 
     setSaving(true)
     setSaveError('')
     try {
-      await api.adminUpdateTeam(team.id, { classYearLabel: form.classYearLabel, displayName: form.displayName, classCohortKeys: form.classCohortKeys, ...divisionPayload(form.divisionId, divisions) }, team.tournamentId)
+      const payload: Partial<Team> & { classCohortKeys?: string[]; classCohortKeysChanged?: boolean } = {
+        classYearLabel: form.classYearLabel,
+        displayName: form.displayName,
+        ...divisionPayload(form.divisionId, divisions),
+      }
+      if (representedClassKeysChanged(team, form.classCohortKeys)) {
+        payload.classCohortKeys = form.classCohortKeys
+        payload.classCohortKeysChanged = true
+      }
+
+      await api.adminUpdateTeam(team.id, payload, team.tournamentId)
       setEditing(false)
       await onSaved()
     } catch (err) {
@@ -703,8 +713,20 @@ function teamFormState(team: Team, divisions: Division[]) {
     classYearLabel: team.classYearLabel,
     displayName: team.displayName,
     divisionId: divisionValueFor(team, divisions),
-    classCohortKeys: sortedClassCohorts(team.classCohorts || []).map((cohort) => cohort.key),
+    classCohortKeys: teamClassCohortKeys(team),
   }
+}
+
+function representedClassKeysChanged(team: Team, keys: string[]) {
+  return teamClassCohortKeys(team).join('|') !== normalizedClassCohortKeys(keys).join('|')
+}
+
+function teamClassCohortKeys(team: Team) {
+  return normalizedClassCohortKeys(sortedClassCohorts(team.classCohorts || []).map((cohort) => cohort.key))
+}
+
+function normalizedClassCohortKeys(keys: string[]) {
+  return [...keys].sort((a, b) => (graduationYearForSort(a) || 0) - (graduationYearForSort(b) || 0))
 }
 
 function divisionValueFor(team: Team, divisions: Division[]) {

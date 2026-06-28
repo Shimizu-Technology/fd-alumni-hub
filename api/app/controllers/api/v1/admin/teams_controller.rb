@@ -27,9 +27,10 @@ module Api
 
           attrs = team_params
           class_cohort_keys = attrs.delete(:class_cohort_keys)
+          class_cohort_keys_changed = attrs.delete(:class_cohort_keys_changed)
 
           if team.update(attrs.except(:tournament_id))
-            sync_manual_memberships(team, class_cohort_keys) if class_cohort_keys&.any?
+            sync_manual_memberships(team, class_cohort_keys) if manual_class_cohort_update?(class_cohort_keys, class_cohort_keys_changed)
             render json: { team: team_for_response(team.id).api_json(include_roster: true) }
           else
             render_errors(team)
@@ -56,6 +57,10 @@ module Api
           ClassArchive::SyncManualTeamMemberships.call(team, class_keys: class_cohort_keys)
         end
 
+        def manual_class_cohort_update?(class_cohort_keys, changed_flag)
+          !class_cohort_keys.nil? && ActiveModel::Type::Boolean.new.cast(changed_flag)
+        end
+
         def team_params
           raw = params.fetch(:team, params)
           permitted = raw.permit(
@@ -68,6 +73,8 @@ module Api
             :division_id,
             :divisionId,
             :division,
+            :class_cohort_keys_changed,
+            :classCohortKeysChanged,
             class_cohort_keys: [],
             classCohortKeys: []
           )
@@ -79,6 +86,7 @@ module Api
           assign_param(attrs, permitted, :division_id, :division_id, :divisionId)
           assign_param(attrs, permitted, :division, :division)
           assign_param(attrs, permitted, :class_cohort_keys, :class_cohort_keys, :classCohortKeys)
+          assign_param(attrs, permitted, :class_cohort_keys_changed, :class_cohort_keys_changed, :classCohortKeysChanged)
           attrs
         end
       end
