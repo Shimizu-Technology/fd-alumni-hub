@@ -51,7 +51,7 @@ module Api
             .includes(tournament_champion_credits: :class_cohort)
             .distinct
             .ordered
-          teams = cohort.teams.includes(:tournament, :division_record, :roster_entries, :team_class_memberships, :class_cohorts)
+          teams = cohort.teams.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort)
             .sort_by { |team| [ -team.tournament.year, team.display_name ] }
 
           {
@@ -94,7 +94,7 @@ module Api
             .having("COUNT(DISTINCT team_class_memberships.class_cohort_id) = ?", cohort_ids.length)
             .pluck(:id)
 
-          Team.includes(:tournament, :division_record, :roster_entries, :team_class_memberships, :class_cohorts)
+          Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort)
             .where(id: team_ids)
             .to_a
             .sort_by { |team| [ -team.tournament.year, team.display_name ] }
@@ -104,7 +104,7 @@ module Api
           team_ids = teams.map(&:id)
           return Game.none if team_ids.empty?
 
-          Game.includes(:division_record, { home_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ] }, { away_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ] })
+          Game.includes(:division_record, { home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] })
             .where("home_team_id IN (:team_ids) OR away_team_id IN (:team_ids)", team_ids: team_ids)
             .order(start_time: :desc, id: :desc)
         end
@@ -114,7 +114,7 @@ module Api
           tournament_ids = (title_records.map(&:tournament_id) + related_records.map(&:tournament_id)).compact.uniq
           return ArticleLink.none unless game_ids.any? || tournament_ids.any?
 
-          scope = ArticleLink.includes(game: [ :division_record, { home_team: :division_record, away_team: :division_record } ])
+          scope = ArticleLink.includes(game: [ :division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ])
           scope.where(game_id: game_ids).or(scope.where(tournament_id: tournament_ids)).latest.limit(30)
         end
 
