@@ -2,8 +2,10 @@
   "name": "FD Alumni Basketball Tournament Hub",
   "short_name": "FD Hub",
   "description": "Central hub for FD Alumni Basketball Tournament schedules, standings, tickets, streams, news, media, sponsors, and history.",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#fffaf5",
   "theme_color": "#42101f",
   "orientation": "portrait-primary",
@@ -47,5 +49,29 @@
     }
   ],
   "categories": ["sports", "entertainment", "news"],
-  "lang": "en-US"
+  "lang": "en-US",
+  "dir": "ltr",
+  "shortcuts": [
+    {
+      "name": "Today at The Jungle",
+      "short_name": "Today",
+      "description": "Open game-day notes, roster details, and live links.",
+      "url": "/today",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tournament Schedule",
+      "short_name": "Schedule",
+      "description": "Open FD Alumni Basketball Tournament schedule and links.",
+      "url": "/schedule",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Standings",
+      "short_name": "Standings",
+      "description": "Open tournament standings and score coverage.",
+      "url": "/standings",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
 }

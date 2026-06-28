@@ -1,7 +1,17 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconClose, IconMenu, IconShield } from './Icons'
 import { externalHref } from '../lib/urls'
+
+const publicMenuId = 'fd-public-mobile-menu'
+const menuFocusableSelector = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
 
 const navItems = [
   { to: '/', label: 'Home' },
@@ -18,6 +28,55 @@ const navItems = [
 
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const menuPanelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+
+    const previousOverflow = document.body.style.overflow
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus({ preventScroll: true }), 0)
+    const focusableElements = () => Array.from(menuPanelRef.current?.querySelectorAll<HTMLElement>(menuFocusableSelector) || [])
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+
+      const focusable = focusableElements()
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (!first || !last) {
+        event.preventDefault()
+        menuPanelRef.current?.focus({ preventScroll: true })
+        return
+      }
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus({ preventScroll: true })
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus({ preventScroll: true })
+      }
+    }
+
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus({ preventScroll: true })
+    }
+  }, [open])
 
   return (
     <div className="site-shell">
@@ -29,21 +88,28 @@ export function PublicLayout() {
             <small>Central Tournament Hub</small>
           </span>
         </NavLink>
-        <nav className="desktop-nav" aria-label="Main navigation">
+        <nav className="desktop-nav" aria-label="Primary navigation">
           {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'}>{item.label}</NavLink>)}
         </nav>
         <div className="header-actions">
           <NavLink className="admin-link" to="/admin"><IconShield size={16} /> Admin</NavLink>
-          <button className="icon-button mobile-only" type="button" aria-label="Open menu" onClick={() => setOpen(true)}><IconMenu /></button>
+          <button ref={menuButtonRef} className="icon-button menu-button mobile-only" type="button" aria-label="Open menu" aria-expanded={open} aria-controls={publicMenuId} onClick={() => setOpen(true)}><IconMenu /><span>Menu</span></button>
         </div>
       </header>
 
       {open && (
-        <div className="mobile-menu" role="dialog" aria-modal="true" aria-label="Mobile navigation">
-          <div className="mobile-menu-panel">
-            <button className="icon-button" type="button" aria-label="Close menu" onClick={() => setOpen(false)}><IconClose /></button>
-            {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setOpen(false)}>{item.label}</NavLink>)}
-            <NavLink to="/admin" onClick={() => setOpen(false)}>Admin</NavLink>
+        <div className="mobile-menu" role="presentation">
+          <button className="mobile-menu-backdrop" type="button" aria-label="Close menu" tabIndex={-1} onClick={() => setOpen(false)} />
+          <div ref={menuPanelRef} id={publicMenuId} className="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Site menu" tabIndex={-1}>
+            <div className="mobile-menu-head">
+              <span className="brand-crest" aria-hidden="true"><img src="/brand/fd-crest.png" alt="" /></span>
+              <span><strong>FD Alumni Basketball Hub</strong><small>Central Tournament Hub</small></span>
+              <button ref={closeButtonRef} className="icon-button" type="button" aria-label="Close menu" onClick={() => setOpen(false)}><IconClose /></button>
+            </div>
+            <nav className="mobile-menu-links" aria-label="Full menu navigation">
+              {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setOpen(false)}>{item.label}</NavLink>)}
+            </nav>
+            <NavLink className="mobile-admin-link" to="/admin" onClick={() => setOpen(false)}><IconShield size={16} /> Admin workspace</NavLink>
           </div>
         </div>
       )}

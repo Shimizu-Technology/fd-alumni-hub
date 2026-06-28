@@ -1,5 +1,5 @@
 # FD Alumni Basketball Tournament Hub
-# https://fd-alumni-hub.netlify.app
+# https://fd-alumni-tourney.netlify.app
 
 User-agent: *
 Allow: /
@@ -8,4 +8,4 @@ Disallow: /admin
 Disallow: /admin/*
 Disallow: /api/
 
-Sitemap: https://fd-alumni-hub.netlify.app/sitemap.xml
+Sitemap: https://fd-alumni-tourney.netlify.app/sitemap.xml

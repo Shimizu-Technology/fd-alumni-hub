@@ -88,6 +88,7 @@ Publish directory: web/dist
 Important Netlify env vars:
 
 ```bash
+VITE_SITE_URL=https://fd-alumni-tourney.netlify.app
 VITE_API_BASE_URL=https://<render-api>.onrender.com/api/v1
 VITE_CLERK_PUBLISHABLE_KEY=<production Clerk publishable key>
 VITE_CLERK_JWT_TEMPLATE=
