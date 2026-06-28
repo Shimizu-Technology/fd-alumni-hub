@@ -45,7 +45,15 @@ class PublicScheduleControllerTest < ActionDispatch::IntegrationTest
     assert_equal "2026", body.dig("tournament", "year").to_s
     assert_equal [ "Gold", "Maroon" ], body["divisions"]
     assert_equal [ "pool", "playoff", "fatherson" ], body["phases"]
+    assert_equal 3, body["teams"].length
     assert_equal 1, body["games"].length
     assert_equal "Class of 2016", body.dig("games", 0, "homeTeam", "displayName")
+
+    get "/api/v1/public/schedule", params: { year: 2026, teamId: maroon_away.id }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 1, body["games"].length
+    assert_equal "Class of 2017", body.dig("games", 0, "awayTeam", "displayName")
   end
 end

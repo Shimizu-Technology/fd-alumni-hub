@@ -1,24 +1,49 @@
-export type ChampionRecord = {
-  year: number
-  champion?: string
-  runnerUp?: string
-  score?: string
-  source: string
-  status?: 'upcoming' | 'live' | 'completed' | 'cancelled' | 'unknown'
-  note?: string
+import type { Team, TournamentChampion } from './types'
+
+export type ChampionRecord = TournamentChampion
+
+export function classRouteKey(value?: string | null) {
+  return canonicalClassKey(value).replaceAll('/', '-')
 }
 
-export const CHAMPIONS: ChampionRecord[] = [
-  { year: 2025, champion: 'Class of 2002/04', runnerUp: 'Class of 2013', score: '50-44', source: 'GuamPDN', status: 'completed' },
-  { year: 2024, champion: 'Class of 2016/17', runnerUp: 'Class of 2002/04', score: '58-56', source: 'GSPN', status: 'completed' },
-  { year: 2023, champion: 'Class of 2013', source: 'GSPN', status: 'completed' },
-  { year: 2022, champion: 'Class of 2002/04', runnerUp: 'Class of 2006', score: '62-52', source: 'GSPN', status: 'completed' },
-  { year: 2021, champion: 'Class of 2006', runnerUp: 'Class of 2011', score: '58-38', source: 'GSPN', status: 'completed' },
-  { year: 2020, source: 'COVID-19', status: 'cancelled', note: 'Tournament cancelled' },
-  { year: 2019, champion: 'Class of 2006', source: 'GSPN', status: 'completed' },
-  { year: 2018, champion: 'Class of 2002/04', source: 'GSPN', status: 'completed' },
-  { year: 2017, champion: 'Class of 2002/04', source: 'GSPN', status: 'completed' },
-  { year: 2016, source: 'Research pending', status: 'unknown', note: 'Champion data still unverified' },
-  { year: 2015, champion: 'Class of 2013', score: '60-48', source: 'GSPN', status: 'completed' },
-  { year: 2014, champion: 'Class of 2004', source: 'GSPN', status: 'completed' },
-]
+export function classKeyFromRoute(value?: string | null) {
+  return canonicalClassKey(value?.replaceAll('-', '/'))
+}
+
+export function classDisplayLabel(value?: string | null) {
+  const key = canonicalClassKey(value)
+  if (!key) return 'Class archive'
+  return `Class of ${key.split('/').map((segment, index) => formatClassSegment(segment, index)).join('/')}`
+}
+
+export function titleRecordsForTeam(team: Pick<Team, 'displayName' | 'classYearLabel'>, records: TournamentChampion[]) {
+  const aliases = new Set([canonicalClassKey(team.displayName), canonicalClassKey(team.classYearLabel)].filter(Boolean))
+  return records.filter((record) => record.championKey && aliases.has(canonicalClassKey(record.championKey)))
+}
+
+function formatClassSegment(segment: string, index: number) {
+  if (!/^\d{2}$/.test(segment)) return segment.toUpperCase()
+  if (index > 0) return segment
+  return `${Number(segment) >= 50 ? '19' : '20'}${segment}`
+}
+
+export function canonicalClassKey(value?: string | null) {
+  if (!value) return ''
+
+  const cleaned = value
+    .toLowerCase()
+    .replace(/class\s+of/g, '')
+    .replace(/class/g, '')
+    .replace(/[’']/g, '')
+    .trim()
+
+  const numericSegments = cleaned.match(/ad\d+|\d{2,4}/g)
+  if (numericSegments?.length) {
+    return numericSegments.map((segment) => {
+      if (segment.startsWith('ad')) return segment
+      return segment.length === 4 ? segment.slice(2) : segment.padStart(2, '0')
+    }).join('/')
+  }
+
+  return cleaned.replace(/[^a-z0-9]+/g, '')
+}

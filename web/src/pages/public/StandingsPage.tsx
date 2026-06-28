@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
+import { numericSearchParam } from '../../lib/urls'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
 
 export function StandingsPage() {
+  const [year] = useState(() => numericSearchParam('year'))
   const [division, setDivision] = useState('')
-  const { data, loading, error, reload } = useAsync(() => api.publicStandings({ division }), [division])
+  const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
+  const { data, loading, error, reload } = useAsync(() => api.publicStandings({ year, division }), [year, division])
+  const filteredStandings = useMemo(() => {
+    const standings = data?.standings || []
+    return teamId ? standings.filter((standing) => standing.team.id === teamId) : standings
+  }, [data?.standings, teamId])
 
   if (loading && !data) return <LoadingState />
   if (error) return <ErrorState message={error} onRetry={reload} />
@@ -24,18 +32,22 @@ export function StandingsPage() {
         <StatCard label="Coverage" value={`${data?.scoreCoverage.percent || 0}%`} tone="gold" />
       </div>
 
-      <Panel className="toolbar-panel">
+      <Panel className="toolbar-panel standings-filter-panel">
+        <label><span>Class</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All classes</option>{data?.standings.map((standing) => <option key={standing.team.id} value={standing.team.id}>{standing.team.displayName}</option>)}</select></label>
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        {(teamId || division) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision('') }}>Clear filters</button>}
       </Panel>
 
       {!data?.standings.length ? (
         <EmptyState title="No standings yet" description="Standings appear after games have final scores and the recompute job has run." />
+      ) : !filteredStandings.length ? (
+        <EmptyState title="No standings match this filter" description="Clear filters to see more classes." />
       ) : (
         <Panel className="standings-panel">
           <div className="standings-mobile-list" aria-label="Mobile standings list">
-            {data.standings.map((standing, index) => (
+            {filteredStandings.map((standing, index) => (
               <article className="standing-mobile-card" key={standing.id}>
-                <div><span>#{index + 1}</span><strong>{standing.team.displayName}</strong><small>{standing.team.division || 'Division pending'}</small></div>
+                <div><span>#{index + 1}</span><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'}</small></div>
                 <dl>
                   <div><dt>W</dt><dd>{standing.wins}</dd></div>
                   <div><dt>L</dt><dd>{standing.losses}</dd></div>
@@ -48,10 +60,10 @@ export function StandingsPage() {
             <table className="data-table standings-table">
               <thead><tr><th>Rank</th><th>Team</th><th>Division</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>Diff</th></tr></thead>
               <tbody>
-                {data.standings.map((standing, index) => (
+                {filteredStandings.map((standing, index) => (
                   <tr key={standing.id}>
                     <td>{index + 1}</td>
-                    <td><strong>{standing.team.displayName}</strong><small>{standing.team.classYearLabel}</small></td>
+                    <td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.classYearLabel}</small></td>
                     <td>{standing.team.division || 'Unassigned'}</td>
                     <td>{standing.wins}</td>
                     <td>{standing.losses}</td>

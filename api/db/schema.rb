@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -150,6 +150,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
     t.bigint "game_id"
     t.string "poll_type", null: false
     t.string "question", null: false
+    t.boolean "show_results", default: true, null: false
     t.string "status", default: "open", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
@@ -236,6 +237,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
     t.index ["tournament_id"], name: "index_teams_on_tournament_id"
   end
 
+  create_table "tournament_champions", force: :cascade do |t|
+    t.string "bracket", default: "overall", null: false
+    t.string "champion_key", default: "", null: false
+    t.string "champion_label", default: "", null: false
+    t.datetime "created_at", null: false
+    t.string "edition_label", default: "", null: false
+    t.text "notes"
+    t.integer "position", default: 0, null: false
+    t.boolean "primary", default: true, null: false
+    t.string "runner_up_key"
+    t.string "runner_up_label"
+    t.string "score"
+    t.string "slug", null: false
+    t.string "source", default: "", null: false
+    t.string "status", default: "completed", null: false
+    t.bigint "tournament_id"
+    t.datetime "updated_at", null: false
+    t.integer "year", null: false
+    t.index ["bracket", "year"], name: "index_tournament_champions_on_bracket_and_year"
+    t.index ["champion_key"], name: "index_tournament_champions_on_champion_key"
+    t.index ["slug"], name: "index_tournament_champions_on_slug", unique: true
+    t.index ["tournament_id"], name: "index_tournament_champions_on_tournament_id"
+    t.index ["year", "position"], name: "index_tournament_champions_on_year_and_position"
+  end
+
   create_table "tournaments", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "end_date", null: false
@@ -285,4 +311,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_000002) do
   add_foreign_key "standings", "tournaments", on_delete: :cascade
   add_foreign_key "teams", "divisions", on_delete: :nullify
   add_foreign_key "teams", "tournaments", on_delete: :cascade
+  add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify
 end

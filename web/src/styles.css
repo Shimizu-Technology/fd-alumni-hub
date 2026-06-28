@@ -182,6 +182,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .game-card-top span { color: var(--fd-maroon); font-weight: 900; font-size: .82rem; }
 .matchup { display: grid; gap: .45rem; }
 .team-line { display: flex; justify-content: space-between; gap: .7rem; align-items: center; padding: .65rem .7rem; border-radius: .85rem; background: var(--surface-strong); }
+.team-line a, .team-line strong { color: var(--ink); font-weight: 950; }
+.team-line a:hover { color: var(--fd-maroon); text-decoration: underline; text-decoration-thickness: .12em; text-underline-offset: .18em; }
 .team-line span { font-weight: 900; font-size: 1.2rem; }
 .game-meta { justify-content: flex-start; color: var(--muted); font-size: .86rem; }
 .game-meta span { background: #f6eef2; color: var(--fd-maroon); border-radius: 999px; padding: .35rem .55rem; font-weight: 800; }
@@ -228,6 +230,18 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .sponsor-card { min-height: 10rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1.25rem; background: #fff; display: grid; place-items: center; text-align: center; gap: .5rem; }
 .sponsor-card img { max-height: 4rem; object-fit: contain; }
 .sponsor-initials { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 1rem; color: #fff; background: var(--fd-maroon); font-weight: 900; }
+.title-leaderboard-panel { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.title-leaderboard-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.title-leaderboard-card { display: grid; gap: .2rem; padding: 1rem; border: 1px solid rgba(200,155,60,.42); border-radius: 1rem; background: rgba(255,255,255,.82); transition: transform .16s ease, border-color .16s ease; }
+.title-leaderboard-card:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+.title-leaderboard-card span { color: var(--fd-maroon); font-weight: 950; }
+.title-leaderboard-card strong { font-size: 2rem; line-height: 1; letter-spacing: -.055em; }
+.title-leaderboard-card small { color: var(--muted); font-weight: 800; }
+.champion-record-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.champion-record-card { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.champion-record-card span { color: var(--fd-maroon); font-size: .75rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.champion-record-card p { margin: 0; color: var(--muted); }
+.champion-record-card small { color: var(--muted); font-weight: 800; }
 .timeline-list { display: grid; gap: .75rem; }
 .timeline-row { display: grid; grid-template-columns: 5rem 1fr; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; }
 .timeline-link-row { grid-template-columns: 5rem minmax(0, 1fr) auto; align-items: center; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
@@ -266,6 +280,37 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .archive-sponsor-logo { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--surface-strong); overflow: hidden; }
 .archive-sponsor-list img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .watch-hero { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.team-profile-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.team-profile-hero h2 { margin: .35rem 0 .25rem; font-size: clamp(2.2rem, 5vw, 4rem); line-height: .92; letter-spacing: -.075em; }
+.team-profile-hero p { margin: 0; color: var(--muted); font-weight: 800; line-height: 1.45; }
+.team-profile-hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: flex-end; }
+.team-profile-split, .class-profile-split { align-items: start; }
+.class-profile-note { display: grid; gap: .45rem; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.class-profile-note strong { color: var(--fd-maroon); font-size: .82rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.class-profile-note p { margin: 0; color: var(--muted); font-weight: 750; line-height: 1.5; }
+.class-chip-row, .class-link-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+.class-chip-row a, .class-link-list a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .48rem .72rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; }
+.class-link-list { display: grid; }
+.class-link-list a { justify-content: space-between; border-radius: .9rem; }
+.class-team-list { display: grid; gap: .6rem; }
+.class-team-list a { display: grid; gap: .15rem; padding: .78rem .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); transition: transform .16s ease, border-color .16s ease; }
+.class-team-list a:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+.class-team-list span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.class-team-list small { color: var(--muted); font-weight: 850; display: inline-flex; gap: .35rem; align-items: center; }
+.team-game-list, .profile-roster-list, .title-history-list { display: grid; gap: .65rem; }
+.team-game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem; align-items: center; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
+.team-game-row span, .team-game-row small { display: block; color: var(--muted); font-weight: 800; }
+.team-game-row strong { display: block; margin: .15rem 0; font-size: 1.05rem; letter-spacing: -.035em; }
+.team-game-score { display: grid; justify-items: end; gap: .35rem; }
+.team-game-score strong { width: fit-content; padding: .35rem .6rem; border-radius: 999px; background: #fff; color: var(--fd-maroon); }
+.profile-roster-list div { display: grid; gap: .15rem; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--surface-strong); }
+.profile-roster-list span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.profile-roster-list small { color: var(--muted); font-weight: 750; }
+.title-history-row { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .2rem 1rem; align-items: baseline; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); transition: transform .16s ease, border-color .16s ease; }
+.title-history-row:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+.title-history-row strong { grid-row: span 2; color: var(--fd-maroon); font-size: 1.5rem; }
+.title-history-row span { font-weight: 900; }
+.title-history-row small { color: var(--muted); font-weight: 750; }
 .watch-hero svg { color: var(--fd-maroon); }
 .watch-hero h2 { margin: 0; }
 .watch-hero p { margin: .25rem 0 0; color: var(--muted); }
@@ -464,6 +509,53 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .workflow-panel { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
 .workflow-steps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; }
 .workflow-steps span { padding: .75rem .85rem; border-radius: .9rem; background: #fff; border: 1px solid var(--line); color: var(--fd-maroon); font-weight: 900; }
+.tournament-mode-panel { background: linear-gradient(135deg, #fff, #fff8ea); }
+.tournament-mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.tournament-mode-grid div { padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: rgba(255,255,255,.78); }
+.tournament-mode-grid span, .workboard-card span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.tournament-mode-grid strong { display: block; margin-top: .25rem; font-size: 1.05rem; }
+.tournament-mode-grid p { margin: .35rem 0 0; color: var(--muted); line-height: 1.45; }
+.tournament-toolbar { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.tournament-toolbar label:first-child { flex: 1 1 18rem; }
+.tournament-list { gap: 1rem; }
+.tournament-card { position: relative; overflow: hidden; border-color: rgba(111,29,53,.14); }
+.tournament-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: .3rem; background: var(--fd-maroon); }
+.tournament-card-completed::before { background: #8d4cc4; }
+.tournament-card-cancelled::before { background: var(--danger); }
+.tournament-card-live::before { background: var(--success); }
+.tournament-card-head { align-items: flex-start; padding-left: .55rem; }
+.tournament-card-head strong { display: block; margin-top: .25rem; font-size: clamp(1.15rem, 2vw, 1.45rem); letter-spacing: -.04em; }
+.tournament-edit-panel { display: grid; gap: .75rem; padding: .95rem; border: 1px dashed rgba(111,29,53,.24); border-radius: 1rem; background: #fffaf3; }
+.tournament-edit-panel .form-grid { margin-bottom: 0; }
+.tournament-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
+.tournament-facts-grid div { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
+.tournament-facts-grid span { display: block; color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.tournament-facts-grid strong { display: block; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tournament-actions .primary-shortcut { background: var(--fd-maroon); color: #fff; }
+.tournament-dashboard-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; }
+.tournament-dashboard-hero h2 { margin: .35rem 0 .2rem; font-size: clamp(1.8rem, 4vw, 3rem); line-height: .95; letter-spacing: -.065em; }
+.tournament-dashboard-hero p { margin: 0; color: var(--muted); font-weight: 800; }
+.tournament-dashboard-hero.archive-mode { background: linear-gradient(135deg, #fff, #f8efff); }
+.tournament-dashboard-hero.operations-mode { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.tournament-dashboard-hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: flex-end; }
+.tournament-dashboard-split { align-items: stretch; }
+.tournament-health-grid.health-grid { grid-template-columns: repeat(3, 1fr); }
+.featured-game-card { display: grid; gap: .35rem; min-height: 8.4rem; align-content: center; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.featured-game-card strong { font-size: 1.15rem; letter-spacing: -.035em; }
+.featured-game-card span { color: var(--muted); font-weight: 800; }
+.featured-game-card p { width: fit-content; margin: .25rem 0 0; padding: .35rem .65rem; border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 950; text-transform: capitalize; }
+.tournament-workboard-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; }
+.workboard-card { display: grid; align-content: start; gap: .45rem; min-height: 12rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.workboard-card:hover { transform: translateY(-2px); border-color: rgba(111,29,53,.34); box-shadow: 0 18px 42px rgba(66,16,31,.1); }
+.workboard-card strong { font-size: 1.12rem; line-height: 1.15; letter-spacing: -.04em; }
+.workboard-card p { margin: 0; color: var(--muted); line-height: 1.42; }
+.workboard-card small { margin-top: auto; color: var(--fd-maroon); font-weight: 950; }
+.workboard-card-ready { background: linear-gradient(135deg, #fff, #f0fff8); border-color: rgba(17,113,77,.2); }
+.workboard-card-attention { background: linear-gradient(135deg, #fff, #fff8ea); border-color: rgba(200,155,60,.38); }
+.tournament-media-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.tournament-media-preview a { overflow: hidden; border: 1px solid var(--line); border-radius: .9rem; background: var(--surface-strong); }
+.tournament-media-preview img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .18s ease; }
+.tournament-media-preview a:hover img { transform: scale(1.035); }
 .collapsible-heading { align-items: center; margin-bottom: .75rem; }
 .collapsible-heading p { margin: .25rem 0 0; color: var(--muted); line-height: 1.45; }
 .collapsible-body { display: grid; gap: 1rem; padding-top: .5rem; border-top: 1px solid var(--line); }
@@ -490,7 +582,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 }
 
 @media (max-width: 980px) {
-  .hero-card, .split-grid, .today-game-card, .prediction-admin-row { grid-template-columns: 1fr; }
+  .hero-card, .split-grid, .today-game-card, .team-profile-hero, .prediction-admin-row { grid-template-columns: 1fr; }
   .admin-sidebar-desktop { display: none; }
   .admin-mobile-topbar { position: sticky; top: 0; z-index: 35; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid rgba(111,29,53,.12); background: rgba(255,250,245,.94); backdrop-filter: blur(16px); }
   .admin-mobile-topbar div { display: grid; text-align: center; line-height: 1.1; }
@@ -503,7 +595,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-mobile-close { position: absolute; top: .9rem; right: .85rem; z-index: 2; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 1px solid rgba(255,255,255,.14); border-radius: .85rem; color: rgba(255,255,255,.8); background: rgba(255,255,255,.08); }
   .admin-content, .admin-content.sidebar-collapsed { margin-left: 0; padding: 1rem clamp(.85rem, 3vw, 1.25rem) 2.5rem; }
   .admin-topbar { display: none; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid, .info-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .title-leaderboard-grid, .champion-record-grid, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid, .info-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .info-hero-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-detail-summary, .team-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -514,15 +606,17 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .site-shell { background: radial-gradient(circle at 0 5rem, rgba(200,155,60,.16), transparent 14rem), linear-gradient(180deg, var(--fd-maroon-900) 0, var(--fd-maroon-800) 13rem, var(--paper) 13rem, var(--paper) 100%); }
   .site-header { grid-template-columns: minmax(0, 1fr) auto; padding: .75rem .9rem; }
   .site-main { width: min(100% - 1.5rem, 1180px); padding-top: .85rem; }
+  .page-stack { gap: .85rem; }
   .brand { gap: .55rem; min-width: 0; }
   .brand strong { display: block; max-width: 15rem; overflow: hidden; font-size: .98rem; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
   .brand-mark, .brand-crest { width: 2.45rem; height: 2.45rem; border-radius: .8rem; flex: 0 0 auto; }
   .brand-crest img { width: 2.05rem; height: 2.05rem; }
   .brand small { display: none; }
   .page-header { display: grid; align-items: start; }
-  .site-shell .page-header { border-radius: 1.1rem; padding: 1.1rem; }
-  .page-header h1 { font-size: clamp(2rem, 10vw, 2.75rem); letter-spacing: -.06em; }
-  .page-header p { font-size: 1rem; line-height: 1.5; }
+  .site-shell .page-header { border-radius: 1.1rem; padding: .95rem; }
+  .page-header h1 { font-size: clamp(1.85rem, 8.8vw, 2.45rem); line-height: 1; letter-spacing: -.06em; }
+  .page-header p { font-size: .95rem; line-height: 1.45; }
+  .eyebrow { margin-bottom: .5rem; font-size: .72rem; letter-spacing: .12em; }
   .hero-card { border-radius: 1.15rem; padding: 1.15rem; gap: 1rem; }
   .hero-text h1 { font-size: clamp(2.15rem, 11.5vw, 3rem); line-height: .98; letter-spacing: -.075em; }
   .hero-text p:not(.eyebrow) { font-size: 1rem; line-height: 1.55; }
@@ -532,7 +626,13 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .section-heading { align-items: flex-start; flex-wrap: wrap; }
   .section-actions { width: 100%; justify-content: flex-start; }
   .panel, .state-card, .stat-card { border-radius: 1.1rem; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row, .info-section-grid, .bulk-ticket-actions { grid-template-columns: 1fr; }
+  .panel, .stat-card { padding: .9rem; }
+  .stat-card { gap: .18rem; }
+  .stat-card span { font-size: .68rem; line-height: 1.15; }
+  .stat-card strong { font-size: clamp(1.55rem, 9vw, 2.05rem); }
+  .stat-card small { font-size: .82rem; line-height: 1.25; }
+  .stats-grid, .stats-grid.three, .stats-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .tournament-facts-grid, .title-leaderboard-grid, .champion-record-grid, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .tournament-dashboard-hero, .tournament-health-grid.health-grid, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row, .info-section-grid, .bulk-ticket-actions { grid-template-columns: 1fr; }
   .archive-hero img { justify-self: start; }
   .timeline-link-row { grid-template-columns: 1fr auto; }
   .timeline-link-row .timeline-year { grid-column: 1 / -1; }
@@ -559,6 +659,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .schedule-page .game-actions { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
   .schedule-page .game-actions .btn { width: 100%; }
   .schedule-page .link-muted { display: grid; place-items: center; min-height: 2rem; border: 1px dashed var(--line); border-radius: 999px; font-size: .76rem; text-align: center; }
+  .team-profile-hero-actions { justify-content: flex-start; }
+  .team-game-row, .title-history-row { grid-template-columns: 1fr; }
+  .team-game-score { justify-items: start; }
   .standings-panel .table-wrap { display: none; }
   .standings-mobile-list { display: grid; gap: .65rem; }
   .focused-filter-note, .article-summary-card { grid-template-columns: 1fr; display: grid; }
@@ -569,13 +672,34 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .site-footer { display: grid; }
   .footer-links { flex-wrap: wrap; }
   .timeline-row { grid-template-columns: 1fr; }
+  .history-page .stats-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+  .history-page .stat-card { min-height: 5.65rem; padding: .75rem; }
+  .history-page .stat-card span { font-size: .62rem; letter-spacing: .07em; }
+  .history-page .stat-card strong { font-size: clamp(1.65rem, 9vw, 2.1rem); }
+  .history-page .stat-card small { font-size: .72rem; }
+  .history-page .title-leaderboard-panel { padding: .85rem; }
+  .history-page .title-leaderboard-panel .section-heading { gap: .35rem; margin-bottom: .7rem; }
+  .history-page .title-leaderboard-card { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: .75rem .8rem; border-radius: .9rem; }
+  .history-page .title-leaderboard-card strong { grid-row: 1 / 3; grid-column: 2; font-size: 1.65rem; }
+  .history-page .title-leaderboard-card small { grid-column: 1; font-size: .78rem; line-height: 1.25; }
+  .history-page .timeline-list { gap: .55rem; }
+  .history-page .timeline-link-row { grid-template-columns: 4rem minmax(0, 1fr) auto; gap: .55rem; align-items: center; padding: .75rem; }
+  .history-page .timeline-link-row .timeline-year { grid-column: auto; font-size: 1.15rem; }
+  .history-page .timeline-title { align-items: flex-start; gap: .45rem; }
+  .history-page .timeline-title strong { font-size: .98rem; line-height: 1.15; }
+  .history-page .timeline-row p { margin: .18rem 0; font-size: .9rem; line-height: 1.3; }
+  .history-page .timeline-row small { font-size: .78rem; line-height: 1.25; }
+  .class-profile-page .class-compact-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .class-profile-note { padding: .85rem; }
+  .class-chip-row { gap: .4rem; }
+  .class-chip-row a, .class-link-list a { min-height: 2.05rem; padding: .42rem .62rem; font-size: .84rem; }
   .watch-hero { grid-template-columns: 1fr; }
   .admin-content, .admin-content.sidebar-collapsed { padding: .75rem .75rem 2rem; }
   .admin-page .page-header h1 { font-size: clamp(2rem, 11vw, 3rem); }
   .admin-row-head { align-items: flex-start; }
   .prediction-admin-controls { justify-content: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
-  .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid { grid-template-columns: 1fr; }
+  .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid, .tournament-media-preview { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
 }

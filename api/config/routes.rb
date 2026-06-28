@@ -13,6 +13,9 @@ Rails.application.routes.draw do
           post :vote, to: "prediction_votes#create"
         end
         resources :tournaments, only: [ :index, :show ]
+        resources :champions, only: :index
+        get "classes/:class_key", to: "classes#show", as: :class_archive
+        resources :teams, only: :show
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"
         resources :articles, only: :index

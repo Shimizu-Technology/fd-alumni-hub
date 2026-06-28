@@ -14,8 +14,11 @@ import { HistoryPage } from './pages/public/HistoryPage'
 import { HistoryDetailPage } from './pages/public/HistoryDetailPage'
 import { SponsorsPage } from './pages/public/SponsorsPage'
 import { InfoPage } from './pages/public/InfoPage'
+import { TeamProfilePage } from './pages/public/TeamProfilePage'
+import { ClassProfilePage } from './pages/public/ClassProfilePage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
+import { AdminTournamentDetailPage } from './pages/admin/AdminTournamentDetailPage'
 import { AdminGamesPage } from './pages/admin/AdminGamesPage'
 import { AdminGameDayPage } from './pages/admin/AdminGameDayPage'
 import { AdminStandingsPage } from './pages/admin/AdminStandingsPage'
@@ -44,12 +47,15 @@ export function App() {
           <Route path="gallery" element={<GalleryPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="history/:year" element={<HistoryDetailPage />} />
+          <Route path="classes/:classKey" element={<ClassProfilePage />} />
+          <Route path="teams/:teamId" element={<TeamProfilePage />} />
           <Route path="sponsors" element={<SponsorsPage />} />
           <Route path="info" element={<InfoPage />} />
         </Route>
         <Route path="admin" element={<AdminLayout />}>
           <Route index element={<AdminOverviewPage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="tournaments/:tournamentId" element={<AdminTournamentDetailPage />} />
           <Route path="games" element={<AdminGamesPage />} />
           <Route path="game-day" element={<AdminGameDayPage />} />
           <Route path="standings" element={<AdminStandingsPage />} />

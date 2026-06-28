@@ -16,6 +16,11 @@ if ENV["FD_ADMIN_EMAIL"].present?
   end
 end
 
+if ENV.fetch("FD_SEED_CHAMPION_HISTORY", "1") == "1"
+  result = DataImport::FdChampionHistoryImport.call
+  puts "Seeded champion history: #{result[:imported]} records"
+end
+
 if ENV.fetch("FD_SEED_2026_SCHEDULE", "1") == "1"
   result = DataImport::Fd2026ScheduleImport.call
   puts "Seeded 2026 schedule: #{result[:games]} games, #{result[:teams]} teams, #{result[:skippedRows]} skipped source rows"

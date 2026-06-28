@@ -1,5 +1,6 @@
 import type {
   Article,
+  ClassProfile,
   CurrentUser,
   Division,
   Game,
@@ -12,7 +13,9 @@ import type {
   Sponsor,
   Standing,
   Team,
+  TitleCount,
   Tournament,
+  TournamentChampion,
 } from './types'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '')
@@ -147,8 +150,11 @@ export const api = {
     request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
-  publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null } = {}) =>
-    request<{ tournament: Tournament | null; games: Game[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
+  publicChampions: (params: { year?: number | null } = {}) => request<{ championRecords: TournamentChampion[]; titleCounts: TitleCount[] }>(`/public/champions${query(params)}`),
+  publicClass: (classKey: string) => request<{ classProfile: ClassProfile; titleRecords: TournamentChampion[]; relatedTitleRecords: TournamentChampion[]; teams: Team[]; standings: Standing[]; games: Game[]; articles: Article[] }>(`/public/classes/${encodeURIComponent(classKey)}`),
+  publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
+  publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
+    request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
   publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null } = {}) =>
     request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
   publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
@@ -165,6 +171,7 @@ export const api = {
     recentArticles: Article[]
   }>('/admin/dashboard'),
   adminTournaments: () => request<{ tournaments: Tournament[] }>('/admin/tournaments'),
+  adminTournament: (id: string) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`),
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
 

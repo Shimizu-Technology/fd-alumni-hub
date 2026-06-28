@@ -112,7 +112,7 @@ function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPo
           <span>{formatGuamDateTime(game.startTime)}</span>
           <StatusBadge status={game.status} />
         </div>
-        <h2>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</h2>
+        <h2><TeamNameLink team={game.awayTeam} fallback="Away team" /> at <TeamNameLink team={game.homeTeam} fallback="Home team" /></h2>
         <p>{game.venue || DEFAULT_GAME_VENUE}</p>
         <div className="game-actions">
           {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
@@ -134,15 +134,19 @@ function RosterDetails({ game }: { game: Game }) {
     <details className="roster-details">
       <summary>Rosters</summary>
       <div className="roster-columns">
-        <RosterList title={game.awayTeam?.displayName || 'Away team'} entries={awayRoster} />
-        <RosterList title={game.homeTeam?.displayName || 'Home team'} entries={homeRoster} />
+        <RosterList teamId={game.awayTeam?.id} title={game.awayTeam?.displayName || 'Away team'} entries={awayRoster} />
+        <RosterList teamId={game.homeTeam?.id} title={game.homeTeam?.displayName || 'Home team'} entries={homeRoster} />
       </div>
     </details>
   )
 }
 
-function RosterList({ title, entries }: { title: string; entries: RosterEntry[] }) {
-  return <div><h3>{title}</h3>{entries.length ? <ul>{entries.map((entry) => <li key={entry.id}>{entry.jerseyNumber && <span>#{entry.jerseyNumber}</span>}<strong>{entry.name}</strong>{entry.nickname && <small>“{entry.nickname}”</small>}{entry.position && <small>{entry.position}</small>}</li>)}</ul> : <p className="muted">Roster pending</p>}</div>
+function TeamNameLink({ team, fallback }: { team?: Game['awayTeam'] | null; fallback: string }) {
+  return team ? <Link to={`/teams/${team.id}`}>{team.displayName}</Link> : <>{fallback}</>
+}
+
+function RosterList({ teamId, title, entries }: { teamId?: string; title: string; entries: RosterEntry[] }) {
+  return <div><h3>{teamId ? <Link to={`/teams/${teamId}`}>{title}</Link> : title}</h3>{entries.length ? <ul>{entries.map((entry) => <li key={entry.id}>{entry.jerseyNumber && <span>#{entry.jerseyNumber}</span>}<strong>{entry.name}</strong>{entry.nickname && <small>“{entry.nickname}”</small>}{entry.position && <small>{entry.position}</small>}</li>)}</ul> : <p className="muted">Roster pending</p>}</div>
 }
 
 function activeRoster(entries?: RosterEntry[]) {
