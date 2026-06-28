@@ -14,7 +14,7 @@ module Api
           related_records = archive.fetch(:related_records)
           games = games_for(teams)
           articles = articles_for(games, title_records, related_records)
-          standings = Standing.includes(team: [ :division_record, :tournament ]).where(team_id: teams.map(&:id))
+          standings = Standing.includes(team: [ :division_record, :tournament, { team_class_memberships: :class_cohort } ]).where(team_id: teams.map(&:id))
             .order(updated_at: :desc, id: :desc)
 
           render json: {

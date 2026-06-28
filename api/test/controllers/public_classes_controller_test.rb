@@ -12,6 +12,7 @@ class PublicClassesControllerTest < ActionDispatch::IntegrationTest
     combined = tournament.teams.create!(class_year_label: "2002/04", display_name: "Class of 2002/04", division: "Maroon")
     opponent = tournament.teams.create!(class_year_label: "2013", display_name: "Class of 2013", division: "Maroon")
     game = tournament.games.create!(home_team: combined, away_team: opponent, start_time: Time.zone.local(2025, 7, 25, 20, 0), status: "final", home_score: 50, away_score: 44)
+    tournament.standings.create!(team: combined, wins: 1, losses: 0, points_for: 50, points_against: 44)
     tournament.article_links.create!(title: "02/04 wins", source: "GSPN", url: "https://example.test/recap", game: game)
 
     TournamentChampion.create!(year: 2009, slug: "2009", champion_label: "Class of 2002", champion_key: "02", source: "test", position: 1)
@@ -29,6 +30,8 @@ class PublicClassesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ 2025, 2022 ], body.dig("classProfile", "titleYears")
     assert_equal 1, body["teams"].length
     assert_equal 1, body["games"].length
+    assert_equal 1, body["standings"].length
+    assert_equal [ "Class of 2002", "Class of 2004" ], body.dig("standings", 0, "team", "classCohorts").map { |cohort| cohort["displayName"] }
     assert_equal 1, body["articles"].length
     assert_equal [ "Class of 2002" ], body["relatedTitleRecords"].map { |record| record["championLabel"] }
   end

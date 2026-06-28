@@ -54,9 +54,11 @@ This lets the public archive answer both questions:
 - `GAMETIME` → Class of 2007
 - `12 Pack` / `Pack 12` → Class of 2012 + Class of 2017 for the 2026 tournament
 - `AD7` → Class of 1987
-- `435` / `430-5` → Classes of 1990, 1993, 1994, and 1995
+- `82/86/AD7` → Classes of 1982, 1986, and 1987
+- `430-5` / `435` → Classes of 1990, 1993, 1994, and 1995
+- `815` → Classes of 2008 and 2015
 
-Slash-separated labels such as `99/01/03` are parsed automatically as Classes of 1999, 2001, and 2003. Labels that include `AD7`, such as `82/86/AD7`, resolve the numeric classes plus Class of 1987. Unknown labels should remain unresolved until organizer/player confirmation is available. Do not guess labels like `815` without a trusted source.
+Slash-separated labels such as `99/01/03` are parsed automatically as Classes of 1999, 2001, and 2003. Labels that include `AD7`, such as `82/86/AD7`, resolve the numeric classes plus Class of 1987. Unknown labels should remain unresolved until organizer/player confirmation is available.
 
 ## Future data task
 

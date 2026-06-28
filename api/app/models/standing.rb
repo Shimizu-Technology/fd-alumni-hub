@@ -7,7 +7,7 @@ class Standing < ApplicationRecord
     numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validate :team_belongs_to_tournament
 
-  scope :ranked, -> { includes(team: [ :division_record, :team_class_memberships, :class_cohorts ]).order(wins: :desc, losses: :asc, points_for: :desc, points_against: :asc, id: :asc) }
+  scope :ranked, -> { includes(team: [ :division_record, { team_class_memberships: :class_cohort } ]).order(wins: :desc, losses: :asc, points_for: :desc, points_against: :asc, id: :asc) }
 
   def point_differential
     points_for - points_against

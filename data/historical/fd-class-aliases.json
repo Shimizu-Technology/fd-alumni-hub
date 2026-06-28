@@ -20,18 +20,25 @@
       "notes": "2026 tournament entry combining Class of 2012 and Class of 2017."
     },
     {
-      "label": "435",
-      "aliases": ["430-5", "4:30-5", "4:30/5"],
+      "label": "430-5",
+      "aliases": ["435", "4:30-5", "4:30/5"],
       "classes": ["1990", "1993", "1994", "1995"],
       "source": "Organizer/player confirmation",
-      "notes": "Older-class combined tournament entry represented by classes 1990, 1993, 1994, and 1995."
+      "notes": "Older-class combined tournament entry represented by classes 1990, 1993, 1994, and 1995. The 2026 schedule may shorten this to 435."
     },
     {
       "label": "AD7",
       "aliases": ["AD 7"],
       "classes": ["1987"],
       "source": "Organizer/player confirmation",
-      "notes": "AD7 is the Class of 1987 tournament entry name. Combined labels such as 82/86/AD7 should explicitly include Class of 1987 when used with other classes."
+      "notes": "AD7 is the Class of 1987 tournament entry name. Combined labels such as 82/86/AD7 resolve to the numeric classes plus Class of 1987."
+    },
+    {
+      "label": "815",
+      "aliases": ["08/15", "8/15"],
+      "classes": ["2008", "2015"],
+      "source": "Organizer/player confirmation",
+      "notes": "815 is shorthand for 08/15, representing Classes 2008 and 2015."
     }
   ]
 }
