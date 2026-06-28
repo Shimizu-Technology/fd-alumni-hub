@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
+import { numericSearchParam } from '../../lib/urls'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
 
 export function StandingsPage() {
@@ -78,9 +79,4 @@ export function StandingsPage() {
       )}
     </div>
   )
-}
-
-function numericSearchParam(name: string) {
-  const value = new URLSearchParams(window.location.search).get(name)
-  return value && /^\d{4}$/.test(value) ? Number(value) : null
 }

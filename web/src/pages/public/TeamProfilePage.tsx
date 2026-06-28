@@ -69,7 +69,7 @@ export function TeamProfilePage() {
           {!titles.length ? <EmptyState title="No verified titles in archive" description="Historical champion records are still being verified for older tournament years." /> : (
             <div className="title-history-list">
               {titles.map((record) => (
-                <Link key={record.year} to={`/history/${record.year}`} className="title-history-row">
+                <Link key={record.id} to={`/history/${record.year}`} className="title-history-row">
                   <strong>{record.year}</strong>
                   <span>{record.runnerUpLabel ? `Defeated ${record.runnerUpLabel}` : 'Champion record'}</span>
                   <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>

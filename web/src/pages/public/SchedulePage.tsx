@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { formatGuamDateTime, formatGuamTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
-import { externalHref } from '../../lib/urls'
+import { externalHref, numericSearchParam } from '../../lib/urls'
 import type { Game, TeamSummary } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
@@ -118,11 +118,6 @@ function dayAnchorId(day: string) {
 
 function shortDayLabel(day: string) {
   return day.replace(/^[^,]+,\s*/, '')
-}
-
-function numericSearchParam(name: string) {
-  const value = new URLSearchParams(window.location.search).get(name)
-  return value && /^\d{4}$/.test(value) ? Number(value) : null
 }
 
 function labelPhase(phase: string) {

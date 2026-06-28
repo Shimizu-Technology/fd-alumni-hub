@@ -316,7 +316,6 @@ function filterAndSortTournaments(tournaments: Tournament[], query: string, stat
       const matchesStatus = !status || tournament.status === status
       return matchesQuery && matchesStatus
     })
-    .slice()
     .sort((a, b) => compareTournaments(a, b, sort))
 }
 
