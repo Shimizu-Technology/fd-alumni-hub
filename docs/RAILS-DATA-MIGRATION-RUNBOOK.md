@@ -10,9 +10,19 @@ This runbook covers the operator-run migration from the archived Next/Prisma dat
 - Keep `db/seeds.rb` for demo/local seed data only; real tournament data comes from this import path.
 - Snapshot files live under `tmp/fd-migration/` and are ignored by git.
 
-## 1. Export from archived Next/Prisma
+## Fast production path
 
-The legacy Next.js app is archived under `archive/legacy-next-app` and is no longer part of the root npm workspace. If an old Prisma snapshot is needed, install and run the export script from the archive directory with `SOURCE_DATABASE_URL` or `DATABASE_URL` pointed at the read-only legacy database.
+The safe historical snapshot is bundled in the repo at `data/historical/next-prisma-history-only.json`. After creating a Neon backup/branch and deploying this code to Render, production history import is one Render Shell command:
+
+```bash
+cd /opt/render/project/src/api && bundle exec rails fd:migration:import_history
+```
+
+That task imports the bundled 2005-2025 snapshot, refuses snapshots with post-2025 tournaments or admin/user rows, validates the import, and prints final counts.
+
+## 1. Re-export from archived Next/Prisma, if needed
+
+The legacy Next.js app is archived under `archive/legacy-next-app` and is no longer part of the root npm workspace. If the bundled snapshot needs to be rebuilt, install and run the export script from the archive directory with `SOURCE_DATABASE_URL` or `DATABASE_URL` pointed at the read-only legacy database.
 
 ```bash
 cd archive/legacy-next-app
@@ -98,20 +108,14 @@ Validation checks:
 Before importing into production:
 
 1. Create a Neon backup/branch for the Rails production database.
-2. Confirm the filtered snapshot excludes 2026 and admin/user records unless intentionally included.
-3. Prefer running from the Render Shell, where `RAILS_ENV`, `DATABASE_URL`, and `SECRET_KEY_BASE` are already provided by the service environment. Do not paste `SECRET_KEY_BASE` or database credentials inline on a command line.
+2. Deploy this repo version to Render so the bundled snapshot is present on the server.
+3. Run the one-command import from Render Shell, where `RAILS_ENV`, `DATABASE_URL`, and `SECRET_KEY_BASE` are already provided by the service environment. Do not paste `SECRET_KEY_BASE` or database credentials inline on a command line.
 
 ```bash
-cd ~/project/src/api
-bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+cd /opt/render/project/src/api && bundle exec rails fd:migration:import_history
 ```
 
-Then validate and spot-check counts:
-
-```bash
-bundle exec rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
-bundle exec rails runner 'puts "Tournaments=#{Tournament.count} Games=#{Game.count} Articles=#{ArticleLink.count} Media=#{MediaAsset.count}"'
-```
+The task imports and validates in the same run, then prints final production counts.
 
 If an operator must run against production from a trusted workstation instead of Render Shell, put secrets in a private env file first and source it locally; keep that file out of git and remove it after use:
 
@@ -127,7 +131,7 @@ set -a
 . tmp/fd-migration/rails-production-import.env
 set +a
 cd api
-bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+bundle exec rails fd:migration:import_history
 ```
 
 ## 7. Run Rails-backed frontend locally
