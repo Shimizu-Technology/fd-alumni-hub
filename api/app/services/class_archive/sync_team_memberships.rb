@@ -17,14 +17,17 @@ module ClassArchive
 
       cohorts = resolved_cohorts
       cohort_ids = cohorts.map(&:id)
-      auto_scope = team.team_class_memberships.where(source: AUTO_SOURCE)
-      cohort_ids.empty? ? auto_scope.delete_all : auto_scope.where.not(class_cohort_id: cohort_ids).delete_all
 
-      cohorts.each_with_index do |cohort, index|
-        membership = team.team_class_memberships.find_or_initialize_by(class_cohort: cohort)
-        membership.source = AUTO_SOURCE if membership.new_record? || membership.source.blank?
-        membership.position = index + 1 if membership.source == AUTO_SOURCE
-        membership.save!
+      TeamClassMembership.transaction do
+        auto_scope = team.team_class_memberships.where(source: AUTO_SOURCE)
+        cohort_ids.empty? ? auto_scope.delete_all : auto_scope.where.not(class_cohort_id: cohort_ids).delete_all
+
+        cohorts.each_with_index do |cohort, index|
+          membership = team.team_class_memberships.find_or_initialize_by(class_cohort: cohort)
+          membership.source = AUTO_SOURCE if membership.new_record? || membership.source.blank?
+          membership.position = index + 1 if membership.source == AUTO_SOURCE
+          membership.save!
+        end
       end
 
       { teamId: team.id.to_s, memberships: cohorts.length, skipped: false }
