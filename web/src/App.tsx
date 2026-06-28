@@ -16,6 +16,7 @@ import { SponsorsPage } from './pages/public/SponsorsPage'
 import { InfoPage } from './pages/public/InfoPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
+import { AdminTournamentDetailPage } from './pages/admin/AdminTournamentDetailPage'
 import { AdminGamesPage } from './pages/admin/AdminGamesPage'
 import { AdminGameDayPage } from './pages/admin/AdminGameDayPage'
 import { AdminStandingsPage } from './pages/admin/AdminStandingsPage'
@@ -50,6 +51,7 @@ export function App() {
         <Route path="admin" element={<AdminLayout />}>
           <Route index element={<AdminOverviewPage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="tournaments/:tournamentId" element={<AdminTournamentDetailPage />} />
           <Route path="games" element={<AdminGamesPage />} />
           <Route path="game-day" element={<AdminGameDayPage />} />
           <Route path="standings" element={<AdminStandingsPage />} />
