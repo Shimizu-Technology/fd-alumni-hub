@@ -34,7 +34,20 @@ The export includes:
 - admin whitelist rows
 - app users
 
-## 2. Prepare local Rails DB
+## 2. Create a history-only snapshot for production backfill
+
+For production after the Rails/Vite cutover, do **not** import the full legacy snapshot directly because the old database may contain stale 2026 schedule/admin rows. Filter to historical tournament years first:
+
+```bash
+node scripts/filter-next-prisma-snapshot.mjs \
+  --in tmp/fd-migration/next-prisma-export.json \
+  --out tmp/fd-migration/next-prisma-export-history-only.json \
+  --max-year 2025
+```
+
+The filtered snapshot keeps the historical tournaments, teams, games, standings, article links, media assets, sponsors, and ingest queue rows while excluding old admin whitelist/app-user records by default. Use `--include-admin` only for an intentional admin migration.
+
+## 3. Prepare local Rails DB
 
 Use an explicit local Rails database URL so Rails never points at the Prisma production DB by accident.
 
@@ -43,12 +56,12 @@ cd api
 DATABASE_URL=postgres:///fd_alumni_hub_api_development bin/rails db:create db:migrate
 ```
 
-## 3. Import into Rails
+## 4. Import into Rails
 
 ```bash
 cd api
 DATABASE_URL=postgres:///fd_alumni_hub_api_development \
-  bin/rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export.json]'
+  bin/rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
 ```
 
 The importer is idempotent. It upserts by `legacy_id` and preserves relationships by mapping Prisma CUIDs to Rails bigint IDs. Import output reports both snapshot `sourceCounts` and post-import `railsCounts`.
@@ -60,12 +73,12 @@ Migration normalizations:
 - Source ingest items marked `approved` without an imported article/media record are reset to `pending` with a migration note so Rails preserves the invariant that approved ingest items point at imported content.
 - Media ingest fallback inference only links to an imported media asset when the image URL is unique or when duplicate image URLs have exactly one title match; ambiguous cases are reset to pending for operator review.
 
-## 4. Validate the import
+## 5. Validate the import
 
 ```bash
 cd api
 DATABASE_URL=postgres:///fd_alumni_hub_api_development \
-  bin/rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export.json]'
+  bin/rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
 ```
 
 Reports are written to:
@@ -80,7 +93,44 @@ Validation checks:
 - score coverage
 - approved ingest imported-record references
 
-## 5. Run Rails-backed frontend locally
+## 6. Production import
+
+Before importing into production:
+
+1. Create a Neon backup/branch for the Rails production database.
+2. Confirm the filtered snapshot excludes 2026 and admin/user records unless intentionally included.
+3. Prefer running from the Render Shell, where `RAILS_ENV`, `DATABASE_URL`, and `SECRET_KEY_BASE` are already provided by the service environment. Do not paste `SECRET_KEY_BASE` or database credentials inline on a command line.
+
+```bash
+cd ~/project/src/api
+bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+```
+
+Then validate and spot-check counts:
+
+```bash
+bundle exec rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+bundle exec rails runner 'puts "Tournaments=#{Tournament.count} Games=#{Game.count} Articles=#{ArticleLink.count} Media=#{MediaAsset.count}"'
+```
+
+If an operator must run against production from a trusted workstation instead of Render Shell, put secrets in a private env file first and source it locally; keep that file out of git and remove it after use:
+
+```bash
+cat > tmp/fd-migration/rails-production-import.env <<'EOF'
+export RAILS_ENV=production
+export DATABASE_URL='<rails-production-neon-url>'
+export SECRET_KEY_BASE='<render-secret-key-base>'
+EOF
+chmod 600 tmp/fd-migration/rails-production-import.env
+
+set -a
+. tmp/fd-migration/rails-production-import.env
+set +a
+cd api
+bundle exec rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-history-only.json]'
+```
+
+## 7. Run Rails-backed frontend locally
 
 ```bash
 # terminal 1
@@ -89,16 +139,16 @@ DATABASE_URL=postgres:///fd_alumni_hub_api_development bin/rails server -p 3001
 
 # terminal 2
 cp web/.env.example web/.env.local
-npm run web:dev
+npm run dev
 ```
 
-## 6. Staging path after local validation
+## 8. Staging path after local validation
 
 After local validation passes:
 
 1. Create a Rails-owned Neon branch/database.
 2. Deploy Rails API to Render with that Neon `DATABASE_URL`.
 3. Run Rails migrations against staging.
-4. Import the same snapshot into staging with the Rails import task.
+4. Import the filtered history-only snapshot into staging with the Rails import task.
 5. Deploy `/web` to Netlify staging with `VITE_API_BASE_URL` pointing to Render.
 6. Smoke test public and admin flows before any production cutover.
