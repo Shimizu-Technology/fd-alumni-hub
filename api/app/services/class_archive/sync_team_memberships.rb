@@ -13,6 +13,8 @@ module ClassArchive
     def call
       return { teamId: team.id&.to_s, memberships: 0, skipped: true } unless ready?
 
+      return manual_result if manual_memberships?
+
       cohorts = resolved_cohorts
       cohort_ids = cohorts.map(&:id)
       auto_scope = team.team_class_memberships.where(source: AUTO_SOURCE)
@@ -34,6 +36,14 @@ module ClassArchive
 
     def ready?
       team&.persisted? && ClassCohort.table_exists? && TeamClassMembership.table_exists?
+    end
+
+    def manual_memberships?
+      team.team_class_memberships.where.not(source: AUTO_SOURCE).exists?
+    end
+
+    def manual_result
+      { teamId: team.id.to_s, memberships: team.team_class_memberships.count, skipped: false, manual: true }
     end
 
     def resolved_cohorts

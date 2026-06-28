@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDate, formatGuamDateTime, guamDayLabel } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow, gameResultLabel } from '../../lib/games'
 import { classRouteKey } from '../../lib/history'
@@ -214,7 +215,7 @@ function ArchiveStandings({ standings }: { standings: Standing[] }) {
     <div className="table-wrap compact-table-wrap">
       <table className="data-table archive-standings-table">
         <thead><tr><th>Team</th><th>W</th><th>L</th><th>Diff</th></tr></thead>
-        <tbody>{standings.slice(0, 12).map((standing) => <tr key={standing.id}><td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'}</small></td><td>{standing.wins}</td><td>{standing.losses}</td><td>{standing.pointDifferential > 0 ? `+${standing.pointDifferential}` : standing.pointDifferential}</td></tr>)}</tbody>
+        <tbody>{standings.slice(0, 12).map((standing) => <tr key={standing.id}><td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'} · {representedClassesLabel(standing.team)}</small></td><td>{standing.wins}</td><td>{standing.losses}</td><td>{standing.pointDifferential > 0 ? `+${standing.pointDifferential}` : standing.pointDifferential}</td></tr>)}</tbody>
       </table>
     </div>
   )

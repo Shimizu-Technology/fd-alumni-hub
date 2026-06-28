@@ -182,9 +182,11 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .game-card-top span { color: var(--fd-maroon); font-weight: 900; font-size: .82rem; }
 .matchup { display: grid; gap: .45rem; }
 .team-line { display: flex; justify-content: space-between; gap: .7rem; align-items: center; padding: .65rem .7rem; border-radius: .85rem; background: var(--surface-strong); }
+.team-line-main { min-width: 0; display: grid; gap: .12rem; }
 .team-line a, .team-line strong { color: var(--ink); font-weight: 950; }
 .team-line a:hover { color: var(--fd-maroon); text-decoration: underline; text-decoration-thickness: .12em; text-underline-offset: .18em; }
-.team-line span { font-weight: 900; font-size: 1.2rem; }
+.team-line small { overflow: hidden; color: var(--muted); font-size: .73rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.team-line > span { font-weight: 900; font-size: 1.2rem; }
 .game-meta { justify-content: flex-start; color: var(--muted); font-size: .86rem; }
 .game-meta span { background: #f6eef2; color: var(--fd-maroon); border-radius: 999px; padding: .35rem .55rem; font-weight: 800; }
 .link-muted { color: var(--muted); font-size: .85rem; font-weight: 700; }
@@ -283,13 +285,17 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .team-profile-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
 .team-profile-hero h2 { margin: .35rem 0 .25rem; font-size: clamp(2.2rem, 5vw, 4rem); line-height: .92; letter-spacing: -.075em; }
 .team-profile-hero p { margin: 0; color: var(--muted); font-weight: 800; line-height: 1.45; }
+.team-class-chip-row { margin: .45rem 0; }
+.class-mapping-warning { width: fit-content; padding: .45rem .65rem; border-radius: 999px; background: #fff6f4; color: var(--danger); font-size: .85rem; }
 .team-profile-hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: flex-end; }
 .team-profile-split, .class-profile-split { align-items: start; }
 .class-profile-note { display: grid; gap: .45rem; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
 .class-profile-note strong { color: var(--fd-maroon); font-size: .82rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
 .class-profile-note p { margin: 0; color: var(--muted); font-weight: 750; line-height: 1.5; }
 .class-chip-row, .class-link-list { display: flex; flex-wrap: wrap; gap: .5rem; }
-.class-chip-row a, .class-link-list a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .48rem .72rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; }
+.class-chip-row a, .class-chip-row button, .class-link-list a { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .48rem .72rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); font-weight: 900; }
+.class-chip-row button { cursor: pointer; font: inherit; }
+.class-chip-row button span { color: var(--muted); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; }
 .class-link-list { display: grid; }
 .class-link-list a { justify-content: space-between; border-radius: .9rem; }
 .class-team-list { display: grid; gap: .6rem; }
@@ -476,6 +482,16 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .team-card-header h3 { margin: .15rem 0 .2rem; font-size: clamp(1.25rem, 2vw, 1.7rem); letter-spacing: -.05em; }
 .team-card-header p { margin: 0; color: var(--muted); font-weight: 800; }
 .team-card-kicker { display: inline-flex; width: fit-content; border-radius: 999px; background: var(--fd-maroon-50); color: var(--fd-maroon); padding: .32rem .55rem; font-size: .72rem; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; }
+.team-representation-summary { display: grid; gap: .2rem; padding: .9rem; border: 1px solid rgba(111,29,53,.16); border-radius: 1rem; background: linear-gradient(135deg, #fff, #fff8ea); }
+.team-representation-summary.needs-mapping { border-color: rgba(178,45,45,.28); background: #fff6f4; }
+.team-representation-summary span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.team-representation-summary strong { font-size: 1.05rem; letter-spacing: -.025em; }
+.team-representation-summary small { color: var(--muted); font-weight: 750; line-height: 1.4; }
+.class-membership-editor { display: grid; gap: .65rem; padding: .85rem; border: 1px solid rgba(111,29,53,.14); border-radius: 1rem; background: #fff; }
+.class-membership-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, auto); gap: .75rem; align-items: end; }
+.class-membership-head span { display: block; color: var(--muted); font-size: .72rem; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; }
+.class-membership-head strong { display: block; margin-top: .15rem; line-height: 1.25; }
+.class-editor-chip-row button:hover { border-color: rgba(111,29,53,.35); background: var(--fd-maroon-50); }
 .team-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
 .team-facts-grid div { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
 .team-facts-grid span { display: block; color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
@@ -692,14 +708,14 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .class-profile-page .class-compact-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .class-profile-note { padding: .85rem; }
   .class-chip-row { gap: .4rem; }
-  .class-chip-row a, .class-link-list a { min-height: 2.05rem; padding: .42rem .62rem; font-size: .84rem; }
+  .class-chip-row a, .class-chip-row button, .class-link-list a { min-height: 2.05rem; padding: .42rem .62rem; font-size: .84rem; }
   .watch-hero { grid-template-columns: 1fr; }
   .admin-content, .admin-content.sidebar-collapsed { padding: .75rem .75rem 2rem; }
   .admin-page .page-header h1 { font-size: clamp(2rem, 11vw, 3rem); }
   .admin-row-head { align-items: flex-start; }
   .prediction-admin-controls { justify-content: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
-  .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid, .tournament-media-preview { grid-template-columns: 1fr; }
+  .class-membership-head, .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid, .tournament-media-preview { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
 }

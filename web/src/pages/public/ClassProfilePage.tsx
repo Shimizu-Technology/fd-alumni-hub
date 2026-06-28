@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { classDisplayLabel, classKeyFromRoute, classRouteKey } from '../../lib/history'
@@ -116,7 +117,7 @@ function TeamArchiveList({ teams }: { teams: Team[] }) {
         <Link key={team.id} to={`/teams/${team.id}`}>
           <span>{team.tournamentYear ? `${team.tournamentYear} entry` : team.classYearLabel}</span>
           <strong>{team.displayName}</strong>
-          <small>{team.division || 'Division pending'}<IconArrowRight /></small>
+          <small>{team.division || 'Division pending'} · {representedClassesLabel(team)}<IconArrowRight /></small>
         </Link>
       ))}
     </div>

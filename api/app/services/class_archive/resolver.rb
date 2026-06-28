@@ -57,11 +57,19 @@ module ClassArchive
 
     def parse_numeric_class_keys(value)
       text = normalize_label(value)
-      text.scan(/\d{2,4}/).filter_map do |segment|
+      text.to_enum(:scan, /\bad\s*(\d{1,2})\b|\d{2,4}/).filter_map do
+        match = Regexp.last_match
+        segment = match[0]
+        next ad_class_key(match[1]) if match[1]
         next unless [ 2, 4 ].include?(segment.length)
 
         segment.length == 4 ? segment[-2, 2] : segment.rjust(2, "0")
       end.uniq
+    end
+
+    def ad_class_key(value)
+      digits = value.to_s.rjust(1, "0")
+      digits.length == 1 ? "8#{digits}" : digits[-2, 2].rjust(2, "0")
     end
 
     def find_or_create_cohort(key)

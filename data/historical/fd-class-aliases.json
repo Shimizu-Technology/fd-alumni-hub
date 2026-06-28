@@ -14,6 +14,7 @@
     },
     {
       "label": "12 Pack",
+      "aliases": ["Pack 12"],
       "classes": ["2012", "2017"],
       "source": "Organizer/player confirmation",
       "notes": "2026 tournament entry combining Class of 2012 and Class of 2017."
@@ -24,6 +25,13 @@
       "classes": ["1990", "1993", "1994", "1995"],
       "source": "Organizer/player confirmation",
       "notes": "Older-class combined tournament entry represented by classes 1990, 1993, 1994, and 1995."
+    },
+    {
+      "label": "AD7",
+      "aliases": ["AD 7"],
+      "classes": ["1987"],
+      "source": "Organizer/player confirmation",
+      "notes": "AD7 is the Class of 1987 tournament entry name. Combined labels such as 82/86/AD7 should explicitly include Class of 1987 when used with other classes."
     }
   ]
 }

@@ -4,8 +4,9 @@ import { api } from '../../lib/api'
 import { selectedTournament, tournamentScopedPath, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
+import { classCohortOption, classCohortOptions, graduationYearForClassKey, representedClassesLabel, selectedClassSummary, sortedClassCohorts, type ClassCohortOption } from '../../lib/classes'
 import { divisionNameById } from '../../lib/games'
-import type { Division, RosterEntry, Team, Tournament } from '../../lib/types'
+import type { ClassCohort, Division, RosterEntry, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 const legacyPrefix = 'legacy:'
@@ -17,12 +18,13 @@ export function AdminDivisionsPage() {
   const [divisionFilter, setDivisionFilter] = useState('')
   const [teamSort, setTeamSort] = useState<TeamSortOption>('display')
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, teams, divisions] = await Promise.all([
+    const [tournaments, teams, divisions, classCohorts] = await Promise.all([
       api.adminTournaments(),
       api.adminTeams(tournamentId || null),
       api.adminDivisions(tournamentId || null),
+      api.adminClassCohorts().catch(() => ({ classCohorts: [] })),
     ])
-    return { tournaments: tournaments.tournaments, teams: teams.teams, divisions: divisions.divisions, allDivisions: divisions.allDivisions }
+    return { tournaments: tournaments.tournaments, teams: teams.teams, divisions: divisions.divisions, allDivisions: divisions.allDivisions, classCohorts: classCohorts.classCohorts }
   }, [tournamentId])
 
   useEffect(() => {
@@ -34,6 +36,11 @@ export function AdminDivisionsPage() {
   const teams = data?.teams || []
   const divisions = data?.divisions || []
   const allDivisions = data?.allDivisions || []
+  const classCohorts = data?.classCohorts || []
+  const classOptions = useMemo(() => {
+    const knownCohorts = mergeClassCohorts(classCohorts, teams.flatMap((team) => team.classCohorts || []))
+    return classCohortOptions(knownCohorts, tournament?.year || new Date().getFullYear())
+  }, [classCohorts, teams, tournament?.year])
   const divisionOptions = useMemo(() => availableDivisionOptions(teams, divisions), [teams, divisions])
   const visibleTeams = useMemo(() => filterAndSortTeams(teams, teamQuery, divisionFilter, teamSort), [teams, teamQuery, divisionFilter, teamSort])
 
@@ -50,7 +57,7 @@ export function AdminDivisionsPage() {
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
       <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} onSaved={reload} />
-      <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} onSaved={reload} />
+      <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} onSaved={reload} />
       <Panel>
         <div className="section-heading">
           <div>
@@ -70,7 +77,7 @@ export function AdminDivisionsPage() {
         />
         {!teams.length ? <EmptyState title="No teams found" description="Add the teams that are playing in this tournament before building the schedule." /> : null}
         {teams.length > 0 && !visibleTeams.length ? <EmptyState title="No teams match those filters" description="Clear the search or division filter to see more teams." /> : null}
-        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} onSaved={reload} />)}</div>}
+        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} classOptions={classOptions} onSaved={reload} />)}</div>}
       </Panel>
     </div>
   )
@@ -187,8 +194,8 @@ function EditableDivision({ division, onSaved }: { division: Division; onSaved: 
   )
 }
 
-function CreateTeamPanel({ tournament, teamsCount, divisions, onSaved }: { tournament: Tournament | null; teamsCount: number; divisions: Division[]; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ classYearLabel: '', displayName: '', divisionId: '' })
+function CreateTeamPanel({ tournament, teamsCount, divisions, classOptions, onSaved }: { tournament: Tournament | null; teamsCount: number; divisions: Division[]; classOptions: ClassCohortOption[]; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState<{ classYearLabel: string; displayName: string; divisionId: string; classCohortKeys: string[] }>({ classYearLabel: '', displayName: '', divisionId: '', classCohortKeys: [] })
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [open, setOpen] = useState(teamsCount === 0)
@@ -215,9 +222,10 @@ function CreateTeamPanel({ tournament, teamsCount, divisions, onSaved }: { tourn
         tournamentId: tournament.id,
         classYearLabel: form.classYearLabel,
         displayName: form.displayName,
+        ...(form.classCohortKeys.length ? { classCohortKeys: form.classCohortKeys } : {}),
         ...divisionPayload(form.divisionId, divisions),
       })
-      setForm({ classYearLabel: '', displayName: '', divisionId: divisions[0]?.id || '' })
+      setForm({ classYearLabel: '', displayName: '', divisionId: divisions[0]?.id || '', classCohortKeys: [] })
       setMessage('Team created')
       await onSaved()
     } catch (err) {
@@ -246,10 +254,16 @@ function CreateTeamPanel({ tournament, teamsCount, divisions, onSaved }: { tourn
           <form onSubmit={submit}>
             <p className="form-note">Tournament: {tournament.year}</p>
             <FormGrid>
-              <Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="Class of 2016/17" required /></Field>
-              <Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="2016/17" required /></Field>
+              <Field label="Source label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} placeholder="12 Pack, 16/17, AD7" required /></Field>
+              <Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} placeholder="Pack 12" required /></Field>
               <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} required /></Field>
             </FormGrid>
+            <ClassCohortPicker
+              selectedKeys={form.classCohortKeys}
+              options={classOptions}
+              onChange={(classCohortKeys) => setForm({ ...form, classCohortKeys })}
+              help="Optional on create. If left blank, the hub will infer represented classes from known aliases and numeric labels."
+            />
             <button className="btn primary" type="submit" disabled={!divisions.length || saving}>{saving ? 'Creating' : 'Create team'}</button>
           </form>
         </div>
@@ -261,14 +275,58 @@ function CreateTeamPanel({ tournament, teamsCount, divisions, onSaved }: { tourn
 function TeamToolbar({ query, division, sort, divisions, onQueryChange, onDivisionChange, onSortChange }: { query: string; division: string; sort: TeamSortOption; divisions: string[]; onQueryChange: (value: string) => void; onDivisionChange: (value: string) => void; onSortChange: (value: TeamSortOption) => void }) {
   return (
     <div className="team-toolbar toolbar-panel">
-      <label><span>Search teams</span><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Class year, display name, division" /></label>
+      <label><span>Search teams</span><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Team name, represented class, division" /></label>
       <label><span>Division</span><select value={division} onChange={(event) => onDivisionChange(event.target.value)}><option value="">All divisions</option>{divisions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
-      <label><span>Sort</span><select value={sort} onChange={(event) => onSortChange(event.target.value as TeamSortOption)}><option value="display">Display name</option><option value="class">Class label</option><option value="division">Division</option><option value="roster">Roster size</option></select></label>
+      <label><span>Sort</span><select value={sort} onChange={(event) => onSortChange(event.target.value as TeamSortOption)}><option value="display">Display name</option><option value="class">Source label</option><option value="division">Division</option><option value="roster">Roster size</option></select></label>
     </div>
   )
 }
 
-function EditableTeam({ team, divisions, onSaved }: { team: Team; divisions: Division[]; onSaved: () => Promise<void> }) {
+function ClassCohortPicker({ selectedKeys, options, onChange, help }: { selectedKeys: string[]; options: ClassCohortOption[]; onChange: (keys: string[]) => void; help?: string }) {
+  const selectedOptions = selectedKeys.map((key) => classOptionForKey(key, options)).sort((a, b) => a.graduationYear - b.graduationYear)
+  const availableOptions = options.filter((option) => !selectedKeys.includes(option.key))
+
+  const addClass = (key: string) => {
+    if (!key || selectedKeys.includes(key)) return
+    onChange([...selectedKeys, key].sort((a, b) => (graduationYearForSort(a) || 0) - (graduationYearForSort(b) || 0)))
+  }
+
+  const removeClass = (key: string) => onChange(selectedKeys.filter((item) => item !== key))
+
+  return (
+    <div className="class-membership-editor">
+      <div className="class-membership-head">
+        <div>
+          <span>Represented classes</span>
+          <strong>{selectedClassSummary(selectedOptions)}</strong>
+        </div>
+        <select value="" onChange={(event) => addClass(event.target.value)} aria-label="Add represented class">
+          <option value="">Add class year</option>
+          {availableOptions.map((option) => <option key={option.key} value={option.key}>{option.displayName}</option>)}
+        </select>
+      </div>
+      {selectedOptions.length > 0 ? (
+        <div className="class-chip-row class-editor-chip-row" aria-label="Selected represented classes">
+          {selectedOptions.map((option) => <button key={option.key} type="button" onClick={() => removeClass(option.key)}>{option.displayName}<span>Remove</span></button>)}
+        </div>
+      ) : <p className="form-note">No explicit represented classes selected.</p>}
+      {help && <p className="field-help">{help}</p>}
+    </div>
+  )
+}
+
+function RepresentationSummary({ team }: { team: Team }) {
+  const cohorts = sortedClassCohorts(team.classCohorts || [])
+  return (
+    <div className={`team-representation-summary ${cohorts.length ? '' : 'needs-mapping'}`}>
+      <span>{cohorts.length ? 'Represents' : 'Needs mapping'}</span>
+      <strong>{representedClassesLabel(team)}</strong>
+      <small>{cohorts.length > 1 ? 'This team entry rolls games and standings into every represented class archive.' : 'Team names can be nicknames; represented classes power the archive.'}</small>
+    </div>
+  )
+}
+
+function EditableTeam({ team, divisions, classOptions, onSaved }: { team: Team; divisions: Division[]; classOptions: ClassCohortOption[]; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState(teamFormState(team, divisions))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -283,7 +341,7 @@ function EditableTeam({ team, divisions, onSaved }: { team: Team; divisions: Div
     setSaving(true)
     setSaveError('')
     try {
-      await api.adminUpdateTeam(team.id, { classYearLabel: form.classYearLabel, displayName: form.displayName, ...divisionPayload(form.divisionId, divisions) }, team.tournamentId)
+      await api.adminUpdateTeam(team.id, { classYearLabel: form.classYearLabel, displayName: form.displayName, classCohortKeys: form.classCohortKeys, ...divisionPayload(form.divisionId, divisions) }, team.tournamentId)
       setEditing(false)
       await onSaved()
     } catch (err) {
@@ -331,10 +389,16 @@ function EditableTeam({ team, divisions, onSaved }: { team: Team; divisions: Div
       {editing ? (
         <div className="team-edit-panel">
           <FormGrid>
-            <Field label="Class label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field>
+            <Field label="Source label"><input value={form.classYearLabel} onChange={(event) => setForm({ ...form, classYearLabel: event.target.value })} /></Field>
             <Field label="Display name"><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></Field>
             <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={team.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
           </FormGrid>
+          <ClassCohortPicker
+            selectedKeys={form.classCohortKeys}
+            options={classOptions}
+            onChange={(classCohortKeys) => setForm({ ...form, classCohortKeys })}
+            help="These classes receive this team entry's games, record, and title credits for this tournament."
+          />
           {saveError && <p className="form-error" role="alert">{saveError}</p>}
           <div className="row-actions">
             <button className="btn secondary small" type="button" onClick={cancel} disabled={saving}>Cancel</button>
@@ -343,11 +407,14 @@ function EditableTeam({ team, divisions, onSaved }: { team: Team; divisions: Div
           </div>
         </div>
       ) : (
-        <div className="team-facts-grid">
-          <div><span>Class label</span><strong>{team.classYearLabel}</strong></div>
-          <div><span>Display name</span><strong>{team.displayName}</strong></div>
-          <div><span>Division</span><strong>{team.division || 'Not assigned'}</strong></div>
-        </div>
+        <>
+          <RepresentationSummary team={team} />
+          <div className="team-facts-grid">
+            <div><span>Source label</span><strong>{team.classYearLabel}</strong></div>
+            <div><span>Display name</span><strong>{team.displayName}</strong></div>
+            <div><span>Division</span><strong>{team.division || 'Not assigned'}</strong></div>
+          </div>
+        </>
       )}
       {!editing && saveError && <p className="form-error" role="alert">{saveError}</p>}
       <RosterEditor team={team} entries={team.rosterEntries || []} onSaved={onSaved} />
@@ -632,7 +699,12 @@ function DivisionSelect({ value, divisions, currentName, onChange, required }: {
 }
 
 function teamFormState(team: Team, divisions: Division[]) {
-  return { classYearLabel: team.classYearLabel, displayName: team.displayName, divisionId: divisionValueFor(team, divisions) }
+  return {
+    classYearLabel: team.classYearLabel,
+    displayName: team.displayName,
+    divisionId: divisionValueFor(team, divisions),
+    classCohortKeys: sortedClassCohorts(team.classCohorts || []).map((cohort) => cohort.key),
+  }
 }
 
 function divisionValueFor(team: Team, divisions: Division[]) {
@@ -649,6 +721,23 @@ function divisionPayload(value: string, divisions: Division[]) {
   return { divisionId: value, division: divisionNameById(value, divisions) || null }
 }
 
+function mergeClassCohorts(...groups: ClassCohort[][]) {
+  const cohorts = new Map<string, ClassCohort>()
+  groups.flat().forEach((cohort) => cohorts.set(cohort.key, cohort))
+  return Array.from(cohorts.values())
+}
+
+function classOptionForKey(key: string, options: ClassCohortOption[]) {
+  const existing = options.find((option) => option.key === key)
+  if (existing) return existing
+
+  return classCohortOption(graduationYearForSort(key) || new Date().getFullYear())
+}
+
+function graduationYearForSort(key: string) {
+  return graduationYearForClassKey(key)
+}
+
 function availableDivisionOptions(teams: Team[], divisions: Division[]) {
   const names = new Set<string>()
   divisions.forEach((division) => names.add(division.name))
@@ -662,7 +751,7 @@ function filterAndSortTeams(teams: Team[], query: string, division: string, sort
   const normalizedQuery = query.trim().toLowerCase()
   return teams
     .filter((team) => {
-      const matchesQuery = !normalizedQuery || [ team.classYearLabel, team.displayName, team.division || '' ].join(' ').toLowerCase().includes(normalizedQuery)
+      const matchesQuery = !normalizedQuery || [ team.classYearLabel, team.displayName, team.division || '', representedClassesLabel(team, '') ].join(' ').toLowerCase().includes(normalizedQuery)
       const matchesDivision = !division || team.division === division
       return matchesQuery && matchesDivision
     })

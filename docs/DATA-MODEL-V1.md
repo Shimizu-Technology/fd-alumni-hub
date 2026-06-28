@@ -9,9 +9,11 @@
 - status (upcoming/live/completed)
 
 ## Team
+Tournament-specific team entry. Games and standings attach here, while class history rolls up through memberships.
+
 - id
-- class_year_label (e.g., 2016/2017)
-- display_name
+- class_year_label / source label (e.g., `16/17`, `12 Pack`, `AD7`)
+- display_name (public schedule name, e.g., `Pack 12`, `MMX`)
 - division
 
 ## ClassCohort
@@ -21,9 +23,11 @@
 - display_name
 
 ## TeamClassMembership
+Maps one tournament team entry to one or more permanent graduating classes. A 2026 `Pack 12` team can represent Classes 2012 and 2017; a later tournament can split those classes into different team entries without rewriting history.
+
 - team_id
 - class_cohort_id
-- source
+- source (`auto` alias/parser result or `manual` admin override)
 - position
 
 ## TournamentChampion
