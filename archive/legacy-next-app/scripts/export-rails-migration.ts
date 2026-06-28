@@ -40,8 +40,13 @@ function defaultOutPath() {
   return `tmp/fd-migration/next-prisma-export-${stamp}.json`
 }
 
+function outputPath() {
+  const requested = argValue('--out') || process.env.FD_EXPORT_PATH
+  return requested ? resolve(process.cwd(), requested) : resolve(repoRoot, defaultOutPath())
+}
+
 async function main() {
-  const outPath = resolve(repoRoot, argValue('--out') || process.env.FD_EXPORT_PATH || defaultOutPath())
+  const outPath = outputPath()
 
   const [
     tournaments,
