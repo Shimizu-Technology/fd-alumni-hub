@@ -118,7 +118,7 @@ function visibleCountLabel(total: number, visible: number, noun?: string) {
 }
 
 function emptyScheduleArchive(): ScheduleArchive {
-  return { tournament: null, games: [], divisions: [], phases: [] }
+  return { tournament: null, games: [], teams: [], divisions: [], phases: [] }
 }
 
 function emptyStandingsArchive(): StandingsArchive {
@@ -161,7 +161,7 @@ function ArchiveGameRow({ game }: { game: Game }) {
   return (
     <article className="archive-game-row">
       <div>
-        <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
+        <strong><TeamNameLink team={game.awayTeam} fallback="Away team" /> at <TeamNameLink team={game.homeTeam} fallback="Home team" /></strong>
         <span>{formatGuamDateTime(game.startTime)} · {game.venue || DEFAULT_GAME_VENUE}</span>
         {result && <small>{result}</small>}
       </div>
@@ -170,12 +170,16 @@ function ArchiveGameRow({ game }: { game: Game }) {
   )
 }
 
+function TeamNameLink({ team, fallback }: { team?: Game['awayTeam'] | null; fallback: string }) {
+  return team ? <Link to={`/teams/${team.id}`}>{team.displayName}</Link> : <>{fallback}</>
+}
+
 function ArchiveStandings({ standings }: { standings: Standing[] }) {
   return (
     <div className="table-wrap compact-table-wrap">
       <table className="data-table archive-standings-table">
         <thead><tr><th>Team</th><th>W</th><th>L</th><th>Diff</th></tr></thead>
-        <tbody>{standings.slice(0, 12).map((standing) => <tr key={standing.id}><td><strong>{standing.team.displayName}</strong><small>{standing.team.division || 'Division pending'}</small></td><td>{standing.wins}</td><td>{standing.losses}</td><td>{standing.pointDifferential > 0 ? `+${standing.pointDifferential}` : standing.pointDifferential}</td></tr>)}</tbody>
+        <tbody>{standings.slice(0, 12).map((standing) => <tr key={standing.id}><td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'}</small></td><td>{standing.wins}</td><td>{standing.losses}</td><td>{standing.pointDifferential > 0 ? `+${standing.pointDifferential}` : standing.pointDifferential}</td></tr>)}</tbody>
       </table>
     </div>
   )

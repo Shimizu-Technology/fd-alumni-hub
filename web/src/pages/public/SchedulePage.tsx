@@ -5,14 +5,15 @@ import { formatGuamDateTime, formatGuamTime, guamDayLabel, isPastGuamGame } from
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { externalHref } from '../../lib/urls'
-import type { Game } from '../../lib/types'
+import type { Game, TeamSummary } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function SchedulePage() {
   const [division, setDivision] = useState('')
   const [phase, setPhase] = useState('')
-  const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ division, phase }), [division, phase])
+  const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
+  const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ division, phase, teamId }), [division, phase, teamId])
 
   const grouped = useMemo(() => groupGamesByDay(data?.games || []), [data?.games])
 
@@ -37,8 +38,10 @@ export function SchedulePage() {
       </Panel>
 
       <Panel className="toolbar-panel schedule-filter-panel">
+        <label><span>Class</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All classes</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
+        {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
       </Panel>
 
       {grouped.length > 1 && (
@@ -74,8 +77,8 @@ function GameCard({ game }: { game: Game }) {
         <StatusBadge status={resultPending ? 'result-pending' : game.status} />
       </div>
       <div className="matchup">
-        <TeamLine name={game.awayTeam?.displayName || 'Away team'} score={game.awayScore} showScore={scoreReady} />
-        <TeamLine name={game.homeTeam?.displayName || 'Home team'} score={game.homeScore} showScore={scoreReady} />
+        <TeamLine team={game.awayTeam} fallback="Away team" score={game.awayScore} showScore={scoreReady} />
+        <TeamLine team={game.homeTeam} fallback="Home team" score={game.homeScore} showScore={scoreReady} />
       </div>
       <div className="game-meta">
         <span>{game.venue || DEFAULT_GAME_VENUE}</span>
@@ -90,8 +93,13 @@ function GameCard({ game }: { game: Game }) {
   )
 }
 
-function TeamLine({ name, score, showScore }: { name: string; score: number | null; showScore: boolean }) {
-  return <div className="team-line"><strong>{name}</strong><span>{showScore ? score : '—'}</span></div>
+function TeamLine({ team, fallback, score, showScore }: { team?: TeamSummary | null; fallback: string; score: number | null; showScore: boolean }) {
+  return (
+    <div className="team-line">
+      {team ? <Link to={`/teams/${team.id}`}>{team.displayName}</Link> : <strong>{fallback}</strong>}
+      <span>{showScore ? score : '—'}</span>
+    </div>
+  )
 }
 
 function groupGamesByDay(games: Game[]) {

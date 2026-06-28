@@ -22,3 +22,29 @@ export const CHAMPIONS: ChampionRecord[] = [
   { year: 2015, champion: 'Class of 2013', score: '60-48', source: 'GSPN', status: 'completed' },
   { year: 2014, champion: 'Class of 2004', source: 'GSPN', status: 'completed' },
 ]
+
+export function titleRecordsForTeam(team: { displayName: string; classYearLabel: string }) {
+  const aliases = new Set([canonicalClassKey(team.displayName), canonicalClassKey(team.classYearLabel)].filter(Boolean))
+  return CHAMPIONS.filter((record) => record.champion && aliases.has(canonicalClassKey(record.champion)))
+}
+
+export function canonicalClassKey(value?: string | null) {
+  if (!value) return ''
+
+  const cleaned = value
+    .toLowerCase()
+    .replace(/class\s+of/g, '')
+    .replace(/class/g, '')
+    .replace(/[’']/g, '')
+    .trim()
+
+  const numericSegments = cleaned.match(/\d{2,4}|ad\d+/g)
+  if (numericSegments?.length) {
+    return numericSegments.map((segment) => {
+      if (segment.startsWith('ad')) return segment
+      return segment.length === 4 ? segment.slice(2) : segment.padStart(2, '0')
+    }).join('/')
+  }
+
+  return cleaned.replace(/[^a-z0-9]+/g, '')
+}

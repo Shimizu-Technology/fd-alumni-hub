@@ -189,6 +189,7 @@ function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSave
   const cancel = () => {
     setForm(tournamentFormState(tournament))
     setSaveError('')
+    setSaveSuccess('')
     setEditing(false)
   }
 

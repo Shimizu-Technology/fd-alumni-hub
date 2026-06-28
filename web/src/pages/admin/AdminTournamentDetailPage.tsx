@@ -22,8 +22,8 @@ export function AdminTournamentDetailPage() {
   const { data, loading, error, reload } = useAsync(async () => {
     if (!tournamentId) throw new Error('Tournament id is missing')
 
-    const [tournaments, teams, games, standings, articles, media, sponsors] = await Promise.all([
-      api.adminTournaments(),
+    const [tournamentResult, teams, games, standings, articles, media, sponsors] = await Promise.all([
+      api.adminTournament(tournamentId),
       api.adminTeams(tournamentId),
       api.adminGames(tournamentId),
       api.adminStandings(tournamentId),
@@ -32,11 +32,8 @@ export function AdminTournamentDetailPage() {
       api.adminSponsors(tournamentId),
     ])
 
-    const tournament = tournaments.tournaments.find((item) => item.id === tournamentId)
-    if (!tournament) throw new Error('Tournament not found')
-
     return {
-      tournament,
+      tournament: tournamentResult.tournament,
       teams: teams.teams,
       games: games.games,
       standings: standings.standings,
@@ -286,13 +283,11 @@ function nextUpcomingGame(games: Game[]) {
   const now = Date.now()
   return games
     .filter((game) => game.status !== 'final' && new Date(game.startTime).getTime() >= now)
-    .slice()
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] || null
 }
 
 function latestFinalGame(games: Game[]) {
   return games
     .filter((game) => game.status === 'final')
-    .slice()
     .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())[0] || null
 }

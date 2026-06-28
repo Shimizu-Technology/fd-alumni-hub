@@ -147,8 +147,9 @@ export const api = {
     request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
-  publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null } = {}) =>
-    request<{ tournament: Tournament | null; games: Game[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
+  publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[] }>(`/public/teams/${id}`),
+  publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
+    request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
   publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null } = {}) =>
     request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
   publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
@@ -165,6 +166,7 @@ export const api = {
     recentArticles: Article[]
   }>('/admin/dashboard'),
   adminTournaments: () => request<{ tournaments: Tournament[] }>('/admin/tournaments'),
+  adminTournament: (id: string) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`),
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
 

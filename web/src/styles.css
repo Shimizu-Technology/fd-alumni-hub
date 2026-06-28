@@ -182,6 +182,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .game-card-top span { color: var(--fd-maroon); font-weight: 900; font-size: .82rem; }
 .matchup { display: grid; gap: .45rem; }
 .team-line { display: flex; justify-content: space-between; gap: .7rem; align-items: center; padding: .65rem .7rem; border-radius: .85rem; background: var(--surface-strong); }
+.team-line a, .team-line strong { color: var(--ink); font-weight: 950; }
+.team-line a:hover { color: var(--fd-maroon); text-decoration: underline; text-decoration-thickness: .12em; text-underline-offset: .18em; }
 .team-line span { font-weight: 900; font-size: 1.2rem; }
 .game-meta { justify-content: flex-start; color: var(--muted); font-size: .86rem; }
 .game-meta span { background: #f6eef2; color: var(--fd-maroon); border-radius: 999px; padding: .35rem .55rem; font-weight: 800; }
@@ -266,6 +268,25 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .archive-sponsor-logo { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--surface-strong); overflow: hidden; }
 .archive-sponsor-list img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .watch-hero { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.team-profile-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.team-profile-hero h2 { margin: .35rem 0 .25rem; font-size: clamp(2.2rem, 5vw, 4rem); line-height: .92; letter-spacing: -.075em; }
+.team-profile-hero p { margin: 0; color: var(--muted); font-weight: 800; line-height: 1.45; }
+.team-profile-hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; justify-content: flex-end; }
+.team-profile-split { align-items: start; }
+.team-game-list, .profile-roster-list, .title-history-list { display: grid; gap: .65rem; }
+.team-game-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem; align-items: center; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
+.team-game-row span, .team-game-row small { display: block; color: var(--muted); font-weight: 800; }
+.team-game-row strong { display: block; margin: .15rem 0; font-size: 1.05rem; letter-spacing: -.035em; }
+.team-game-score { display: grid; justify-items: end; gap: .35rem; }
+.team-game-score strong { width: fit-content; padding: .35rem .6rem; border-radius: 999px; background: #fff; color: var(--fd-maroon); }
+.profile-roster-list div { display: grid; gap: .15rem; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: .9rem; background: var(--surface-strong); }
+.profile-roster-list span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.profile-roster-list small { color: var(--muted); font-weight: 750; }
+.title-history-row { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .2rem 1rem; align-items: baseline; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); transition: transform .16s ease, border-color .16s ease; }
+.title-history-row:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+.title-history-row strong { grid-row: span 2; color: var(--fd-maroon); font-size: 1.5rem; }
+.title-history-row span { font-weight: 900; }
+.title-history-row small { color: var(--muted); font-weight: 750; }
 .watch-hero svg { color: var(--fd-maroon); }
 .watch-hero h2 { margin: 0; }
 .watch-hero p { margin: .25rem 0 0; color: var(--muted); }
@@ -537,7 +558,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 }
 
 @media (max-width: 980px) {
-  .hero-card, .split-grid, .today-game-card, .prediction-admin-row { grid-template-columns: 1fr; }
+  .hero-card, .split-grid, .today-game-card, .team-profile-hero, .prediction-admin-row { grid-template-columns: 1fr; }
   .admin-sidebar-desktop { display: none; }
   .admin-mobile-topbar { position: sticky; top: 0; z-index: 35; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem; border-bottom: 1px solid rgba(111,29,53,.12); background: rgba(255,250,245,.94); backdrop-filter: blur(16px); }
   .admin-mobile-topbar div { display: grid; text-align: center; line-height: 1.1; }
@@ -606,6 +627,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .schedule-page .game-actions { display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; }
   .schedule-page .game-actions .btn { width: 100%; }
   .schedule-page .link-muted { display: grid; place-items: center; min-height: 2rem; border: 1px dashed var(--line); border-radius: 999px; font-size: .76rem; text-align: center; }
+  .team-profile-hero-actions { justify-content: flex-start; }
+  .team-game-row, .title-history-row { grid-template-columns: 1fr; }
+  .team-game-score { justify-items: start; }
   .standings-panel .table-wrap { display: none; }
   .standings-mobile-list { display: grid; gap: .65rem; }
   .focused-filter-note, .article-summary-card { grid-template-columns: 1fr; display: grid; }
