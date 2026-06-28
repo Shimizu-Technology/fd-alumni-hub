@@ -6,6 +6,8 @@
   publish = "web/dist"
 
 [build.environment]
+  # Public API URL baked into the Vite bundle during Netlify builds.
+  VITE_API_BASE_URL = "https://fd-alumni-hub.onrender.com/api/v1"
   # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.
   # Skip that runtime explicitly now that this repo deploys the Vite build.
   NETLIFY_NEXT_PLUGIN_SKIP = "true"
