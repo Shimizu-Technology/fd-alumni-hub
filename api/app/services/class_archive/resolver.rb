@@ -4,16 +4,20 @@ module ClassArchive
   class Resolver
     DEFAULT_ALIAS_PATH = Rails.root.join("..", "data", "historical", "fd-class-aliases.json").expand_path.freeze
 
+    def self.instance
+      @instance ||= new
+    end
+
     def self.resolve_cohorts(value)
-      new.resolve_cohorts(value)
+      instance.resolve_cohorts(value)
     end
 
     def self.class_key(value)
-      new.class_key(value)
+      instance.class_key(value)
     end
 
     def self.class_keys(value)
-      new.class_keys(value)
+      instance.class_keys(value)
     end
 
     def resolve_cohorts(value)
@@ -39,8 +43,10 @@ module ClassArchive
     def alias_map
       @alias_map ||= begin
         payload = DEFAULT_ALIAS_PATH.exist? ? JSON.parse(DEFAULT_ALIAS_PATH.read) : { "aliases" => [] }
-        payload.fetch("aliases", []).to_h do |entry|
-          [ normalize_label(entry.fetch("label")), entry.fetch("classes").flat_map { |value| parse_numeric_class_keys(value) }.uniq ]
+        payload.fetch("aliases", []).each_with_object({}) do |entry, aliases|
+          keys = entry.fetch("classes").flat_map { |value| parse_numeric_class_keys(value) }.uniq
+          labels = [ entry.fetch("label"), *entry.fetch("aliases", []) ]
+          labels.each { |label| aliases[normalize_label(label)] = keys }
         end
       end
     end
@@ -60,15 +66,27 @@ module ClassArchive
 
     def find_or_create_cohort(key)
       graduation_year = graduation_year_for(key)
-      ClassCohort.find_or_create_by!(key: key) do |cohort|
-        cohort.graduation_year = graduation_year
-        cohort.short_label = graduation_year.to_s
-        cohort.display_name = "Class of #{graduation_year}"
-      end.tap do |cohort|
-        next unless cohort.graduation_year != graduation_year || cohort.display_name.blank? || cohort.short_label.blank?
+      cohort = ClassCohort.find_by(key: key) || safely_create_cohort(key, graduation_year)
+      sync_cohort_metadata(cohort, graduation_year)
+    end
 
+    def safely_create_cohort(key, graduation_year)
+      ClassCohort.create!(
+        key: key,
+        graduation_year: graduation_year,
+        short_label: graduation_year.to_s,
+        display_name: "Class of #{graduation_year}"
+      )
+    rescue ActiveRecord::RecordNotUnique
+      ClassCohort.find_by!(key: key)
+    end
+
+    def sync_cohort_metadata(cohort, graduation_year)
+      if cohort.graduation_year != graduation_year || cohort.display_name.blank? || cohort.short_label.blank?
         cohort.update!(graduation_year: graduation_year, short_label: graduation_year.to_s, display_name: "Class of #{graduation_year}")
       end
+
+      cohort
     end
 
     def graduation_year_for(key)

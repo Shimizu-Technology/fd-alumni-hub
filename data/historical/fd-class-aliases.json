@@ -17,6 +17,13 @@
       "classes": ["2012", "2017"],
       "source": "Organizer/player confirmation",
       "notes": "2026 tournament entry combining Class of 2012 and Class of 2017."
+    },
+    {
+      "label": "435",
+      "aliases": ["430-5", "4:30-5", "4:30/5"],
+      "classes": ["1990", "1993", "1994", "1995"],
+      "source": "Organizer/player confirmation",
+      "notes": "Older-class combined tournament entry represented by classes 1990, 1993, 1994, and 1995."
     }
   ]
 }

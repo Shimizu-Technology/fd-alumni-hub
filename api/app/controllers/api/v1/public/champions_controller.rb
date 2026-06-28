@@ -3,7 +3,7 @@ module Api
     module Public
       class ChampionsController < BaseController
         def index
-          records = TournamentChampion.includes(:tournament).ordered
+          records = TournamentChampion.includes(:tournament, tournament_champion_credits: :class_cohort).ordered
           records = records.where(year: params[:year].to_i) if params[:year].present?
 
           render json: {

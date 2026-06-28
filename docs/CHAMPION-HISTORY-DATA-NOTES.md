@@ -53,8 +53,9 @@ This lets the public archive answer both questions:
 - `MMX` → Class of 2010
 - `GAMETIME` → Class of 2007
 - `12 Pack` → Class of 2012 + Class of 2017 for the 2026 tournament
+- `435` / `430-5` → Classes of 1990, 1993, 1994, and 1995
 
-Unknown labels should remain unresolved until organizer/player confirmation is available. Do not guess labels like `435`, `815`, or `AD7` without a trusted source.
+Slash-separated labels such as `99/01/03` are parsed automatically as Classes of 1999, 2001, and 2003. Unknown labels should remain unresolved until organizer/player confirmation is available. Do not guess labels like `815` or `AD7` without a trusted source.
 
 ## Future data task
 

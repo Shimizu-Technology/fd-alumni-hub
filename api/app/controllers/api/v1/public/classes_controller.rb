@@ -48,6 +48,7 @@ module Api
           title_records = TournamentChampion.completed
             .joins(:tournament_champion_credits)
             .where(tournament_champion_credits: { class_cohort_id: cohort.id })
+            .includes(tournament_champion_credits: :class_cohort)
             .distinct
             .ordered
           teams = cohort.teams.includes(:tournament, :division_record, :roster_entries, :team_class_memberships, :class_cohorts)
@@ -67,11 +68,12 @@ module Api
           return nil unless cohorts.length == component_keys.length
 
           teams = teams_matching_all_cohorts(cohorts)
-          title_records = TournamentChampion.completed.with_champion_key.where(champion_key: class_key).ordered
+          title_records = TournamentChampion.completed.with_champion_key.where(champion_key: class_key).includes(tournament_champion_credits: :class_cohort).ordered
           related_records = TournamentChampion.completed
             .joins(:tournament_champion_credits)
             .where(tournament_champion_credits: { class_cohort_id: cohorts.map(&:id) })
             .where.not(champion_key: class_key)
+            .includes(tournament_champion_credits: :class_cohort)
             .distinct
             .ordered
 

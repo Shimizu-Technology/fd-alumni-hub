@@ -48,7 +48,7 @@ class Team < ApplicationRecord
     return [] unless ClassCohort.table_exists? && TeamClassMembership.table_exists?
 
     memberships = if association(:team_class_memberships).loaded?
-      team_class_memberships.to_a.sort_by { |membership| [ membership.position, membership.class_cohort&.graduation_year || 0 ] }
+      loaded_memberships_with_cohorts
     else
       team_class_memberships.ordered.to_a
     end
@@ -57,6 +57,18 @@ class Team < ApplicationRecord
   end
 
   private
+
+  def loaded_memberships_with_cohorts
+    memberships = team_class_memberships.to_a
+    preload_membership_cohorts(memberships)
+    memberships.sort_by { |membership| [ membership.position, membership.class_cohort&.graduation_year || 0 ] }
+  end
+
+  def preload_membership_cohorts(memberships)
+    return if memberships.empty? || memberships.all? { |membership| membership.association(:class_cohort).loaded? }
+
+    ActiveRecord::Associations::Preloader.new(records: memberships, associations: :class_cohort).call
+  end
 
   def roster_entries_for_api(active_only: false)
     return roster_entries_scope(active_only: active_only).ordered.to_a unless association(:roster_entries).loaded?

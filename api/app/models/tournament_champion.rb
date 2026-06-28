@@ -26,6 +26,7 @@ class TournamentChampion < ApplicationRecord
     if class_ids.any?
       return completed.joins(:tournament_champion_credits)
         .where(tournament_champion_credits: { class_cohort_id: class_ids })
+        .includes(tournament_champion_credits: :class_cohort)
         .distinct
         .ordered
     end
@@ -33,7 +34,7 @@ class TournamentChampion < ApplicationRecord
     keys = [ canonical_key(team.display_name), canonical_key(team.class_year_label) ].reject(&:blank?).uniq
     return none if keys.empty?
 
-    completed.with_champion_key.where(champion_key: keys).ordered
+    completed.with_champion_key.where(champion_key: keys).includes(tournament_champion_credits: :class_cohort).ordered
   end
 
   def self.title_counts
@@ -41,7 +42,7 @@ class TournamentChampion < ApplicationRecord
   end
 
   def self.entry_title_counts
-    completed.primary_titles.with_champion_key.ordered.group_by(&:champion_key).map do |champion_key, records|
+    completed.primary_titles.with_champion_key.includes(tournament_champion_credits: :class_cohort).ordered.group_by(&:champion_key).map do |champion_key, records|
       sorted_records = records.sort_by { |record| [ -record.year, record.position ] }
       {
         championKey: champion_key,
@@ -54,7 +55,7 @@ class TournamentChampion < ApplicationRecord
   end
 
   def self.credit_counts(primary_only: true)
-    scope = TournamentChampionCredit.includes(:class_cohort, :tournament_champion)
+    scope = TournamentChampionCredit.includes(:class_cohort, tournament_champion: { tournament_champion_credits: :class_cohort })
       .joins(:tournament_champion)
       .merge(completed.with_champion_key)
     scope = scope.merge(primary_titles) if primary_only
@@ -129,7 +130,7 @@ class TournamentChampion < ApplicationRecord
     return [] unless ClassCohort.table_exists? && TournamentChampionCredit.table_exists?
 
     credits = if association(:tournament_champion_credits).loaded?
-      tournament_champion_credits.to_a.sort_by { |credit| [ credit.position, credit.class_cohort&.graduation_year || 0 ] }
+      loaded_credits_with_cohorts
     else
       tournament_champion_credits.ordered.to_a
     end
@@ -138,6 +139,18 @@ class TournamentChampion < ApplicationRecord
   end
 
   private
+
+  def loaded_credits_with_cohorts
+    credits = tournament_champion_credits.to_a
+    preload_credit_cohorts(credits)
+    credits.sort_by { |credit| [ credit.position, credit.class_cohort&.graduation_year || 0 ] }
+  end
+
+  def preload_credit_cohorts(credits)
+    return if credits.empty? || credits.all? { |credit| credit.association(:class_cohort).loaded? }
+
+    ActiveRecord::Associations::Preloader.new(records: credits, associations: :class_cohort).call
+  end
 
   def normalize_keys
     self.edition_label = edition_label.to_s.strip
