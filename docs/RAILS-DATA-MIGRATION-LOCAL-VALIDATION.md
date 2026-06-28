@@ -5,9 +5,11 @@ Validated locally on 2026-06-12 ChST using an operator-created Next/Prisma snaps
 ## Commands run
 
 ```bash
-node scripts/with-env.mjs npm --workspace @fd/web run export:rails-migration -- --out tmp/fd-migration/next-prisma-export-local.json
+cd archive/legacy-next-app
+npm install
+SOURCE_DATABASE_URL=<legacy-read-only-database-url> npm run export:rails-migration -- --out ../../tmp/fd-migration/next-prisma-export-local.json
 
-cd api
+cd ../../api
 DATABASE_URL=postgres:///fd_alumni_hub_api_development DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bin/rails db:drop db:create db:schema:load
 DATABASE_URL=postgres:///fd_alumni_hub_api_development bin/rails 'fd:migration:import_next_snapshot[../tmp/fd-migration/next-prisma-export-local.json]'
 DATABASE_URL=postgres:///fd_alumni_hub_api_development bin/rails 'fd:migration:validate_next_snapshot[../tmp/fd-migration/next-prisma-export-local.json]'

@@ -1,7 +1,11 @@
+# React/Vite frontend deployment for the Rails-backed FD Alumni Basketball Hub.
+# The legacy Next.js app has been archived under archive/legacy-next-app.
 [build]
   base = "."
-  command = "npm ci --include=optional && npm --workspace @fd/web install --no-save lightningcss-linux-x64-gnu @tailwindcss/oxide-linux-x64-gnu && npm --workspace @fd/web exec prisma generate && npm --workspace @fd/web run build"
-  publish = "apps/web/.next"
+  command = "npm ci --include=optional && npm run build"
+  publish = "web/dist"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[build.environment]
+  # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.
+  # Skip that runtime explicitly now that this repo deploys the Vite build.
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"

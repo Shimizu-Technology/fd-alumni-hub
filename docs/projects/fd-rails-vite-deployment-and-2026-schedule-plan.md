@@ -1,14 +1,14 @@
 # FD Alumni Hub Rails/Vite Deployment + 2026 Schedule Plan
 
-_Last updated: 2026-06-27_
+_Last updated: 2026-06-28_
 
-This documents the path from the current production Next.js app to the Rails API + React/Vite app, plus how the confirmed 2026 pool-play schedule is loaded.
+This documents the Rails API + React/Vite deployment path, plus how the confirmed 2026 pool-play schedule is loaded. The original Next.js/Prisma implementation has been archived under `archive/legacy-next-app` and is no longer the active deployment target.
 
 ## Current decision summary
 
-- Keep the current Netlify/Next.js production site as the fallback until Rails/Vite staging is validated.
-- Deploy the Rails API separately to Render.
-- Deploy the React/Vite frontend separately to a new Netlify site first, then cut over only after organizer/mobile review.
+- Rails API on Render and React/Vite on Netlify are now the active deployment path.
+- The archived Next.js app is retained only for migration/reference; do not deploy it.
+- Deploy the React/Vite frontend from `main` using the root `netlify.toml`.
 - Use a new Rails-owned Neon database; do not point Rails at the existing Next/Prisma database.
 - Seed/import the 2026 organizer schedule idempotently so a fresh Rails DB has the current tournament schedule immediately.
 - Keep Missing Links/Data Health for admin QA.
@@ -30,9 +30,9 @@ Future rename option: **Data Health** or **Link Gaps**. No behavior change is ne
 
 ## 2. Deployment plan
 
-### Do not delete the existing production Netlify site yet
+### Active Netlify target
 
-The current production app is still `apps/web` Next.js. It remains the public fallback until Rails/Vite is proven.
+The root `netlify.toml` now targets the React/Vite app in `web/`. The old Next.js app has been moved to `archive/legacy-next-app` and should not be attached to active Netlify builds.
 
 ### Rails API on Render
 
@@ -77,13 +77,11 @@ S3_PUBLIC_BASE_URL=
 
 ### React/Vite on Netlify
 
-Create a **new Netlify site** first instead of replacing the current production site.
-
-Recommended Netlify build settings:
+Recommended Netlify build settings are committed in `netlify.toml`:
 
 ```bash
 Base directory: .
-Build command: npm ci --include=optional && npm run web:build
+Build command: npm ci --include=optional && npm run build
 Publish directory: web/dist
 ```
 
@@ -100,12 +98,7 @@ VITE_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 VITE_ENABLE_ANALYTICS_IN_DEV=false
 ```
 
-After staging review, we can either:
-
-1. Update the existing Netlify production site to build `web/dist`, or
-2. Move the production domain to the new Vite Netlify site.
-
-Do this only after validating migrated data, Clerk admin auth, mobile UX, and rollback.
+After deploy, verify public routes, admin auth, Clerk redirects, CORS, and mobile schedule/standings before sharing widely.
 
 ## 3. Neon database decision
 

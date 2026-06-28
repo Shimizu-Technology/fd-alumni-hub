@@ -1,7 +1,7 @@
 # FD Alumni Basketball Hub — Public Roadmap
 
-Last updated: 2026-06-15
-Status: planning notes for the next Rails/Vite phases after local smoke-test polish
+Last updated: 2026-06-28
+Status: planning notes; Rails/Vite is now the active app path and the legacy Next app is archived
 
 ## Current positioning
 
@@ -11,7 +11,7 @@ Use the public name:
 
 Keep the language as a central tournament hub unless FD/organizers explicitly approve more official wording.
 
-The production Next.js app remains the fallback until Rails API + React/Vite staging is fully validated.
+The original Next.js app has been archived under `archive/legacy-next-app`; Rails API + React/Vite is now the active deployment path.
 
 ## Decisions from local review
 

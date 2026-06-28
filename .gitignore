@@ -2,8 +2,8 @@ node_modules/
 .npm/
 .env*
 !.env.example
-!apps/*/.env.example
 !web/.env.example
+!archive/legacy-next-app/.env.example
 .next/
 dist/
 tmp/

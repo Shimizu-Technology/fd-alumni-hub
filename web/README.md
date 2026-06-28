@@ -1,8 +1,8 @@
 # FD Alumni Hub React/Vite App
 
-Side-by-side Rails-backed frontend for the FD Alumni Basketball Tournament Hub.
+Rails-backed React/Vite frontend for the FD Alumni Basketball Tournament Hub.
 
-This app is additive and is not the current production frontend. Production remains `apps/web` until Rails staging, data migration, and organizer review are complete.
+This is the active frontend. The original Next.js/Prisma app has been archived under `archive/legacy-next-app` and is no longer deployed or part of the npm workspace.
 
 ## Local development
 
@@ -16,13 +16,13 @@ cd api
 bin/rails server -p 3001
 
 # terminal 2
-npm run web:dev
+npm run dev
 ```
 
 ## Build
 
 ```bash
-npm run web:build
+npm run build
 ```
 
 ## Routes
