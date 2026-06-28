@@ -12,6 +12,12 @@ type SeoRoute = {
   robots?: string
 }
 
+const unknownRouteSeo: SeoRoute = {
+  title: `Page unavailable | ${SITE_NAME}`,
+  description: DEFAULT_DESCRIPTION,
+  robots: 'noindex,nofollow',
+}
+
 const routeSeo: Record<string, SeoRoute> = {
   '/': {
     title: `${SITE_NAME} | Schedule, Standings, Tickets & Streams`,
@@ -72,7 +78,7 @@ function seoForPath(pathname: string): SeoRoute {
     }
   }
 
-  return routeSeo[pathname] || routeSeo['/']
+  return routeSeo[pathname] || unknownRouteSeo
 }
 
 function upsertMeta(selector: string, attributes: Record<string, string>) {
@@ -83,7 +89,8 @@ function upsertMeta(selector: string, attributes: Record<string, string>) {
     document.head.appendChild(element)
   }
 
-  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value))
+  const target = element
+  Object.entries(attributes).forEach(([key, value]) => target.setAttribute(key, value))
 }
 
 function upsertLink(selector: string, attributes: Record<string, string>) {
@@ -94,7 +101,8 @@ function upsertLink(selector: string, attributes: Record<string, string>) {
     document.head.appendChild(element)
   }
 
-  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value))
+  const target = element
+  Object.entries(attributes).forEach(([key, value]) => target.setAttribute(key, value))
 }
 
 export function SeoManager() {
