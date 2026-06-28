@@ -67,8 +67,8 @@
       "gameNumber": "7",
       "date": "2026-07-04",
       "time": "3:40pm",
-      "awayTeam": "435",
-      "homeTeam": "815",
+      "awayTeam": "430-5",
+      "homeTeam": "08/15",
       "phase": "pool"
     },
     {
@@ -172,7 +172,7 @@
       "date": "2026-07-06",
       "time": "7:10pm",
       "awayTeam": "91",
-      "homeTeam": "435",
+      "homeTeam": "430-5",
       "phase": "pool"
     },
     {
@@ -204,7 +204,7 @@
       "date": "2026-07-07",
       "time": "8:20pm",
       "awayTeam": "GAMETIME",
-      "homeTeam": "815",
+      "homeTeam": "08/15",
       "phase": "pool"
     },
     {
@@ -260,7 +260,7 @@
       "date": "2026-07-10",
       "time": "6:00pm",
       "awayTeam": "2005",
-      "homeTeam": "815",
+      "homeTeam": "08/15",
       "phase": "pool"
     },
     {
@@ -395,7 +395,7 @@
       "gameNumber": "46",
       "date": "2026-07-13",
       "time": "6:00pm",
-      "awayTeam": "435",
+      "awayTeam": "430-5",
       "homeTeam": "96/97",
       "phase": "pool"
     },
@@ -427,7 +427,7 @@
       "gameNumber": "50",
       "date": "2026-07-14",
       "time": "7:10pm",
-      "awayTeam": "815",
+      "awayTeam": "08/15",
       "homeTeam": "98/00",
       "phase": "pool"
     },
@@ -499,7 +499,7 @@
       "gameNumber": "58",
       "date": "2026-07-17",
       "time": "7:10pm",
-      "awayTeam": "435",
+      "awayTeam": "430-5",
       "homeTeam": "98/00",
       "phase": "pool"
     }

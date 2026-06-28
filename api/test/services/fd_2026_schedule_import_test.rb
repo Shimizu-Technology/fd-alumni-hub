@@ -12,6 +12,10 @@ class Fd2026ScheduleImportTest < ActiveSupport::TestCase
     assert_equal 3, result[:skippedRows]
     assert_equal 32, tournament.teams.count
     assert_equal 61, tournament.games.count
+    assert Team.exists?(display_name: "430-5")
+    assert Team.exists?(display_name: "08/15")
+    assert_not Team.exists?(display_name: "435")
+    assert_not Team.exists?(display_name: "815")
 
     opener = Game.find_by!(legacy_id: "fd-2026-schedule-1")
     assert_equal "79/80", opener.away_team.display_name
@@ -35,6 +39,26 @@ class Fd2026ScheduleImportTest < ActiveSupport::TestCase
         end
       end
     end
+  end
+
+  test "renames previous shorthand team labels on later seed runs" do
+    tournament = Tournament.create!(
+      name: "FD Alumni Basketball Tournament",
+      year: 2026,
+      start_date: Date.new(2026, 7, 3),
+      end_date: Date.new(2026, 7, 24),
+      status: "upcoming"
+    )
+    four_thirty_five = tournament.teams.create!(legacy_id: "fd-2026-team-435", class_year_label: "435", display_name: "435")
+    eight_fifteen = tournament.teams.create!(legacy_id: "fd-2026-team-815", class_year_label: "815", display_name: "815")
+
+    DataImport::Fd2026ScheduleImport.call
+
+    assert_equal 32, tournament.teams.count
+    assert_equal "430-5", four_thirty_five.reload.display_name
+    assert_equal "fd-2026-team-430-5", four_thirty_five.legacy_id
+    assert_equal "08/15", eight_fifteen.reload.display_name
+    assert_equal "fd-2026-team-08-15", eight_fifteen.legacy_id
   end
 
   test "does not overwrite admin edits on later seed runs" do

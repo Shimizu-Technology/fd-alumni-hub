@@ -66,6 +66,14 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_equal [ "Class of 2012", "Class of 2017" ], body.dig("team", "classCohorts").map { |cohort| cohort["displayName"] }
 
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { classCohortKeys: [] } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal [ 2012, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
+
     @team.update!(display_name: "Class of 2019")
     assert_equal [ 2012, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
   end

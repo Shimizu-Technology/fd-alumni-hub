@@ -4,6 +4,11 @@ module DataImport
   class Fd2026ScheduleImport
     DEFAULT_PATH = Rails.root.join("..", "data", "schedules", "fd-2026-pool-play-2026-06-27.json").expand_path.freeze
     SOURCE_NOTE = "source=fd-2026-pool-play-2026-06-27".freeze
+    CANONICAL_TEAM_LABELS = {
+      "435" => "430-5",
+      "815" => "08/15",
+      "8/15" => "08/15"
+    }.freeze
 
     def self.call(path: nil, overwrite: false)
       new(path: path, overwrite: overwrite).call
@@ -64,12 +69,13 @@ module DataImport
       labels.index_with { |label| upsert_team(tournament, label) }
     end
 
-    def upsert_team(tournament, label)
-      legacy_id = team_legacy_id(label)
-      team = Team.find_by(legacy_id: legacy_id) || tournament.teams.find_by(display_name: label) || tournament.teams.build
-      team.legacy_id ||= legacy_id
-      team.class_year_label = label if team.new_record? || overwrite? || team.class_year_label.blank?
-      team.display_name = label if team.new_record? || overwrite? || team.display_name.blank?
+    def upsert_team(tournament, source_label)
+      label = canonical_team_label(source_label)
+      legacy_ids = team_legacy_ids(source_label, label)
+      team = Team.where(legacy_id: legacy_ids).first || tournament.teams.find_by(display_name: [ label, *alias_labels_for(label) ]) || tournament.teams.build
+      team.legacy_id = team_legacy_id(label) if team.legacy_id.blank? || legacy_ids.include?(team.legacy_id)
+      team.class_year_label = label if should_assign_team_label?(team.class_year_label, label)
+      team.display_name = label if should_assign_team_label?(team.display_name, label)
       team.save!
       team
     end
@@ -131,6 +137,24 @@ module DataImport
       hour += 12 if meridiem == "pm" && hour < 12
 
       Time.find_zone!("Pacific/Guam").local(date.year, date.month, date.day, hour, minute, 0)
+    end
+
+    def should_assign_team_label?(current_value, label)
+      overwrite? || current_value.blank? || canonical_team_label(current_value) == label
+    end
+
+    def canonical_team_label(label)
+      normalized_label = label.to_s.strip.downcase
+      CANONICAL_TEAM_LABELS.fetch(normalized_label, label.to_s.strip)
+    end
+
+    def team_legacy_ids(source_label, label = canonical_team_label(source_label))
+      ([ label, source_label ] + alias_labels_for(label)).map { |value| team_legacy_id(value) }.uniq
+    end
+
+    def alias_labels_for(label)
+      canonical_label = canonical_team_label(label)
+      CANONICAL_TEAM_LABELS.filter_map { |source, target| source if target == canonical_label }
     end
 
     def team_legacy_id(label)

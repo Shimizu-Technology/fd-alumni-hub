@@ -29,7 +29,7 @@ module Api
           class_cohort_keys = attrs.delete(:class_cohort_keys)
 
           if team.update(attrs.except(:tournament_id))
-            sync_manual_memberships(team, class_cohort_keys) if class_cohort_keys
+            sync_manual_memberships(team, class_cohort_keys) if class_cohort_keys&.any?
             render json: { team: team_for_response(team.id).api_json(include_roster: true) }
           else
             render_errors(team)

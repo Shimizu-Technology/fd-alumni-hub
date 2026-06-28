@@ -7,6 +7,7 @@ module ClassArchive
     def call
       return skipped_result unless ready?
 
+      normalization = ClassArchive::NormalizeTeamEntryLabels.call
       team_results = Team.find_each.map { |team| ClassArchive::SyncTeamMemberships.call(team) }
       champion_results = TournamentChampion.find_each.map { |champion| ClassArchive::SyncChampionCredits.call(champion) }
 
@@ -14,6 +15,7 @@ module ClassArchive
         classCohorts: ClassCohort.count,
         teamMemberships: TeamClassMembership.count,
         championCredits: TournamentChampionCredit.count,
+        normalizedTeamLabels: normalization[:normalizedTeamLabels],
         teamsSynced: team_results.count { |result| !result[:skipped] },
         championsSynced: champion_results.count { |result| !result[:skipped] },
         teamsWithoutMemberships: Team.left_outer_joins(:team_class_memberships).where(team_class_memberships: { id: nil }).count
@@ -31,6 +33,7 @@ module ClassArchive
         classCohorts: 0,
         teamMemberships: 0,
         championCredits: 0,
+        normalizedTeamLabels: 0,
         teamsSynced: 0,
         championsSynced: 0,
         teamsWithoutMemberships: 0,
