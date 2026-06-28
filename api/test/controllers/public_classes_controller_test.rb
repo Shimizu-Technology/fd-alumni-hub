@@ -1,7 +1,7 @@
 require "test_helper"
 
 class PublicClassesControllerTest < ActionDispatch::IntegrationTest
-  test "returns class archive without merging combined and individual titles" do
+  test "returns combined entry archive while preserving individual context" do
     tournament = Tournament.create!(
       name: "FD Alumni Basketball Tournament",
       year: 2025,
@@ -18,6 +18,8 @@ class PublicClassesControllerTest < ActionDispatch::IntegrationTest
     TournamentChampion.create!(year: 2022, slug: "2022", champion_label: "Class of 2002/04", champion_key: "02/04", source: "test", position: 2)
     TournamentChampion.create!(year: 2025, slug: "2025", champion_label: "Class of 2002/04", champion_key: "02/04", source: "test", position: 3, tournament: tournament)
 
+    ClassArchive::Backfill.call
+
     get "/api/v1/public/classes/02-04"
 
     assert_response :success
@@ -28,19 +30,21 @@ class PublicClassesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, body["teams"].length
     assert_equal 1, body["games"].length
     assert_equal 1, body["articles"].length
-    assert_empty body["relatedTitleRecords"]
+    assert_equal [ "Class of 2002" ], body["relatedTitleRecords"].map { |record| record["championLabel"] }
   end
 
   test "returns combined records as related context for an individual class" do
     TournamentChampion.create!(year: 2009, slug: "2009", champion_label: "Class of 2002", champion_key: "02", source: "test", position: 1)
     TournamentChampion.create!(year: 2022, slug: "2022", champion_label: "Class of 2002/04", champion_key: "02/04", source: "test", position: 2)
 
+    ClassArchive::Backfill.call
+
     get "/api/v1/public/classes/02"
 
     assert_response :success
     body = JSON.parse(response.body)
-    assert_equal 1, body.dig("classProfile", "titleCount")
-    assert_equal [ 2009 ], body.dig("classProfile", "titleYears")
+    assert_equal 2, body.dig("classProfile", "titleCount")
+    assert_equal [ 2022, 2009 ], body.dig("classProfile", "titleYears")
     assert_equal [ "Class of 2002/04" ], body["relatedTitleRecords"].map { |record| record["championLabel"] }
   end
 end

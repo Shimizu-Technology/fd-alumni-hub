@@ -23,6 +23,7 @@ class PublicTeamsControllerTest < ActionDispatch::IntegrationTest
     tournament.standings.create!(team: team, wins: 1, losses: 0, points_for: 62, points_against: 58)
     tournament.article_links.create!(title: "Class of 2006 wins", source: "GSPN", url: "https://example.com/recap", game: game)
     TournamentChampion.create!(year: 2021, slug: "2021", champion_label: "Class of 2006", champion_key: "06", source: "test", position: 1)
+    ClassArchive::Backfill.call
 
     get "/api/v1/public/teams/#{team.id}"
 
@@ -30,6 +31,7 @@ class PublicTeamsControllerTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_equal "Class of 2006", body.dig("team", "displayName")
     assert_equal 1, body.dig("team", "rosterEntries").length
+    assert_equal [ "Class of 2006" ], body.dig("team", "classCohorts").map { |cohort| cohort["displayName"] }
     assert_equal 1, body["games"].length
     assert_equal "Class of 2006", body.dig("games", 0, "awayTeam", "displayName")
     assert_equal 1, body.dig("standing", "wins")

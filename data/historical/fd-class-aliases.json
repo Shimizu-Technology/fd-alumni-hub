@@ -1,0 +1,22 @@
+{
+  "aliases": [
+    {
+      "label": "MMX",
+      "classes": ["2010"],
+      "source": "Organizer/player confirmation",
+      "notes": "MMX is the Class of 2010 tournament entry."
+    },
+    {
+      "label": "GAMETIME",
+      "classes": ["2007"],
+      "source": "Organizer/player confirmation",
+      "notes": "GAMETIME is the Class of 2007 tournament entry."
+    },
+    {
+      "label": "12 Pack",
+      "classes": ["2012", "2017"],
+      "source": "Organizer/player confirmation",
+      "notes": "2026 tournament entry combining Class of 2012 and Class of 2017."
+    }
+  ]
+}

@@ -8,7 +8,8 @@ module Api
 
           render json: {
             championRecords: records.map(&:api_json),
-            titleCounts: TournamentChampion.title_counts
+            titleCounts: TournamentChampion.title_counts,
+            entryTitleCounts: TournamentChampion.entry_title_counts
           }
         end
       end

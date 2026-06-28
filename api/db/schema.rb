@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
+  end
+
+  create_table "class_cohorts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "display_name", null: false
+    t.integer "graduation_year", null: false
+    t.string "key", null: false
+    t.string "short_label", null: false
+    t.datetime "updated_at", null: false
+    t.index ["graduation_year"], name: "index_class_cohorts_on_graduation_year", unique: true
+    t.index ["key"], name: "index_class_cohorts_on_key", unique: true
   end
 
   create_table "content_ingest_items", force: :cascade do |t|
@@ -221,6 +232,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
     t.index ["tournament_id"], name: "index_standings_on_tournament_id"
   end
 
+  create_table "team_class_memberships", force: :cascade do |t|
+    t.bigint "class_cohort_id", null: false
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.integer "position", default: 0, null: false
+    t.string "source", default: "auto", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["class_cohort_id", "team_id"], name: "idx_team_class_memberships_cohort_team"
+    t.index ["class_cohort_id"], name: "index_team_class_memberships_on_class_cohort_id"
+    t.index ["team_id", "class_cohort_id"], name: "idx_team_class_memberships_unique", unique: true
+    t.index ["team_id"], name: "index_team_class_memberships_on_team_id"
+  end
+
   create_table "teams", force: :cascade do |t|
     t.string "class_year_label", null: false
     t.datetime "created_at", null: false
@@ -235,6 +260,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
     t.index ["tournament_id", "display_name"], name: "index_teams_on_tournament_and_display_name", unique: true
     t.index ["tournament_id", "division"], name: "index_teams_on_tournament_id_and_division"
     t.index ["tournament_id"], name: "index_teams_on_tournament_id"
+  end
+
+  create_table "tournament_champion_credits", force: :cascade do |t|
+    t.bigint "class_cohort_id", null: false
+    t.datetime "created_at", null: false
+    t.string "credit_type", default: "champion", null: false
+    t.integer "position", default: 0, null: false
+    t.string "source", default: "auto", null: false
+    t.bigint "tournament_champion_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["class_cohort_id", "tournament_champion_id"], name: "idx_champion_credits_cohort_champion"
+    t.index ["class_cohort_id"], name: "index_tournament_champion_credits_on_class_cohort_id"
+    t.index ["tournament_champion_id", "class_cohort_id"], name: "idx_champion_credits_unique", unique: true
+    t.index ["tournament_champion_id"], name: "index_tournament_champion_credits_on_tournament_champion_id"
   end
 
   create_table "tournament_champions", force: :cascade do |t|
@@ -309,7 +348,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
   add_foreign_key "sponsors", "tournaments", on_delete: :cascade
   add_foreign_key "standings", "teams", on_delete: :cascade
   add_foreign_key "standings", "tournaments", on_delete: :cascade
+  add_foreign_key "team_class_memberships", "class_cohorts", on_delete: :cascade
+  add_foreign_key "team_class_memberships", "teams", on_delete: :cascade
   add_foreign_key "teams", "divisions", on_delete: :nullify
   add_foreign_key "teams", "tournaments", on_delete: :cascade
+  add_foreign_key "tournament_champion_credits", "class_cohorts", on_delete: :cascade
+  add_foreign_key "tournament_champion_credits", "tournament_champions", on_delete: :cascade
   add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify
 end

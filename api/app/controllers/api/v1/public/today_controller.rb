@@ -8,7 +8,7 @@ module Api
 
           day = requested_date || Time.zone.today
           games = tournament.games
-            .includes(:division_record, home_team: [ :division_record, :roster_entries ], away_team: [ :division_record, :roster_entries ])
+            .includes(:division_record, home_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ], away_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ])
             .where(start_time: day.beginning_of_day..day.end_of_day)
             .ordered
             .to_a

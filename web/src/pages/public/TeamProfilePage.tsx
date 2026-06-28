@@ -29,7 +29,7 @@ export function TeamProfilePage() {
       <PageHeader
         eyebrow={`${data.tournament.year} class profile`}
         title={data.team.displayName}
-        description={`${data.team.division || 'Division pending'} · ${data.tournament.name}. View this class roster, schedule, results, and title history.`}
+        description={`${data.team.division || 'Division pending'} · ${data.tournament.name}. View this team entry roster, schedule, results, and represented class title credits.`}
         actions={<Link className="btn secondary" to={`/schedule?year=${data.tournament.year}&teamId=${data.team.id}`}>Schedule filter <IconArrowRight /></Link>}
       />
 
@@ -48,7 +48,7 @@ export function TeamProfilePage() {
       <div className="stats-grid four">
         <StatCard label="Record" value={recordLabel} tone="maroon" />
         <StatCard label="Games" value={data.games.length} detail={`${finalGames.length} final`} />
-        <StatCard label="Titles in archive" value={titles.length} detail={titles[0] ? `Latest ${titles[0].year}` : 'No verified titles yet'} tone="gold" />
+        <StatCard label="Class title credits" value={titles.length} detail={titles[0] ? `Latest ${titles[0].year}` : 'No verified titles yet'} tone="gold" />
         <StatCard label="Roster" value={roster.length} detail={roster.length ? 'players listed' : 'pending'} />
       </div>
 
@@ -65,8 +65,8 @@ export function TeamProfilePage() {
 
       <div className="split-grid team-profile-split">
         <Panel>
-          <div className="section-heading"><h2>Title history</h2><span>{titles.length}</span></div>
-          {!titles.length ? <EmptyState title="No verified titles in archive" description="Historical champion records are still being verified for older tournament years." /> : (
+          <div className="section-heading"><h2>Represented class credits</h2><span>{titles.length}</span></div>
+          {!titles.length ? <EmptyState title="No verified titles in archive" description="Historical champion records are still being verified for this team entry's represented classes." /> : (
             <div className="title-history-list">
               {titles.map((record) => (
                 <Link key={record.id} to={`/history/${record.year}`} className="title-history-row">

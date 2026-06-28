@@ -3,7 +3,7 @@ module Api
     module Public
       class TeamsController < BaseController
         def show
-          team = Team.includes(:tournament, :division_record, :roster_entries).find_by(id: params[:id])
+          team = Team.includes(:tournament, :division_record, :roster_entries, :team_class_memberships, :class_cohorts).find_by(id: params[:id])
           return render_not_found("Team not found") unless team
 
           games = team_games(team)
@@ -28,7 +28,7 @@ module Api
 
         def team_games(team)
           Game
-            .includes(:division_record, home_team: [ :division_record, :roster_entries ], away_team: [ :division_record, :roster_entries ])
+            .includes(:division_record, home_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ], away_team: [ :division_record, :roster_entries, :team_class_memberships, :class_cohorts ])
             .where(tournament_id: team.tournament_id)
             .where("home_team_id = :team_id OR away_team_id = :team_id", team_id: team.id)
             .ordered

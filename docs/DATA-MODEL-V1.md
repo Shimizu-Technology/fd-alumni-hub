@@ -14,6 +14,31 @@
 - display_name
 - division
 
+## ClassCohort
+- id
+- key (e.g., 17, 02)
+- graduation_year
+- display_name
+
+## TeamClassMembership
+- team_id
+- class_cohort_id
+- source
+- position
+
+## TournamentChampion
+- tournament_id
+- year
+- champion_label
+- champion_key (team entry, e.g., 02/04)
+- bracket (overall/maroon/gold/unknown)
+- primary
+
+## TournamentChampionCredit
+- tournament_champion_id
+- class_cohort_id
+- credit_type
+
 ## Game
 - id
 - tournament_id

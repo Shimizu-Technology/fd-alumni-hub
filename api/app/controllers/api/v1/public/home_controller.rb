@@ -20,7 +20,7 @@ module Api
           end
 
           today_range = Time.zone.now.beginning_of_day..Time.zone.now.end_of_day
-          games_scope = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record)
+          games_scope = tournament.games.includes(:division_record, { home_team: [ :division_record, :team_class_memberships, :class_cohorts ] }, { away_team: [ :division_record, :team_class_memberships, :class_cohorts ] })
           today_games = games_scope.where(start_time: today_range).ordered.limit(20).to_a
           live_games = games_scope.where(status: "live").ordered.limit(10).to_a
           game_day_note = tournament.game_day_notes.find_by(date: Time.zone.today, active: true)

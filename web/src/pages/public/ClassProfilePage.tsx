@@ -51,8 +51,8 @@ export function ClassProfilePage() {
         <strong>{components.length > 1 ? 'Combined class record' : 'Individual class record'}</strong>
         <p>
           {components.length > 1
-            ? `${profile.displayName} is tracked separately from ${components.map(classDisplayLabel).join(' and ')}. Combined titles do not inflate the individual class totals.`
-            : 'Individual class titles are counted separately from any later combined-class teams that include this class.'}
+            ? `${profile.displayName} is preserved as its original team entry, and shared titles also credit ${components.map(classDisplayLabel).join(' and ')}.`
+            : 'This page includes solo titles plus shared-team credits for every combined entry that represented this class.'}
         </p>
         {components.length > 1 && (
           <div className="class-chip-row">
@@ -127,7 +127,7 @@ function ClassGameList({ games, classKey }: { games: Game[]; classKey: string })
   return (
     <div className="team-game-list">
       {games.map((game) => {
-        const homeMatches = classKeyFromRoute(game.homeTeam?.displayName || game.homeTeam?.classYearLabel) === classKey
+        const homeMatches = teamMatchesClass(game.homeTeam, classKey)
         const opponent = homeMatches ? game.awayTeam : game.homeTeam
         const result = gameResultLabel(game)
         return (
@@ -144,6 +144,12 @@ function ClassGameList({ games, classKey }: { games: Game[]; classKey: string })
       })}
     </div>
   )
+}
+
+function teamMatchesClass(team: Game['homeTeam'], classKey: string) {
+  if (!team) return false
+  if (team.classCohorts?.some((cohort) => cohort.key === classKey)) return true
+  return classKeyFromRoute(team.displayName || team.classYearLabel) === classKey
 }
 
 function CoverageList({ articles }: { articles: Article[] }) {
@@ -167,7 +173,7 @@ function CoverageList({ articles }: { articles: Article[] }) {
 function classArchiveDescription(classKey: string, titles: number) {
   const isCombined = classKey.includes('/')
   const titleCopy = titles === 1 ? '1 verified title' : `${titles} verified titles`
-  return `${titleCopy}. ${isCombined ? 'This combined class archive is kept separate from the individual class pages.' : 'This individual class archive stays separate from combined-class records.'}`
+  return `${titleCopy}. ${isCombined ? 'This combined team-entry archive preserves the original roster grouping.' : 'This individual class archive includes solo and shared-team title credits.'}`
 }
 
 function titleRecordSubhead(record: TournamentChampion) {

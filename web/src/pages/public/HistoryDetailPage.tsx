@@ -124,7 +124,7 @@ function visibleCountLabel(total: number, visible: number, noun?: string) {
 }
 
 function emptyChampionsArchive(): ChampionsArchive {
-  return { championRecords: [], titleCounts: [] }
+  return { championRecords: [], titleCounts: [], entryTitleCounts: [] }
 }
 
 function emptyScheduleArchive(): ScheduleArchive {
