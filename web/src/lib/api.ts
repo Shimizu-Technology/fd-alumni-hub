@@ -12,7 +12,9 @@ import type {
   Sponsor,
   Standing,
   Team,
+  TitleCount,
   Tournament,
+  TournamentChampion,
 } from './types'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '')
@@ -147,7 +149,8 @@ export const api = {
     request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
-  publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[] }>(`/public/teams/${id}`),
+  publicChampions: (params: { year?: number | null } = {}) => request<{ championRecords: TournamentChampion[]; titleCounts: TitleCount[] }>(`/public/champions${query(params)}`),
+  publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
   publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null } = {}) =>

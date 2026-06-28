@@ -209,6 +209,34 @@ export type ScoreCoverage = {
   percent: number
 }
 
+export type TournamentChampion = {
+  id: string
+  tournamentId: string | null
+  year: number
+  editionLabel: string | null
+  label: string
+  championLabel: string | null
+  championKey: string | null
+  championComponents: string[]
+  runnerUpLabel: string | null
+  runnerUpKey: string | null
+  score: string | null
+  status: 'completed' | 'cancelled' | 'research_pending' | 'upcoming' | 'unknown'
+  source: string
+  notes: string | null
+  position: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type TitleCount = {
+  championKey: string
+  championLabel: string
+  titles: number
+  years: number[]
+  records: TournamentChampion[]
+}
+
 export type CurrentUser = {
   id: string
   clerkId: string | null

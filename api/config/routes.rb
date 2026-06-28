@@ -13,6 +13,7 @@ Rails.application.routes.draw do
           post :vote, to: "prediction_votes#create"
         end
         resources :tournaments, only: [ :index, :show ]
+        resources :champions, only: :index
         resources :teams, only: :show
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"

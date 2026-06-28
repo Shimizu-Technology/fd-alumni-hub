@@ -22,6 +22,7 @@ class PublicTeamsControllerTest < ActionDispatch::IntegrationTest
     )
     tournament.standings.create!(team: team, wins: 1, losses: 0, points_for: 62, points_against: 58)
     tournament.article_links.create!(title: "Class of 2006 wins", source: "GSPN", url: "https://example.com/recap", game: game)
+    TournamentChampion.create!(year: 2021, slug: "2021", champion_label: "Class of 2006", champion_key: "06", source: "test", position: 1)
 
     get "/api/v1/public/teams/#{team.id}"
 
@@ -33,6 +34,8 @@ class PublicTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Class of 2006", body.dig("games", 0, "awayTeam", "displayName")
     assert_equal 1, body.dig("standing", "wins")
     assert_equal 1, body["articles"].length
+    assert_equal 1, body["titleRecords"].length
+    assert_equal "Class of 2006", body.dig("titleRecords", 0, "championLabel")
   end
 
   test "returns not found for unknown team" do

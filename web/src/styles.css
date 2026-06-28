@@ -230,6 +230,18 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .sponsor-card { min-height: 10rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1.25rem; background: #fff; display: grid; place-items: center; text-align: center; gap: .5rem; }
 .sponsor-card img { max-height: 4rem; object-fit: contain; }
 .sponsor-initials { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 1rem; color: #fff; background: var(--fd-maroon); font-weight: 900; }
+.title-leaderboard-panel { background: linear-gradient(135deg, #fff, var(--fd-gold-100)); }
+.title-leaderboard-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.title-leaderboard-card { display: grid; gap: .2rem; padding: 1rem; border: 1px solid rgba(200,155,60,.42); border-radius: 1rem; background: rgba(255,255,255,.82); transition: transform .16s ease, border-color .16s ease; }
+.title-leaderboard-card:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+.title-leaderboard-card span { color: var(--fd-maroon); font-weight: 950; }
+.title-leaderboard-card strong { font-size: 2rem; line-height: 1; letter-spacing: -.055em; }
+.title-leaderboard-card small { color: var(--muted); font-weight: 800; }
+.champion-record-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.champion-record-card { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
+.champion-record-card span { color: var(--fd-maroon); font-size: .75rem; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.champion-record-card p { margin: 0; color: var(--muted); }
+.champion-record-card small { color: var(--muted); font-weight: 800; }
 .timeline-list { display: grid; gap: .75rem; }
 .timeline-row { display: grid; grid-template-columns: 5rem 1fr; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; }
 .timeline-link-row { grid-template-columns: 5rem minmax(0, 1fr) auto; align-items: center; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
@@ -571,7 +583,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-mobile-close { position: absolute; top: .9rem; right: .85rem; z-index: 2; display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 1px solid rgba(255,255,255,.14); border-radius: .85rem; color: rgba(255,255,255,.8); background: rgba(255,255,255,.08); }
   .admin-content, .admin-content.sidebar-collapsed { margin-left: 0; padding: 1rem clamp(.85rem, 3vw, 1.25rem) 2.5rem; }
   .admin-topbar { display: none; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid, .info-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .title-leaderboard-grid, .champion-record-grid, .archive-card-grid, .archive-media-strip, .today-brief-grid, .prediction-grid, .info-section-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .info-hero-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-detail-summary, .team-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -600,7 +612,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .section-heading { align-items: flex-start; flex-wrap: wrap; }
   .section-actions { width: 100%; justify-content: flex-start; }
   .panel, .state-card, .stat-card { border-radius: 1.1rem; }
-  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .tournament-facts-grid, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .tournament-dashboard-hero, .tournament-health-grid.health-grid, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row, .info-section-grid, .bulk-ticket-actions { grid-template-columns: 1fr; }
+  .stats-grid, .stats-grid.three, .stats-grid.four, .game-card-grid, .article-grid, .sponsor-grid, .partner-strip, .workflow-steps, .tournament-mode-grid, .tournament-workboard-grid, .tournament-facts-grid, .title-leaderboard-grid, .champion-record-grid, .form-grid, .health-grid, .archive-card-grid, .archive-media-strip, .archive-hero, .tournament-dashboard-hero, .tournament-health-grid.health-grid, .home-today-note-grid, .today-brief-grid, .today-game-card, .prediction-grid, .roster-columns, .prediction-admin-row, .info-section-grid, .bulk-ticket-actions { grid-template-columns: 1fr; }
   .archive-hero img { justify-self: start; }
   .timeline-link-row { grid-template-columns: 1fr auto; }
   .timeline-link-row .timeline-year { grid-column: 1 / -1; }

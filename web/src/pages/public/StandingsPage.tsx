@@ -5,9 +5,10 @@ import { useAsync } from '../../lib/hooks'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
 
 export function StandingsPage() {
+  const [year] = useState(() => numericSearchParam('year'))
   const [division, setDivision] = useState('')
   const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
-  const { data, loading, error, reload } = useAsync(() => api.publicStandings({ division }), [division])
+  const { data, loading, error, reload } = useAsync(() => api.publicStandings({ year, division }), [year, division])
   const filteredStandings = useMemo(() => {
     const standings = data?.standings || []
     return teamId ? standings.filter((standing) => standing.team.id === teamId) : standings
@@ -77,4 +78,9 @@ export function StandingsPage() {
       )}
     </div>
   )
+}
+
+function numericSearchParam(name: string) {
+  const value = new URLSearchParams(window.location.search).get(name)
+  return value && /^\d{4}$/.test(value) ? Number(value) : null
 }

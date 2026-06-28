@@ -12,13 +12,15 @@ module Api
             .where(game_id: games.map(&:id))
             .latest
             .limit(20)
+          title_records = TournamentChampion.for_team(team)
 
           render json: {
             tournament: team.tournament.api_json,
             team: team.api_json(include_roster: true),
             standing: standing&.api_json,
             games: games.map { |game| game.api_json(include_rosters: true) },
-            articles: articles.map(&:api_json)
+            articles: articles.map(&:api_json),
+            titleRecords: title_records.map(&:api_json)
           }
         end
 

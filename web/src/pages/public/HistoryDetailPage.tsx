@@ -2,20 +2,19 @@ import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime, guamDayLabel } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow, gameResultLabel } from '../../lib/games'
-import { CHAMPIONS } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
-import type { Article, Game, MediaAsset, Sponsor, Standing } from '../../lib/types'
+import type { Article, Game, MediaAsset, Sponsor, Standing, TournamentChampion } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function HistoryDetailPage() {
   const { year = '' } = useParams()
   const numericYear = parseArchiveYear(year)
-  const championRecord = numericYear ? CHAMPIONS.find((record) => record.year === numericYear) : undefined
   const { data, loading, error, reload } = useAsync(async () => {
     if (!numericYear) throw new Error('Choose a valid tournament year')
 
-    const [scheduleResult, standingsResult, articlesResult, mediaResult, sponsorsResult] = await Promise.allSettled([
+    const [championsResult, scheduleResult, standingsResult, articlesResult, mediaResult, sponsorsResult] = await Promise.allSettled([
+      api.publicChampions({ year: numericYear }),
       api.publicSchedule({ year: numericYear }),
       api.publicStandings({ year: numericYear }),
       api.publicArticles({ year: numericYear, limit: 200 }),
@@ -25,6 +24,7 @@ export function HistoryDetailPage() {
 
     return {
       year: numericYear,
+      champions: settledValue(championsResult, emptyChampionsArchive()),
       schedule: settledValue(scheduleResult, emptyScheduleArchive()),
       standings: settledValue(standingsResult, emptyStandingsArchive()),
       articles: settledValue(articlesResult, emptyArticlesArchive()),
@@ -46,29 +46,33 @@ export function HistoryDetailPage() {
   const standings = archiveData?.standings.standings || []
   const scoreCoverage = archiveData?.standings.scoreCoverage
   const finalGames = games.filter((game) => game.status === 'final' && game.homeScore !== null && game.awayScore !== null)
+  const championRecords = archiveData?.champions.championRecords || []
+  const primaryChampion = championRecords.find((record) => record.status === 'completed') || championRecords[0]
 
   return (
     <div className="page-stack archive-detail-page">
       <PageHeader
         eyebrow="Tournament archive"
         title={`${numericYear || year} FD Alumni Basketball`}
-        description={tournament ? `${formatTournamentWindow(tournament)} · ${archiveDescription(championRecord)}` : archiveDescription(championRecord)}
+        description={tournament ? `${formatTournamentWindow(tournament)} · ${archiveDescription(primaryChampion)}` : archiveDescription(primaryChampion)}
         actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
       />
 
       <section className="archive-hero panel">
         <div>
           <span className="archive-kicker">Archive snapshot</span>
-          <h2>{championRecord?.champion || 'Champion research pending'}</h2>
-          <p>{championRecord?.runnerUp ? `Runner-up: ${championRecord.runnerUp}` : championRecord?.note || 'This tournament archive is still being filled in from available source material.'}</p>
+          <h2>{championRecords.length > 1 ? `${numericYear} champion editions` : primaryChampion?.championLabel || 'Champion research pending'}</h2>
+          <p>{championSummary(primaryChampion)}</p>
           <div className="archive-badges">
-            <StatusBadge status={championRecord?.status || tournament?.status || 'research-pending'} />
-            <span>{championRecord?.score ? `Final: ${championRecord.score}` : 'Final score pending'}</span>
-            <span>{championRecord?.source || 'Source pending'}</span>
+            <StatusBadge status={primaryChampion?.status || tournament?.status || 'research-pending'} />
+            <span>{primaryChampion?.score ? `Final: ${primaryChampion.score}` : 'Final score pending'}</span>
+            <span>{primaryChampion?.source || 'Source pending'}</span>
           </div>
         </div>
         <img src="/brand/fd-crest.png" alt="" aria-hidden="true" />
       </section>
+
+      {championRecords.length > 0 && <ChampionRecordsPanel records={championRecords} />}
 
       <div className="stats-grid four">
         <StatCard label="Games tracked" value={games.length} tone="maroon" />
@@ -95,6 +99,7 @@ export function HistoryDetailPage() {
   )
 }
 
+type ChampionsArchive = Awaited<ReturnType<typeof api.publicChampions>>
 type ScheduleArchive = Awaited<ReturnType<typeof api.publicSchedule>>
 type StandingsArchive = Awaited<ReturnType<typeof api.publicStandings>>
 type ArticlesArchive = Awaited<ReturnType<typeof api.publicArticles>>
@@ -117,6 +122,10 @@ function visibleCountLabel(total: number, visible: number, noun?: string) {
   return total > visible ? `${visible} of ${total}${suffix}` : `${total}${suffix}`
 }
 
+function emptyChampionsArchive(): ChampionsArchive {
+  return { championRecords: [], titleCounts: [] }
+}
+
 function emptyScheduleArchive(): ScheduleArchive {
   return { tournament: null, games: [], teams: [], divisions: [], phases: [] }
 }
@@ -137,11 +146,36 @@ function emptySponsorsArchive(): SponsorsArchive {
   return { tournament: null, sponsors: [] }
 }
 
-function archiveDescription(record: (typeof CHAMPIONS)[number] | undefined) {
+function archiveDescription(record: TournamentChampion | undefined) {
   if (!record) return 'Known games, scores, photos, and coverage from this tournament year.'
-  if (record.status === 'cancelled') return record.note || 'Tournament cancelled.'
-  if (record.champion) return `${record.champion} title record with source links and available tournament media.`
-  return record.note || 'Historical details are still being researched.'
+  if (record.status === 'cancelled') return record.notes || 'Tournament cancelled.'
+  if (record.championLabel) return `${record.championLabel} title record with source links and available tournament media.`
+  return record.notes || 'Historical details are still being researched.'
+}
+
+function championSummary(record: TournamentChampion | undefined) {
+  if (!record) return 'This tournament archive is still being filled in from available source material.'
+  if (record.status === 'cancelled') return record.notes || 'Tournament cancelled.'
+  if (record.runnerUpLabel) return `Champion: ${record.championLabel}. Runner-up: ${record.runnerUpLabel}.`
+  return record.notes || `Champion: ${record.championLabel}.`
+}
+
+function ChampionRecordsPanel({ records }: { records: TournamentChampion[] }) {
+  return (
+    <Panel>
+      <div className="section-heading"><h2>Champion record</h2><span>{records.length} {records.length === 1 ? 'edition' : 'editions'}</span></div>
+      <div className="champion-record-grid">
+        {records.map((record) => (
+          <article className="champion-record-card" key={record.id}>
+            <span>{record.label}</span>
+            <strong>{record.championLabel || 'Champion pending'}</strong>
+            <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || record.source}</p>
+            <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
+          </article>
+        ))}
+      </div>
+    </Panel>
+  )
 }
 
 function ArchiveGameList({ games }: { games: Game[] }) {

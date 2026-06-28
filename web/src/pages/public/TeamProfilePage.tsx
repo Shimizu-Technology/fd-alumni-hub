@@ -2,7 +2,6 @@ import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
-import { titleRecordsForTeam } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Article, Game, RosterEntry, Team } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
@@ -19,7 +18,7 @@ export function TeamProfilePage() {
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (!data) return <EmptyState title="Class profile unavailable" />
 
-  const titles = titleRecordsForTeam(data.team)
+  const titles = data.titleRecords
   const roster = activeRoster(data.team.rosterEntries)
   const finalGames = data.games.filter((game) => game.status === 'final')
   const nextGame = nextUpcomingGame(data.games)
@@ -31,7 +30,7 @@ export function TeamProfilePage() {
         eyebrow={`${data.tournament.year} class profile`}
         title={data.team.displayName}
         description={`${data.team.division || 'Division pending'} · ${data.tournament.name}. View this class roster, schedule, results, and title history.`}
-        actions={<Link className="btn secondary" to={`/schedule?teamId=${data.team.id}`}>Schedule filter <IconArrowRight /></Link>}
+        actions={<Link className="btn secondary" to={`/schedule?year=${data.tournament.year}&teamId=${data.team.id}`}>Schedule filter <IconArrowRight /></Link>}
       />
 
       <section className="team-profile-hero panel">
@@ -42,7 +41,7 @@ export function TeamProfilePage() {
         </div>
         <div className="team-profile-hero-actions">
           <StatusBadge status={data.tournament.status} />
-          <Link className="btn primary" to={`/standings?teamId=${data.team.id}`}>Find in standings</Link>
+          <Link className="btn primary" to={`/standings?year=${data.tournament.year}&teamId=${data.team.id}`}>Find in standings</Link>
         </div>
       </section>
 
@@ -72,7 +71,7 @@ export function TeamProfilePage() {
               {titles.map((record) => (
                 <Link key={record.year} to={`/history/${record.year}`} className="title-history-row">
                   <strong>{record.year}</strong>
-                  <span>{record.runnerUp ? `Defeated ${record.runnerUp}` : 'Champion record'}</span>
+                  <span>{record.runnerUpLabel ? `Defeated ${record.runnerUpLabel}` : 'Champion record'}</span>
                   <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
                 </Link>
               ))}

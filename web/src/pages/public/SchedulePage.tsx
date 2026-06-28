@@ -10,10 +10,11 @@ import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } 
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function SchedulePage() {
+  const [year] = useState(() => numericSearchParam('year'))
   const [division, setDivision] = useState('')
   const [phase, setPhase] = useState('')
   const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
-  const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ division, phase, teamId }), [division, phase, teamId])
+  const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ year, division, phase, teamId }), [year, division, phase, teamId])
 
   const grouped = useMemo(() => groupGamesByDay(data?.games || []), [data?.games])
 
@@ -117,6 +118,11 @@ function dayAnchorId(day: string) {
 
 function shortDayLabel(day: string) {
   return day.replace(/^[^,]+,\s*/, '')
+}
+
+function numericSearchParam(name: string) {
+  const value = new URLSearchParams(window.location.search).get(name)
+  return value && /^\d{4}$/.test(value) ? Number(value) : null
 }
 
 function labelPhase(phase: string) {

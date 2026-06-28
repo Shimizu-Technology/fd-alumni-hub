@@ -1,20 +1,19 @@
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
-import { CHAMPIONS, type ChampionRecord } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
-import type { Tournament } from '../../lib/types'
+import type { Tournament, TournamentChampion } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight } from '../../components/Icons'
 
 export function HistoryPage() {
-  const { data, loading, error, reload } = useAsync(() => api.publicTournaments(), [])
-  const records = mergeHistoryRecords(CHAMPIONS, data?.tournaments || [])
+  const { data, loading, error, reload } = useAsync(async () => {
+    const [tournaments, champions] = await Promise.all([api.publicTournaments(), api.publicChampions()])
+    return { tournaments: tournaments.tournaments, championRecords: champions.championRecords, titleCounts: champions.titleCounts }
+  }, [])
+
+  const records = mergeHistoryRecords(data?.championRecords || [], data?.tournaments || [])
   const completed = records.filter((record) => record.status === 'completed')
-  const titleCount = completed.reduce<Record<string, number>>((acc, record) => {
-    if (record.champion) acc[record.champion] = (acc[record.champion] || 0) + 1
-    return acc
-  }, {})
-  const dynasty = Object.entries(titleCount).sort((a, b) => b[1] - a[1])[0]
+  const dynasty = data?.titleCounts[0]
 
   if (loading && !data) return <LoadingState label="Loading history" />
   if (error) return <ErrorState message={error} onRetry={reload} />
@@ -24,31 +23,49 @@ export function HistoryPage() {
       <PageHeader
         eyebrow="Historical archive"
         title="Brotherhood tournament history"
-        description="Champion records, game results, photos, and source coverage are collected by tournament year. Some older years are still marked with research gaps while the archive is verified."
+        description="Champion records, game results, photos, and source coverage are collected by tournament edition. Combined classes are tracked separately from their individual class records."
       />
 
       <div className="stats-grid three">
-        <StatCard label="Tracked years" value={records.length} tone="maroon" />
+        <StatCard label="Tracked editions" value={records.length} tone="maroon" />
         <StatCard label="Completed records" value={completed.length} />
-        <StatCard label="Most titles in archive" value={dynasty ? dynasty[1] : 0} detail={dynasty?.[0]} tone="gold" />
+        <StatCard label="Most titles in archive" value={dynasty?.titles || 0} detail={dynasty?.championLabel} tone="gold" />
       </div>
+
+      <Panel className="title-leaderboard-panel">
+        <div className="section-heading">
+          <h2>Title leaderboard</h2>
+          <span>Combined classes kept separate</span>
+        </div>
+        {!data?.titleCounts.length ? <EmptyState title="Title history pending" /> : (
+          <div className="title-leaderboard-grid">
+            {data.titleCounts.slice(0, 8).map((entry) => (
+              <Link key={entry.championKey} to={`/history/${entry.years[0]}`} className="title-leaderboard-card">
+                <span>{entry.championLabel}</span>
+                <strong>{entry.titles}</strong>
+                <small>{entry.years.join(', ')}</small>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Panel>
 
       <Panel>
         <div className="section-heading">
-          <h2>Tournament years</h2>
+          <h2>Tournament champions</h2>
           <Link to="/news">Coverage archive <IconArrowRight /></Link>
         </div>
         {!records.length ? <EmptyState title="History archive pending" /> : (
           <div className="timeline-list">
             {records.map((record) => (
-              <Link key={record.year} to={`/history/${record.year}`} className="timeline-row timeline-link-row">
-                <div className="timeline-year">{record.year}</div>
+              <Link key={record.id} to={`/history/${record.year}`} className="timeline-row timeline-link-row">
+                <div className="timeline-year">{record.label}</div>
                 <div>
                   <div className="timeline-title">
-                    <strong>{record.champion || 'Champion research pending'}</strong>
+                    <strong>{record.championLabel || 'Champion research pending'}</strong>
                     <StatusBadge status={record.status} />
                   </div>
-                  <p>{record.runnerUp ? `Runner-up: ${record.runnerUp}` : record.note || 'Open tournament archive'}</p>
+                  <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || 'Open tournament archive'}</p>
                   <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
                 </div>
                 <IconArrowRight />
@@ -61,26 +78,29 @@ export function HistoryPage() {
   )
 }
 
-type HistoryRecord = ChampionRecord & { tournamentId?: string }
+type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes'>
 
-function mergeHistoryRecords(records: ChampionRecord[], tournaments: Tournament[]): HistoryRecord[] {
-  const byYear = new Map(records.map((record) => [record.year, { ...record } as HistoryRecord]))
+function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournament[]): HistoryRecord[] {
+  const historyRecords: HistoryRecord[] = records.map((record) => ({ ...record }))
+  const existingYears = new Set(records.map((record) => record.year))
 
   tournaments.forEach((tournament) => {
-    const existing = byYear.get(tournament.year)
-    const databaseRecord: HistoryRecord = {
-      year: tournament.year,
-      source: 'Tournament database',
-      status: historyStatusForTournament(tournament),
-      note: tournament.status === 'completed' ? undefined : `${tournament.status} tournament`,
-    }
+    if (existingYears.has(tournament.year)) return
 
-    byYear.set(tournament.year, existing ? { ...existing, tournamentId: tournament.id } : { ...databaseRecord, tournamentId: tournament.id })
+    historyRecords.push({
+      id: `tournament-${tournament.id}`,
+      tournamentId: tournament.id,
+      year: tournament.year,
+      editionLabel: null,
+      label: String(tournament.year),
+      championLabel: null,
+      runnerUpLabel: null,
+      score: null,
+      source: 'Tournament database',
+      status: tournament.status === 'completed' || tournament.status === 'cancelled' || tournament.status === 'upcoming' || tournament.status === 'live' ? tournament.status === 'live' ? 'upcoming' : tournament.status : 'unknown',
+      notes: tournament.status === 'completed' ? null : `${tournament.status} tournament`,
+    })
   })
 
-  return Array.from(byYear.values()).sort((a, b) => b.year - a.year)
-}
-
-function historyStatusForTournament(tournament: Tournament): ChampionRecord['status'] {
-  return tournament.status
+  return historyRecords.sort((a, b) => b.year - a.year || a.label.localeCompare(b.label))
 }
