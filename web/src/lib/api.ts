@@ -1,5 +1,6 @@
 import type {
   Article,
+  ClassProfile,
   CurrentUser,
   Division,
   Game,
@@ -150,6 +151,7 @@ export const api = {
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
   publicChampions: (params: { year?: number | null } = {}) => request<{ championRecords: TournamentChampion[]; titleCounts: TitleCount[] }>(`/public/champions${query(params)}`),
+  publicClass: (classKey: string) => request<{ classProfile: ClassProfile; titleRecords: TournamentChampion[]; relatedTitleRecords: TournamentChampion[]; teams: Team[]; standings: Standing[]; games: Game[]; articles: Article[] }>(`/public/classes/${encodeURIComponent(classKey)}`),
   publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),

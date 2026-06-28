@@ -238,12 +238,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
   end
 
   create_table "tournament_champions", force: :cascade do |t|
+    t.string "bracket", default: "overall", null: false
     t.string "champion_key", default: "", null: false
     t.string "champion_label", default: "", null: false
     t.datetime "created_at", null: false
     t.string "edition_label", default: "", null: false
     t.text "notes"
     t.integer "position", default: 0, null: false
+    t.boolean "primary", default: true, null: false
     t.string "runner_up_key"
     t.string "runner_up_label"
     t.string "score"
@@ -253,6 +255,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
     t.bigint "tournament_id"
     t.datetime "updated_at", null: false
     t.integer "year", null: false
+    t.index ["bracket", "year"], name: "index_tournament_champions_on_bracket_and_year"
     t.index ["champion_key"], name: "index_tournament_champions_on_champion_key"
     t.index ["slug"], name: "index_tournament_champions_on_slug", unique: true
     t.index ["tournament_id"], name: "index_tournament_champions_on_tournament_id"
@@ -308,5 +311,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000001) do
   add_foreign_key "standings", "tournaments", on_delete: :cascade
   add_foreign_key "teams", "divisions", on_delete: :nullify
   add_foreign_key "teams", "tournaments", on_delete: :cascade
-  add_foreign_key "tournament_champions", "tournaments"
+  add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify
 end

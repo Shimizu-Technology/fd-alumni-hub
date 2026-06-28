@@ -29,6 +29,7 @@ export type Tournament = {
 export type Team = {
   id: string
   tournamentId: string
+  tournamentYear?: number | null
   classYearLabel: string
   displayName: string
   divisionId?: string | null
@@ -221,6 +222,8 @@ export type TournamentChampion = {
   runnerUpLabel: string | null
   runnerUpKey: string | null
   score: string | null
+  bracket: 'overall' | 'maroon' | 'gold' | 'unknown'
+  primary: boolean
   status: 'completed' | 'cancelled' | 'research_pending' | 'upcoming' | 'unknown'
   source: string
   notes: string | null
@@ -235,6 +238,16 @@ export type TitleCount = {
   titles: number
   years: number[]
   records: TournamentChampion[]
+}
+
+export type ClassProfile = {
+  classKey: string
+  routeKey: string
+  displayName: string
+  titleCount: number
+  titleYears: number[]
+  teamCount: number
+  latestTournamentYear: number | null
 }
 
 export type CurrentUser = {

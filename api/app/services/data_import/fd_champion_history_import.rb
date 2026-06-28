@@ -52,6 +52,8 @@ module DataImport
         runner_up_label: runner_up_label,
         runner_up_key: TournamentChampion.canonical_key(source["runnerUpKey"].presence || runner_up_label),
         score: source["score"].to_s.strip.presence,
+        bracket: source["bracket"].presence || "overall",
+        primary: source.key?("primary") ? source["primary"] : true,
         status: source["status"].presence || "completed",
         source: source["source"].to_s.strip,
         notes: source["notes"].to_s.strip.presence,

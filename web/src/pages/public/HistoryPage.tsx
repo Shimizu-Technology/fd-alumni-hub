@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Tournament, TournamentChampion } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
@@ -34,13 +35,13 @@ export function HistoryPage() {
 
       <Panel className="title-leaderboard-panel">
         <div className="section-heading">
-          <h2>Title leaderboard</h2>
-          <span>Combined classes kept separate</span>
+          <h2>Primary title leaderboard</h2>
+          <span>Gold/older champion archive pending verification</span>
         </div>
         {!data?.titleCounts.length ? <EmptyState title="Title history pending" /> : (
           <div className="title-leaderboard-grid">
             {data.titleCounts.slice(0, 8).map((entry) => (
-              <Link key={entry.championKey} to={`/history/${entry.years[0]}`} className="title-leaderboard-card">
+              <Link key={entry.championKey} to={`/classes/${classRouteKey(entry.championKey)}`} className="title-leaderboard-card">
                 <span>{entry.championLabel}</span>
                 <strong>{entry.titles}</strong>
                 <small>{entry.years.join(', ')}</small>

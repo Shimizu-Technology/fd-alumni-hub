@@ -23,6 +23,7 @@ class Team < ApplicationRecord
     payload = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
+      tournamentYear: tournament&.year,
       classYearLabel: class_year_label,
       displayName: display_name,
       divisionId: division_id&.to_s,

@@ -15,6 +15,7 @@ import { HistoryDetailPage } from './pages/public/HistoryDetailPage'
 import { SponsorsPage } from './pages/public/SponsorsPage'
 import { InfoPage } from './pages/public/InfoPage'
 import { TeamProfilePage } from './pages/public/TeamProfilePage'
+import { ClassProfilePage } from './pages/public/ClassProfilePage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
 import { AdminTournamentDetailPage } from './pages/admin/AdminTournamentDetailPage'
@@ -46,6 +47,7 @@ export function App() {
           <Route path="gallery" element={<GalleryPage />} />
           <Route path="history" element={<HistoryPage />} />
           <Route path="history/:year" element={<HistoryDetailPage />} />
+          <Route path="classes/:classKey" element={<ClassProfilePage />} />
           <Route path="teams/:teamId" element={<TeamProfilePage />} />
           <Route path="sponsors" element={<SponsorsPage />} />
           <Route path="info" element={<InfoPage />} />

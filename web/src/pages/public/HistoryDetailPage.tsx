@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime, guamDayLabel } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow, gameResultLabel } from '../../lib/games'
+import { classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Article, Game, MediaAsset, Sponsor, Standing, TournamentChampion } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
@@ -168,7 +169,7 @@ function ChampionRecordsPanel({ records }: { records: TournamentChampion[] }) {
         {records.map((record) => (
           <article className="champion-record-card" key={record.id}>
             <span>{record.label}</span>
-            <strong>{record.championLabel || 'Champion pending'}</strong>
+            {record.championKey && record.championLabel ? <Link to={`/classes/${classRouteKey(record.championKey)}`}><strong>{record.championLabel}</strong></Link> : <strong>{record.championLabel || 'Champion pending'}</strong>}
             <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || record.source}</p>
             <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
           </article>

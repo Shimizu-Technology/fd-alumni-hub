@@ -1,5 +1,6 @@
 class TournamentChampion < ApplicationRecord
   STATUSES = %w[completed cancelled research_pending upcoming unknown].freeze
+  BRACKETS = %w[overall maroon gold unknown].freeze
 
   belongs_to :tournament, optional: true
 
@@ -9,10 +10,12 @@ class TournamentChampion < ApplicationRecord
   validates :year, numericality: { only_integer: true }
   validates :slug, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :bracket, inclusion: { in: BRACKETS }
   validates :champion_label, presence: true, unless: :cancelled?
 
   scope :ordered, -> { order(year: :desc, position: :asc, id: :asc) }
   scope :completed, -> { where(status: "completed") }
+  scope :primary_titles, -> { where(primary: true) }
   scope :with_champion_key, -> { where.not(champion_key: [ nil, "" ]) }
 
   def self.for_team(team)
@@ -23,7 +26,7 @@ class TournamentChampion < ApplicationRecord
   end
 
   def self.title_counts
-    completed.with_champion_key.ordered.group_by(&:champion_key).map do |champion_key, records|
+    completed.primary_titles.with_champion_key.ordered.group_by(&:champion_key).map do |champion_key, records|
       sorted_records = records.sort_by { |record| [ -record.year, record.position ] }
       {
         championKey: champion_key,
@@ -33,6 +36,14 @@ class TournamentChampion < ApplicationRecord
         records: sorted_records.map(&:api_json)
       }
     end.sort_by { |entry| [ -entry[:titles], entry[:championLabel] ] }
+  end
+
+  def self.canonical_key_from_route(value)
+    canonical_key(value.to_s.tr("-", "/"))
+  end
+
+  def self.route_key(value)
+    canonical_key(value).tr("/", "-")
   end
 
   def self.canonical_key(value)
@@ -60,6 +71,8 @@ class TournamentChampion < ApplicationRecord
       runnerUpLabel: runner_up_label.presence,
       runnerUpKey: runner_up_key.presence,
       score: score.presence,
+      bracket: bracket,
+      primary: primary,
       status: status,
       source: source,
       notes: notes.presence,
@@ -83,6 +96,7 @@ class TournamentChampion < ApplicationRecord
     self.edition_label = edition_label.to_s.strip
     self.champion_label = champion_label.to_s.strip
     self.runner_up_label = runner_up_label.to_s.strip.presence
+    self.bracket = bracket.to_s.strip.presence || "overall"
     self.champion_key = self.class.canonical_key(champion_key.presence || champion_label)
     self.runner_up_key = self.class.canonical_key(runner_up_key.presence || runner_up_label)
     self.slug = slug.to_s.strip.presence || [ year, edition_label.presence ].compact.join("-").parameterize

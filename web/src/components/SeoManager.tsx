@@ -78,6 +78,20 @@ function seoForPath(pathname: string): SeoRoute {
     }
   }
 
+  if (pathname.startsWith('/classes/')) {
+    return {
+      title: `Class Archive | ${SITE_NAME}`,
+      description: 'View a class archive with FD Alumni Basketball Tournament title history, team entries, games, and related coverage.',
+    }
+  }
+
+  if (pathname.startsWith('/teams/')) {
+    return {
+      title: `Class Team Profile | ${SITE_NAME}`,
+      description: 'View a tournament class team profile with roster, schedule, standings, title history, and related coverage.',
+    }
+  }
+
   return routeSeo[pathname] || unknownRouteSeo
 }
 
