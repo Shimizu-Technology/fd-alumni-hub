@@ -1,22 +1,24 @@
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { representedClassesSentence, sortedClassCohorts } from '../../lib/classes'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
+import { classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
-import type { Article, Game, RosterEntry, Team } from '../../lib/types'
+import type { Article, ClassCohort, Game, RosterEntry, Team } from '../../lib/types'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function TeamProfilePage() {
   const { teamId = '' } = useParams()
   const { data, loading, error, reload } = useAsync(async () => {
-    if (!teamId) throw new Error('Class profile not found')
+    if (!teamId) throw new Error('Team entry profile not found')
     return api.publicTeam(teamId)
   }, [teamId])
 
-  if (loading && !data) return <LoadingState label="Loading class profile" />
+  if (loading && !data) return <LoadingState label="Loading team entry profile" />
   if (error) return <ErrorState message={error} onRetry={reload} />
-  if (!data) return <EmptyState title="Class profile unavailable" />
+  if (!data) return <EmptyState title="Team entry profile unavailable" />
 
   const titles = data.titleRecords
   const roster = activeRoster(data.team.rosterEntries)
@@ -27,9 +29,9 @@ export function TeamProfilePage() {
   return (
     <div className="page-stack team-profile-page">
       <PageHeader
-        eyebrow={`${data.tournament.year} class profile`}
+        eyebrow={`${data.tournament.year} team entry`}
         title={data.team.displayName}
-        description={`${data.team.division || 'Division pending'} · ${data.tournament.name}. View this class roster, schedule, results, and title history.`}
+        description={`${data.team.division || 'Division pending'} · ${data.tournament.name}. View this team entry roster, schedule, results, and represented class title credits.`}
         actions={<Link className="btn secondary" to={`/schedule?year=${data.tournament.year}&teamId=${data.team.id}`}>Schedule filter <IconArrowRight /></Link>}
       />
 
@@ -37,6 +39,8 @@ export function TeamProfilePage() {
         <div>
           <span className="team-card-kicker">{data.team.classYearLabel}</span>
           <h2>{data.team.displayName}</h2>
+          <p>{representedClassesSentence(data.team)}</p>
+          <ClassChipLinks cohorts={data.team.classCohorts} />
           <p>{nextGame ? `Next game: ${teamGameLabel(nextGame)} · ${formatGuamDateTime(nextGame.startTime)}` : finalGames.length ? `${finalGames.length} completed games recorded.` : 'Schedule details are still being loaded.'}</p>
         </div>
         <div className="team-profile-hero-actions">
@@ -48,14 +52,14 @@ export function TeamProfilePage() {
       <div className="stats-grid four">
         <StatCard label="Record" value={recordLabel} tone="maroon" />
         <StatCard label="Games" value={data.games.length} detail={`${finalGames.length} final`} />
-        <StatCard label="Titles in archive" value={titles.length} detail={titles[0] ? `Latest ${titles[0].year}` : 'No verified titles yet'} tone="gold" />
+        <StatCard label="Class title credits" value={titles.length} detail={titles[0] ? `Latest ${titles[0].year}` : 'No verified titles yet'} tone="gold" />
         <StatCard label="Roster" value={roster.length} detail={roster.length ? 'players listed' : 'pending'} />
       </div>
 
       <div className="split-grid team-profile-split">
         <Panel>
-          <div className="section-heading"><h2>Class schedule</h2><span>{data.games.length} games</span></div>
-          {!data.games.length ? <EmptyState title="No games found" description="This class does not have games in the selected tournament yet." /> : <TeamGameList games={data.games} team={data.team} />}
+          <div className="section-heading"><h2>Team entry schedule</h2><span>{data.games.length} games</span></div>
+          {!data.games.length ? <EmptyState title="No games found" description="This team entry does not have games in the selected tournament yet." /> : <TeamGameList games={data.games} team={data.team} />}
         </Panel>
         <Panel>
           <div className="section-heading"><h2>Roster</h2><span>{roster.length}</span></div>
@@ -65,8 +69,8 @@ export function TeamProfilePage() {
 
       <div className="split-grid team-profile-split">
         <Panel>
-          <div className="section-heading"><h2>Title history</h2><span>{titles.length}</span></div>
-          {!titles.length ? <EmptyState title="No verified titles in archive" description="Historical champion records are still being verified for older tournament years." /> : (
+          <div className="section-heading"><h2>Represented class credits</h2><span>{titles.length}</span></div>
+          {!titles.length ? <EmptyState title="No verified titles in archive" description="Historical champion records are still being verified for this team entry's represented classes." /> : (
             <div className="title-history-list">
               {titles.map((record) => (
                 <Link key={record.id} to={`/history/${record.year}`} className="title-history-row">
@@ -80,9 +84,20 @@ export function TeamProfilePage() {
         </Panel>
         <Panel>
           <div className="section-heading"><h2>Related coverage</h2><span>{data.articles.length}</span></div>
-          {!data.articles.length ? <EmptyState title="Coverage pending" description="Game-linked articles for this class will appear here." /> : <CoverageList articles={data.articles} />}
+          {!data.articles.length ? <EmptyState title="Coverage pending" description="Game-linked articles for this team entry will appear here." /> : <CoverageList articles={data.articles} />}
         </Panel>
       </div>
+    </div>
+  )
+}
+
+function ClassChipLinks({ cohorts }: { cohorts: ClassCohort[] }) {
+  const sorted = sortedClassCohorts(cohorts || [])
+  if (!sorted.length) return <p className="class-mapping-warning">Class mapping pending.</p>
+
+  return (
+    <div className="class-chip-row team-class-chip-row" aria-label="Represented classes">
+      {sorted.map((cohort) => <Link key={cohort.key} to={`/classes/${classRouteKey(cohort.key)}`}>{cohort.displayName}</Link>)}
     </div>
   )
 }

@@ -29,6 +29,7 @@ Rails.application.routes.draw do
           post :recompute_standings, path: "recompute-standings", on: :member
         end
         resources :divisions, only: [ :index, :create, :update ]
+        resources :class_cohorts, path: "class-cohorts", only: :index
         resources :teams, only: [ :index, :create, :update, :destroy ]
         resources :roster_entries, path: "roster-entries", only: [ :create, :update, :destroy ] do
           post :bulk, on: :collection

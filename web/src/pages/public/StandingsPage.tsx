@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
+import { representedClassesLabel } from '../../lib/classes'
 import { useAsync } from '../../lib/hooks'
 import { numericSearchParam } from '../../lib/urls'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
@@ -33,7 +34,7 @@ export function StandingsPage() {
       </div>
 
       <Panel className="toolbar-panel standings-filter-panel">
-        <label><span>Class</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All classes</option>{data?.standings.map((standing) => <option key={standing.team.id} value={standing.team.id}>{standing.team.displayName}</option>)}</select></label>
+        <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.standings.map((standing) => <option key={standing.team.id} value={standing.team.id}>{standing.team.displayName}</option>)}</select></label>
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         {(teamId || division) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision('') }}>Clear filters</button>}
       </Panel>
@@ -47,7 +48,7 @@ export function StandingsPage() {
           <div className="standings-mobile-list" aria-label="Mobile standings list">
             {filteredStandings.map((standing, index) => (
               <article className="standing-mobile-card" key={standing.id}>
-                <div><span>#{index + 1}</span><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'}</small></div>
+                <div><span>#{index + 1}</span><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.division || 'Division pending'} · {representedClassesLabel(standing.team)}</small></div>
                 <dl>
                   <div><dt>W</dt><dd>{standing.wins}</dd></div>
                   <div><dt>L</dt><dd>{standing.losses}</dd></div>
@@ -63,7 +64,7 @@ export function StandingsPage() {
                 {filteredStandings.map((standing, index) => (
                   <tr key={standing.id}>
                     <td>{index + 1}</td>
-                    <td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{standing.team.classYearLabel}</small></td>
+                    <td><strong><Link to={`/teams/${standing.team.id}`}>{standing.team.displayName}</Link></strong><small>{representedClassesLabel(standing.team)}</small></td>
                     <td>{standing.team.division || 'Unassigned'}</td>
                     <td>{standing.wins}</td>
                     <td>{standing.losses}</td>

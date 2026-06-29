@@ -8,7 +8,7 @@ module Api
 
           day = requested_date || Time.zone.today
           games = tournament.games
-            .includes(:division_record, home_team: [ :division_record, :roster_entries ], away_team: [ :division_record, :roster_entries ])
+            .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
             .where(start_time: day.beginning_of_day..day.end_of_day)
             .ordered
             .to_a
@@ -41,7 +41,7 @@ module Api
         def relevant_polls(tournament, games)
           game_ids = games.map(&:id)
           tournament.prediction_polls
-            .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
+            .includes(:prediction_votes, { tournament: { teams: [ :division_record, { team_class_memberships: :class_cohort } ] } }, game: [ { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ])
             .where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ])
             .ordered
         end

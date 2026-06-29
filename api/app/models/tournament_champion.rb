@@ -3,8 +3,11 @@ class TournamentChampion < ApplicationRecord
   BRACKETS = %w[overall maroon gold unknown].freeze
 
   belongs_to :tournament, optional: true
+  has_many :tournament_champion_credits, dependent: :destroy
+  has_many :class_cohorts, through: :tournament_champion_credits
 
   before_validation :normalize_keys
+  after_commit :sync_champion_credits, if: :champion_credit_source_changed?
 
   validates :year, :slug, :status, presence: true
   validates :year, numericality: { only_integer: true }
@@ -19,18 +22,61 @@ class TournamentChampion < ApplicationRecord
   scope :with_champion_key, -> { where.not(champion_key: [ nil, "" ]) }
 
   def self.for_team(team)
+    class_ids = class_cohort_ids_for_team(team)
+    if class_ids.any?
+      return completed.joins(:tournament_champion_credits)
+        .where(tournament_champion_credits: { class_cohort_id: class_ids })
+        .includes(tournament_champion_credits: :class_cohort)
+        .distinct
+        .ordered
+    end
+
     keys = [ canonical_key(team.display_name), canonical_key(team.class_year_label) ].reject(&:blank?).uniq
     return none if keys.empty?
 
-    completed.with_champion_key.where(champion_key: keys).ordered
+    completed.with_champion_key.where(champion_key: keys).includes(tournament_champion_credits: :class_cohort).ordered
   end
 
+  def self.class_cohort_ids_for_team(team)
+    if team.association(:team_class_memberships).loaded?
+      team.team_class_memberships.map(&:class_cohort_id).compact
+    elsif team.association(:class_cohorts).loaded?
+      team.class_cohorts.map(&:id).compact
+    else
+      team.class_cohort_ids
+    end
+  end
+  private_class_method :class_cohort_ids_for_team
+
   def self.title_counts
-    completed.primary_titles.with_champion_key.ordered.group_by(&:champion_key).map do |champion_key, records|
+    credit_counts(primary_only: true)
+  end
+
+  def self.entry_title_counts
+    completed.primary_titles.with_champion_key.includes(tournament_champion_credits: :class_cohort).ordered.group_by(&:champion_key).map do |champion_key, records|
       sorted_records = records.sort_by { |record| [ -record.year, record.position ] }
       {
         championKey: champion_key,
         championLabel: sorted_records.first.champion_label,
+        titles: records.length,
+        years: records.map(&:year).uniq.sort.reverse,
+        records: sorted_records.map(&:api_json)
+      }
+    end.sort_by { |entry| [ -entry[:titles], entry[:championLabel] ] }
+  end
+
+  def self.credit_counts(primary_only: true)
+    scope = TournamentChampionCredit.includes(:class_cohort, tournament_champion: { tournament_champion_credits: :class_cohort })
+      .joins(:tournament_champion)
+      .merge(completed.with_champion_key)
+    scope = scope.merge(primary_titles) if primary_only
+
+    scope.to_a.group_by(&:class_cohort).map do |cohort, credits|
+      records = credits.map(&:tournament_champion).uniq
+      sorted_records = records.sort_by { |record| [ -record.year, record.position ] }
+      {
+        championKey: cohort.key,
+        championLabel: cohort.display_name,
         titles: records.length,
         years: records.map(&:year).uniq.sort.reverse,
         records: sorted_records.map(&:api_json)
@@ -68,6 +114,7 @@ class TournamentChampion < ApplicationRecord
       championLabel: champion_label.presence,
       championKey: champion_key.presence,
       championComponents: champion_components,
+      creditedClasses: credited_classes_json,
       runnerUpLabel: runner_up_label.presence,
       runnerUpKey: runner_up_key.presence,
       score: score.presence,
@@ -90,7 +137,31 @@ class TournamentChampion < ApplicationRecord
     champion_key.to_s.split("/").reject(&:blank?)
   end
 
+  def credited_classes_json
+    return [] unless ClassCohort.table_exists? && TournamentChampionCredit.table_exists?
+
+    credits = if association(:tournament_champion_credits).loaded?
+      loaded_credits_with_cohorts
+    else
+      tournament_champion_credits.ordered.to_a
+    end
+
+    credits.map(&:class_cohort).compact.map(&:api_json)
+  end
+
   private
+
+  def loaded_credits_with_cohorts
+    credits = tournament_champion_credits.to_a
+    preload_credit_cohorts(credits)
+    credits.sort_by { |credit| [ credit.position, credit.class_cohort&.graduation_year || 0 ] }
+  end
+
+  def preload_credit_cohorts(credits)
+    return if credits.empty? || credits.all? { |credit| credit.association(:class_cohort).loaded? }
+
+    ActiveRecord::Associations::Preloader.new(records: credits, associations: :class_cohort).call
+  end
 
   def normalize_keys
     self.edition_label = edition_label.to_s.strip
@@ -100,6 +171,14 @@ class TournamentChampion < ApplicationRecord
     self.champion_key = self.class.canonical_key(champion_key.presence || champion_label)
     self.runner_up_key = self.class.canonical_key(runner_up_key.presence || runner_up_label)
     self.slug = slug.to_s.strip.presence || [ year, edition_label.presence ].compact.join("-").parameterize
+  end
+
+  def champion_credit_source_changed?
+    previous_changes.key?("champion_key") || previous_changes.key?("champion_label") || previous_changes.key?("status")
+  end
+
+  def sync_champion_credits
+    ClassArchive::SyncChampionCredits.call(self)
   end
 
   def cancelled?

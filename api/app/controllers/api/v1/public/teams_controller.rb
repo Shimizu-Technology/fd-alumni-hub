@@ -3,12 +3,12 @@ module Api
     module Public
       class TeamsController < BaseController
         def show
-          team = Team.includes(:tournament, :division_record, :roster_entries).find_by(id: params[:id])
+          team = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).find_by(id: params[:id])
           return render_not_found("Team not found") unless team
 
           games = team_games(team)
-          standing = team.standings.find_by(tournament_id: team.tournament_id)
-          articles = ArticleLink.includes(game: [ :division_record, { home_team: :division_record, away_team: :division_record } ])
+          standing = Standing.includes(team: [ :division_record, { team_class_memberships: :class_cohort } ]).find_by(team_id: team.id, tournament_id: team.tournament_id)
+          articles = ArticleLink.includes(game: [ :division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ])
             .where(game_id: games.map(&:id))
             .latest
             .limit(20)
@@ -28,7 +28,7 @@ module Api
 
         def team_games(team)
           Game
-            .includes(:division_record, home_team: [ :division_record, :roster_entries ], away_team: [ :division_record, :roster_entries ])
+            .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
             .where(tournament_id: team.tournament_id)
             .where("home_team_id = :team_id OR away_team_id = :team_id", team_id: team.id)
             .ordered

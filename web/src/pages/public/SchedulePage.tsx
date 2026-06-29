@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
+import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDateTime, formatGuamTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
@@ -39,7 +40,7 @@ export function SchedulePage() {
       </Panel>
 
       <Panel className="toolbar-panel schedule-filter-panel">
-        <label><span>Class</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All classes</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
+        <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
         <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
         {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
@@ -97,7 +98,10 @@ function GameCard({ game }: { game: Game }) {
 function TeamLine({ team, fallback, score, showScore }: { team?: TeamSummary | null; fallback: string; score: number | null; showScore: boolean }) {
   return (
     <div className="team-line">
-      {team ? <Link to={`/teams/${team.id}`}>{team.displayName}</Link> : <strong>{fallback}</strong>}
+      <div className="team-line-main">
+        {team ? <Link to={`/teams/${team.id}`}>{team.displayName}</Link> : <strong>{fallback}</strong>}
+        {team && <small>{representedClassesLabel(team)}</small>}
+      </div>
       <span>{showScore ? score : '—'}</span>
     </div>
   )

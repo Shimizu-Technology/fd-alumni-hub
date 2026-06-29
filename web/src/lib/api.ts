@@ -1,5 +1,6 @@
 import type {
   Article,
+  ClassCohort,
   ClassProfile,
   CurrentUser,
   Division,
@@ -150,7 +151,7 @@ export const api = {
     request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
   publicTournaments: () => request<{ tournaments: Tournament[]; activeTournament: Tournament | null }>('/public/tournaments'),
-  publicChampions: (params: { year?: number | null } = {}) => request<{ championRecords: TournamentChampion[]; titleCounts: TitleCount[] }>(`/public/champions${query(params)}`),
+  publicChampions: (params: { year?: number | null } = {}) => request<{ championRecords: TournamentChampion[]; titleCounts: TitleCount[]; entryTitleCounts: TitleCount[] }>(`/public/champions${query(params)}`),
   publicClass: (classKey: string) => request<{ classProfile: ClassProfile; titleRecords: TournamentChampion[]; relatedTitleRecords: TournamentChampion[]; teams: Team[]; standings: Standing[]; games: Game[]; articles: Article[] }>(`/public/classes/${encodeURIComponent(classKey)}`),
   publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
@@ -178,10 +179,11 @@ export const api = {
   adminDivisions: (tournamentId?: string | null) => request<{ divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
   adminCreateDivision: (payload: Partial<Division> & { tournamentId?: string | null }) => request<{ division: Division }>(`/admin/divisions${query({ tournamentId: payload.tournamentId })}`, json('POST', { division: payload })),
   adminUpdateDivision: (id: string, payload: Partial<Division>) => request<{ division: Division }>(`/admin/divisions/${id}`, json('PATCH', { division: payload })),
+  adminClassCohorts: () => request<{ classCohorts: ClassCohort[] }>('/admin/class-cohorts'),
 
   adminTeams: (tournamentId?: string | null) => request<{ teams: Team[] }>(`/admin/teams${query({ tournamentId })}`),
-  adminCreateTeam: (payload: Partial<Team>) => request<{ team: Team }>(`/admin/teams${query({ tournamentId: payload.tournamentId })}`, json('POST', { team: payload })),
-  adminUpdateTeam: (id: string, payload: Partial<Team>, tournamentId?: string | null) => request<{ team: Team }>(`/admin/teams/${id}${query({ tournamentId })}`, json('PATCH', { team: payload })),
+  adminCreateTeam: (payload: Partial<Team> & { classCohortKeys?: string[] }) => request<{ team: Team }>(`/admin/teams${query({ tournamentId: payload.tournamentId })}`, json('POST', { team: payload })),
+  adminUpdateTeam: (id: string, payload: Partial<Team> & { classCohortKeys?: string[]; classCohortKeysChanged?: boolean }, tournamentId?: string | null) => request<{ team: Team }>(`/admin/teams/${id}${query({ tournamentId })}`, json('PATCH', { team: payload })),
   adminDeleteTeam: (id: string, tournamentId?: string | null) => request<void>(`/admin/teams/${id}${query({ tournamentId })}`, { method: 'DELETE' }),
   adminCreateRosterEntry: (payload: Partial<RosterEntry>, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries${query({ tournamentId })}`, json('POST', { rosterEntry: payload })),
   adminBulkRosterEntries: (payload: Array<Partial<RosterEntry>>, tournamentId?: string | null) => request<{ created: number; rosterEntries: RosterEntry[] }>(`/admin/roster-entries/bulk${query({ tournamentId })}`, json('POST', { rosterEntries: payload })),

@@ -7,8 +7,11 @@ class Team < ApplicationRecord
   has_many :standings, dependent: :destroy
   has_many :roster_entries, dependent: :destroy
   has_many :prediction_votes, dependent: :destroy
+  has_many :team_class_memberships, dependent: :destroy
+  has_many :class_cohorts, through: :team_class_memberships
 
   before_validation :copy_division_name_from_record
+  after_commit :sync_class_memberships, if: :class_membership_source_changed?
 
   validates :class_year_label, :display_name, presence: true
   validates :display_name, uniqueness: { scope: :tournament_id }
@@ -26,6 +29,7 @@ class Team < ApplicationRecord
       tournamentYear: tournament&.year,
       classYearLabel: class_year_label,
       displayName: display_name,
+      classCohorts: class_cohorts_for_api,
       divisionId: division_id&.to_s,
       division: resolved_division,
       createdAt: created_at&.iso8601,
@@ -40,7 +44,31 @@ class Team < ApplicationRecord
     roster_entries_for_api(active_only: active_only).map(&:api_json)
   end
 
+  def class_cohorts_for_api
+    return [] unless ClassCohort.table_exists? && TeamClassMembership.table_exists?
+
+    memberships = if association(:team_class_memberships).loaded?
+      loaded_memberships_with_cohorts
+    else
+      team_class_memberships.ordered.to_a
+    end
+
+    memberships.map(&:class_cohort).compact.map(&:api_json)
+  end
+
   private
+
+  def loaded_memberships_with_cohorts
+    memberships = team_class_memberships.to_a
+    preload_membership_cohorts(memberships)
+    memberships.sort_by { |membership| [ membership.position, membership.class_cohort&.graduation_year || 0 ] }
+  end
+
+  def preload_membership_cohorts(memberships)
+    return if memberships.empty? || memberships.all? { |membership| membership.association(:class_cohort).loaded? }
+
+    ActiveRecord::Associations::Preloader.new(records: memberships, associations: :class_cohort).call
+  end
 
   def roster_entries_for_api(active_only: false)
     return roster_entries_scope(active_only: active_only).ordered.to_a unless association(:roster_entries).loaded?
@@ -62,6 +90,14 @@ class Team < ApplicationRecord
     return if division_id.blank? || division_record
 
     errors.add(:division_id, "is not valid")
+  end
+
+  def class_membership_source_changed?
+    previous_changes.key?("display_name") || previous_changes.key?("class_year_label")
+  end
+
+  def sync_class_memberships
+    ClassArchive::SyncTeamMemberships.call(self)
   end
 
   def division_record_is_available_for_tournament

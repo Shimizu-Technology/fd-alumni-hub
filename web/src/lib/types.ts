@@ -26,12 +26,24 @@ export type Tournament = {
   updatedAt?: string
 }
 
+export type ClassCohort = {
+  id: string
+  key: string
+  routeKey: string
+  graduationYear: number
+  displayName: string
+  shortLabel: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type Team = {
   id: string
   tournamentId: string
   tournamentYear?: number | null
   classYearLabel: string
   displayName: string
+  classCohorts: ClassCohort[]
   divisionId?: string | null
   division: string | null
   rosterEntries?: RosterEntry[]
@@ -65,7 +77,7 @@ export type GameDayNote = {
   updatedAt?: string
 }
 
-export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'divisionId' | 'division'> & { rosterEntries?: RosterEntry[] }
+export type TeamSummary = Pick<Team, 'id' | 'displayName' | 'classYearLabel' | 'classCohorts' | 'divisionId' | 'division'> & { rosterEntries?: RosterEntry[] }
 
 export type RelatedGameSummary = {
   id: string
@@ -219,6 +231,7 @@ export type TournamentChampion = {
   championLabel: string | null
   championKey: string | null
   championComponents: string[]
+  creditedClasses: ClassCohort[]
   runnerUpLabel: string | null
   runnerUpKey: string | null
   score: string | null
@@ -248,6 +261,7 @@ export type ClassProfile = {
   titleYears: number[]
   teamCount: number
   latestTournamentYear: number | null
+  componentClasses: ClassCohort[]
 }
 
 export type CurrentUser = {

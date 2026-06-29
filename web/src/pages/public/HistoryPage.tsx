@@ -24,7 +24,7 @@ export function HistoryPage() {
       <PageHeader
         eyebrow="Historical archive"
         title="Brotherhood tournament history"
-        description="Champion records, game results, photos, and source coverage are collected by tournament edition. Combined classes are tracked separately from their individual class records."
+        description="Champion records, class title credits, game results, photos, and source coverage are collected by tournament edition. Shared-team wins credit every represented class while preserving the original team entry."
       />
 
       <div className="stats-grid three">
@@ -35,8 +35,8 @@ export function HistoryPage() {
 
       <Panel className="title-leaderboard-panel">
         <div className="section-heading">
-          <h2>Primary title leaderboard</h2>
-          <span>Gold/older champion archive pending verification</span>
+          <h2>Class title credits</h2>
+          <span>Shared wins count for each represented class</span>
         </div>
         {!data?.titleCounts.length ? <EmptyState title="Title history pending" /> : (
           <div className="title-leaderboard-grid">

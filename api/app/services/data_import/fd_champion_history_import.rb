@@ -25,10 +25,13 @@ module DataImport
         end
       end
 
+      class_archive = ClassArchive::Backfill.call
+
       {
         path: path.to_s,
         imported: imported,
         total: TournamentChampion.count,
+        classArchive: class_archive,
         titleCounts: TournamentChampion.title_counts.map { |entry| entry.slice(:championLabel, :titles, :years) }
       }
     end

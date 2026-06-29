@@ -53,6 +53,66 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_nil body.dig("team", "division")
   end
 
+  test "manual represented classes can be assigned to a team entry" do
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { displayName: "Pack 12", classCohortKeys: %w[12 17], classCohortKeysChanged: true } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal [ 2012, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
+    assert_equal [ "manual", "manual" ], @team.team_class_memberships.order(:position).pluck(:source)
+
+    body = JSON.parse(response.body)
+    assert_equal [ "Class of 2012", "Class of 2017" ], body.dig("team", "classCohorts").map { |cohort| cohort["displayName"] }
+
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { classCohortKeys: [] } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal [ 2012, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
+
+    @team.update!(display_name: "Class of 2019")
+    assert_equal [ 2012, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
+  end
+
+  test "unchanged class cohort keys do not manualize auto memberships" do
+    assert_equal [ "auto" ], @team.team_class_memberships.pluck(:source)
+
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { division: "Gold", classCohortKeys: %w[16] } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal [ 2016 ], @team.reload.class_cohorts.map(&:graduation_year)
+    assert_equal [ "auto" ], @team.team_class_memberships.pluck(:source)
+  end
+
+  test "explicit class cohort change can clear memberships" do
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { classCohortKeys: [], classCohortKeysChanged: true } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_empty @team.reload.class_cohorts
+  end
+
+  test "class cohort master list is available to admins" do
+    ClassArchive::Resolver.resolve_cohorts("AD7")
+
+    get "/api/v1/admin/class-cohorts",
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_includes body.fetch("classCohorts").map { |cohort| cohort["displayName"] }, "Class of 1987"
+  end
+
   test "team can be deleted when it has no games" do
     removable = @tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018", division: "Gold")
 

@@ -103,6 +103,7 @@ class Game < ApplicationRecord
       id: team.id.to_s,
       displayName: team.display_name,
       classYearLabel: team.class_year_label,
+      classCohorts: team.class_cohorts_for_api,
       divisionId: team.division_id&.to_s,
       division: team.resolved_division
     }
