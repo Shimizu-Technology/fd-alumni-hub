@@ -69,7 +69,7 @@ export function AdminDivisionsPage() {
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
       <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} onSaved={reload} />
       <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />
-      <ClassCoverageBoard tournament={tournament} assignments={classAssignments} />
+      <ClassCoverageBoard key={tournament?.id || 'no-tournament'} tournament={tournament} assignments={classAssignments} />
       <Panel>
         <div className="section-heading">
           <div>
