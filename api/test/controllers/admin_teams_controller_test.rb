@@ -123,7 +123,9 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
       end_date: Date.new(2027, 7, 24),
       status: "upcoming"
     )
-    other_tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+    other_team = other_tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+    ClassArchive::SyncManualTeamMemberships.call(other_team, class_keys: %w[12 17])
+    assert_equal [ 2012, 2017 ], other_team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
 
     patch "/api/v1/admin/teams/#{@team.id}",
       params: { tournamentId: @tournament.id, team: { classCohortKeys: %w[16 17], classCohortKeysChanged: true } },

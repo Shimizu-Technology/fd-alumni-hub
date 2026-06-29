@@ -13,8 +13,6 @@ module ClassArchive
       private
 
       def build_message(conflicts)
-        return "Class is already assigned to another team in this tournament." if conflicts.empty?
-
         grouped = conflicts.group_by(&:class_cohort)
         details = grouped.map do |cohort, memberships|
           team_names = memberships.map { |membership| membership.team.display_name }.uniq.to_sentence
