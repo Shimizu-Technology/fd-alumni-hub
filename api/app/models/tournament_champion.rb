@@ -22,7 +22,7 @@ class TournamentChampion < ApplicationRecord
   scope :with_champion_key, -> { where.not(champion_key: [ nil, "" ]) }
 
   def self.for_team(team)
-    class_ids = team.class_cohort_ids
+    class_ids = class_cohort_ids_for_team(team)
     if class_ids.any?
       return completed.joins(:tournament_champion_credits)
         .where(tournament_champion_credits: { class_cohort_id: class_ids })
@@ -36,6 +36,17 @@ class TournamentChampion < ApplicationRecord
 
     completed.with_champion_key.where(champion_key: keys).includes(tournament_champion_credits: :class_cohort).ordered
   end
+
+  def self.class_cohort_ids_for_team(team)
+    if team.association(:team_class_memberships).loaded?
+      team.team_class_memberships.map(&:class_cohort_id).compact
+    elsif team.association(:class_cohorts).loaded?
+      team.class_cohorts.map(&:id).compact
+    else
+      team.class_cohort_ids
+    end
+  end
+  private_class_method :class_cohort_ids_for_team
 
   def self.title_counts
     credit_counts(primary_only: true)
