@@ -4,12 +4,6 @@ module DataImport
   class Fd2026ScheduleImport
     DEFAULT_PATH = Rails.root.join("..", "data", "schedules", "fd-2026-pool-play-2026-06-27.json").expand_path.freeze
     SOURCE_NOTE = "source=fd-2026-pool-play-2026-06-27".freeze
-    CANONICAL_TEAM_LABELS = {
-      "435" => "430-5",
-      "815" => "08/15",
-      "8/15" => "08/15"
-    }.freeze
-
     def self.call(path: nil, overwrite: false)
       new(path: path, overwrite: overwrite).call
     end
@@ -144,8 +138,7 @@ module DataImport
     end
 
     def canonical_team_label(label)
-      normalized_label = label.to_s.strip.downcase
-      CANONICAL_TEAM_LABELS.fetch(normalized_label, label.to_s.strip)
+      ClassArchive::TeamEntryLabels.canonical_label(label)
     end
 
     def team_legacy_ids(source_label, label = canonical_team_label(source_label))
@@ -153,8 +146,7 @@ module DataImport
     end
 
     def alias_labels_for(label)
-      canonical_label = canonical_team_label(label)
-      CANONICAL_TEAM_LABELS.filter_map { |source, target| source if target == canonical_label }
+      ClassArchive::TeamEntryLabels.alias_labels_for(label)
     end
 
     def team_legacy_id(label)

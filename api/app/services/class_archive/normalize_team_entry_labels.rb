@@ -1,11 +1,5 @@
 module ClassArchive
   class NormalizeTeamEntryLabels
-    CANONICAL_LABELS = {
-      "435" => "430-5",
-      "815" => "08/15",
-      "8/15" => "08/15"
-    }.freeze
-
     def self.call
       new.call
     end
@@ -26,8 +20,7 @@ module ClassArchive
     end
 
     def canonical_label(value)
-      label = value.to_s.strip
-      CANONICAL_LABELS.fetch(normalize(label), label)
+      ClassArchive::TeamEntryLabels.canonical_label(value)
     end
 
     private
@@ -71,26 +64,12 @@ module ClassArchive
       legacy_id = team.legacy_id.to_s
       return false if legacy_id.blank?
 
-      replacement = canonical_legacy_id(legacy_id)
+      replacement = ClassArchive::TeamEntryLabels.canonical_legacy_id(legacy_id)
       return false if replacement == legacy_id
       return false if Team.where.not(id: team.id).exists?(legacy_id: replacement)
 
       team.legacy_id = replacement
       true
-    end
-
-    def canonical_legacy_id(legacy_id)
-      CANONICAL_LABELS.reduce(legacy_id) do |value, (source_label, canonical)|
-        value.gsub("-#{stable_slug(source_label)}", "-#{stable_slug(canonical)}")
-      end
-    end
-
-    def normalize(value)
-      value.to_s.downcase.strip.gsub(/\Aclass\s+/, "").gsub(/\s+/, " ")
-    end
-
-    def stable_slug(value)
-      value.to_s.downcase.gsub(/[^a-z0-9]+/, "-").gsub(/\A-|\-\z/, "")
     end
   end
 end
