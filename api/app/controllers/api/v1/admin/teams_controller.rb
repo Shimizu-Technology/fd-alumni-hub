@@ -14,12 +14,20 @@ module Api
           class_cohort_keys = attrs.delete(:class_cohort_keys)
           team = admin_tournament.teams.build(attrs.except(:tournament_id))
 
-          if team.save
+          Team.transaction do
+            unless team.save
+              render_errors(team)
+              raise ActiveRecord::Rollback
+            end
+
             sync_manual_memberships(team, class_cohort_keys) if class_cohort_keys.present?
-            render json: { team: team_for_response(team.id).api_json(include_roster: true) }, status: :created
-          else
-            render_errors(team)
           end
+          return if performed?
+
+          render json: { team: team_for_response(team.id).api_json(include_roster: true) }, status: :created
+        rescue ClassArchive::SyncManualTeamMemberships::ConflictError => error
+          team.errors.add(:base, error.message)
+          render_errors(team)
         end
 
         def update
@@ -29,12 +37,20 @@ module Api
           class_cohort_keys = attrs.delete(:class_cohort_keys)
           class_cohort_keys_changed = attrs.delete(:class_cohort_keys_changed)
 
-          if team.update(attrs.except(:tournament_id))
+          Team.transaction do
+            unless team.update(attrs.except(:tournament_id))
+              render_errors(team)
+              raise ActiveRecord::Rollback
+            end
+
             sync_manual_memberships(team, class_cohort_keys) if manual_class_cohort_update?(class_cohort_keys, class_cohort_keys_changed)
-            render json: { team: team_for_response(team.id).api_json(include_roster: true) }
-          else
-            render_errors(team)
           end
+          return if performed?
+
+          render json: { team: team_for_response(team.id).api_json(include_roster: true) }
+        rescue ClassArchive::SyncManualTeamMemberships::ConflictError => error
+          team.errors.add(:base, error.message)
+          render_errors(team)
         end
 
         def destroy

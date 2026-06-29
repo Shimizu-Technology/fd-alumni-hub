@@ -11,6 +11,14 @@ import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Pane
 
 const legacyPrefix = 'legacy:'
 type TeamSortOption = 'display' | 'class' | 'division' | 'roster'
+type CoverageFilter = 'all' | 'assigned' | 'open' | 'conflict'
+type ClassAssignmentStatus = 'assigned' | 'open' | 'conflict'
+type ClassAssignment = {
+  option: ClassCohortOption
+  teams: Team[]
+  status: ClassAssignmentStatus
+}
+type ClassAssignmentIndex = Map<string, Team[]>
 
 export function AdminDivisionsPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
@@ -41,6 +49,9 @@ export function AdminDivisionsPage() {
     const knownCohorts = mergeClassCohorts(classCohorts, teams.flatMap((team) => team.classCohorts || []))
     return classCohortOptions(knownCohorts, tournament?.year || new Date().getFullYear())
   }, [classCohorts, teams, tournament?.year])
+  const coverageOptions = useMemo(() => coverageClassOptions(classOptions, tournament?.year), [classOptions, tournament?.year])
+  const classAssignmentIndex = useMemo(() => buildClassAssignmentIndex(teams), [teams])
+  const classAssignments = useMemo(() => buildClassAssignments(coverageOptions, classAssignmentIndex), [coverageOptions, classAssignmentIndex])
   const divisionOptions = useMemo(() => availableDivisionOptions(teams, divisions), [teams, divisions])
   const visibleTeams = useMemo(() => filterAndSortTeams(teams, teamQuery, divisionFilter, teamSort), [teams, teamQuery, divisionFilter, teamSort])
 
@@ -57,7 +68,8 @@ export function AdminDivisionsPage() {
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
       <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} onSaved={reload} />
-      <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} onSaved={reload} />
+      <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />
+      <ClassCoverageBoard key={tournament?.id || 'no-tournament'} tournament={tournament} assignments={classAssignments} />
       <Panel>
         <div className="section-heading">
           <div>
@@ -77,7 +89,7 @@ export function AdminDivisionsPage() {
         />
         {!teams.length ? <EmptyState title="No teams found" description="Add the teams that are playing in this tournament before building the schedule." /> : null}
         {teams.length > 0 && !visibleTeams.length ? <EmptyState title="No teams match those filters" description="Clear the search or division filter to see more teams." /> : null}
-        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} classOptions={classOptions} onSaved={reload} />)}</div>}
+        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />)}</div>}
       </Panel>
     </div>
   )
@@ -194,7 +206,7 @@ function EditableDivision({ division, onSaved }: { division: Division; onSaved: 
   )
 }
 
-function CreateTeamPanel({ tournament, teamsCount, divisions, classOptions, onSaved }: { tournament: Tournament | null; teamsCount: number; divisions: Division[]; classOptions: ClassCohortOption[]; onSaved: () => Promise<void> }) {
+function CreateTeamPanel({ tournament, teamsCount, divisions, classOptions, classAssignmentIndex, onSaved }: { tournament: Tournament | null; teamsCount: number; divisions: Division[]; classOptions: ClassCohortOption[]; classAssignmentIndex: ClassAssignmentIndex; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<{ classYearLabel: string; displayName: string; divisionId: string; classCohortKeys: string[] }>({ classYearLabel: '', displayName: '', divisionId: '', classCohortKeys: [] })
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -261,6 +273,7 @@ function CreateTeamPanel({ tournament, teamsCount, divisions, classOptions, onSa
             <ClassCohortPicker
               selectedKeys={form.classCohortKeys}
               options={classOptions}
+              assignmentIndex={classAssignmentIndex}
               onChange={(classCohortKeys) => setForm({ ...form, classCohortKeys })}
               help="Optional on create. If left blank, the hub will infer represented classes from known aliases and numeric labels."
             />
@@ -269,6 +282,86 @@ function CreateTeamPanel({ tournament, teamsCount, divisions, classOptions, onSa
         </div>
       ))}
     </Panel>
+  )
+}
+
+function ClassCoverageBoard({ tournament, assignments }: { tournament: Tournament | null; assignments: ClassAssignment[] }) {
+  const [filter, setFilter] = useState<CoverageFilter>('all')
+  const [query, setQuery] = useState('')
+  const counts = useMemo(() => coverageCounts(assignments), [assignments])
+  const visibleAssignments = useMemo(() => filterClassAssignments(assignments, filter, query), [assignments, filter, query])
+
+  if (!tournament) return null
+
+  return (
+    <Panel className="class-coverage-panel">
+      <div className="section-heading class-coverage-heading">
+        <div>
+          <h2>Class coverage board</h2>
+          <p className="muted">Verify which tournament team each graduating class rolls up to for {tournament.year}. One class should map to one team entry per tournament.</p>
+        </div>
+        <span>{counts.assigned} of {counts.total} mapped</span>
+      </div>
+
+      <div className="class-coverage-metrics" aria-label="Class coverage summary">
+        <button type="button" className={filter === 'assigned' ? 'selected' : ''} onClick={() => setFilter('assigned')}>
+          <span>Mapped</span>
+          <strong>{counts.assigned}</strong>
+        </button>
+        <button type="button" className={filter === 'open' ? 'selected' : ''} onClick={() => setFilter('open')}>
+          <span>Open</span>
+          <strong>{counts.open}</strong>
+        </button>
+        <button type="button" className={filter === 'conflict' ? 'selected danger' : 'danger'} onClick={() => setFilter('conflict')}>
+          <span>Conflicts</span>
+          <strong>{counts.conflict}</strong>
+        </button>
+      </div>
+
+      <div className="class-coverage-toolbar toolbar-panel">
+        <label>
+          <span>Search classes</span>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Class year or team name" />
+        </label>
+        <div className="coverage-filter-buttons" role="group" aria-label="Filter class coverage rows">
+          <button type="button" className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>All</button>
+          <button type="button" className={filter === 'assigned' ? 'selected' : ''} onClick={() => setFilter('assigned')}>Mapped</button>
+          <button type="button" className={filter === 'open' ? 'selected' : ''} onClick={() => setFilter('open')}>Open</button>
+          <button type="button" className={filter === 'conflict' ? 'selected' : ''} onClick={() => setFilter('conflict')}>Conflicts</button>
+        </div>
+      </div>
+
+      <p className="field-help class-coverage-guidance">If a class moves to a different team next year, keep this tournament's mapping as-is and update the new tournament only. To move a class inside this tournament, remove it from the current team first, then add it to the new team.</p>
+
+      {visibleAssignments.length ? (
+        <div className="class-coverage-list" role="list" aria-label={`${tournament.year} class coverage`}>
+          {visibleAssignments.map((assignment) => <ClassCoverageRow key={assignment.option.key} assignment={assignment} />)}
+        </div>
+      ) : <EmptyState title="No class coverage rows match" description="Clear the search or switch filters to review the full class map." />}
+    </Panel>
+  )
+}
+
+function ClassCoverageRow({ assignment }: { assignment: ClassAssignment }) {
+  const { option, teams, status } = assignment
+  const statusLabel = status === 'conflict' ? 'Conflict' : status === 'assigned' ? 'Mapped' : 'Open'
+
+  return (
+    <div className={`class-coverage-row ${status}`} role="listitem">
+      <div className="class-coverage-class">
+        <span>{option.shortLabel}</span>
+        <strong>{option.displayName}</strong>
+      </div>
+      <div className="class-coverage-team">
+        <span>{statusLabel}</span>
+        {teams.length ? (
+          <div className="class-coverage-team-links">
+            {teams.map((team) => <a key={team.id} href={`#team-${team.id}`}>{team.displayName}</a>)}
+          </div>
+        ) : <strong>Not mapped yet</strong>}
+      </div>
+      <small>{coverageRowHelp(assignment)}</small>
+    </div>
   )
 }
 
@@ -282,12 +375,14 @@ function TeamToolbar({ query, division, sort, divisions, onQueryChange, onDivisi
   )
 }
 
-function ClassCohortPicker({ selectedKeys, options, onChange, help }: { selectedKeys: string[]; options: ClassCohortOption[]; onChange: (keys: string[]) => void; help?: string }) {
+function ClassCohortPicker({ selectedKeys, options, assignmentIndex, currentTeamId, onChange, help }: { selectedKeys: string[]; options: ClassCohortOption[]; assignmentIndex: ClassAssignmentIndex; currentTeamId?: string; onChange: (keys: string[]) => void; help?: string }) {
   const selectedOptions = selectedKeys.map((key) => classOptionForKey(key, options)).sort((a, b) => a.graduationYear - b.graduationYear)
   const availableOptions = options.filter((option) => !selectedKeys.includes(option.key))
+  const selectedConflicts = selectedOptions.flatMap((option) => assignmentConflictsForKey(option.key, assignmentIndex, currentTeamId).map((team) => ({ option, team })))
 
   const addClass = (key: string) => {
     if (!key || selectedKeys.includes(key)) return
+    if (assignmentConflictsForKey(key, assignmentIndex, currentTeamId).length) return
     onChange([...selectedKeys, key].sort((a, b) => (graduationYearForSort(a) || 0) - (graduationYearForSort(b) || 0)))
   }
 
@@ -302,14 +397,21 @@ function ClassCohortPicker({ selectedKeys, options, onChange, help }: { selected
         </div>
         <select value="" onChange={(event) => addClass(event.target.value)} aria-label="Add represented class">
           <option value="">Add class year</option>
-          {availableOptions.map((option) => <option key={option.key} value={option.key}>{option.displayName}</option>)}
+          {availableOptions.map((option) => {
+            const conflicts = assignmentConflictsForKey(option.key, assignmentIndex, currentTeamId)
+            return <option key={option.key} value={option.key} disabled={conflicts.length > 0}>{classPickerOptionLabel(option, conflicts)}</option>
+          })}
         </select>
       </div>
       {selectedOptions.length > 0 ? (
         <div className="class-chip-row class-editor-chip-row" aria-label="Selected represented classes">
-          {selectedOptions.map((option) => <button key={option.key} type="button" onClick={() => removeClass(option.key)}>{option.displayName}<span>Remove</span></button>)}
+          {selectedOptions.map((option) => {
+            const conflicts = assignmentConflictsForKey(option.key, assignmentIndex, currentTeamId)
+            return <button key={option.key} className={conflicts.length ? 'conflict' : ''} type="button" onClick={() => removeClass(option.key)}>{option.displayName}<span>{conflicts.length ? 'Conflict' : 'Remove'}</span></button>
+          })}
         </div>
       ) : <p className="form-note">No explicit represented classes selected.</p>}
+      {selectedConflicts.length > 0 && <p className="form-error" role="alert">{classSelectionConflictMessage(selectedConflicts)}</p>}
       {help && <p className="field-help">{help}</p>}
     </div>
   )
@@ -326,7 +428,7 @@ function RepresentationSummary({ team }: { team: Team }) {
   )
 }
 
-function EditableTeam({ team, divisions, classOptions, onSaved }: { team: Team; divisions: Division[]; classOptions: ClassCohortOption[]; onSaved: () => Promise<void> }) {
+function EditableTeam({ team, divisions, classOptions, classAssignmentIndex, onSaved }: { team: Team; divisions: Division[]; classOptions: ClassCohortOption[]; classAssignmentIndex: ClassAssignmentIndex; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState(teamFormState(team, divisions))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -383,7 +485,7 @@ function EditableTeam({ team, divisions, classOptions, onSaved }: { team: Team; 
   }
 
   return (
-    <article className="admin-row-card team-admin-card team-summary-card">
+    <article className="admin-row-card team-admin-card team-summary-card" id={`team-${team.id}`}>
       <div className="team-card-header">
         <div>
           <span className="team-card-kicker">{team.division || 'No division'}</span>
@@ -406,6 +508,8 @@ function EditableTeam({ team, divisions, classOptions, onSaved }: { team: Team; 
           <ClassCohortPicker
             selectedKeys={form.classCohortKeys}
             options={classOptions}
+            assignmentIndex={classAssignmentIndex}
+            currentTeamId={team.id}
             onChange={(classCohortKeys) => setForm({ ...form, classCohortKeys })}
             help="These classes receive this team entry's games, record, and title credits for this tournament."
           />
@@ -758,6 +862,93 @@ function classOptionForKey(key: string, options: ClassCohortOption[]) {
 
 function graduationYearForSort(key: string) {
   return graduationYearForClassKey(key)
+}
+
+function coverageClassOptions(options: ClassCohortOption[], tournamentYear?: number | null) {
+  const lastYear = tournamentYear || new Date().getFullYear()
+  return options
+    .filter((option) => option.graduationYear >= 1974 && option.graduationYear <= lastYear)
+    .sort((a, b) => b.graduationYear - a.graduationYear)
+}
+
+function buildClassAssignmentIndex(teams: Team[]): ClassAssignmentIndex {
+  const index: ClassAssignmentIndex = new Map()
+  teams.forEach((team) => {
+    sortedClassCohorts(team.classCohorts || []).forEach((cohort) => {
+      const assignedTeams = index.get(cohort.key) || []
+      if (!assignedTeams.some((existing) => existing.id === team.id)) assignedTeams.push(team)
+      index.set(cohort.key, assignedTeams.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { numeric: true })))
+    })
+  })
+  return index
+}
+
+function buildClassAssignments(options: ClassCohortOption[], assignmentIndex: ClassAssignmentIndex): ClassAssignment[] {
+  return options.map((option) => {
+    const teams = assignmentIndex.get(option.key) || []
+    return {
+      option,
+      teams,
+      status: classAssignmentStatus(teams),
+    }
+  })
+}
+
+function classAssignmentStatus(teams: Team[]): ClassAssignmentStatus {
+  if (teams.length > 1) return 'conflict'
+  if (teams.length === 1) return 'assigned'
+  return 'open'
+}
+
+function coverageCounts(assignments: ClassAssignment[]) {
+  return assignments.reduce((counts, assignment) => {
+    counts.total += 1
+    counts[assignment.status] += 1
+    return counts
+  }, { total: 0, assigned: 0, open: 0, conflict: 0 })
+}
+
+function filterClassAssignments(assignments: ClassAssignment[], filter: CoverageFilter, query: string) {
+  const normalizedQuery = query.trim().toLowerCase()
+  return assignments.filter((assignment) => {
+    const matchesFilter = filter === 'all' || assignment.status === filter
+    const searchable = [ assignment.option.displayName, assignment.option.shortLabel, ...assignment.teams.map((team) => team.displayName) ].join(' ').toLowerCase()
+    const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery)
+    return matchesFilter && matchesQuery
+  })
+}
+
+function coverageRowHelp(assignment: ClassAssignment) {
+  if (assignment.status === 'conflict') return 'Needs verification. Remove this class from all but one team entry for this tournament.'
+  if (assignment.status === 'assigned') return `Games and standings roll up to ${assignment.teams[0].displayName}.`
+  return 'No team entry currently represents this class in this tournament.'
+}
+
+function assignmentConflictsForKey(key: string, assignmentIndex: ClassAssignmentIndex, currentTeamId?: string) {
+  return (assignmentIndex.get(key) || []).filter((team) => team.id !== currentTeamId)
+}
+
+function classPickerOptionLabel(option: ClassCohortOption, conflicts: Team[]) {
+  if (!conflicts.length) return option.displayName
+  return `${option.displayName} — assigned to ${joinHumanList(conflicts.map((team) => team.displayName))}`
+}
+
+function classSelectionConflictMessage(conflicts: Array<{ option: ClassCohortOption; team: Team }>) {
+  const grouped = new Map<string, { option: ClassCohortOption; teams: Team[] }>()
+  conflicts.forEach(({ option, team }) => {
+    const entry = grouped.get(option.key) || { option, teams: [] }
+    if (!entry.teams.some((existing) => existing.id === team.id)) entry.teams.push(team)
+    grouped.set(option.key, entry)
+  })
+
+  const details = Array.from(grouped.values()).map(({ option, teams }) => `${option.displayName} is already assigned to ${joinHumanList(teams.map((team) => team.displayName))}`)
+  return `${joinHumanList(details)}. Remove the class from the existing team before assigning it here.`
+}
+
+function joinHumanList(values: string[]) {
+  if (values.length <= 1) return values[0] || ''
+  if (values.length === 2) return `${values[0]} and ${values[1]}`
+  return `${values.slice(0, -1).join(', ')}, and ${values[values.length - 1]}`
 }
 
 function availableDivisionOptions(teams: Team[], divisions: Division[]) {

@@ -435,6 +435,32 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .team-card-list, .game-admin-list { margin-top: 1rem; }
 .team-toolbar, .game-toolbar { margin-bottom: 1rem; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-strong); }
 .team-toolbar label:first-child, .game-toolbar label:first-child { flex: 1 1 18rem; }
+.class-coverage-panel { overflow: hidden; background: linear-gradient(135deg, #fffdf9, #fff7e6); }
+.class-coverage-heading { align-items: flex-start; }
+.class-coverage-heading p { max-width: 55rem; margin: .25rem 0 0; line-height: 1.45; }
+.class-coverage-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin-bottom: .8rem; }
+.class-coverage-metrics button { display: grid; gap: .15rem; text-align: left; border: 1px solid rgba(111,29,53,.14); border-radius: 1rem; background: rgba(255,255,255,.74); color: var(--ink); padding: .85rem; cursor: pointer; transition: transform .16s ease, border-color .16s ease, background .16s ease; }
+.class-coverage-metrics button:hover, .class-coverage-metrics button.selected { transform: translateY(-1px); border-color: rgba(111,29,53,.36); background: #fff; }
+.class-coverage-metrics button.danger strong { color: var(--danger); }
+.class-coverage-metrics span, .class-coverage-row span, .class-coverage-team span { color: var(--fd-maroon); font-size: .72rem; font-weight: 950; letter-spacing: .09em; text-transform: uppercase; }
+.class-coverage-metrics strong { font-size: clamp(1.5rem, 3vw, 2.15rem); line-height: .95; letter-spacing: -.055em; }
+.class-coverage-toolbar { margin-bottom: .65rem; padding: .75rem; border: 1px solid rgba(111,29,53,.12); border-radius: 1rem; background: rgba(255,255,255,.72); }
+.class-coverage-toolbar label { flex: 1 1 18rem; }
+.coverage-filter-buttons { display: flex; flex-wrap: wrap; gap: .4rem; align-items: end; }
+.coverage-filter-buttons button { min-height: 2.35rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--fd-maroon); padding: .45rem .7rem; font-weight: 900; cursor: pointer; }
+.coverage-filter-buttons button.selected { background: var(--fd-maroon); border-color: var(--fd-maroon); color: #fff; }
+.class-coverage-guidance { margin: .15rem 0 .75rem; }
+.class-coverage-list { max-height: 26rem; overflow: auto; display: grid; gap: .5rem; padding-right: .15rem; }
+.class-coverage-row { display: grid; grid-template-columns: minmax(10rem, .85fr) minmax(12rem, 1fr) minmax(16rem, 1.25fr); gap: .75rem; align-items: center; padding: .8rem; border: 1px solid var(--line); border-radius: 1rem; background: rgba(255,255,255,.86); }
+.class-coverage-row.conflict { border-color: rgba(165,34,34,.32); background: #fff6f4; }
+.class-coverage-row.open { border-style: dashed; background: rgba(255,255,255,.56); }
+.class-coverage-class { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .55rem; align-items: center; min-width: 0; }
+.class-coverage-class > span { display: grid; place-items: center; min-width: 2.8rem; min-height: 2.25rem; border-radius: .75rem; background: var(--fd-maroon-50); }
+.class-coverage-class strong, .class-coverage-team strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.class-coverage-team { min-width: 0; display: grid; gap: .25rem; }
+.class-coverage-team-links { display: flex; flex-wrap: wrap; gap: .35rem; }
+.class-coverage-team-links a { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid rgba(111,29,53,.18); border-radius: 999px; background: #fff; color: var(--fd-maroon); padding: .28rem .55rem; font-weight: 900; }
+.class-coverage-row small { color: var(--muted); font-weight: 750; line-height: 1.35; }
 .admin-create-panel .collapsible-heading { margin-bottom: 0; }
 .bulk-link-panel { background: linear-gradient(135deg, #fff, #fff8ea); }
 .bulk-ticket-actions { display: grid; grid-template-columns: minmax(16rem, 1fr) auto; gap: .8rem; align-items: end; }
@@ -492,6 +518,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .class-membership-head span { display: block; color: var(--muted); font-size: .72rem; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; }
 .class-membership-head strong { display: block; margin-top: .15rem; line-height: 1.25; }
 .class-editor-chip-row button:hover { border-color: rgba(111,29,53,.35); background: var(--fd-maroon-50); }
+.class-editor-chip-row button.conflict { border-color: rgba(165,34,34,.35); background: #fff6f4; color: var(--danger); }
+.class-editor-chip-row button.conflict span { color: var(--danger); }
 .team-facts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
 .team-facts-grid div { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .95rem; background: var(--surface-strong); }
 .team-facts-grid span { display: block; color: var(--muted); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
@@ -715,6 +743,14 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .admin-row-head { align-items: flex-start; }
   .prediction-admin-controls { justify-content: flex-start; }
   .row-actions .btn, .game-actions .btn { width: 100%; }
+  .class-coverage-heading { display: grid; }
+  .class-coverage-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+  .class-coverage-metrics button { padding: .65rem; }
+  .class-coverage-toolbar { display: grid; }
+  .coverage-filter-buttons { width: 100%; }
+  .coverage-filter-buttons button { flex: 1 1 auto; }
+  .class-coverage-row { grid-template-columns: 1fr; align-items: start; gap: .45rem; }
+  .class-coverage-list { max-height: 32rem; }
   .class-membership-head, .game-detail-summary, .score-entry-panel .form-grid, .team-facts-grid, .tournament-media-preview { grid-template-columns: 1fr; }
   .compact-admin-row, .media-admin-row, .sponsor-admin-row { grid-template-columns: 1fr; }
   .compact-admin-row .form-grid, .media-admin-row .form-grid, .sponsor-admin-row .form-grid, .media-admin-row .row-actions, .sponsor-admin-row .row-actions, .media-admin-row .form-error, .sponsor-admin-row .form-error { grid-column: auto; }
