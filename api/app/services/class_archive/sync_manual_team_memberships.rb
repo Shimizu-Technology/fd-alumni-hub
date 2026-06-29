@@ -2,6 +2,29 @@ module ClassArchive
   class SyncManualTeamMemberships
     MANUAL_SOURCE = "manual".freeze
 
+    class ConflictError < StandardError
+      attr_reader :conflicts
+
+      def initialize(conflicts)
+        @conflicts = conflicts
+        super(build_message(conflicts))
+      end
+
+      private
+
+      def build_message(conflicts)
+        return "Class is already assigned to another team in this tournament." if conflicts.empty?
+
+        grouped = conflicts.group_by(&:class_cohort)
+        details = grouped.map do |cohort, memberships|
+          team_names = memberships.map { |membership| membership.team.display_name }.uniq.to_sentence
+          "#{cohort.display_name} is already assigned to #{team_names}"
+        end
+
+        "#{details.to_sentence}. Remove the class from the existing team before assigning it here."
+      end
+    end
+
     def self.call(team, class_keys:)
       new(team, class_keys: class_keys).call
     end
@@ -16,6 +39,8 @@ module ClassArchive
 
       cohorts = resolved_cohorts
       cohort_ids = cohorts.map(&:id)
+      conflicts = conflicting_memberships(cohort_ids)
+      raise ConflictError.new(conflicts) if conflicts.any?
 
       TeamClassMembership.transaction do
         team.team_class_memberships.where.not(class_cohort_id: cohort_ids).delete_all
@@ -41,6 +66,16 @@ module ClassArchive
 
     def resolved_cohorts
       class_keys.flat_map { |value| ClassArchive::Resolver.resolve_cohorts(value) }.uniq(&:id)
+    end
+
+    def conflicting_memberships(cohort_ids)
+      return [] if cohort_ids.empty? || team.tournament_id.blank?
+
+      TeamClassMembership.includes(:team, :class_cohort)
+        .joins(:team)
+        .where(class_cohort_id: cohort_ids, teams: { tournament_id: team.tournament_id })
+        .where.not(team_id: team.id)
+        .to_a
     end
   end
 end

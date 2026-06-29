@@ -101,6 +101,54 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_empty @team.reload.class_cohorts
   end
 
+  test "manual represented classes must be unique within a tournament" do
+    other_team = @tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+    ClassArchive::SyncManualTeamMemberships.call(other_team, class_keys: %w[12 17])
+
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { team: { classCohortKeys: %w[16 17], classCohortKeysChanged: true } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].join, "Class of 2017 is already assigned to 12 Pack"
+    assert_equal [ 2016 ], @team.reload.class_cohorts.map(&:graduation_year)
+  end
+
+  test "same represented class can be used in a different tournament" do
+    other_tournament = Tournament.create!(
+      name: "FD Alumni Basketball Tournament",
+      year: 2027,
+      start_date: Date.new(2027, 7, 3),
+      end_date: Date.new(2027, 7, 24),
+      status: "upcoming"
+    )
+    other_tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+
+    patch "/api/v1/admin/teams/#{@team.id}",
+      params: { tournamentId: @tournament.id, team: { classCohortKeys: %w[16 17], classCohortKeysChanged: true } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :success
+    assert_equal [ 2016, 2017 ], @team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
+  end
+
+  test "conflicting represented class create rolls back the team" do
+    other_team = @tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+    ClassArchive::SyncManualTeamMemberships.call(other_team, class_keys: %w[12 17])
+
+    assert_no_difference -> { Team.count } do
+      post "/api/v1/admin/teams",
+        params: { tournamentId: @tournament.id, team: { classYearLabel: "2017", displayName: "Class of 2017", classCohortKeys: %w[17] } },
+        headers: auth_headers,
+        as: :json
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].join, "Class of 2017 is already assigned to 12 Pack"
+  end
+
   test "class cohort master list is available to admins" do
     ClassArchive::Resolver.resolve_cohorts("AD7")
 
