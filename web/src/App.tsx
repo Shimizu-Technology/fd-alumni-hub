@@ -29,11 +29,17 @@ import { AdminNewsPage } from './pages/admin/AdminNewsPage'
 import { AdminMediaPage } from './pages/admin/AdminMediaPage'
 import { AdminSponsorsPage } from './pages/admin/AdminSponsorsPage'
 import { AdminIngestPage } from './pages/admin/AdminIngestPage'
+import { StaticArchivePage } from './pages/public/StaticArchivePage'
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
 const clerkEnabled = Boolean(clerkKey && clerkKey.startsWith('pk_'))
+const serviceMode = import.meta.env.VITE_SERVICE_MODE || 'archive'
 
 export function App() {
+  if (serviceMode !== 'live') {
+    return <Routes><Route path="*" element={<StaticArchivePage />} /></Routes>
+  }
+
   const content = (
     <AuthProvider isClerkEnabled={clerkEnabled}>
       <Routes>
