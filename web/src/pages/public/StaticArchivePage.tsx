@@ -20,7 +20,7 @@ const champions: ChampionRecord[] = [
   { year: 2010, champion: 'Class of 2006' }, { year: 2011, champion: 'Class of 2006' }, { year: 2012, champion: 'Class of 2006' },
   { year: 2013, champion: 'Class of 2006' }, { year: 2014, champion: 'Class of 2004' }, { year: 2015, champion: 'Class of 2013', score: '60–48' },
   { year: 2016, champion: 'Class of 2006' }, { year: 2017, champion: 'Class of 2002/04' }, { year: 2018, champion: 'Class of 2002/04' },
-  { year: 2019, champion: 'Class of 2006' }, { year: 2020, champion: 'Tournament cancelled', cancelled: true },
+  { year: 2019, champion: 'Class of 2006' }, { year: 2020, champion: '—', cancelled: true },
   { year: 2021, champion: 'Class of 2006', runnerUp: 'Class of 2011', score: '58–38' },
   { year: 2022, champion: 'Class of 2002/04', runnerUp: 'Class of 2006', score: '62–52' },
   { year: 2023, champion: 'Class of 2013' },
