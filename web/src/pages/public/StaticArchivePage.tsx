@@ -28,6 +28,9 @@ const champions: ChampionRecord[] = [
   { year: 2025, champion: 'Class of 2002/04', runnerUp: 'Class of 2013', score: '50–44' },
 ]
 
+const archiveStartYear = Math.min(...champions.map(({ year }) => year))
+const archiveEndYear = Math.max(...champions.map(({ year }) => year))
+
 export function StaticArchivePage() {
   return (
     <div className="archive-shell">
@@ -46,7 +49,7 @@ export function StaticArchivePage() {
           <p>The live tournament hub is resting between events, but its core championship record remains available. Full schedules, live scores, admin tools, and media will return when the next tournament is activated.</p>
           <div className="archive-stats">
             <div><strong>{champions.length}</strong><span>tracked editions</span></div>
-            <div><strong>1985–2025</strong><span>archive coverage</span></div>
+            <div><strong>{archiveStartYear}–{archiveEndYear}</strong><span>archive coverage</span></div>
             <div><strong>1</strong><span>brotherhood</span></div>
           </div>
         </section>
