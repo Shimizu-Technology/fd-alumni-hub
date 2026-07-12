@@ -31,7 +31,7 @@ const champions: ChampionRecord[] = [
 const archiveStartYear = Math.min(...champions.map(({ year }) => year))
 const archiveEndYear = Math.max(...champions.map(({ year }) => year))
 
-export function StaticArchivePage() {
+export function StaticArchivePage({ onRetry }: { onRetry?: () => void }) {
   return (
     <div className="archive-shell">
       <header className="archive-header">
@@ -81,6 +81,7 @@ export function StaticArchivePage() {
           <div className="archive-links">
             <a href="https://fatherduenas.com/" target="_blank" rel="noreferrer">Visit Father Dueñas</a>
             <a href="https://guamsportsnetwork.com/" target="_blank" rel="noreferrer">Visit GSPN</a>
+            {onRetry ? <button type="button" className="btn secondary" onClick={onRetry}>Check services again</button> : null}
           </div>
         </section>
       </main>
