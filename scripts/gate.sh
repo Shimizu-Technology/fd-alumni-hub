@@ -7,8 +7,17 @@ cd "$ROOT_DIR"
 echo "== React/Vite app build =="
 npm run build
 
-echo "== Rails API rubocop =="
+echo "== React/Vite unit tests (Vitest) =="
+npm test
+
+echo "== Rails API Brakeman security scan =="
 cd "$ROOT_DIR/api"
+bundle exec brakeman --no-pager -q
+
+echo "== Rails API bundler-audit =="
+bin/bundler-audit
+
+echo "== Rails API rubocop =="
 bin/rubocop --no-color
 
 echo "== Rails API tests =="

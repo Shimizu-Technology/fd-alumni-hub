@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "npm --workspace @fd/react-web run dev",
     "build": "npm --workspace @fd/react-web run build",
+    "test": "npm --workspace @fd/react-web run test",
+    "test:e2e": "npm --workspace @fd/react-web run test:e2e",
     "web:dev": "npm --workspace @fd/react-web run dev",
     "web:build": "npm --workspace @fd/react-web run build",
     "web:preview": "npm --workspace @fd/react-web run preview"
