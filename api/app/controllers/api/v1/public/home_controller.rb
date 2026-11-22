@@ -5,12 +5,14 @@ module Api
         def show
           context = Tournament.home_context
           tournament = Tournament.active_for_public(context)
+          active_host_campaign = HostCampaign.resolve_public&.home_summary_json
 
           unless tournament
             return render json: {
               tournament: nil,
               upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
               latestResultsTournament: context[:latest_completed_with_games]&.api_json,
+              activeHostCampaign: active_host_campaign,
               todayGames: [],
               liveGames: [],
               latestNews: [],
@@ -30,6 +32,7 @@ module Api
             tournament: tournament.api_json,
             upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
             latestResultsTournament: context[:latest_completed_with_games]&.api_json,
+            activeHostCampaign: active_host_campaign,
             todayGames: today_games.map(&:api_json),
             liveGames: live_games.map(&:api_json),
             latestNews: tournament.article_links.includes(game: [ :division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ]).latest.limit(5).map(&:api_json),

@@ -9,6 +9,7 @@ Rails.application.routes.draw do
       namespace :public do
         resource :home, only: :show, controller: :home
         resource :today, only: :show, controller: :today
+        get "host-year", to: "host_years#show"
         resources :prediction_polls, path: "prediction-polls", only: [] do
           post :vote, to: "prediction_votes#create"
         end
