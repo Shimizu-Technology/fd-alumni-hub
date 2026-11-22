@@ -1,6 +1,14 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
-import { IconClose, IconMenu, IconShield } from './Icons'
+import {
+  IconCalendar,
+  IconChart,
+  IconClose,
+  IconHome,
+  IconMenu,
+  IconShield,
+  IconTicket,
+} from './Icons'
 import { externalHref } from '../lib/urls'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
@@ -28,12 +36,33 @@ const navItems = [
   { to: '/sponsors', label: 'Sponsors' },
 ]
 
+const bottomNavItems = [
+  { to: '/', label: 'Home', end: true, icon: IconHome },
+  { to: '/schedule', label: 'Schedule', end: false, icon: IconCalendar },
+  { to: '/standings', label: 'Standings', end: false, icon: IconChart },
+  { to: '/host-year', label: 'Host Year', end: false, icon: IconTicket },
+]
+
+function isMoreRoute(pathname: string) {
+  if (pathname === '/') return false
+  return !(
+    pathname.startsWith('/schedule')
+    || pathname.startsWith('/standings')
+    || pathname.startsWith('/host-year')
+  )
+}
+
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
+  const location = useLocation()
   const backend = useBackendAvailabilityContext()
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -80,6 +109,8 @@ export function PublicLayout() {
       if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus({ preventScroll: true })
     }
   }, [open])
+
+  const moreActive = open || isMoreRoute(location.pathname)
 
   return (
     <div className="site-shell">
@@ -145,6 +176,35 @@ export function PublicLayout() {
           <a href={externalHref('https://guamsportsnetwork.com/') || undefined} target="_blank" rel="noreferrer">GSPN</a>
         </div>
       </footer>
+
+      <nav className="mobile-bottom-nav" aria-label="Mobile quick navigation">
+        {bottomNavItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => `mobile-bottom-nav-item${isActive ? ' active' : ''}`}
+              onClick={() => setOpen(false)}
+            >
+              <Icon size={20} className="mobile-bottom-nav-icon" />
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
+        <button
+          type="button"
+          className={`mobile-bottom-nav-item${moreActive ? ' active' : ''}`}
+          aria-label={open ? 'Close more menu' : 'Open more menu'}
+          aria-expanded={open}
+          aria-controls={publicMenuId}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <IconMenu size={20} className="mobile-bottom-nav-icon" />
+          <span>More</span>
+        </button>
+      </nav>
     </div>
   )
 }
