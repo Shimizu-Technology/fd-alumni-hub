@@ -67,10 +67,11 @@ it('shows division titles, source and video links, and explains primary class cr
   vi.spyOn(api, 'publicChampions').mockResolvedValue({ championRecords: champions, titleCounts: staticTitleCounts(), entryTitleCounts: [] })
   openArchive('/history')
 
-  const gold = (await screen.findByText('2026 Gold')).closest('article')!
+  const timeline = (await screen.findByRole('heading', { name: 'Tournament champions' })).closest('.panel')! as HTMLElement
+  const gold = within(timeline).getByText('2026 Gold').closest('article')!
   expect(within(gold).getByText('Gold')).toBeInTheDocument()
   expect(within(gold).getByRole('link', { name: /highlight video/i })).toHaveAttribute('href', '/history/2026#archive-video-33')
-  const platinum = screen.getByText('2026 Platinum').closest('article')!
+  const platinum = within(timeline).getByText('2026 Platinum').closest('article')!
   expect(within(platinum).getByText(/Luis Cruz/)).toBeInTheDocument()
   expect(within(platinum).getByRole('link', { name: /source/i })).toHaveAttribute('href', expect.stringContaining('guamsportsnetwork.com'))
   expect(screen.getByText(/Shared-team primary wins/)).toHaveTextContent('Gold and Platinum titles')
@@ -99,7 +100,8 @@ it('shows the enriched static records even when History and year endpoints fail'
   openArchive('/history')
 
   expect(await screen.findByText(/preserved offline champion archive/)).toBeInTheDocument()
-  const maroon = screen.getByText('2024 Maroon').closest('article')!
+  const timeline = screen.getByRole('heading', { name: 'Tournament champions' }).closest('.panel')! as HTMLElement
+  const maroon = within(timeline).getByText('2024 Maroon').closest('article')!
   expect(within(maroon).getByText(/Leon Shimizu/)).toBeInTheDocument()
   fireEvent.click(within(maroon).getByRole('link', { name: 'Class of 2016/17' }))
   expect(await screen.findByText(/preserved offline champion records/)).toBeInTheDocument()

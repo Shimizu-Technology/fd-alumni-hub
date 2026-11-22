@@ -1,8 +1,11 @@
+import { FindYourClassCard } from '../../components/FindYourClassCard'
+import { LiveScoreboardStrip } from '../../components/LiveScoreboardStrip'
 import { SeasonHero } from '../../components/SeasonHero'
 import { useSiteMode } from '../../contexts/SiteModeContext'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
+import { graduationYearFor } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import { formatGuamDateTime } from '../../lib/datetime'
@@ -66,17 +69,60 @@ export function HomePage() {
 
   const siteMode = data?.siteMode || layoutMode
   const { mode, sections, hostCampaign, recap } = siteMode
-  const featuredGames = featuredGamesForHome(data?.liveGames || [], data?.todayGames || [])
+  const scoreboardGames = combineGameDayGames(data?.liveGames || [], data?.todayGames || [])
+  const featuredGames = scoreboardGames.slice(0, 6)
   const gameDayNote = data?.gameDayNote || null
   const hasGameDayNote = hasHomeGameDayNote(gameDayNote)
   const nextGame = data?.todayGames.find((game) => Date.parse(game.startTime) >= Date.now() && game.status === 'scheduled')
   const showHostCard = sections.fundraisers && (mode === 'schedule_ready' || (mode === 'tournament_recap' && recap.handoffBannerEnabled))
   const visibleSeasonLinks = seasonLinks.filter(({ section }) => sections[section])
+  const isLive = mode === 'tournament_live'
   const champions = (data?.championRecords || []).filter((record) => record.championLabel)
+
+  const gameDayPanel = data && sections.tonight && (
+    <Panel>
+      <div className="section-heading"><h2>Game-day updates</h2><Link to="/today">Tonight’s guide</Link></div>
+      {hasGameDayNote && (
+        <div className="home-today-note">
+          <div className="home-today-note-grid">
+            {gameDayNote.hostClass && <div><span>Host class</span><strong>{gameDayNote.hostClass}</strong></div>}
+            {gameDayNote.foodMenu && <div><span>Food / menu</span><strong>{gameDayNote.foodMenu}</strong></div>}
+          </div>
+          {gameDayNote.announcement && <p>{gameDayNote.announcement}</p>}
+          {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
+        </div>
+      )}
+      {featuredPoll && (
+        <div className="home-poll-callout">
+          <div className="home-poll-copy">
+            <span>Fan prediction</span>
+            <strong>{featuredPoll.pollType === 'tournament' ? 'Vote on the tournament winner.' : 'Vote on today’s matchup.'}</strong>
+            <small>No sign-in required. Results refresh automatically.</small>
+          </div>
+          {voteError && <p className="form-error" role="alert">{voteError}</p>}
+          <PredictionPollCard poll={featuredPoll} onVote={vote} compact />
+        </div>
+      )}
+      {featuredGames.length > 0 && (
+        <div className="compact-list">
+          {featuredGames.map((game) => (
+            <Link key={game.id} to="/today" className="compact-row">
+              <span>{formatGuamDateTime(game.startTime)}</span>
+              <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
+              <small>{game.venue || DEFAULT_GAME_VENUE}</small>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Panel>
+  )
 
   return (
     <div className="page-stack">
       <SeasonHero siteMode={siteMode} tournament={mode === 'fundraising' ? data?.upcomingOrLiveTournament || siteMode.tournament : siteMode.tournament} nextGame={nextGame} />
+      {isLive && scoreboardGames.length > 0 && <LiveScoreboardStrip games={scoreboardGames} />}
+      {isLive && gameDayPanel}
+      <FindYourClassCard championRecords={data?.championRecords} hostClassYear={graduationYearFor(hostCampaign?.hostClass)} />
       {loading && !data && <LoadingState label="Loading tournament updates" />}
       {error && !data && (
         <Panel>
@@ -102,43 +148,7 @@ export function HomePage() {
               <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
             </Panel>
           )}
-          {sections.tonight && (
-            <Panel>
-              <div className="section-heading"><h2>Game-day updates</h2><Link to="/today">Tonight’s guide</Link></div>
-              {hasGameDayNote && (
-                <div className="home-today-note">
-                  <div className="home-today-note-grid">
-                    {gameDayNote.hostClass && <div><span>Host class</span><strong>{gameDayNote.hostClass}</strong></div>}
-                    {gameDayNote.foodMenu && <div><span>Food / menu</span><strong>{gameDayNote.foodMenu}</strong></div>}
-                  </div>
-                  {gameDayNote.announcement && <p>{gameDayNote.announcement}</p>}
-                  {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
-                </div>
-              )}
-              {featuredPoll && (
-                <div className="home-poll-callout">
-                  <div className="home-poll-copy">
-                    <span>Fan prediction</span>
-                    <strong>{featuredPoll.pollType === 'tournament' ? 'Vote on the tournament winner.' : 'Vote on today’s matchup.'}</strong>
-                    <small>No sign-in required. Results refresh automatically.</small>
-                  </div>
-                  {voteError && <p className="form-error" role="alert">{voteError}</p>}
-                  <PredictionPollCard poll={featuredPoll} onVote={vote} compact />
-                </div>
-              )}
-              {featuredGames.length > 0 && (
-                <div className="compact-list">
-                  {featuredGames.map((game) => (
-                    <Link key={game.id} to="/today" className="compact-row">
-                      <span>{formatGuamDateTime(game.startTime)}</span>
-                      <strong>{game.awayTeam?.displayName || 'Away team'} at {game.homeTeam?.displayName || 'Home team'}</strong>
-                      <small>{game.venue || DEFAULT_GAME_VENUE}</small>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Panel>
-          )}
+          {!isLive && gameDayPanel}
           {sections.recap && champions.length > 0 && (
             <Panel>
               <div className="section-heading"><h2>Champions</h2></div>
@@ -153,7 +163,7 @@ export function HomePage() {
               <Link to={`/host-year/${hostCampaign.slug}`}>Meet the host class <IconArrowRight size={16} /></Link>
             </Panel>
           )}
-          {mode === 'tournament_live' && sections.fundraisers && <Link to="/host-year">Host class fundraisers</Link>}
+          {mode === 'tournament_live' && sections.fundraisers && <Link className="home-host-fundraisers" to="/host-year">Host class fundraisers</Link>}
           {visibleSeasonLinks.length > 0 && (
             <Panel>
               <nav className="hero-actions" aria-label="Season resources">
@@ -184,7 +194,7 @@ function featuredPollForHome(polls: PredictionPoll[]) {
   return polls.find((poll) => poll.open && poll.pollType === 'game') || polls.find((poll) => poll.open) || polls[0] || null
 }
 
-function featuredGamesForHome(liveGames: Game[], todayGames: Game[]) {
+function combineGameDayGames(liveGames: Game[], todayGames: Game[]) {
   const seenGameIds = new Set<string>()
 
   return [...liveGames, ...todayGames].filter((game) => {
@@ -192,7 +202,7 @@ function featuredGamesForHome(liveGames: Game[], todayGames: Game[]) {
 
     seenGameIds.add(game.id)
     return true
-  }).slice(0, 6)
+  })
 }
 
 function hasHomeGameDayNote(note: GameDayNote | null): note is GameDayNote {

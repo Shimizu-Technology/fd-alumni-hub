@@ -9,43 +9,32 @@ type RevealOnScrollProps = {
 
 export function RevealOnScroll({ children, className = '', delayMs = 0 }: RevealOnScrollProps) {
   const motionOk = useMotionOk()
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const [entered, setEntered] = useState(false)
 
   useEffect(() => {
-    if (!motionOk) return
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisible(true)
-      return
-    }
-
     const element = ref.current
-    if (!element) {
-      setVisible(true)
-      return
-    }
+    if (!motionOk || entered || !element || typeof IntersectionObserver === 'undefined') return
+    if (element.getBoundingClientRect().top < window.innerHeight) return
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
-    )
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        observer.disconnect()
+        setEntered(true)
+      }
+    })
 
     observer.observe(element)
     return () => observer.disconnect()
-  }, [motionOk])
+  }, [entered, motionOk])
 
-  const shouldReveal = !motionOk || visible
+  const settle = motionOk && entered
 
   return (
     <div
       ref={ref}
-      className={`reveal-block ${motionOk ? 'reveal-block--animated' : ''} ${shouldReveal ? 'is-visible' : ''} ${className}`.trim()}
-      style={motionOk && delayMs > 0 ? { transitionDelay: `${delayMs}ms` } : undefined}
+      className={`reveal-block ${settle ? 'reveal-block--settle' : ''} ${className}`.trim()}
+      style={settle && delayMs > 0 ? { animationDelay: `${delayMs}ms` } : undefined}
     >
       {children}
     </div>
