@@ -708,6 +708,85 @@ export type FinanceAuditEvent = {
   createdAt: string | null
 }
 
+export type CloseoutIssue = {
+  code: string
+  message: string
+  count: number
+}
+
+export type CampaignCloseoutCheck = {
+  campaignId: string
+  status: HostCampaignStatus
+  unfinalizedGamesCount: number
+  pendingReimbursementsCount: number
+  openCashPledgesCount: number
+  missingReceiptsCount: number
+  championsRecordedCount: number
+  liveExpensesCount: number
+  voidedEntriesCount: number
+  auditEventsCount: number
+  blockers: CloseoutIssue[]
+  warnings: CloseoutIssue[]
+  ready: boolean
+}
+
+export type CampaignFinalReport = {
+  generatedAt: string
+  campaign: AdminHostCampaign
+  tournamentOutcomes: {
+    tournament: Tournament | null
+    teamsCount: number
+    divisionsCount: number
+    poolGamesCount: number
+    playoffGamesCount: number
+    otherGamesCount: number
+    scoreCoverage: ScoreCoverage
+    champions: TournamentChampion[]
+  }
+  finance: FinanceSummary
+  compliance: {
+    liveExpensesCount: number
+    expensesMissingReceiptCount: number
+    pendingReimbursementsCount: number
+    openCashPledgesCount: number
+    voidedEntriesCount: number
+    auditEventsCount: number
+    unfinalizedGamesCount: number
+    championsRecordedCount: number
+    readyToArchive: boolean
+    blockers: CloseoutIssue[]
+    warnings: CloseoutIssue[]
+  }
+}
+
+export type CampaignClonePayload = {
+  targetTournamentId?: string | null
+  tournament?: {
+    name: string
+    year: number
+    startDate: string
+    endDate: string
+    status?: TournamentStatus
+  } | null
+  classCohortId?: string | null
+  hostClassYear?: number | null
+  title?: string | null
+  slug?: string | null
+  goalCents?: number | null
+  copyDivisions?: boolean
+  copyBudgetCategories?: boolean
+  copyBudgetAmounts?: boolean
+  copyEventTemplates?: boolean
+}
+
+export type CampaignCloneResponse = {
+  campaign: AdminHostCampaign
+  tournament: Tournament
+  divisions: Division[]
+  budgetLinesCount: number
+  campaignEventsCount: number
+}
+
 export type ReceiptPresignResponse = {
   uploadToken: string
   maxBytes: number

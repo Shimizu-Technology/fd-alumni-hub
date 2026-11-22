@@ -12,6 +12,10 @@ module Api
           }
         end
 
+        def final_report
+          render json: HostCampaigns::FinalReport.call(@campaign)
+        end
+
         def audit_events
           requested = Integer(params[:limit].to_s, 10, exception: false)
           limit = (requested && requested.positive?) ? [ requested, 200 ].min : 100
