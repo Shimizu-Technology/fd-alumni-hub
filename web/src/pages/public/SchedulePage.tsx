@@ -31,7 +31,12 @@ export function SchedulePage() {
         eyebrow={filterOptions?.tournament ? `${filterOptions.tournament.year} tournament` : 'Schedule'}
         title="Tournament schedule"
         description="Game times are shown for Guam. Ticket and stream buttons route to partner platforms when links are available."
-        actions={<Link className="btn secondary" to="/info">Rules and ticket info <IconArrowRight /></Link>}
+        actions={
+          <>
+            <Link className="btn secondary" to="/bracket">Playoff bracket <IconArrowRight /></Link>
+            <Link className="btn secondary" to="/info">Rules and ticket info</Link>
+          </>
+        }
       />
 
       <Panel className="watch-hero today-schedule-callout compact-callout">

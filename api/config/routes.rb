@@ -19,6 +19,8 @@ Rails.application.routes.draw do
         resources :teams, only: :show
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"
+        get :bracket, to: "bracket#show"
+        get :alerts, to: "alerts#index"
         get :tickets, to: "tickets#show"
         resources :articles, only: :index
         resources :media_assets, path: "media-assets", only: :index
@@ -76,6 +78,7 @@ Rails.application.routes.draw do
           post :bulk, on: :collection
         end
         resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ]
+        resources :alerts, only: [ :index, :create, :update, :destroy ]
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ]
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]

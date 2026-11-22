@@ -11,6 +11,7 @@ import {
 } from './Icons'
 import { api } from '../lib/api'
 import { externalHref } from '../lib/urls'
+import type { TournamentAlert } from '../lib/types'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
 const publicMenuId = 'fd-public-mobile-menu'
@@ -28,6 +29,7 @@ const navItems = [
   { to: '/host-year', label: 'Host Year' },
   { to: '/today', label: 'Today' },
   { to: '/schedule', label: 'Schedule' },
+  { to: '/bracket', label: 'Bracket' },
   { to: '/standings', label: 'Standings' },
   { to: '/tickets', label: 'Tickets' },
   { to: '/watch', label: 'Watch' },
@@ -51,6 +53,7 @@ function isMoreRoute(pathname: string, isLiveTournament: boolean) {
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
   const [isLiveTournament, setIsLiveTournament] = useState(false)
+  const [alerts, setAlerts] = useState<TournamentAlert[]>([])
   const location = useLocation()
   const backend = useBackendAvailabilityContext()
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -71,6 +74,14 @@ export function PublicLayout() {
       })
       .catch(() => {
         // Non-blocking: default mobile bottom nav slot remains Schedule.
+      })
+
+    api.publicAlerts()
+      .then((res) => {
+        if (active) setAlerts(res.alerts || [])
+      })
+      .catch(() => {
+        // Non-blocking: fail silently when offline or unreachable.
       })
 
     return () => {
@@ -182,6 +193,23 @@ export function PublicLayout() {
               {backend.isChecking ? 'Checking…' : 'Retry connection'}
             </button>
           </div>
+        )}
+        {alerts.length > 0 && (
+          <section className="tournament-alert-stack" aria-label="Tournament alerts">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className={`tournament-alert-banner tournament-alert-banner--${alert.severity}`}
+                role={alert.severity === 'urgent' ? 'alert' : 'status'}
+              >
+                <span className="tournament-alert-pill">{alert.severity}</span>
+                <div className="tournament-alert-copy">
+                  <strong>{alert.title}</strong>
+                  <p>{alert.message}</p>
+                </div>
+              </div>
+            ))}
+          </section>
         )}
         <Outlet />
       </main>

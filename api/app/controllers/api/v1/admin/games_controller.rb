@@ -49,9 +49,11 @@ module Api
 
           if saved
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
+            advancement = (game.status == "final" && game.next_game_id.present?) ? Games::AdvanceBracketWinner.call(game) : nil
             render json: {
               game: games_with_associations.find(game.id).api_json(include_score_audit: true),
-              recompute: recompute && { teams: recompute.teams, games: recompute.games }
+              recompute: recompute && { teams: recompute.teams, games: recompute.games },
+              bracketAdvancement: advancement&.advanced? ? advancement.api_json : nil
             }.compact
           else
             render_errors(game)

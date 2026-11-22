@@ -14,6 +14,7 @@ import { HomePage } from './pages/public/HomePage'
 import { HostYearPage } from './pages/public/HostYearPage'
 import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
+import { BracketPage } from './pages/public/BracketPage'
 import { StandingsPage } from './pages/public/StandingsPage'
 import { TicketsPage } from './pages/public/TicketsPage'
 import { WatchPage } from './pages/public/WatchPage'
@@ -61,6 +62,7 @@ export function App() {
             <Route path="host-year/:slug" element={<HostYearPage />} />
             <Route path="today" element={<TodayPage />} />
             <Route path="schedule" element={<SchedulePage />} />
+            <Route path="bracket" element={<BracketPage />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="tickets" element={<TicketsPage />} />
             <Route path="watch" element={<WatchPage />} />

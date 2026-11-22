@@ -25,6 +25,7 @@ import type {
   MediaAsset,
   PledgeRecord,
   PredictionPoll,
+  PublicBracketResponse,
   PublicTicketsResponse,
   ReceiptPresignResponse,
   RosterEntry,
@@ -41,6 +42,7 @@ import type {
   Team,
   TitleCount,
   Tournament,
+  TournamentAlert,
   TournamentChampion,
 } from './types'
 
@@ -157,6 +159,7 @@ export const api = {
     upcomingOrLiveTournament: Tournament | null
     latestResultsTournament: Tournament | null
     activeHostCampaign?: HomeHostCampaignSummary | null
+    alerts?: TournamentAlert[]
     todayGames: Game[]
     liveGames: Game[]
     latestNews: Article[]
@@ -170,6 +173,8 @@ export const api = {
       tournament: Tournament | null
       date: string
       gameDayNote: GameDayNote | null
+      alerts?: TournamentAlert[]
+      fallbackTicketUrl?: string | null
       games: Game[]
       predictionPolls: PredictionPoll[]
       sponsors: Sponsor[]
@@ -194,6 +199,10 @@ export const api = {
     request<{ tournament: Tournament | null; sponsors: Sponsor[] }>(`/public/sponsors${query(params)}`),
   publicTickets: (params: { campaignSlug?: string | null; year?: number | null } = {}) =>
     request<PublicTicketsResponse>(`/public/tickets${query(params)}`),
+  publicBracket: (params: { tournamentId?: string | null; year?: number | null; divisionId?: string | null } = {}) =>
+    request<PublicBracketResponse>(`/public/bracket${query(params)}`),
+  publicAlerts: (params: { tournamentId?: string | null; year?: number | null } = {}) =>
+    request<{ tournamentId: string | null; alerts: TournamentAlert[] }>(`/public/alerts${query(params)}`),
 
   adminDashboard: () => request<{
     tournament: Tournament | null
@@ -257,6 +266,10 @@ export const api = {
     predictionPolls: PredictionPoll[]
   }>(`/admin/game-day-notes${query(params)}`),
   adminSaveGameDayNote: (payload: Partial<GameDayNote>) => request<{ gameDayNote: GameDayNote }>(`/admin/game-day-notes${query({ tournamentId: payload.tournamentId })}`, json('POST', { gameDayNote: payload })),
+  adminAlerts: (tournamentId?: string | null) => request<{ alerts: TournamentAlert[] }>(`/admin/alerts${query({ tournamentId })}`),
+  adminCreateAlert: (payload: Partial<TournamentAlert>) => request<{ alert: TournamentAlert }>('/admin/alerts', json('POST', { alert: payload })),
+  adminUpdateAlert: (id: string, payload: Partial<TournamentAlert>) => request<{ alert: TournamentAlert }>(`/admin/alerts/${id}`, json('PATCH', { alert: payload })),
+  adminDeleteAlert: (id: string) => request<void>(`/admin/alerts/${id}`, { method: 'DELETE' }),
   adminPredictionPolls: (tournamentId?: string | null) => request<{ tournament: Tournament; predictionPolls: PredictionPoll[] }>(`/admin/prediction-polls${query({ tournamentId })}`),
   adminCreatePredictionPoll: (payload: Partial<PredictionPoll>) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls${query({ tournamentId: payload.tournamentId })}`, json('POST', { predictionPoll: payload })),
   adminUpdatePredictionPoll: (id: string, payload: Partial<PredictionPoll>, tournamentId?: string | null) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls/${id}${query({ tournamentId })}`, json('PATCH', { predictionPoll: payload })),

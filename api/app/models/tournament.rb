@@ -9,6 +9,7 @@ class Tournament < ApplicationRecord
   has_many :article_links, dependent: :destroy
   has_many :media_assets, dependent: :destroy
   has_many :sponsors, dependent: :destroy
+  has_many :tournament_alerts, dependent: :destroy
   has_many :content_ingest_items, dependent: :destroy
   has_many :game_day_notes, dependent: :destroy
   has_many :prediction_polls, dependent: :destroy
