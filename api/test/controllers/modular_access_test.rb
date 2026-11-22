@@ -92,14 +92,33 @@ class ModularAccessTest < ActionDispatch::IntegrationTest
     assert row.user.active?
   end
 
-  test "a scoped access manager can assign within that scope and replacements share one audit operation" do
-    grant("manage_admins", %w[view edit], scope: @campaign)
+  test "a scoped access manager can assign subset permissions and cannot escalate or self-assign" do
+    Access::Presets::DEFINITIONS.fetch("class_chair").last.each do |capability, actions|
+      grant(capability, actions, scope: @campaign)
+    end
     address = "invite@example.test"
     payload = { email: address, scopeType: "campaign", scopeId: @campaign.id, presetKey: "board_viewer" }
     post "#{ACCESS}/assign", params: payload.merge(scopeId: @other_campaign.id), headers: headers(@viewer), as: :json
     assert_response :forbidden
     post "#{ACCESS}/assign", params: payload.merge(scopeType: "site", scopeId: nil), headers: headers(@viewer), as: :json
     assert_response :forbidden
+
+    # B1: cannot self-assign or escalate beyond own actions (e.g. treasurer payout/export)
+    post "#{ACCESS}/assign", params: payload.merge(email: @viewer.email), headers: headers(@viewer), as: :json
+    assert_response :forbidden
+    post "#{ACCESS}/assign", params: payload.merge(presetKey: "treasurer"), headers: headers(@viewer), as: :json
+    assert_response :forbidden
+    post "#{ACCESS}/assign", params: payload.merge(presetKey: nil, grants: [
+      { capability: "finance_and_reimbursements", actions: %w[view payout] }
+    ]), headers: headers(@viewer), as: :json
+    assert_response :forbidden
+
+    # B1: cannot revoke a user holding superior actions (e.g. treasurer with payout/export)
+    treasurer = User.create!(email: "treasurer@example.test", clerk_id: "treasurer_mod", role: "viewer")
+    grant("finance_and_reimbursements", %w[view view_receipts record approve payout export], user: treasurer, scope: @campaign)
+    post "#{ACCESS}/revoke_scope", params: { email: treasurer.email, scopeType: "campaign", scopeId: @campaign.id }, headers: headers(@viewer), as: :json
+    assert_response :forbidden
+    assert PermissionGrant.active.where(user: treasurer, scope_type: "campaign", scope_id: @campaign.id).exists?
 
     get ACCESS, headers: headers(@viewer)
     assert_response :success
@@ -118,6 +137,49 @@ class ModularAccessTest < ActionDispatch::IntegrationTest
     operations << AuditEvent.find_by!(record_type: "PermissionGrant", record_id: new_id, action: "create").operation_id
     assert_equal 4, operations.size
     assert_equal 1, operations.uniq.size
+  end
+
+  test "tournament-scoped audit viewer cannot read campaign or finance audit events" do
+    grant("view_audit_log", %w[view], scope: @season)
+    @campaign.ledger_entries.create!(recorded_by: @admin, entry_type: "income", amount_cents: 1000,
+      source: "donation", payment_method: "cash", counterparty: "Donor")
+    @season.update!(name: "FD 2027 Updated")
+
+    get "/api/v1/admin/audit_events", headers: headers(@viewer)
+    assert_response :success
+    events = response.parsed_body.fetch("auditEvents")
+    assert events.any?
+    assert events.all? { |event| event["hostCampaignId"].nil? && event["tournamentId"] == @season.id.to_s }
+    assert_empty response.parsed_body.dig("filterOptions", "campaigns")
+  end
+
+  test "teams index scopes to authorized tournaments even when tournamentId param is omitted" do
+    grant("schedule_and_teams", %w[view], scope: @season)
+    t1 = @season.teams.create!(class_year_label: "2017", display_name: "Class of 2017")
+    @other_season.teams.create!(class_year_label: "2018", display_name: "Class of 2018")
+
+    get "/api/v1/admin/teams", headers: headers(@viewer)
+    assert_response :success
+    assert_equal [ t1.id.to_s ], response.parsed_body.fetch("teams").pluck("id")
+
+    get "/api/v1/admin/teams", params: { tournament_id: @other_season.id }, headers: headers(@viewer)
+    assert_response :forbidden
+  end
+
+  test "legacy whitelist demotion removes super_admin and unlinked users stay pending on assign" do
+    second_admin = User.create!(email: "second-super@example.test", clerk_id: "second_super", role: "admin")
+    entry = AdminWhitelist.create!(email: second_admin.email, role: "admin", active: true)
+    patch "/api/v1/admin/whitelists/#{entry.id}", params: { whitelist: { role: "staff" } }, headers: headers(@admin), as: :json
+    assert_response :success
+    refute second_admin.reload.super_admin?
+
+    unlinked = User.create!(email: "unlinked@example.test", role: "viewer")
+    post "#{ACCESS}/assign", params: { email: unlinked.email, scopeType: "tournament", scopeId: @season.id, presetKey: "scorekeeper" },
+      headers: headers(@admin), as: :json
+    assert_response :created
+    grant_row = PermissionGrant.find_by!(email: unlinked.email)
+    assert_nil grant_row.user_id
+    assert_nil grant_row.accepted_at
   end
 
   test "a Super Admin who recorded a reimbursement cannot approve it with an override" do

@@ -98,7 +98,7 @@ module Api
         def authorized_events
           return AuditEvent.all if access_policy.super_admin?
 
-          AuditEvent.where(tournament_id: audit_scope_ids[:tournament_id])
+          AuditEvent.where(tournament_id: audit_scope_ids[:tournament_id], host_campaign_id: nil)
             .or(AuditEvent.where(host_campaign_id: audit_scope_ids[:host_campaign_id]))
         end
 

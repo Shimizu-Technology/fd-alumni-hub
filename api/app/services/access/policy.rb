@@ -72,7 +72,7 @@ module Access
     def workspace
       modules = MODULES.filter_map { |path, keys| path if capabilities.any? { |entry| keys.include?(entry[:capability]) } }
       task_modules = modules - %w[people audit]
-      if super_admin? || @user.role == "staff" || (task_modules.length > 1 && task_modules != %w[campaign/host-year campaign/finance])
+      if super_admin? || (task_modules.length > 1 && task_modules != %w[campaign/host-year campaign/finance])
         modules.unshift("work")
         home = "/admin"
       else

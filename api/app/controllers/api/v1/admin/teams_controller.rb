@@ -5,9 +5,21 @@ module Api
         before_action :require_admin!, only: [ :destroy ]
 
         def index
-          return unless authorize_tournament!("schedule_and_teams", "view", admin_tournament("schedule_and_teams")&.id)
-          teams = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).order(:tournament_id, :division, :display_name)
-          teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
+          ids = access_policy.scope_ids("tournament", capability: "schedule_and_teams", action: "view")
+          return render_forbidden if ids.empty?
+
+          requested_id = params[:tournamentId].presence || params[:tournament_id].presence
+          if requested_id
+            return render_forbidden unless ids.include?(requested_id.to_i)
+
+            tournament_ids = [ requested_id.to_i ]
+          else
+            tournament_ids = ids
+          end
+
+          teams = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort)
+            .where(tournament_id: tournament_ids)
+            .order(:tournament_id, :division, :display_name)
 
           render json: { teams: teams.map { |team| team.api_json(include_roster: true) } }
         end

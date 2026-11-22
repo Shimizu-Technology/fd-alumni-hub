@@ -6,7 +6,7 @@ module Api
           return render_forbidden unless access_policy.workspace[:allowedModules].include?("work")
           tournament = admin_tournament
           return render_forbidden if tournament && !workspace_tournaments.exists?(id: tournament.id)
-          unless current_user.staff?
+          unless tournament && access_policy.allows?("schedule_and_teams", "view", scope_type: "tournament", scope_id: tournament.id)
             return render json: { tournament: tournament&.api_json, counts: empty_counts.merge(tournaments: workspace_tournaments.count), missing: missing_for(nil), recentArticles: [] }
           end
 

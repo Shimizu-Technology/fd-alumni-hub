@@ -48,16 +48,26 @@ module Api
           if rows.map { |row| row[:capability] }.uniq.size != rows.size
             return render json: { error: "Each capability may appear once." }, status: :unprocessable_entity
           end
+          return unless authorize_delegated_grants(rows)
+
           changes = with_locked_scope do |user|
+            unless can_modify_target_scope?(user)
+              render_forbidden("You cannot modify permissions that you do not hold in this scope.")
+              raise ActiveRecord::Rollback
+            end
+
             revoke_grants(user)
+            verified_user = user&.clerk_id.present? ? user : nil
             rows.map do |row|
               PermissionGrant.create!(
                 email: @email, scope_type: @scope_type, scope_id: @scope_id,
                 capability: row[:capability], actions: row[:actions], preset_key: params[:presetKey],
-                user: user, accepted_at: user && Time.current, granted_by: current_user
+                user: verified_user, accepted_at: verified_user && Time.current, granted_by: current_user
               )
             end
           end
+          return if performed?
+
           render json: { grants: changes.map(&:api_json) }, status: :created
         rescue ActiveRecord::RecordInvalid => error
           render_errors(error.record)
@@ -67,12 +77,19 @@ module Api
           return unless authorize_scope_change
 
           with_locked_scope do |user|
+            unless can_modify_target_scope?(user)
+              render_forbidden("You cannot revoke permissions that you do not hold in this scope.")
+              raise ActiveRecord::Rollback
+            end
+
             revoke_grants(user)
             if @scope_type == "campaign"
               CampaignMembership.active.where(user: user, host_campaign_id: @scope_id).update_all(active: false, updated_at: Time.current) if user
               CampaignInvitation.pending_for_email(@email).where(host_campaign_id: @scope_id).update_all(revoked_at: Time.current, updated_at: Time.current)
             end
           end
+          return if performed?
+
           head :no_content
         end
 
@@ -96,8 +113,57 @@ module Api
             render_forbidden
             return false
           end
+          if @email == current_user.email.downcase
+            render_forbidden("You cannot change your own access grants.")
+            return false
+          end
 
           authorize!("manage_admins", "edit", type: @scope_type, id: @scope_id)
+        end
+
+        def authorize_delegated_grants(rows)
+          return true if access_policy.super_admin?
+
+          allowed = rows.all? do |row|
+            capability = row[:capability].to_s
+            actions = Array(row[:actions]).map(&:to_s)
+            actions.any? && actions.all? do |action|
+              access_policy.allows?(capability, action, scope_type: @scope_type, scope_id: @scope_id)
+            end
+          end
+          return true if allowed
+
+          render_forbidden("You can only grant permissions that you already hold in this scope.")
+          false
+        end
+
+        def can_modify_target_scope?(user)
+          return true if access_policy.super_admin?
+          return false if user&.super_admin?
+
+          existing_grants = existing_scoped_grants(user).to_a
+          grants_allowed = existing_grants.all? do |grant|
+            grant.actions.all? do |action|
+              access_policy.allows?(grant.capability, action, scope_type: @scope_type, scope_id: @scope_id)
+            end
+          end
+          return false unless grants_allowed
+
+          return true unless @scope_type == "campaign" && user
+
+          explicit_caps = existing_grants.map(&:capability)
+          roles = CampaignMembership.active.where(user: user, host_campaign_id: @scope_id).pluck(:role)
+          roles.all? do |role|
+            Access::Policy::LEGACY_CAMPAIGN_ACTIONS.fetch(role, {}).except(*explicit_caps).all? do |capability, actions|
+              actions.all? { |action| access_policy.allows?(capability, action, scope_type: @scope_type, scope_id: @scope_id) }
+            end
+          end
+        end
+
+        def existing_scoped_grants(user)
+          scoped = PermissionGrant.active.where(scope_type: @scope_type, scope_id: @scope_id)
+          matches = scoped.where(email: @email)
+          user ? matches.or(scoped.where(user: user)) : matches
         end
 
         def with_locked_scope
@@ -110,10 +176,7 @@ module Api
         end
 
         def revoke_grants(user)
-          scoped = PermissionGrant.active.where(scope_type: @scope_type, scope_id: @scope_id)
-          matches = scoped.where(email: @email)
-          matches = matches.or(scoped.where(user: user)) if user
-          matches.update_all(revoked_at: Time.current, updated_at: Time.current)
+          existing_scoped_grants(user).update_all(revoked_at: Time.current, updated_at: Time.current)
         end
       end
     end

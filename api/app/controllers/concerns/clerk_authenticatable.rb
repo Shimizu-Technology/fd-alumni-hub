@@ -95,7 +95,7 @@ module ClerkAuthenticatable
 
     user = User.active.find_by(clerk_id: clerk_id)
     if user
-      return sync_existing_user(user, email, first_name, last_name)
+      return sync_existing_user(user, verified_email, first_name, last_name)
     end
 
     if verified_email.present?

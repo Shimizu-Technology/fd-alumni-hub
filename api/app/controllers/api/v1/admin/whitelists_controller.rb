@@ -45,6 +45,8 @@ module Api
           return if performed?
 
           render json: { whitelist: serialize_whitelist(entry) }
+        rescue ActiveRecord::RecordInvalid => error
+          render_errors(error.record)
         end
 
         private
@@ -55,12 +57,17 @@ module Api
           return if user.id == current_user.id
 
           updates = {}
-          if entry.active? && user.role != entry.role
-            updates[:role] = entry.role
-          elsif !entry.active? && %w[staff scorekeeper].include?(user.role)
-            updates[:role] = "viewer"
+          if entry.active?
+            updates[:role] = entry.role if user.role != entry.role
+            if entry.role == "admin" && entry.saved_change_to_role?
+              updates[:super_admin] = true
+            elsif entry.role != "admin" && entry.saved_change_to_role? && user.super_admin?
+              updates[:super_admin] = false
+            end
+          else
+            updates[:role] = "viewer" if %w[admin staff scorekeeper].include?(user.role)
+            updates[:super_admin] = false if user.super_admin?
           end
-          updates[:super_admin] = true if entry.active? && entry.role == "admin" && entry.saved_change_to_role?
           user.update!(updates) if updates.any?
         end
 

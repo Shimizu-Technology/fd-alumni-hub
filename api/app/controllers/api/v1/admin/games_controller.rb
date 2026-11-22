@@ -14,7 +14,7 @@ module Api
           ids = %w[schedule_and_teams scores_and_stats tonights_menu_and_news history_and_media].flat_map do |capability|
             access_policy.scope_ids("tournament", capability: capability, action: "view")
           end.uniq
-          return render_forbidden if ids.empty? && !current_user.can_score_games?
+          return render_forbidden if ids.empty?
           id = params[:tournamentId].presence || params[:tournament_id].presence
           return render_forbidden if id && !ids.include?(id.to_i)
 
@@ -54,6 +54,9 @@ module Api
           game = Game.find(params[:id])
           incoming = game_params.except(:tournament_id)
           return unless authorize_game_changes(game, incoming)
+          if (incoming.keys & BRACKET_FIELDS).any?
+            return unless authorize_tournament!("brackets", "edit", game.tournament_id)
+          end
           if (incoming.keys - BRACKET_FIELDS - [ :lock_version ]).any? || (incoming.keys & BRACKET_FIELDS).empty?
             return unless authorize_tournament!("schedule_and_teams", "edit", game.tournament_id)
           end
@@ -207,7 +210,8 @@ module Api
         end
 
         def replay_authorized?(game)
-          current_user.staff? || game.score_updated_by_id == current_user.id
+          access_policy.allows?("scores_and_stats", "correct_final", scope_type: "tournament", scope_id: game.tournament_id) ||
+            game.score_updated_by_id == current_user.id
         end
 
         def render_mutation_id_match(game, payload_digest)
