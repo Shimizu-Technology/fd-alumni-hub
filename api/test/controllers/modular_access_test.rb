@@ -173,6 +173,23 @@ class ModularAccessTest < ActionDispatch::IntegrationTest
     assert_response :success
     refute second_admin.reload.super_admin?
 
+    # Attempting to demote when protect_last_super_admin aborts returns 422 and rolls back the whitelist entry
+    entry.reload.update!(role: "admin")
+    second_admin.update!(role: "admin", super_admin: true)
+    original_method = User.instance_method(:protect_last_super_admin)
+    User.define_method(:protect_last_super_admin) do
+      errors.add(:base, "At least one active Super Admin must remain.")
+      throw :abort
+    end
+    begin
+      patch "/api/v1/admin/whitelists/#{entry.id}", params: { whitelist: { role: "staff" } }, headers: headers(@admin), as: :json
+      assert_response :unprocessable_entity
+      assert_match(/Super Admin/, response.body)
+      assert_equal "admin", entry.reload.role
+    ensure
+      User.define_method(:protect_last_super_admin, original_method)
+    end
+
     unlinked = User.create!(email: "unlinked@example.test", role: "viewer")
     post "#{ACCESS}/assign", params: { email: unlinked.email, scopeType: "tournament", scopeId: @season.id, presetKey: "scorekeeper" },
       headers: headers(@admin), as: :json
