@@ -460,4 +460,29 @@ class HafapassEventsClientTest < ActionDispatch::IntegrationTest
       singleton.define_method(:for_campaign, original)
     end
   end
+
+  test "fetch_remote parses real HTTParty::Response JSON body directly without triggering quirks_mode" do
+    raw_json = JSON.generate({
+      "events" => [
+        {
+          "id" => "hp_raw_1",
+          "slug" => "raw-json-event",
+          "organizer_slug" => "co2017",
+          "title" => "Raw JSON Event",
+          "status" => "published",
+          "purchasable" => true,
+          "ticket_types" => []
+        }
+      ]
+    })
+    net_res = Net::HTTPOK.new("1.1", "200", "OK")
+    net_res.instance_variable_set(:@body, raw_json)
+    net_res.instance_variable_set(:@read, true)
+    net_res["content-type"] = "application/json"
+    req = HTTParty::Request.new(Net::HTTP::Get, "https://hafapass.shimizu-technology.com/api/v1/events")
+    httparty_res = HTTParty::Response.new(req, net_res, -> { raise ArgumentError, "unknown keyword: quirks_mode" }, body: raw_json)
+
+    events = Hafapass::EventsClient.fetch_remote("co2017", http_get: ->(_u, **_o) { httparty_res })
+    assert_equal [ "hp_raw_1" ], events.map { |e| e["id"] }
+  end
 end

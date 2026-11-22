@@ -112,7 +112,7 @@ button:disabled { opacity: .62; cursor: progress; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
 .stats-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .stats-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.stat-card { display: grid; gap: .35rem; padding: 1.1rem; }
+.stat-card { display: grid; gap: .35rem; padding: 1.1rem; min-width: 0; }
 .stat-card span { color: var(--muted); font-weight: 800; font-size: .82rem; text-transform: uppercase; letter-spacing: .08em; }
 .stat-card strong { font-size: clamp(1.65rem, 4vw, 2.5rem); letter-spacing: -.06em; color: var(--ink); }
 .stat-card small { color: var(--muted); }
@@ -1224,9 +1224,22 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .finance-tabs {
   display: flex;
   gap: 0.45rem;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   padding-bottom: 0.25rem;
   -webkit-overflow-scrolling: touch;
+}
+
+.finance-page > .page-stack {
+  min-width: 0;
+}
+
+@media (max-width: 680px) {
+  .finance-page .stat-card strong {
+    font-size: clamp(1.2rem, 5.8vw, 1.75rem);
+    overflow-wrap: anywhere;
+  }
 }
 
 .finance-tabs .btn {

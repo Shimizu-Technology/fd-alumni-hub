@@ -60,15 +60,18 @@ class ClerkAuth
       response = HTTParty.get(
         "https://api.clerk.com/v1/users/#{clerk_user_id}",
         headers: { "Authorization" => "Bearer #{secret_key}" },
+        format: :plain,
         timeout: 5
       )
 
-      return nil unless response.success? && response.parsed_response.is_a?(Hash)
+      return nil unless response.success?
 
-      data = response.parsed_response
+      data = parse_json_body(response)
+      return nil unless data.is_a?(Hash)
+
       Rails.cache.write(cache_key, data, expires_in: 5.minutes)
       data
-    rescue HTTParty::Error, Timeout::Error, SocketError, OpenSSL::SSL::SSLError, Errno::ECONNRESET, Errno::ECONNREFUSED => e
+    rescue HTTParty::Error, Timeout::Error, SocketError, OpenSSL::SSL::SSLError, Errno::ECONNRESET, Errno::ECONNREFUSED, JSON::ParserError => e
       Rails.logger.warn("Clerk API user fetch failed for #{clerk_user_id}: #{e.message}")
       nil
     end
@@ -144,7 +147,7 @@ class ClerkAuth
       decode_options = {
         algorithms: [ "RS256" ],
         jwks: jwks,
-        verify_iat: true,
+        verify_iat: false,
         leeway: TOKEN_CLOCK_SKEW_LEEWAY_SECONDS
       }
 
@@ -158,7 +161,15 @@ class ClerkAuth
         decode_options[:verify_aud] = true
       end
 
-      JWT.decode(token, nil, true, decode_options).first
+      payload = JWT.decode(token, nil, true, decode_options).first
+      if payload.is_a?(Hash) && payload.key?("iat")
+        iat = payload["iat"]
+        if !iat.is_a?(Numeric) || iat.to_f > (Time.now.to_f + TOKEN_CLOCK_SKEW_LEEWAY_SECONDS)
+          raise JWT::InvalidIatError, "Invalid iat"
+        end
+      end
+
+      payload
     end
 
     def fetch_jwks(force_refresh: false)
@@ -171,19 +182,28 @@ class ClerkAuth
         return cached if cached.present?
       end
 
-      response = HTTParty.get(jwks_uri, timeout: 5)
+      response = HTTParty.get(jwks_uri, format: :plain, timeout: 5)
 
       if response.success?
-        jwks = response.parsed_response
+        jwks = parse_json_body(response)
+        return nil unless jwks.is_a?(Hash)
+
         Rails.cache.write(cache_key, jwks, expires_in: JWKS_CACHE_TTL)
         jwks
       else
         Rails.logger.error("Failed to fetch Clerk JWKS: #{response.code}")
         nil
       end
-    rescue HTTParty::Error, Timeout::Error => e
+    rescue HTTParty::Error, Timeout::Error, SocketError, OpenSSL::SSL::SSLError, Errno::ECONNRESET, Errno::ECONNREFUSED, JSON::ParserError => e
       Rails.logger.error("Error fetching Clerk JWKS: #{e.message}")
       nil
+    end
+
+    def parse_json_body(response)
+      body = response.respond_to?(:body) ? response.body : nil
+      return JSON.parse(body) if body.is_a?(String) && !body.empty?
+
+      response.respond_to?(:parsed_response) ? response.parsed_response : nil
     end
 
     def configured_issuer

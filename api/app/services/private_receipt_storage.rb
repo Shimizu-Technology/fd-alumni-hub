@@ -288,11 +288,37 @@ class PrivateReceiptStorage
   end
 
   def s3_host
+    if local_endpoint_uri
+      port_part = local_endpoint_uri.port && ![ 80, 443 ].include?(local_endpoint_uri.port) ? ":#{local_endpoint_uri.port}" : ""
+      return "#{local_endpoint_uri.host}#{port_part}"
+    end
+
     "#{bucket}.s3.#{region}.amazonaws.com"
   end
 
   def s3_origin
+    return "#{local_endpoint_uri.scheme}://#{s3_host}" if local_endpoint_uri
+
     "https://#{s3_host}"
+  end
+
+  def local_endpoint_uri
+    return @local_endpoint_uri if defined?(@local_endpoint_uri)
+
+    raw = ENV["S3_PRIVATE_ENDPOINT"].to_s.strip
+    if raw.empty? || !Rails.env.local?
+      @local_endpoint_uri = nil
+      return nil
+    end
+
+    uri = URI.parse(raw)
+    unless %w[http https].include?(uri.scheme) && %w[127.0.0.1 localhost].include?(uri.host)
+      raise ConfigurationError, "S3_PRIVATE_ENDPOINT is only permitted for localhost/127.0.0.1 in development or test"
+    end
+
+    @local_endpoint_uri = uri
+  rescue URI::InvalidURIError
+    raise ConfigurationError, "Invalid S3_PRIVATE_ENDPOINT"
   end
 
   def credential(date_stamp)
