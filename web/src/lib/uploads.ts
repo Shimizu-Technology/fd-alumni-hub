@@ -2,6 +2,26 @@ import { api, type AdminImageUploadPresign } from './api'
 
 export const ADMIN_IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
 export const ADMIN_IMAGE_UPLOAD_ACCEPT = 'image/*,.jpg,.jpeg,.png,.webp,.gif,.svg,.heic,.heif,.avif'
+export const RECEIPT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
+export const RECEIPT_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf'
+
+const RECEIPT_ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'application/pdf',
+])
+
+const RECEIPT_EXTENSION_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heic',
+  pdf: 'application/pdf',
+}
 
 export type AdminImageUploadPurpose = 'article-image' | 'ingest-image' | 'media-asset' | 'sponsor-logo' | 'admin'
 
@@ -47,6 +67,30 @@ export async function uploadCampaignImage({ file, campaignSlug }: { file: File; 
   return presign.publicUrl
 }
 
+export async function uploadCampaignReceipt({ file, campaignSlug }: { file: File; campaignSlug: string }) {
+  const rawDeclared = file.type.split(';')[0]?.trim().toLowerCase()
+  const declared = rawDeclared === 'image/heif' ? 'image/heic' : rawDeclared
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  const contentType = (declared && RECEIPT_ALLOWED_TYPES.has(declared))
+    ? declared
+    : (RECEIPT_EXTENSION_TYPES[ext] || declared || '')
+
+  if (file.size <= 0) throw new Error('Choose a receipt file that is not empty')
+  if (file.size > RECEIPT_UPLOAD_MAX_BYTES) throw new Error('Receipt must be 15MB or smaller')
+  if (!RECEIPT_ALLOWED_TYPES.has(contentType)) {
+    throw new Error('Receipt must be a JPEG, PNG, WebP, HEIC photo, or PDF')
+  }
+
+  const presign = await api.campaignPresignReceipt(campaignSlug, {
+    filename: file.name,
+    contentType,
+    byteSize: file.size,
+  })
+
+  await uploadToS3({ uploadUrl: presign.upload.url, fields: presign.upload.fields }, file)
+  return presign.uploadToken
+}
+
 export function imageContentType(file: File) {
   const declared = file.type.split(';')[0]?.trim().toLowerCase()
   if (declared) return declared
@@ -61,7 +105,7 @@ function validateImageFile(file: File, contentType: string) {
   if (!contentType.startsWith('image/')) throw new Error('Choose an image file')
 }
 
-async function uploadToS3(presign: AdminImageUploadPresign, file: File) {
+async function uploadToS3(presign: Pick<AdminImageUploadPresign, 'uploadUrl' | 'fields'>, file: File) {
   const form = new FormData()
   Object.entries(presign.fields).forEach(([key, value]) => form.append(key, value))
   form.append('file', file, file.name)

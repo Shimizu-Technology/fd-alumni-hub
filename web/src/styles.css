@@ -1210,3 +1210,55 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
     padding-bottom: calc(5.4rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ==========================================================================
+   Board Finance Tracker Operational Overrides (Slice A3.3 — Zero Motion)
+   ========================================================================== */
+
+.finance-page .btn,
+.finance-page .btn:hover {
+  transition: none;
+  transform: none;
+}
+
+.finance-tabs {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.finance-tabs .btn {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
+}
+
+.file-upload-btn {
+  position: relative;
+  cursor: pointer;
+}
+
+.file-upload-btn:focus-within {
+  outline: 2px solid var(--fd-maroon);
+  outline-offset: 2px;
+}
+
+.finance-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(23, 20, 26, 0.65);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.finance-modal-card {
+  width: min(48rem, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  display: grid;
+  gap: 0.85rem;
+}

@@ -52,6 +52,7 @@ const navSections: NavSection[] = [
   {
     label: 'Host Year',
     items: [
+      { to: '/admin/campaign/finance', label: 'Finance', icon: IconChart, access: 'campaign' },
       { to: '/admin/campaign/host-year', label: 'Host Year', icon: IconTicket, access: 'campaign' },
     ],
   },
@@ -98,6 +99,8 @@ export function hasCampaignAccess(user: CurrentUser | null | undefined) {
 
 export function defaultWorkspaceHome(user: CurrentUser | null | undefined) {
   if (user?.isStaff) return '/admin'
+  const roles = new Set((user?.campaignMemberships || []).flatMap((m) => m.roles))
+  if (roles.has('treasurer') || roles.has('board')) return '/admin/campaign/finance'
   return '/admin/campaign/host-year'
 }
 

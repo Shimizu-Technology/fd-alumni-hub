@@ -38,6 +38,7 @@ import { AdminMediaPage } from './pages/admin/AdminMediaPage'
 import { AdminSponsorsPage } from './pages/admin/AdminSponsorsPage'
 import { AdminIngestPage } from './pages/admin/AdminIngestPage'
 import { AdminCampaignHostYearPage } from './pages/admin/AdminCampaignHostYearPage'
+import { AdminCampaignFinancePage } from './pages/admin/AdminCampaignFinancePage'
 import { AdminCampaignsPage } from './pages/admin/AdminCampaignsPage'
 import { AdminPeoplePage } from './pages/admin/AdminPeoplePage'
 
@@ -70,6 +71,7 @@ export function App() {
           </Route>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminIndexRoute staffElement={<AdminOverviewPage />} />} />
+            <Route path="campaign/finance" element={<RequireCampaignRoute><AdminCampaignFinancePage /></RequireCampaignRoute>} />
             <Route path="campaign/host-year" element={<RequireCampaignRoute><AdminCampaignHostYearPage /></RequireCampaignRoute>} />
             <Route path="tournaments" element={<RequireStaffRoute><AdminTournamentsPage /></RequireStaffRoute>} />
             <Route path="tournaments/:tournamentId" element={<RequireStaffRoute><AdminTournamentDetailPage /></RequireStaffRoute>} />
