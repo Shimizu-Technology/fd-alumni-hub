@@ -265,7 +265,26 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   })
 
   useEffect(() => {
-    setForm(gameFormState(game, divisions))
+    setForm((current) => {
+      const next = gameFormState(game, divisions)
+      // Preserve pending score/status drafts when a detail-only save refreshes the game with unchanged server score/status
+      const serverScoreUnchanged =
+        current.persistedStatus === game.status &&
+        current.persistedStatusNote === (game.statusNote || '') &&
+        current.persistedHomeScore === (game.homeScore?.toString() || '') &&
+        current.persistedAwayScore === (game.awayScore?.toString() || '') &&
+        current.persistedGameId === game.id
+      if (serverScoreUnchanged) {
+        return {
+          ...next,
+          status: current.status,
+          statusNote: current.statusNote,
+          homeScore: current.homeScore,
+          awayScore: current.awayScore,
+        }
+      }
+      return next
+    })
     setConflict(false)
   }, [game, divisions])
 
@@ -374,7 +393,20 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
         {saveError && (
           <p className="form-error" role="alert">
             {saveError}{' '}
-            {conflict && <button type="button" className="btn secondary small" onClick={() => void onSaved()}>Reload latest</button>}
+            {conflict && (
+              <button
+                type="button"
+                className="btn secondary small"
+                onClick={() => {
+                  setForm(gameFormState(game, divisions))
+                  setSaveError('')
+                  setConflict(false)
+                  void onSaved()
+                }}
+              >
+                Reload latest
+              </button>
+            )}
           </p>
         )}
         <div className="row-actions">
@@ -437,11 +469,19 @@ function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, 
 }
 
 function gameFormState(game: Game, divisions: Division[]) {
+  const statusNote = game.statusNote || ''
+  const homeScore = game.homeScore?.toString() || ''
+  const awayScore = game.awayScore?.toString() || ''
   return {
+    persistedGameId: game.id,
+    persistedStatus: game.status,
+    persistedStatusNote: statusNote,
+    persistedHomeScore: homeScore,
+    persistedAwayScore: awayScore,
     status: game.status,
-    statusNote: game.statusNote || '',
-    homeScore: game.homeScore?.toString() || '',
-    awayScore: game.awayScore?.toString() || '',
+    statusNote,
+    homeScore,
+    awayScore,
     startTime: toLocalDateTimeInputValue(game.startTime),
     divisionId: divisionValueFor(game, divisions),
     phase: (game.phase || 'pool') as GamePhase,

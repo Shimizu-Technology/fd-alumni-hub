@@ -22,7 +22,7 @@ class StandingsRecomputeConcurrencyTest < ActiveSupport::TestCase
   end
 
   teardown do
-    @tournament&.destroy
+    Tournament.find_by(id: @tournament.id)&.destroy! if @tournament
   end
 
   test "concurrent recomputes inside tournament lock preserve both court results without unique conflicts or lost updates" do

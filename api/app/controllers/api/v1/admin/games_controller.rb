@@ -18,9 +18,11 @@ module Api
         end
 
         def create
-          game = Game.new(game_params.except(:lock_version))
+          attrs = game_params.except(:lock_version)
+          game = Game.new(attrs)
+          saved = with_bracket_lock_if_needed(game.tournament, attrs) { game.save }
 
-          if game.save
+          if saved
             render json: { game: games_with_associations.find(game.id).api_json(include_score_audit: true) }, status: :created
           else
             render_errors(game)
@@ -32,13 +34,20 @@ module Api
         def update
           game = Game.find(params[:id])
           incoming = game_params.except(:tournament_id)
+          lock_version_present = incoming.key?(:lock_version)
           lock_version_param = incoming.delete(:lock_version)
-          if !lock_version_param.nil? && lock_version_param.to_s.strip != ""
-            game.lock_version = lock_version_param.to_i
-          end
-          standings_sensitive = standings_sensitive_change?(incoming)
 
-          if game.update(incoming)
+          if lock_version_present && !lock_version_param.nil? && lock_version_param.to_s.strip != ""
+            parsed_version = parse_lock_version(lock_version_param)
+            return render json: { errors: [ "lockVersion must be a non-negative integer" ] }, status: :unprocessable_entity unless parsed_version
+
+            game.lock_version = parsed_version
+          end
+
+          standings_sensitive = standings_sensitive_change?(incoming)
+          saved = with_bracket_lock_if_needed(game.tournament, incoming) { game.update(incoming) }
+
+          if saved
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
             render json: {
               game: games_with_associations.find(game.id).api_json(include_score_audit: true),
@@ -57,6 +66,21 @@ module Api
         end
 
         private
+
+        def with_bracket_lock_if_needed(tournament, attrs)
+          if tournament && (attrs.key?(:next_game_id) || attrs.key?(:next_game_slot))
+            tournament.with_lock { yield }
+          else
+            yield
+          end
+        end
+
+        def parse_lock_version(value)
+          return value if value.is_a?(Integer) && value >= 0
+          return nil unless value.to_s.strip.match?(/\A\d+\z/)
+
+          value.to_s.strip.to_i
+        end
 
         def games_with_associations
           Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)

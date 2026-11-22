@@ -37,12 +37,13 @@ module Api
 
           changed = []
           errors = []
-          conflicts = []
+          conflict_ids = []
 
           Game.transaction do
             updates.each do |payload|
               id = payload[:id]
               attrs = bulk_link_attrs(payload)
+              lock_version_present = attrs.key?(:lock_version)
               lock_version_param = attrs.delete(:lock_version)
 
               if id.blank?
@@ -55,10 +56,17 @@ module Api
                 next
               end
 
-              game = Game.find(id)
-              if !lock_version_param.nil? && lock_version_param.to_s.strip != ""
-                game.lock_version = lock_version_param.to_i
+              parsed_version = nil
+              if lock_version_present && !lock_version_param.nil? && lock_version_param.to_s.strip != ""
+                parsed_version = parse_lock_version(lock_version_param)
+                unless parsed_version
+                  errors << { id: id, errors: [ "lockVersion must be a non-negative integer" ] }
+                  next
+                end
               end
+
+              game = Game.find(id)
+              game.lock_version = parsed_version unless parsed_version.nil?
               game.update!(attrs)
               changed << game
             rescue ActiveRecord::RecordNotFound
@@ -66,8 +74,7 @@ module Api
             rescue ActiveRecord::RecordInvalid => e
               errors << { id: id, errors: e.record.errors.full_messages }
             rescue ActiveRecord::StaleObjectError
-              current = Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record).find_by(id: id)
-              conflicts << { id: id, error: STALE_MESSAGE, currentGame: current&.api_json(include_score_audit: true) }
+              conflict_ids << id
               errors << { id: id, errors: [ STALE_MESSAGE ] }
             rescue ActiveRecord::RecordNotUnique
               errors << { id: id, errors: [ "A conflicting game update already exists." ] }
@@ -76,7 +83,14 @@ module Api
             raise ActiveRecord::Rollback if errors.any?
           end
 
-          if conflicts.any?
+          if conflict_ids.any?
+            # Reload current committed state AFTER rollback so reverted writes are never exposed as currentGame
+            current_by_id = Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
+              .where(id: conflict_ids.uniq)
+              .index_by { |g| g.id.to_s }
+            conflicts = conflict_ids.map do |id|
+              { id: id, error: STALE_MESSAGE, currentGame: current_by_id[id.to_s]&.api_json(include_score_audit: true) }
+            end
             render json: {
               error: STALE_MESSAGE,
               conflicts: conflicts,
@@ -85,12 +99,23 @@ module Api
           elsif errors.any?
             render json: { errors: errors }, status: :unprocessable_entity
           else
-            reloaded = Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record).where(id: changed.map(&:id)).index_by(&:id)
-            render json: { updated: changed.length, games: changed.map { |game| (reloaded[game.id] || game).api_json(include_score_audit: true) } }
+            # Preload associations onto the exact committed in-memory Game instances so lockVersion matches what this transaction wrote
+            ActiveRecord::Associations::Preloader.new(
+              records: changed,
+              associations: [ :division_record, :score_updated_by, { home_team: :division_record }, { away_team: :division_record } ]
+            ).call
+            render json: { updated: changed.length, games: changed.map { |game| game.api_json(include_score_audit: true) } }
           end
         end
 
         private
+
+        def parse_lock_version(value)
+          return value if value.is_a?(Integer) && value >= 0
+          return nil unless value.to_s.strip.match?(/\A\d+\z/)
+
+          value.to_s.strip.to_i
+        end
 
         def bulk_link_updates
           raw_updates = params[:updates]

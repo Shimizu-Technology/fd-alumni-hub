@@ -41,6 +41,7 @@ class Game < ApplicationRecord
   validate :teams_are_distinct
   validate :teams_belong_to_tournament
   validate :next_game_is_valid
+  validate :feeder_games_remain_compatible, on: :update
   validate :tournament_id_immutable, on: :update
 
   def phase=(value)
@@ -311,7 +312,8 @@ class Game < ApplicationRecord
       errors.add(:next_game_slot, "is already fed by another game")
     end
 
-    # Cycle and max-depth check (rejects cycles or chains deeper than MAX_BRACKET_DEPTH)
+    # Cycle and max-depth check (rejects cycles or chains deeper than MAX_BRACKET_DEPTH including upstream feeders)
+    upstream = upstream_bracket_depth
     visited = id.present? ? Set.new([ id ]) : Set.new
     cursor = target
     hops = 0
@@ -322,11 +324,43 @@ class Game < ApplicationRecord
       end
       visited.add(cursor.id)
       hops += 1
-      if hops > MAX_BRACKET_DEPTH
+      if upstream + hops > MAX_BRACKET_DEPTH
         errors.add(:next_game_id, "exceeds maximum bracket depth (#{MAX_BRACKET_DEPTH})")
         return
       end
       cursor = cursor.next_game_id.present? ? Game.find_by(id: cursor.next_game_id) : nil
+    end
+  end
+
+  def upstream_bracket_depth
+    return 0 unless id.present?
+
+    frontier = [ id ]
+    seen = Set.new([ id ])
+    depth = 0
+
+    while frontier.any? && depth <= MAX_BRACKET_DEPTH
+      parents = Game.where(next_game_id: frontier).pluck(:id).reject { |parent_id| seen.include?(parent_id) }
+      break if parents.empty?
+
+      parents.each { |parent_id| seen.add(parent_id) }
+      frontier = parents
+      depth += 1
+    end
+
+    depth
+  end
+
+  def feeder_games_remain_compatible
+    return unless will_save_change_to_phase? || will_save_change_to_division_id?
+    return unless feeder_games.exists?
+
+    unless %w[playoff fatherson].include?(phase)
+      errors.add(:phase, "must remain playoff or fatherson while feeder games advance into this game")
+    end
+
+    if division_id.present? && feeder_games.where.not(division_id: [ nil, division_id ]).exists?
+      errors.add(:division_id, "must match the division of incoming feeder games")
     end
   end
 end

@@ -198,6 +198,47 @@ class GameTest < ActiveSupport::TestCase
     )
     assert_not too_deep.valid?
     assert_includes too_deep.errors[:next_game_id], "exceeds maximum bracket depth (#{Game::MAX_BRACKET_DEPTH})"
+
+    # Tail extension on chain.last would also create 9 hops (including upstream prefix) -> rejected!
+    tail_target = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_b,
+      division_record: @maroon,
+      phase: "playoff",
+      start_time: Time.zone.local(2026, 7, 25, 18, 0)
+    )
+    chain.last.next_game = tail_target
+    chain.last.next_game_slot = "home"
+    assert_not chain.last.valid?
+    assert_includes chain.last.errors[:next_game_id], "exceeds maximum bracket depth (#{Game::MAX_BRACKET_DEPTH})"
+  end
+
+  test "cannot change phase or division of a target game in a way that invalidates incoming feeders" do
+    gold = @tournament.divisions.create!(name: "Gold", position: 2)
+    semifinal = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_b,
+      division_record: @maroon,
+      phase: "playoff",
+      start_time: Time.zone.local(2026, 7, 20, 18, 0)
+    )
+    final_game = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_c,
+      division_record: @maroon,
+      phase: "playoff",
+      start_time: Time.zone.local(2026, 7, 24, 19, 0)
+    )
+    semifinal.update!(next_game: final_game, next_game_slot: "home")
+
+    final_game.phase = "pool"
+    assert_not final_game.valid?
+    assert_includes final_game.errors[:phase].join, "must remain playoff or fatherson"
+
+    final_game.reload
+    final_game.division_record = gold
+    assert_not final_game.valid?
+    assert_includes final_game.errors[:division_id].join, "must match the division of incoming feeder games"
   end
 
   test "validates last_score_mutation_id format" do

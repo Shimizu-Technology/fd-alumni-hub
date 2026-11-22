@@ -70,7 +70,7 @@ export function AdminDivisionsPage() {
         actions={tournament && <Link className="btn primary" to={tournamentScopedPath('/admin/games', tournament.id)}>Build schedule</Link>}
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
-      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} isAdmin={isAdmin} onSaved={reload} />
+      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} loading={loading} isAdmin={isAdmin} onSaved={reload} />
       <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />
       <ClassCoverageBoard key={tournament?.id || 'no-tournament'} tournament={tournament} assignments={classAssignments} />
       <Panel>
@@ -102,8 +102,16 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
   return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
 }
 
-function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
-  const nextPosition = useMemo(() => Math.max(0, ...allDivisions.map((division) => division.position)) + 1, [allDivisions])
+function DivisionSettingsPanel({ tournament, divisions, allDivisions, loading, isAdmin, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; loading: boolean; isAdmin: boolean; onSaved: () => Promise<void> }) {
+  const scopedDivisions = useMemo(
+    () => (tournament ? divisions.filter((division) => !division.tournamentId || division.tournamentId === tournament.id) : []),
+    [divisions, tournament],
+  )
+  const scopedAllDivisions = useMemo(
+    () => (tournament ? allDivisions.filter((division) => !division.tournamentId || division.tournamentId === tournament.id) : []),
+    [allDivisions, tournament],
+  )
+  const nextPosition = useMemo(() => Math.max(0, ...scopedAllDivisions.map((division) => division.position)) + 1, [scopedAllDivisions])
   const [form, setForm] = useState({ name: '', position: '1', countsForStandings: true })
   const [saveSuccess, setSaveSuccess] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -152,7 +160,7 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
         )}
       </div>
       <div className="division-pill-list" aria-label="Available divisions for selected tournament">
-        {divisions.map((division) => (
+        {loading ? <span className="muted">Loading divisions…</span> : scopedDivisions.map((division) => (
           <span key={division.id}>
             {division.name}{division.countsForStandings === false ? ' (Non-standings)' : ''}
           </span>
@@ -160,7 +168,7 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
       </div>
       {saveSuccess && <p className="form-note" role="status">{saveSuccess}</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      {isAdmin && open && (
+      {isAdmin && open && !loading && (
         <div className="collapsible-body">
           <form onSubmit={submit} className="stacked-form">
             <p className="form-note">Divisions created here apply only to {tournament ? `${tournament.year} · ${tournament.name}` : 'the selected tournament'}. Uncheck "Counts for standings" for exhibition or Special divisions.</p>
@@ -171,7 +179,7 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
             </FormGrid>
             <button className="btn secondary" type="submit">Add division</button>
           </form>
-          {allDivisions.length > 0 && <div className="admin-list compact-admin-list">{allDivisions.map((division) => <EditableDivision key={division.id} division={division} tournamentId={tournament?.id} onSaved={onSaved} />)}</div>}
+          {scopedAllDivisions.length > 0 && <div className="admin-list compact-admin-list">{scopedAllDivisions.map((division) => <EditableDivision key={division.id} division={division} tournamentId={tournament?.id} onSaved={onSaved} />)}</div>}
         </div>
       )}
     </Panel>

@@ -92,13 +92,22 @@ class AdminGamesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Typhoon warning - pushed 45 min", @game.status_note
   end
 
-  test "bulk links update returns 409 Conflict on stale lockVersion without partial writes" do
+  test "bulk links update returns 409 Conflict on stale lockVersion without partial writes and reloads post-rollback state" do
+    first_game = @tournament.games.create!(
+      home_team: @class_2017,
+      away_team: @class_2016,
+      division_record: @maroon,
+      start_time: Time.zone.local(2026, 7, 4, 18, 0),
+      status: "scheduled"
+    )
+    first_version = first_game.lock_version
     stale_version = @game.lock_version
     @game.update!(home_score: 80)
 
     patch "/api/v1/admin/links/bulk",
       params: {
         updates: [
+          { id: first_game.id.to_s, ticketUrl: "https://hafapass.shimizu-technology.com/events/first", lockVersion: first_version },
           { id: @game.id.to_s, ticketUrl: "https://hafapass.shimizu-technology.com/events/fd", lockVersion: stale_version }
         ]
       },
@@ -108,7 +117,20 @@ class AdminGamesControllerTest < ActionDispatch::IntegrationTest
     assert_response :conflict
     body = JSON.parse(response.body)
     assert_equal 1, body["conflicts"].length
-    assert_nil @game.reload.ticket_url
+    assert_equal @game.reload.lock_version, body.dig("conflicts", 0, "currentGame", "lockVersion")
+    assert_nil first_game.reload.ticket_url
+    assert_equal first_version, first_game.lock_version
+    assert_nil @game.ticket_url
+  end
+
+  test "rejects malformed non-integer lockVersion with 422" do
+    patch "/api/v1/admin/games/#{@game.id}",
+      params: { game: { homeScore: 70, lockVersion: "not-a-number" } },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].join, "lockVersion must be a non-negative integer"
   end
 
   test "missing game returns JSON 404" do

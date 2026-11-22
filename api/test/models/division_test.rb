@@ -22,11 +22,13 @@ class DivisionTest < ActiveSupport::TestCase
     assert_equal %w[Maroon Gold Platinum Special], Division::DEFAULT_NAMES
   end
 
-  test "ensure_default_divisions! creates idempotent per-tournament divisions" do
+  test "ensure_default_divisions! creates idempotent per-tournament divisions and reuses renamed slugs" do
     @t2026.ensure_default_divisions!
+    @t2026.divisions.find_by!(name: "Maroon").update!(slug: "maroon-open")
     @t2026.ensure_default_divisions!
 
     assert_equal %w[Maroon Gold Platinum Special], @t2026.divisions.ordered.pluck(:name)
+    assert_equal "maroon-open", @t2026.divisions.find_by!(name: "Maroon").slug
     assert_equal true, @t2026.divisions.find_by!(name: "Maroon").counts_for_standings?
     assert_equal false, @t2026.divisions.find_by!(name: "Special").counts_for_standings?
   end

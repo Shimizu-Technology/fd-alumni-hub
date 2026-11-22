@@ -83,27 +83,30 @@ export function StandingsPage() {
           ) : !filteredStandings.length ? (
             <EmptyState title="No standings match this filter" description="Clear filters to see more classes." />
           ) : divisionGroups.length > 0 ? (
-            divisionGroups.map((group) => (
-              <Panel className="standings-panel" key={group.division.id}>
-                <div className="section-heading">
-                  <div>
-                    <h2>{group.division.name} Division</h2>
-                    <p className="muted">
-                      Pool score coverage: {group.scoreCoverage.scoredPoolGames ?? group.scoreCoverage.scoredGames} of {group.scoreCoverage.totalPoolGames ?? group.scoreCoverage.totalGames} ({group.scoreCoverage.percent}%)
-                    </p>
+            divisionGroups.map((group) => {
+              const headingId = `public-standings-division-${group.division.id}`
+              return (
+                <Panel className="standings-panel" key={group.division.id}>
+                  <div className="section-heading">
+                    <div>
+                      <h2 id={headingId}>{group.division.name} Division</h2>
+                      <p className="muted">
+                        Pool score coverage: {group.scoreCoverage.scoredPoolGames ?? group.scoreCoverage.scoredGames} of {group.scoreCoverage.totalPoolGames ?? group.scoreCoverage.totalGames} ({group.scoreCoverage.percent}%)
+                      </p>
+                    </div>
+                    <span>{group.standings.length} {group.standings.length === 1 ? 'team' : 'teams'}</span>
                   </div>
-                  <span>{group.standings.length} {group.standings.length === 1 ? 'team' : 'teams'}</span>
-                </div>
-                {group.standings.length === 0 ? (
-                  <EmptyState title={`No ${group.division.name} standings yet`} description="Assign teams to this division and enter final pool scores." />
-                ) : (
-                  <StandingsList standings={group.standings} showDivisionColumn={false} />
-                )}
-              </Panel>
-            ))
+                  {group.standings.length === 0 ? (
+                    <EmptyState title={`No ${group.division.name} standings yet`} description="Assign teams to this division and enter final pool scores." />
+                  ) : (
+                    <StandingsList standings={group.standings} showDivisionColumn={false} labelledBy={headingId} />
+                  )}
+                </Panel>
+              )
+            })
           ) : (
             <Panel className="standings-panel">
-              <StandingsList standings={filteredStandings} showDivisionColumn />
+              <StandingsList standings={filteredStandings} showDivisionColumn tableLabel="Division standings" />
             </Panel>
           )}
         </>
@@ -112,7 +115,7 @@ export function StandingsPage() {
   )
 }
 
-function StandingsList({ standings, showDivisionColumn }: { standings: Standing[]; showDivisionColumn: boolean }) {
+function StandingsList({ standings, showDivisionColumn, labelledBy, tableLabel }: { standings: Standing[]; showDivisionColumn: boolean; labelledBy?: string; tableLabel?: string }) {
   return (
     <>
       <div className="standings-mobile-list" aria-label="Mobile standings list">
@@ -132,7 +135,7 @@ function StandingsList({ standings, showDivisionColumn }: { standings: Standing[
         ))}
       </div>
       <div className="table-wrap">
-        <table className="data-table standings-table">
+        <table className="data-table standings-table" aria-labelledby={labelledBy} aria-label={labelledBy ? undefined : tableLabel}>
           <thead>
             <tr>
               <th>Rank</th>
