@@ -106,7 +106,13 @@ module Imports
     end
 
     def assign_game_attributes!(game, row, away_team, home_team, division, is_new:)
-      schedule = { away_team: away_team, home_team: home_team, start_time: Time.iso8601(row[:startTime]), phase: row[:phase] }
+      schedule = {
+        away_team: away_team,
+        home_team: home_team,
+        start_time: Time.iso8601(row[:startTime]),
+        phase: row[:phase],
+        placeholder: home_team.placeholder_team? || away_team.placeholder_team?
+      }
       schedule[:venue] = row[:venue].presence || @default_venue if is_new || row[:venue].present?
       { game_number: :gameNumber, bracket_code: :bracketCode, bracket_round: :bracketRound,
         bracket_slot: :bracketSlot, notes: :notes }.each do |field, key|

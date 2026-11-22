@@ -5,6 +5,10 @@ module Api
         def schedule_preview
           return unless authorize_tournament!("schedule_and_teams", "import", params[:id])
           tournament = Tournament.find(params[:id])
+          overwrite_scores = ActiveModel::Type::Boolean.new.cast(params[:overwriteScores] || params[:overwrite_scores])
+          if overwrite_scores && !current_user.admin?
+            return render json: { error: "Only administrators may enable overwriteScores during schedule import." }, status: :forbidden
+          end
           rows = permitted_schedule_rows
 
           result = Imports::SchedulePreview.call(
@@ -12,7 +16,8 @@ module Api
             rows: rows,
             content: params[:content],
             format: requested_import_format,
-            default_venue: params[:defaultVenue].presence || params[:default_venue].presence || "The Jungle"
+            default_venue: params[:defaultVenue].presence || params[:default_venue].presence || "The Jungle",
+            overwrite_scores: overwrite_scores
           )
 
           render json: result

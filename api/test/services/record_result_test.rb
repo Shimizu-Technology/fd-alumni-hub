@@ -54,5 +54,50 @@ class RecordResultTest < ActiveSupport::TestCase
     assert_equal 2, preview.dig(:summary, :errorCount)
     assert_match(/official winner/i, preview[:rows][0][:errors].join)
     assert_match(/Both home and away scores/, preview[:rows][1][:errors].join)
+    assert_empty tournament.games.target
+
+    # Existing pool game moved to playoff with tied score fails overwrite preview,
+    # while a placeholder game filled with real teams passes overwrite preview and commit.
+    team_a = tournament.teams.create!(display_name: "Class of 2001", class_year_label: "2001", division_record: division)
+    team_b = tournament.teams.create!(display_name: "Class of 2002", class_year_label: "2002", division_record: division)
+    placeholder_team = tournament.teams.create!(display_name: "Winner Q2", class_year_label: "Winner Q2", division_record: division)
+    pool_game = tournament.games.create!(game_number: "G1", home_team: team_a, away_team: team_b,
+      start_time: Time.zone.local(2003, 7, 4, 18), phase: "pool", division_record: division)
+    placeholder_game = tournament.games.create!(game_number: "G2", home_team: placeholder_team, away_team: team_b,
+      start_time: Time.zone.local(2003, 7, 4, 19), phase: "playoff", placeholder: true, division_record: division)
+
+    overwrite_preview = Imports::SchedulePreview.call(
+      tournament: tournament,
+      overwrite_scores: true,
+      rows: [
+        {
+          rowIndex: 1, gameNumber: pool_game.game_number, startTime: "2003-07-04T18:00:00+10:00",
+          phase: "playoff", awayTeam: "Class of 2002", homeTeam: "Class of 2001",
+          division: division.name, status: "final", homeScore: 50, awayScore: 50
+        },
+        {
+          rowIndex: 2, gameNumber: placeholder_game.game_number, startTime: "2003-07-04T19:00:00+10:00",
+          phase: "playoff", awayTeam: "Class of 2002", homeTeam: "Class of 2001",
+          division: division.name, status: "final", homeScore: 62, awayScore: 55
+        }
+      ]
+    )
+    assert_equal 1, overwrite_preview.dig(:summary, :errorCount)
+    assert_match(/official winner/i, overwrite_preview[:rows][0][:errors].join)
+    assert_empty overwrite_preview[:rows][1][:errors]
+
+    commit = Imports::ScheduleCommit.call(
+      tournament: tournament,
+      overwrite_scores: true,
+      rows: [
+        {
+          rowIndex: 1, gameNumber: placeholder_game.game_number, startTime: "2003-07-04T19:00:00+10:00",
+          phase: "playoff", awayTeam: "Class of 2002", homeTeam: "Class of 2001",
+          division: division.name, status: "final", homeScore: 62, awayScore: 55
+        }
+      ]
+    )
+    assert_equal 1, commit[:updatedGames]
+    assert_equal [ false, 62, 55 ], placeholder_game.reload.attributes.values_at("placeholder", "home_score", "away_score")
   end
 end

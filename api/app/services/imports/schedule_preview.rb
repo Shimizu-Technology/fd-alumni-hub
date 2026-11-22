@@ -273,11 +273,21 @@ module Imports
       end
       return if attrs.empty?
 
-      candidate = existing_game || @tournament.games.build(
-        home_team: home_team || Team.new(display_name: home_canonical, class_year_label: home_canonical),
-        away_team: away_team || Team.new(display_name: away_canonical, class_year_label: away_canonical),
+      effective_home = home_team || Team.new(display_name: home_canonical, class_year_label: home_canonical)
+      effective_away = away_team || Team.new(display_name: away_canonical, class_year_label: away_canonical)
+      candidate = Game.new(
+        tournament: @tournament,
+        home_team: effective_home,
+        away_team: effective_away,
         phase: phase,
-        status: "scheduled"
+        placeholder: effective_home.placeholder_team? || effective_away.placeholder_team?,
+        status: existing_game&.status || "scheduled",
+        home_score: existing_game&.home_score,
+        away_score: existing_game&.away_score,
+        result_outcome: existing_game&.result_outcome,
+        official_winner_team_id: existing_game&.official_winner_team_id,
+        status_note: existing_game&.status_note,
+        next_game_id: existing_game&.next_game_id
       )
       checker = Games::RecordResult.new(candidate, attrs)
       errors.concat(checker.validation_errors(candidate, checker.proposed_attributes(candidate)))
