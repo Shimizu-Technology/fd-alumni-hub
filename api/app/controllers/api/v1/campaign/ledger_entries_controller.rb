@@ -250,7 +250,21 @@ module Api
               raise ActiveRecord::Rollback
             end
 
-            had_previous_receipt = entry.has_receipt?
+            previous_receipt = if entry.has_receipt?
+              {
+                "receipt_key" => entry.receipt_key,
+                "receipt_filename" => entry.receipt_filename,
+                "receipt_content_type" => entry.receipt_content_type,
+                "receipt_byte_size" => entry.receipt_byte_size
+              }
+            end
+
+            if pending && previous_receipt && %w[approved reimbursed].include?(entry.reimbursement_status)
+              render json: { error: "Cannot replace an attached receipt after reimbursement has been approved or reimbursed; void and re-enter instead." },
+                status: :unprocessable_entity
+              raise ActiveRecord::Rollback
+            end
+
             entry.assign_attributes(update_metadata_params(raw).merge(receipt_attrs))
             changes = entry.changes
             unless entry.save
@@ -265,7 +279,10 @@ module Api
                 "receipt_content_type" => entry.receipt_content_type,
                 "receipt_byte_size" => entry.receipt_byte_size
               }
-              attach_changes["replaced_previous_receipt"] = true if had_previous_receipt
+              if previous_receipt
+                attach_changes["replaced_previous_receipt"] = true
+                attach_changes["previous_receipt"] = previous_receipt
+              end
               record_audit!(
                 record: entry,
                 action: "attach_receipt",
@@ -294,7 +311,8 @@ module Api
           signed = PrivateReceiptStorage.presign_get(
             key: entry.receipt_key,
             filename: entry.receipt_filename,
-            content_type: entry.receipt_content_type
+            content_type: entry.receipt_content_type,
+            campaign_id: @campaign.id
           )
 
           record_audit!(
@@ -306,6 +324,8 @@ module Api
           render json: signed.merge(byteSize: entry.receipt_byte_size)
         rescue PrivateReceiptStorage::ConfigurationError => e
           render json: { error: e.message }, status: :service_unavailable
+        rescue ArgumentError => e
+          render json: { error: e.message }, status: :unprocessable_entity
         end
 
         def void
@@ -514,7 +534,8 @@ module Api
 
           verified = PrivateReceiptStorage.verify_object(
             key: pending.s3_key,
-            expected_content_type: pending.expected_content_type
+            expected_content_type: pending.expected_content_type,
+            campaign_id: @campaign.id
           )
 
           {

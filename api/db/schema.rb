@@ -58,7 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.index "host_campaign_id, kind, lower((category)::text)", name: "index_budget_lines_on_active_category_unique", unique: true, where: "(archived_at IS NULL)"
     t.index ["host_campaign_id"], name: "index_budget_lines_on_host_campaign_id"
     t.check_constraint "budget_cents >= 0", name: "chk_budget_lines_budget_cents_non_negative"
-    t.check_constraint "kind::text = ANY (ARRAY['income'::character varying::text, 'expense'::character varying::text])", name: "chk_budget_lines_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])", name: "chk_budget_lines_kind"
   end
 
   create_table "campaign_events", force: :cascade do |t|
@@ -343,13 +343,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.check_constraint "(voided_at IS NULL) = (voided_by_id IS NULL) AND (voided_at IS NULL) = (void_reason IS NULL)", name: "chk_ledger_entries_void_consistency"
     t.check_constraint "amount_cents > 0", name: "chk_ledger_entries_amount_cents_positive"
     t.check_constraint "entry_type::text <> 'income'::text OR reimbursement_status::text = 'not_applicable'::text AND paid_by_user_id IS NULL", name: "chk_ledger_entries_income_no_reimbursement"
-    t.check_constraint "entry_type::text = 'income'::text AND (source::text = ANY (ARRAY['fundraiser_gross'::character varying::text, 'fundraiser_net'::character varying::text, 'sponsorship'::character varying::text, 'donation'::character varying::text, 'fdaa_allocation'::character varying::text, 'ticket_share'::character varying::text, 'merch'::character varying::text, 'golf_net'::character varying::text, 'other_income'::character varying::text])) OR entry_type::text = 'expense'::text AND (source::text = ANY (ARRAY['event_expense'::character varying::text, 'merch_cost'::character varying::text, 'venue_ops'::character varying::text, 'refund'::character varying::text, 'other_expense'::character varying::text]))", name: "chk_ledger_entries_source_matches_type"
-    t.check_constraint "entry_type::text = ANY (ARRAY['income'::character varying::text, 'expense'::character varying::text])", name: "chk_ledger_entries_entry_type"
-    t.check_constraint "payment_method::text = ANY (ARRAY['cash'::character varying::text, 'paypal'::character varying::text, 'check'::character varying::text, 'bank_transfer'::character varying::text, 'fdaa'::character varying::text, 'hafapass_payout'::character varying::text, 'golf_payout'::character varying::text, 'card'::character varying::text, 'other'::character varying::text])", name: "chk_ledger_entries_payment_method"
+    t.check_constraint "entry_type::text = 'income'::text AND (source::text = ANY (ARRAY['fundraiser_gross'::character varying, 'fundraiser_net'::character varying, 'sponsorship'::character varying, 'donation'::character varying, 'fdaa_allocation'::character varying, 'ticket_share'::character varying, 'merch'::character varying, 'golf_net'::character varying, 'other_income'::character varying]::text[])) OR entry_type::text = 'expense'::text AND (source::text = ANY (ARRAY['event_expense'::character varying, 'merch_cost'::character varying, 'venue_ops'::character varying, 'refund'::character varying, 'other_expense'::character varying]::text[]))", name: "chk_ledger_entries_source_matches_type"
+    t.check_constraint "entry_type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])", name: "chk_ledger_entries_entry_type"
+    t.check_constraint "payment_method::text = ANY (ARRAY['cash'::character varying, 'paypal'::character varying, 'check'::character varying, 'bank_transfer'::character varying, 'fdaa'::character varying, 'hafapass_payout'::character varying, 'golf_payout'::character varying, 'card'::character varying, 'other'::character varying]::text[])", name: "chk_ledger_entries_payment_method"
     t.check_constraint "receipt_byte_size IS NULL OR receipt_byte_size > 0", name: "chk_ledger_entries_receipt_byte_size_positive"
     t.check_constraint "reimbursed_at IS NULL OR reimbursement_status::text = 'reimbursed'::text", name: "chk_ledger_entries_reimbursed_at_status"
     t.check_constraint "reimbursement_approved_by_id IS NULL OR paid_by_user_id IS NULL OR reimbursement_approved_by_id <> paid_by_user_id", name: "chk_ledger_entries_approver_not_payer"
-    t.check_constraint "reimbursement_status::text = ANY (ARRAY['not_applicable'::character varying::text, 'requested'::character varying::text, 'approved'::character varying::text, 'reimbursed'::character varying::text])", name: "chk_ledger_entries_reimbursement_status"
+    t.check_constraint "reimbursement_status::text = ANY (ARRAY['not_applicable'::character varying, 'requested'::character varying, 'approved'::character varying, 'reimbursed'::character varying]::text[])", name: "chk_ledger_entries_reimbursement_status"
   end
 
   create_table "media_assets", force: :cascade do |t|
@@ -409,7 +409,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.index ["recorded_by_id"], name: "index_pledges_on_recorded_by_id"
     t.index ["sponsor_id"], name: "index_pledges_on_sponsor_id"
     t.check_constraint "promised_cents > 0", name: "chk_pledges_promised_cents_positive"
-    t.check_constraint "status::text = ANY (ARRAY['promised'::character varying::text, 'partial'::character varying::text, 'fulfilled'::character varying::text, 'cancelled'::character varying::text])", name: "chk_pledges_status"
+    t.check_constraint "status::text = ANY (ARRAY['promised'::character varying, 'partial'::character varying, 'fulfilled'::character varying, 'cancelled'::character varying]::text[])", name: "chk_pledges_status"
   end
 
   create_table "prediction_polls", force: :cascade do |t|

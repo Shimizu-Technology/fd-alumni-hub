@@ -24,12 +24,12 @@ class PrivateReceiptStorage
       new.presign_post(campaign_id: campaign_id, filename: filename, content_type: content_type, byte_size: byte_size)
     end
 
-    def verify_object(key:, expected_content_type:, http_head: nil)
-      new.verify_object(key: key, expected_content_type: expected_content_type, http_head: http_head)
+    def verify_object(key:, expected_content_type:, campaign_id: nil, http_head: nil)
+      new.verify_object(key: key, expected_content_type: expected_content_type, campaign_id: campaign_id, http_head: http_head)
     end
 
-    def presign_get(key:, filename:, content_type:)
-      new.presign_get(key: key, filename: filename, content_type: content_type)
+    def presign_get(key:, filename:, content_type:, campaign_id: nil)
+      new.presign_get(key: key, filename: filename, content_type: content_type, campaign_id: campaign_id)
     end
 
     def sanitize_download_filename(raw)
@@ -105,9 +105,9 @@ class PrivateReceiptStorage
     }
   end
 
-  def verify_object(key:, expected_content_type:, http_head: nil)
+  def verify_object(key:, expected_content_type:, campaign_id: nil, http_head: nil)
     ensure_configured!
-    raise VerificationError, "Invalid receipt key" unless key.is_a?(String) && key.start_with?("receipts/") && !key.include?("..")
+    raise VerificationError, "Invalid receipt key" unless valid_receipt_key?(key, campaign_id: campaign_id)
 
     now = Time.current.utc
     amz_date = now.strftime("%Y%m%dT%H%M%SZ")
@@ -183,12 +183,13 @@ class PrivateReceiptStorage
   rescue VerificationError, ConfigurationError
     raise
   rescue StandardError => e
-    raise VerificationError, "Unable to verify uploaded receipt: #{e.class}: #{e.message}"
+    Rails.logger.warn("[PrivateReceiptStorage] HEAD verify failed for #{key}: #{e.class}: #{e.message}") if defined?(Rails) && Rails.logger
+    raise VerificationError, "Unable to verify uploaded receipt right now. Please retry."
   end
 
-  def presign_get(key:, filename:, content_type:)
+  def presign_get(key:, filename:, content_type:, campaign_id: nil)
     ensure_configured!
-    raise ArgumentError, "Invalid receipt key" unless key.is_a?(String) && key.start_with?("receipts/") && !key.include?("..")
+    raise ArgumentError, "Invalid receipt key" unless valid_receipt_key?(key, campaign_id: campaign_id)
 
     clean_filename = self.class.sanitize_download_filename(filename)
     ascii_filename = clean_filename.encode("ASCII", invalid: :replace, undef: :replace, replace: "_").gsub(/["\\;]/, "_")
@@ -312,10 +313,21 @@ class PrivateReceiptStorage
   def build_object_key(campaign_id:, timestamp:, filename:)
     slug = filename.downcase
       .gsub(/[^a-z0-9._-]+/, "-")
+      .gsub(/\.{2,}/, ".")
       .gsub(/-+/, "-")
       .gsub(/\A[-.]+|[-.]+\z/, "")
     slug = "receipt" if slug.blank?
     "receipts/#{campaign_id}/#{timestamp.to_i}-#{SecureRandom.hex(8)}-#{slug.last(100)}"
+  end
+
+  def valid_receipt_key?(key, campaign_id: nil)
+    return false unless key.is_a?(String) && !key.empty?
+
+    segments = key.split("/", -1)
+    return false unless segments.length == 3 && segments[0] == "receipts"
+    return false if campaign_id.present? && segments[1] != campaign_id.to_s
+
+    segments.none? { |seg| seg.empty? || seg == "." || seg == ".." }
   end
 
   def encode_s3_path(key)

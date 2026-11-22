@@ -320,6 +320,159 @@ class CampaignReceiptsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "handles double-dot filenames, preserves previous receipt audit on replace, locks replacement after approval, and handles HEAD/key/void/rate-limit edge cases" do
+    with_private_s3_env do
+      # M1: Filenames containing '..' collapse cleanly and attach without triggering path traversal guard
+      post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+        params: { upload: { filename: "receipt..final.pdf", contentType: "application/pdf", byteSize: 2048 } },
+        headers: auth_headers(@treasurer), as: :json
+      assert_response :success
+      dot_body = JSON.parse(response.body)
+      assert_not_includes dot_body.dig("upload", "fields", "key"), ".."
+      token_a = dot_body.fetch("uploadToken")
+
+      # Direct client-supplied receiptFilename / receiptContentType / receiptByteSize are rejected
+      %w[receiptFilename receiptContentType receiptByteSize].each do |raw_key|
+        post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+          params: {
+            ledgerEntry: {
+              entryType: "expense",
+              amountCents: 6_000,
+              source: "event_expense",
+              paymentMethod: "card",
+              counterparty: "Office Depot",
+              raw_key => "forged"
+            }
+          },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :unprocessable_entity
+      end
+
+      # HEAD failures (403, 404, 302, oversized, network error) return 422 without leaking internal host/class
+      [
+        ->(_url, **_opts) { StubHeadResponse.new(403, {}) },
+        ->(_url, **_opts) { StubHeadResponse.new(404, {}) },
+        ->(_url, **_opts) { StubHeadResponse.new(302, { "location" => "https://evil.example" }) },
+        ->(_url, **_opts) { StubHeadResponse.new(200, { "content-length" => (20.megabytes).to_s, "content-type" => "application/pdf" }) },
+        ->(_url, **_opts) { raise SocketError, "getaddrinfo: internal-secret-host.local" }
+      ].each do |stub|
+        with_stubbed_httparty_head(stub) do
+          post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+            params: {
+              ledgerEntry: {
+                entryType: "expense",
+                amountCents: 6_000,
+                source: "event_expense",
+                paymentMethod: "card",
+                counterparty: "Office Depot",
+                receiptUploadToken: token_a
+              }
+            },
+            headers: auth_headers(@treasurer), as: :json
+          assert_response :unprocessable_entity
+          assert_not_includes response.body, "SocketError"
+          assert_not_includes response.body, "internal-secret-host.local"
+        end
+      end
+
+      # Attach token_a on create with reimbursement requested
+      with_stubbed_httparty_head(->(_url, **_opts) { StubHeadResponse.new(200, { "content-length" => "2048", "content-type" => "application/pdf" }) }) do
+        post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+          params: {
+            ledgerEntry: {
+              entryType: "expense",
+              amountCents: 6_000,
+              source: "event_expense",
+              paymentMethod: "card",
+              counterparty: "Office Depot",
+              paidByUserId: @treasurer.id,
+              reimbursementStatus: "requested",
+              receiptUploadToken: token_a
+            }
+          },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :created
+      end
+      entry_id = JSON.parse(response.body).dig("ledgerEntry", "id")
+      first_key = LedgerEntry.find(entry_id).receipt_key
+
+      # M2: Replacing receipt before approval preserves full previous_receipt in attach_receipt audit
+      post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+        params: { upload: { filename: "updated-invoice.pdf", contentType: "application/pdf", byteSize: 3072 } },
+        headers: auth_headers(@treasurer), as: :json
+      assert_response :success
+      token_b = JSON.parse(response.body).fetch("uploadToken")
+
+      with_stubbed_httparty_head(->(_url, **_opts) { StubHeadResponse.new(200, { "content-length" => "3072", "content-type" => "application/pdf" }) }) do
+        patch "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}",
+          params: { ledgerEntry: { receiptUploadToken: token_b } },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :success
+      end
+
+      replace_audit = FinanceAuditEvent.where(host_campaign: @campaign, record_type: "LedgerEntry", record_id: entry_id, action: "attach_receipt").order(:id).last
+      assert_equal true, replace_audit.changes_json["replaced_previous_receipt"]
+      assert_equal first_key, replace_audit.changes_json.dig("previous_receipt", "receipt_key")
+      assert_equal "receipt..final.pdf", replace_audit.changes_json.dig("previous_receipt", "receipt_filename")
+      assert_equal 2048, replace_audit.changes_json.dig("previous_receipt", "receipt_byte_size")
+
+      # Chair approves reimbursement; replacing receipt afterwards is blocked (422)
+      post "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}/approve-reimbursement",
+        headers: auth_headers(@chair), as: :json
+      assert_response :success
+
+      post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+        params: { upload: { filename: "tampered.pdf", contentType: "application/pdf", byteSize: 1024 } },
+        headers: auth_headers(@treasurer), as: :json
+      assert_response :success
+      token_c = JSON.parse(response.body).fetch("uploadToken")
+
+      with_stubbed_httparty_head(->(_url, **_opts) { StubHeadResponse.new(200, { "content-length" => "1024", "content-type" => "application/pdf" }) }) do
+        patch "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}",
+          params: { ledgerEntry: { receiptUploadToken: token_c } },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :unprocessable_entity
+      end
+
+      # Attaching receipt to a voided entry via PATCH is rejected (422)
+      post "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}/void",
+        params: { voidReason: "Duplicate invoice" },
+        headers: auth_headers(@treasurer), as: :json
+      assert_response :success
+
+      with_stubbed_httparty_head(->(_url, **_opts) { StubHeadResponse.new(200, { "content-length" => "1024", "content-type" => "application/pdf" }) }) do
+        patch "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}",
+          params: { ledgerEntry: { receiptUploadToken: token_c } },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :unprocessable_entity
+      end
+
+      # L5: Cross-campaign / malformed receipt_key in DB returns 422 cleanly instead of 500
+      LedgerEntry.where(id: entry_id).update_all(receipt_key: "receipts/#{@other_campaign.id}/foreign.pdf")
+      get "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{entry_id}/receipt-url",
+        headers: auth_headers(@board)
+      assert_response :unprocessable_entity
+
+      # L7: Rate limit enforces 30/min cap when backed by a real cache store
+      original_cache = Rails.cache
+      begin
+        Rails.cache = ActiveSupport::Cache::MemoryStore.new
+        30.times do
+          post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+            params: { upload: { filename: "r.jpg", contentType: "image/jpeg", byteSize: 512 } },
+            headers: auth_headers(@treasurer), as: :json
+          assert_response :success
+        end
+        post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+          params: { upload: { filename: "r.jpg", contentType: "image/jpeg", byteSize: 512 } },
+          headers: auth_headers(@treasurer), as: :json
+        assert_response :too_many_requests
+      ensure
+        Rails.cache = original_cache
+      end
+    end
+  end
+
   private
 
   def auth_headers(user)
