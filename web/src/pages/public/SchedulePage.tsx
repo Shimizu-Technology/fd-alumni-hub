@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDateTime, formatGuamTime, guamDayLabel, isPastGuamGame } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
-import { DEFAULT_GAME_VENUE } from '../../lib/games'
+import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { externalHref, numericSearchParam } from '../../lib/urls'
 import type { Game, TeamSummary } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
@@ -112,6 +112,9 @@ function GameCard({ game }: { game: Game }) {
         <TeamLine team={game.awayTeam} fallback="Away team" score={game.awayScore} showScore={scoreReady} />
         <TeamLine team={game.homeTeam} fallback="Home team" score={game.homeScore} showScore={scoreReady} />
       </div>
+      {game.status === 'final' && game.officialWinnerTeamId && <p>{gameResultLabel(game)}</p>}
+      {game.status === 'final' && game.resultOutcome === 'overtime' && <p>Overtime</p>}
+      {game.statusNote && <p className="game-status-note">{game.statusNote}</p>}
       <div className="game-meta">
         <span>{game.venue || DEFAULT_GAME_VENUE}</span>
         {(game.division || game.homeTeam?.division) && <span>{game.division || game.homeTeam?.division}</span>}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime, toLocalDateTimeInputValue } from '../../lib/datetime'
-import { DEFAULT_GAME_VENUE } from '../../lib/games'
+import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
 import { safeHttpsHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
@@ -204,6 +204,8 @@ function TodayGameCard({
             <span>{game.homeTeam?.displayName || 'Home'}</span>
           </div>
         )}
+        {game.status === 'final' && game.officialWinnerTeamId && <p>{gameResultLabel(game)}</p>}
+        {game.status === 'final' && game.resultOutcome === 'overtime' && <p>Overtime</p>}
         {game.statusNote && <p className="game-status-note">{game.statusNote}</p>}
         <p>{game.venue || DEFAULT_GAME_VENUE}</p>
         <div className="game-actions">

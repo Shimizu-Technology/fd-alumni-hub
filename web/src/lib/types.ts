@@ -1,5 +1,6 @@
 export type TournamentStatus = 'upcoming' | 'live' | 'completed' | 'cancelled'
 export type GameStatus = 'scheduled' | 'live' | 'final' | 'delayed' | 'postponed' | 'cancelled'
+export type GameOutcome = 'regulation' | 'overtime' | 'shootout' | 'forfeit' | 'postponed' | 'cancelled'
 export type GamePhase = 'pool' | 'playoff' | 'fatherson' | 'exhibition'
 export type BracketRound = 'play_in' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place'
 export type IngestStatus = 'pending' | 'approved' | 'rejected'
@@ -136,10 +137,14 @@ export type RelatedGameSummary = {
   id: string
   tournamentId: string
   startTime: string
+  bracketNeedsReview?: boolean
+  bracketExceptionNote?: string | null
   venue: string | null
   status: GameStatus
   homeScore: number | null
   awayScore: number | null
+  resultOutcome?: GameOutcome | null
+  officialWinnerTeamId?: string | null
   homeTeam?: TeamSummary | null
   awayTeam?: TeamSummary | null
 }
@@ -157,6 +162,8 @@ export type Game = {
   gameNumber?: string | null
   homeScore: number | null
   awayScore: number | null
+  resultOutcome?: GameOutcome | null
+  officialWinnerTeamId?: string | null
   streamUrl: string | null
   ticketUrl: string | null
   notes: string | null
@@ -170,11 +177,62 @@ export type Game = {
   lockVersion?: number
   scoreUpdatedAt?: string | null
   scoreUpdatedByName?: string | null
+  bracketNeedsReview?: boolean
+  bracketExceptionNote?: string | null
   placeholder?: boolean
   createdAt?: string
   updatedAt?: string
   homeTeam?: TeamSummary
   awayTeam?: TeamSummary
+}
+
+export type BracketAdvancement = {
+  advanced: boolean
+  reason?: string
+  nextGameId?: string
+  slot?: 'home' | 'away'
+  winnerTeamId?: string
+  needsReview?: boolean
+  affectedNextGame?: RelatedGameSummary
+}
+
+export type SavedResult = {
+  game: Game
+  idempotentReplay?: boolean
+  standingsStatus?: 'updated' | 'skipped' | 'failed'
+  recompute?: { teams: number; games: number } | null
+  bracketAdvancement?: BracketAdvancement
+}
+
+export type BatchResultRow = Partial<SavedResult> & {
+  gameId: string
+  ok: boolean
+  status: number
+  currentGame?: Game
+  error?: string
+  errors?: string[]
+}
+
+export type AdminGamesResponse = {
+  games: Game[]
+  requestedDate: string | null
+  nextScheduledDate: string | null
+  availableDates: string[]
+  pendingCorrectionCount: number
+}
+
+export type ScoreCorrectionRequest = {
+  id: string
+  game: RelatedGameSummary
+  requestedBy: string
+  status: 'pending' | 'approved' | 'rejected'
+  proposedHomeScore: number | null
+  proposedAwayScore: number | null
+  proposedStatus: GameStatus
+  proposedResultOutcome: GameOutcome | null
+  proposedOfficialWinnerTeamId: string | null
+  proposedStatusNote: string | null
+  reason: string
 }
 
 export type Standing = {
@@ -949,7 +1007,8 @@ export type ScheduleImportCommitResult = {
   createdGames: number
   updatedGames: number
   unchangedGames: number
-  recompute: { teams: number; games: number }
+  standingsStatus?: 'updated' | 'skipped' | 'failed'
+  recompute?: { teams: number; games: number } | null
 }
 
 export type RosterImportRow = {

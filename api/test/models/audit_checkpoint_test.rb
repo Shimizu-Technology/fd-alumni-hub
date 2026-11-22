@@ -1,6 +1,8 @@
 require "test_helper"
 require Rails.root.join("db/migrate/20261123000002_complete_audit_coverage")
 
+require Rails.root.join("db/migrate/20261123000006_add_gym_results_and_corrections")
+
 class AuditCheckpointTest < ActiveSupport::TestCase
   test "checkpoints link, verify and are idempotent across sequence gaps" do
     with_signing_key("checkpoint-test-key") do
@@ -81,9 +83,25 @@ class AuditCheckpointTest < ActiveSupport::TestCase
 
     migration.migrate(:up)
     assert connection.table_exists?(:audit_checkpoints)
-    expected = connection.tables - %w[audit_events audit_checkpoints finance_audit_events schema_migrations ar_internal_metadata]
+    expected = connection.tables - %w[audit_events audit_checkpoints finance_audit_events schema_migrations ar_internal_metadata score_mutations]
     assert_equal Audit::DatabaseTriggers::RECORD_TYPES.size, expected.size
     assert_equal expected.sort, captured_tables(connection)
+  end
+
+  test "gym results migration rolls back and restores storage and correction auditing" do
+    connection = AuditEvent.connection
+    migration = AddGymResultsAndCorrections.new
+    migration.migrate(:down)
+    assert_not connection.column_exists?(:games, :result_outcome)
+    assert_not connection.table_exists?(:score_mutations)
+    assert_not connection.table_exists?(:score_correction_requests)
+    assert_includes captured_tables(connection), "games"
+
+    migration.migrate(:up)
+    assert connection.column_exists?(:games, :official_winner_team_id)
+    assert connection.index_exists?(:score_mutations, %i[actor_id game_id client_mutation_id], unique: true)
+    assert_includes captured_tables(connection), "score_correction_requests"
+    assert_not_includes captured_tables(connection), "score_mutations"
   end
 
   private

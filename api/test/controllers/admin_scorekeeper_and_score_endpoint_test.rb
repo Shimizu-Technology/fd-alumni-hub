@@ -277,6 +277,7 @@ class AdminScorekeeperAndScoreEndpointTest < ActionDispatch::IntegrationTest
         awayScore: 69,
         status: "final",
         forceOverwrite: true,
+        reason: "Corrected official scorebook",
         clientMutationId: "mut_staff_fix_0005"
       },
       headers: headers_for(@staff),
@@ -313,44 +314,20 @@ class AdminScorekeeperAndScoreEndpointTest < ActionDispatch::IntegrationTest
     assert_equal @team_a.id, @semifinal.reload.home_team_id
   end
 
-  test "score endpoint recovers StaleObjectError as 200 idempotentReplay when concurrent duplicate committed" do
-    mutation_id = "mut_race_0008"
+  test "score endpoint promotes a legacy replay to durable storage" do
+    mutation_id = "mut_legacy_0008"
     digest = Digest::SHA256.hexdigest({ awayScore: 15, homeScore: 18, status: "live", statusNote: nil }.to_json)
+    @pool_game.update!(home_score: 18, away_score: 15, status: "live", score_updated_by: @scorekeeper,
+      last_score_mutation_id: mutation_id, last_score_mutation_digest: digest)
 
-    # Simulate a concurrent commit by the same scorekeeper right before save
-    original_save = Game.instance_method(:save)
-    keeper_id = @scorekeeper.id
-    Game.define_method(:save) do |*args, **kwargs|
-      Game.where(id: id).update_all(
-        home_score: 18,
-        away_score: 15,
-        status: "live",
-        score_updated_by_id: keeper_id,
-        last_score_mutation_id: mutation_id,
-        last_score_mutation_digest: digest,
-        lock_version: lock_version + 1
-      )
-      raise ActiveRecord::StaleObjectError.new(self, "update")
-    end
-
-    begin
+    assert_difference -> { ScoreMutation.count }, 1 do
       patch "/api/v1/admin/games/#{@pool_game.id}/score",
-        params: {
-          homeScore: 18,
-          awayScore: 15,
-          status: "live",
-          lockVersion: @pool_game.lock_version,
-          clientMutationId: mutation_id
-        },
-        headers: headers_for(@scorekeeper),
-        as: :json
+        params: { homeScore: 18, awayScore: 15, status: "live", lockVersion: 0, clientMutationId: mutation_id },
+        headers: headers_for(@scorekeeper), as: :json
       assert_response :success
-      body = JSON.parse(response.body)
-      assert_equal true, body["idempotentReplay"]
-      assert_equal 18, body.dig("game", "homeScore")
-    ensure
-      Game.define_method(:save, original_save)
     end
+    assert_equal true, JSON.parse(response.body)["idempotentReplay"]
+    assert_equal 18, JSON.parse(response.body).dig("game", "homeScore")
   end
 
   test "admin whitelist allows creating and syncing scorekeeper users" do

@@ -82,7 +82,7 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     patch "/api/v1/admin/games/#{@game.id}",
-      params: { game: { homeScore: 60, awayScore: 55, status: "final" } },
+      params: { game: { homeScore: 60, awayScore: 55, status: "final", lockVersion: @game.lock_version } },
       headers: headers_for(@staff),
       as: :json
     assert_response :success

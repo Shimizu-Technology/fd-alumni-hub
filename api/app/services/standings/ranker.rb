@@ -93,14 +93,13 @@ module Standings
       a_wins = 0
       b_wins = 0
 
+      pair = [ team_a.id, team_b.id ].sort
       @counted_games.each do |game|
-        if game.home_team_id == team_a.id && game.away_team_id == team_b.id
-          a_wins += 1 if game.home_score > game.away_score
-          b_wins += 1 if game.away_score > game.home_score
-        elsif game.home_team_id == team_b.id && game.away_team_id == team_a.id
-          b_wins += 1 if game.home_score > game.away_score
-          a_wins += 1 if game.away_score > game.home_score
-        end
+        next unless [ game.home_team_id, game.away_team_id ].sort == pair
+
+        winner_id = game.winner_team_id
+        a_wins += 1 if winner_id == team_a.id
+        b_wins += 1 if winner_id == team_b.id
       end
 
       return nil if a_wins == b_wins

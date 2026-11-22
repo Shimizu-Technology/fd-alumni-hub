@@ -5,7 +5,7 @@ import {
   enqueueScoreMutation,
   flushScoreQueue,
   readScoreQueue,
-  resolveConflictKeepMine,
+  rebaseScoreConflict,
   resolveConflictUseServer,
   SCORE_QUEUE_BACKOFF_MS,
 } from '../scoreQueue'
@@ -139,16 +139,39 @@ describe('scoreQueue', () => {
     expect(res.remaining[0].state).toBe('conflict')
     expect(res.remaining[0].serverGame?.homeScore).toBe(53)
 
-    // Keep Mine mints fresh UUID, sets forceOverwrite: true, and restores pending state
-    const kept = resolveConflictKeepMine('user-1', '42', serverGame.lockVersion, { storage, idGenerator: nextId, now: 2_000 })
+    // Rebasing mints a fresh mutation ID and preserves optimistic locking.
+    const kept = rebaseScoreConflict('user-1', '42', { storage, idGenerator: nextId, now: 2_000 })
     expect(kept[0].state).toBe('pending')
-    expect(kept[0].payload.forceOverwrite).toBe(true)
+    expect(kept[0].payload).not.toHaveProperty('forceOverwrite')
     expect(kept[0].payload.lockVersion).toBe(2)
     expect(kept[0].clientMutationId).toBe('mut-409-0002')
 
     // Use Server removes the queued item completely
     resolveConflictUseServer('user-1', '42', storage)
     expect(readScoreQueue('user-1', storage)).toEqual([])
+  })
+
+  it('retains original mutation IDs and outcome details after a dropped batch response', async () => {
+    const storage = createMemoryStorage()
+    const payload = {
+      homeScore: null, awayScore: null, status: 'postponed' as const, statusNote: 'Court unavailable',
+      resultOutcome: 'postponed' as const, startTime: '2031-07-06T08:00:00Z', reason: 'Confirmed by staff', lockVersion: 5,
+    }
+    enqueueScoreMutation('user-1', '42', payload, { storage, tournamentId: '1', idGenerator: () => 'mut-batch-42' })
+    enqueueScoreMutation('user-1', '43', payload, { storage, tournamentId: '2', idGenerator: () => 'mut-batch-43' })
+    const single = vi.fn()
+    const batch = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Connection dropped'))
+      .mockResolvedValueOnce({ results: [{ gameId: '42', ok: true, status: 200, game: makeGame(), idempotentReplay: true }] })
+    await flushScoreQueue('user-1', single, { storage, tournamentId: '1', sendBatch: batch, now: 1_000 })
+    expect(readScoreQueue('user-1', storage).map((item) => item.attempts)).toEqual([1, 0])
+
+    const result = await flushScoreQueue('user-1', single, { storage, tournamentId: '1', sendBatch: batch, now: 20_000 })
+    const rows = [{ ...payload, gameId: '42', clientMutationId: 'mut-batch-42' }]
+    expect(batch.mock.calls).toEqual([[rows], [rows]])
+    expect(result.savedResults[0].idempotentReplay).toBe(true)
+    expect(result.remaining.map((item) => item.gameId)).toEqual(['43'])
+    expect(single).not.toHaveBeenCalled()
   })
 
   it('applies bounded exponential backoff (5s -> 15s -> 30s) on network and 5xx failures', async () => {

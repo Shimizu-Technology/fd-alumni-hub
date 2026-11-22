@@ -9,13 +9,14 @@ module Imports
       end
     end
 
-    def self.call(tournament:, rows:, overwrite_scores: false, default_venue: "The Jungle")
-      new(tournament: tournament, rows: rows, overwrite_scores: overwrite_scores, default_venue: default_venue).call
+    def self.call(tournament:, rows:, overwrite_scores: false, default_venue: "The Jungle", actor: nil)
+      new(tournament: tournament, rows: rows, overwrite_scores: overwrite_scores, default_venue: default_venue, actor: actor).call
     end
 
-    def initialize(tournament:, rows:, overwrite_scores: false, default_venue: "The Jungle")
+    def initialize(tournament:, rows:, overwrite_scores: false, default_venue: "The Jungle", actor: nil)
       @tournament = tournament
       @rows = rows
+      @actor = actor
       @overwrite_scores = overwrite_scores == true
       @default_venue = default_venue.to_s.strip.presence || "The Jungle"
     end
@@ -33,10 +34,12 @@ module Imports
       created_teams = 0
 
       @tournament.with_lock do
+        Audit::Context.apply_to_transaction!(Tournament.connection)
         preview = Imports::SchedulePreview.call(
           tournament: @tournament,
           rows: @rows,
-          default_venue: @default_venue
+          default_venue: @default_venue,
+          overwrite_scores: @overwrite_scores
         )
 
         if preview.dig(:summary, :errorCount).to_i.positive?
@@ -70,16 +73,15 @@ module Imports
         end
       end
 
-      recompute = Standings::Recompute.call(@tournament)
+      standings = Games::RecordResult.refresh_standings([ @tournament ])
 
       {
         tournamentId: @tournament.id.to_s,
         createdTeams: created_teams,
         createdGames: created_games,
         updatedGames: updated_games,
-        unchangedGames: unchanged_games,
-        recompute: { teams: recompute.teams, games: recompute.games }
-      }
+        unchangedGames: unchanged_games
+      }.merge(standings)
     end
 
     private
@@ -104,32 +106,37 @@ module Imports
     end
 
     def assign_game_attributes!(game, row, away_team, home_team, division, is_new:)
-      game.away_team = away_team
-      game.home_team = home_team
-      game.start_time = Time.iso8601(row[:startTime])
-      game.phase = row[:phase]
-      game.venue = row[:venue] if row[:venue].present?
-      game.venue = @default_venue if is_new && game.venue.blank?
-      game.game_number = row[:gameNumber] if row[:gameNumber].present?
-      game.bracket_code = row[:bracketCode] if row[:bracketCode].present?
-      game.bracket_round = row[:bracketRound] if row[:bracketRound].present?
-      game.bracket_slot = row[:bracketSlot] if row[:bracketSlot].present?
-      game.division_record = division if division
-      game.notes = row[:notes] if row[:notes].present?
-
-      if is_new
-        game.status = row[:status].presence || "scheduled"
-        if @overwrite_scores || (row[:homeScore].present? && row[:awayScore].present?)
-          game.home_score = row[:homeScore] if row[:homeScore].present?
-          game.away_score = row[:awayScore] if row[:awayScore].present?
-        end
-      elsif @overwrite_scores
-        game.status = row[:status] if row[:status].present?
-        game.home_score = row[:homeScore] unless row[:homeScore].nil?
-        game.away_score = row[:awayScore] unless row[:awayScore].nil?
+      schedule = {
+        away_team: away_team,
+        home_team: home_team,
+        start_time: Time.iso8601(row[:startTime]),
+        phase: row[:phase],
+        placeholder: home_team.placeholder_team? || away_team.placeholder_team?
+      }
+      schedule[:venue] = row[:venue].presence || @default_venue if is_new || row[:venue].present?
+      { game_number: :gameNumber, bracket_code: :bracketCode, bracket_round: :bracketRound,
+        bracket_slot: :bracketSlot, notes: :notes }.each do |field, key|
+        schedule[field] = row[key] if row[key].present?
       end
+      schedule[:division_record] = division if division
 
-      game.save!
+      attrs = {}
+      attrs[:status] = row[:status] if (is_new || @overwrite_scores) && row[:status].present?
+      if @overwrite_scores || (is_new && row[:homeScore].present? && row[:awayScore].present?)
+        attrs[:home_score] = row[:homeScore] unless row[:homeScore].nil?
+        attrs[:away_score] = row[:awayScore] unless row[:awayScore].nil?
+      end
+      if attrs.empty?
+        game.update!(schedule)
+      else
+        reason = is_new ? "Schedule import" : "Schedule import overwrite"
+        result = Games::RecordResult.call(game, attrs.merge(reason: reason),
+          actor: @actor, interactive: false, defer_recompute: true, schedule_attributes: schedule)
+        unless result.ok?
+          Array(result.body[:errors] || result.body[:error]).each { |error| game.errors.add(:base, error) }
+          raise ActiveRecord::RecordInvalid, game
+        end
+      end
     end
 
     def index_teams(teams)

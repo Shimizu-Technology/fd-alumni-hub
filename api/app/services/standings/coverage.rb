@@ -45,7 +45,7 @@ module Standings
 
       def summarize(games)
         total = games.length
-        scored = games.count { |g| g.status == "final" && g.home_score.present? && g.away_score.present? }
+        scored = games.count(&:final_result?)
         percent = total.positive? ? ((scored.to_f / total) * 1000).round / 10.0 : 0
 
         {

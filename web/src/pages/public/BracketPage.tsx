@@ -146,9 +146,11 @@ export function BracketPage() {
 
 function BracketGameCard({ game }: { game: Game }) {
   const hasScore = game.homeScore !== null && game.awayScore !== null
-  const isFinal = game.status === 'final' && hasScore
-  const awayWon = isFinal && (game.awayScore ?? 0) > (game.homeScore ?? 0)
-  const homeWon = isFinal && (game.homeScore ?? 0) > (game.awayScore ?? 0)
+  const isFinal = game.status === 'final'
+  const awayWon = isFinal && (game.officialWinnerTeamId
+    ? game.officialWinnerTeamId === game.awayTeamId : hasScore && (game.awayScore ?? 0) > (game.homeScore ?? 0))
+  const homeWon = isFinal && (game.officialWinnerTeamId
+    ? game.officialWinnerTeamId === game.homeTeamId : hasScore && (game.homeScore ?? 0) > (game.awayScore ?? 0))
 
   return (
     <article className={`panel bracket-card${game.placeholder ? ' bracket-card--placeholder' : ''}`}>
@@ -163,12 +165,14 @@ function BracketGameCard({ game }: { game: Game }) {
         <div className={`bracket-team-row${awayWon ? ' winner' : ''}`}>
           <span className="bracket-team-name">
             {game.awayTeam ? <Link to={`/teams/${game.awayTeam.id}`}>{game.awayTeam.displayName}</Link> : 'TBD'}
+            {awayWon && <span className="sr-only"> (Winner)</span>}
           </span>
           <strong className="bracket-team-score">{hasScore ? game.awayScore : '—'}</strong>
         </div>
         <div className={`bracket-team-row${homeWon ? ' winner' : ''}`}>
           <span className="bracket-team-name">
             {game.homeTeam ? <Link to={`/teams/${game.homeTeam.id}`}>{game.homeTeam.displayName}</Link> : 'TBD'}
+            {homeWon && <span className="sr-only"> (Winner)</span>}
           </span>
           <strong className="bracket-team-score">{hasScore ? game.homeScore : '—'}</strong>
         </div>

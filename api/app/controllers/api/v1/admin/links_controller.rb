@@ -18,7 +18,7 @@ module Api
 
           missing_tickets = games.select { |game| game.ticket_url.blank? }
           missing_streams = games.select { |game| game.stream_url.blank? }
-          missing_scores = games.select { |game| game.status == "final" && (game.home_score.nil? || game.away_score.nil?) }
+          missing_scores = games.select { |game| game.status == "final" && !game.final_result? }
 
           render json: {
             tournament: tournament&.api_json,

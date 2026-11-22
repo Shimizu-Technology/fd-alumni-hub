@@ -27,7 +27,7 @@ class AdminGamesControllerTest < ActionDispatch::IntegrationTest
 
   test "explicit null scores clear existing scores and recompute standings" do
     patch "/api/v1/admin/games/#{@game.id}",
-      params: { game: { homeScore: nil, awayScore: nil, status: "scheduled", lockVersion: @game.lock_version } },
+      params: { game: { homeScore: nil, awayScore: nil, status: "scheduled", reason: "Reopen for review", lockVersion: @game.lock_version } },
       headers: auth_headers,
       as: :json
 
@@ -76,6 +76,7 @@ class AdminGamesControllerTest < ActionDispatch::IntegrationTest
           bracketSlot: 1,
           status: "delayed",
           statusNote: "Typhoon warning - pushed 45 min",
+          reason: "Delay after erroneous final",
           lockVersion: @game.lock_version
         }
       },

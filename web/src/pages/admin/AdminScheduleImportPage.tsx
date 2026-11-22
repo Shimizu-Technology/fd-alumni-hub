@@ -273,7 +273,12 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
         <Panel className="notice-panel">
           <div role="status">
             <strong>Schedule import committed.</strong>{' '}
-            Created {commitResult.createdTeams} teams, {commitResult.createdGames} games; updated {commitResult.updatedGames}; unchanged {commitResult.unchangedGames}. Standings recomputed for {commitResult.recompute.teams} teams.{' '}
+            Created {commitResult.createdTeams} teams, {commitResult.createdGames} games; updated {commitResult.updatedGames}; unchanged {commitResult.unchangedGames}.{' '}
+            {commitResult.standingsStatus === 'failed'
+              ? 'Standings refresh failed — please recompute standings from Standings.'
+              : commitResult.recompute
+                ? `Standings recomputed for ${commitResult.recompute.teams} teams.`
+                : null}{' '}
             <Link to={tournamentScopedPath('/admin/games', tournament.id)}>View schedule</Link>
           </div>
         </Panel>

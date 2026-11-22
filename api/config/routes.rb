@@ -107,6 +107,13 @@ Rails.application.routes.draw do
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ] do
           patch :score, on: :member
+          post "batch-results", action: :batch_results, on: :collection
+          patch "resolve-bracket-review", action: :resolve_bracket_review, on: :member
+          post "correction-requests", to: "score_correction_requests#create", on: :member
+        end
+        resources :score_correction_requests, path: "score-correction-requests", only: [ :index ] do
+          post :approve, on: :member
+          post :reject, on: :member
         end
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]
         resources :media_assets, path: "media-assets", only: [ :index, :show, :create, :update, :destroy ]

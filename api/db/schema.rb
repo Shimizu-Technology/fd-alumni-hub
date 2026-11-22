@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -305,6 +305,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
     t.string "last_score_mutation_digest"
     t.bigint "score_updated_by_id"
     t.datetime "score_updated_at"
+    t.string "result_outcome"
+    t.bigint "official_winner_team_id"
+    t.boolean "bracket_needs_review", default: false, null: false
+    t.string "bracket_exception_note"
     t.index "tournament_id, lower((game_number)::text)", name: "index_games_on_tournament_game_number_unique", unique: true, where: "(game_number IS NOT NULL)"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
     t.index ["division_id"], name: "index_games_on_division_id"
@@ -312,6 +316,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
     t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["next_game_id", "next_game_slot"], name: "index_games_on_next_game_slot_unique", unique: true, where: "(next_game_id IS NOT NULL)"
     t.index ["next_game_id"], name: "index_games_on_next_game_id"
+    t.index ["official_winner_team_id"], name: "index_games_on_official_winner_team_id"
     t.index ["score_updated_by_id"], name: "index_games_on_score_updated_by_id"
     t.index ["status"], name: "index_games_on_status"
     t.index ["tournament_id", "division"], name: "index_games_on_tournament_id_and_division"
@@ -562,6 +567,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
     t.index ["team_id"], name: "index_roster_entries_on_team_id"
   end
 
+  create_table "score_correction_requests", force: :cascade do |t|
+    t.bigint "tournament_id", null: false
+    t.bigint "game_id", null: false
+    t.bigint "requested_by_id", null: false
+    t.bigint "resolved_by_id"
+    t.string "status", default: "pending", null: false
+    t.integer "proposed_home_score"
+    t.integer "proposed_away_score"
+    t.string "proposed_status", default: "final", null: false
+    t.string "proposed_result_outcome"
+    t.bigint "proposed_official_winner_team_id"
+    t.string "proposed_status_note"
+    t.integer "base_lock_version"
+    t.text "reason", null: false
+    t.text "resolution_note"
+    t.datetime "resolved_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["game_id", "status"], name: "index_score_correction_requests_on_game_id_and_status"
+    t.index ["game_id"], name: "index_score_correction_requests_on_game_id"
+    t.index ["proposed_official_winner_team_id"], name: "idx_on_proposed_official_winner_team_id_47dc2a2793"
+    t.index ["requested_by_id"], name: "index_score_correction_requests_on_requested_by_id"
+    t.index ["resolved_by_id"], name: "index_score_correction_requests_on_resolved_by_id"
+    t.index ["tournament_id", "status"], name: "index_score_correction_requests_on_tournament_id_and_status"
+    t.index ["tournament_id"], name: "index_score_correction_requests_on_tournament_id"
+  end
+
+  create_table "score_mutations", force: :cascade do |t|
+    t.bigint "actor_id", null: false
+    t.bigint "game_id", null: false
+    t.string "client_mutation_id", null: false
+    t.string "payload_digest", null: false
+    t.jsonb "result_snapshot", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id", "game_id", "client_mutation_id"], name: "index_score_mutations_on_actor_game_and_client_id", unique: true
+    t.index ["actor_id"], name: "index_score_mutations_on_actor_id"
+    t.index ["game_id"], name: "index_score_mutations_on_game_id"
+  end
+
   create_table "site_publications", force: :cascade do |t|
     t.integer "version_number", null: false
     t.string "mode", null: false
@@ -784,6 +829,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
   add_foreign_key "games", "games", column: "next_game_id", on_delete: :nullify
   add_foreign_key "games", "teams", column: "away_team_id"
   add_foreign_key "games", "teams", column: "home_team_id"
+  add_foreign_key "games", "teams", column: "official_winner_team_id", on_delete: :nullify
   add_foreign_key "games", "tournaments", on_delete: :cascade
   add_foreign_key "games", "users", column: "score_updated_by_id", on_delete: :nullify
   add_foreign_key "host_campaigns", "class_cohorts", on_delete: :restrict
@@ -811,6 +857,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
   add_foreign_key "prediction_votes", "prediction_polls", on_delete: :cascade
   add_foreign_key "prediction_votes", "teams", on_delete: :cascade
   add_foreign_key "roster_entries", "teams", on_delete: :cascade
+  add_foreign_key "score_correction_requests", "games", on_delete: :cascade
+  add_foreign_key "score_correction_requests", "teams", column: "proposed_official_winner_team_id", on_delete: :nullify
+  add_foreign_key "score_correction_requests", "tournaments", on_delete: :cascade
+  add_foreign_key "score_correction_requests", "users", column: "requested_by_id"
+  add_foreign_key "score_correction_requests", "users", column: "resolved_by_id"
+  add_foreign_key "score_mutations", "games", on_delete: :cascade
+  add_foreign_key "score_mutations", "users", column: "actor_id"
   add_foreign_key "site_publications", "host_campaigns"
   add_foreign_key "site_publications", "site_publications", column: "restored_from_id"
   add_foreign_key "site_publications", "tournaments"
