@@ -1,10 +1,11 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { SignInButton, SignOutButton } from '@clerk/clerk-react'
 import { tournamentScopedPath } from '../lib/admin'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
+import type { CurrentUser } from '../lib/types'
 import {
   IconCalendar,
   IconChart,
@@ -22,6 +23,7 @@ import {
   IconPanelLeftClose,
   IconPanelLeftOpen,
   IconShield,
+  IconTicket,
   IconTrophy,
   IconUsers,
 } from './Icons'
@@ -34,7 +36,8 @@ type NavItem = {
   label: string
   icon: IconComponent
   end?: boolean
-  adminOnly?: boolean
+  tournamentScoped?: boolean
+  access: 'campaign' | 'staff' | 'admin'
 }
 
 type NavSection = {
@@ -47,33 +50,64 @@ const mobileNavId = 'fd-admin-mobile-navigation'
 
 const navSections: NavSection[] = [
   {
+    label: 'Host Year',
+    items: [
+      { to: '/admin/campaign/host-year', label: 'Host Year', icon: IconTicket, access: 'campaign' },
+    ],
+  },
+  {
     label: 'Command',
     items: [
-      { to: '/admin', label: 'Overview', icon: IconDashboard, end: true },
-      { to: '/admin/tournaments', label: 'Tournaments', icon: IconTrophy },
+      { to: '/admin', label: 'Overview', icon: IconDashboard, end: true, access: 'staff' },
+      { to: '/admin/tournaments', label: 'Tournaments', icon: IconTrophy, access: 'staff' },
     ],
   },
   {
     label: 'Tournament ops',
     items: [
-      { to: '/admin/divisions', label: 'Teams', icon: IconUsers },
-      { to: '/admin/games', label: 'Games', icon: IconCalendar },
-      { to: '/admin/game-day', label: 'Game Day', icon: IconHome },
-      { to: '/admin/standings', label: 'Standings', icon: IconChart },
+      { to: '/admin/divisions', label: 'Teams', icon: IconUsers, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/games', label: 'Games', icon: IconCalendar, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/game-day', label: 'Game Day', icon: IconHome, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/standings', label: 'Standings', icon: IconChart, tournamentScoped: true, access: 'staff' },
     ],
   },
   {
     label: 'Coverage',
     items: [
-      { to: '/admin/links', label: 'Links', icon: IconLink },
-      { to: '/admin/missing-links', label: 'Missing Links', icon: IconList },
-      { to: '/admin/news', label: 'News', icon: IconNewspaper },
-      { to: '/admin/media', label: 'Media', icon: IconImage },
-      { to: '/admin/sponsors', label: 'Sponsors', icon: IconHandshake },
-      { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase, adminOnly: true },
+      { to: '/admin/links', label: 'Links', icon: IconLink, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/missing-links', label: 'Missing Links', icon: IconList, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/news', label: 'News', icon: IconNewspaper, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/media', label: 'Media', icon: IconImage, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/sponsors', label: 'Sponsors', icon: IconHandshake, tournamentScoped: true, access: 'staff' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { to: '/admin/campaigns', label: 'Campaigns', icon: IconTrophy, access: 'admin' },
+      { to: '/admin/people', label: 'People & Roles', icon: IconUsers, access: 'admin' },
+      { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase, tournamentScoped: true, access: 'admin' },
     ],
   },
 ]
+
+export function hasCampaignAccess(user: CurrentUser | null | undefined) {
+  if (!user) return false
+  return user.isAdmin || Boolean(user.campaignMemberships && user.campaignMemberships.length > 0)
+}
+
+export function defaultWorkspaceHome(user: CurrentUser | null | undefined) {
+  if (user?.isStaff) return '/admin'
+  return '/admin/campaign/host-year'
+}
+
+function displayUserRole(user: CurrentUser) {
+  if (user.isAdmin) return 'Admin'
+  if (user.isStaff) return 'Staff'
+  const roles = Array.from(new Set((user.campaignMemberships || []).flatMap((m) => m.roles)))
+  if (roles.length === 0) return 'Member'
+  return roles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(' · ')
+}
 
 function readSidebarPreference() {
   if (typeof window === 'undefined') return false
@@ -122,7 +156,7 @@ function AdminNavLink({ item, collapsed, tournamentId, onNavigate }: { item: Nav
   const anchorRef = useRef<HTMLAnchorElement | null>(null)
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const Icon = item.icon
-  const to = item.to === '/admin' || item.to === '/admin/tournaments' ? item.to : tournamentScopedPath(item.to, tournamentId)
+  const to = item.tournamentScoped ? tournamentScopedPath(item.to, tournamentId) : item.to
 
   useEffect(() => setTooltipVisible(false), [collapsed])
 
@@ -183,11 +217,16 @@ function UtilityLink({ to, label, icon: Icon, collapsed, onNavigate }: { to: str
   )
 }
 
-function visibleNavSections(isAdmin: boolean) {
+function visibleNavSections(user: CurrentUser) {
+  const canCampaign = hasCampaignAccess(user)
   return navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => !item.adminOnly || isAdmin),
+      items: section.items.filter((item) => {
+        if (item.access === 'admin') return user.isAdmin
+        if (item.access === 'staff') return user.isStaff
+        return canCampaign
+      }),
     }))
     .filter((section) => section.items.length > 0)
 }
@@ -195,35 +234,32 @@ function visibleNavSections(isAdmin: boolean) {
 function SidebarContent({
   collapsed,
   tournamentId,
-  userEmail,
-  userName,
-  userRole,
-  isAdmin,
+  user,
   onNavigate,
   onToggleCollapse,
 }: {
   collapsed: boolean
   tournamentId: string | null
-  userEmail: string
-  userName: string
-  userRole: string
-  isAdmin: boolean
+  user: CurrentUser
   onNavigate: () => void
   onToggleCollapse?: () => void
 }) {
   const collapseButtonRef = useRef<HTMLButtonElement | null>(null)
   const [collapseTooltipVisible, setCollapseTooltipVisible] = useState(false)
   const collapseLabel = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-  const sections = visibleNavSections(isAdmin)
+  const sections = visibleNavSections(user)
+  const userRole = displayUserRole(user)
+  const homePath = defaultWorkspaceHome(user)
+  const subtitle = user.isStaff ? 'Tournament workspace' : 'Host Year workspace'
 
   useEffect(() => setCollapseTooltipVisible(false), [collapsed])
 
   return (
     <nav className="admin-sidebar-inner" aria-label="Admin navigation">
       <div className="admin-sidebar-header">
-        <Link to="/admin" className={`admin-brand ${collapsed ? 'collapsed' : ''}`} onClick={onNavigate} title={collapsed ? 'FD Hub Admin' : undefined}>
+        <Link to={homePath} className={`admin-brand ${collapsed ? 'collapsed' : ''}`} onClick={onNavigate} title={collapsed ? 'FD Hub Admin' : undefined}>
           <span className="brand-mark">FD</span>
-          {!collapsed && <span><strong>Hub Admin</strong><small>Tournament workspace</small></span>}
+          {!collapsed && <span><strong>Hub Admin</strong><small>{subtitle}</small></span>}
         </Link>
         {onToggleCollapse && (
           <>
@@ -269,11 +305,11 @@ function SidebarContent({
       <div className="admin-sidebar-footer">
         <UtilityLink to="/" label="View public hub" icon={IconHome} collapsed={collapsed} onNavigate={onNavigate} />
         <div className={`admin-account-card ${collapsed ? 'collapsed' : ''}`}>
-          <span className="admin-account-avatar">{(userName || userEmail || 'A').charAt(0).toUpperCase()}</span>
+          <span className="admin-account-avatar">{(user.fullName || user.email || 'A').charAt(0).toUpperCase()}</span>
           {!collapsed && (
             <span className="admin-account-meta">
-              <strong>{userName || 'Admin'} <span className="admin-role-pill">{userRole}</span></strong>
-              <small>{userEmail}</small>
+              <strong>{user.fullName || 'Member'} <span className="admin-role-pill">{userRole}</span></strong>
+              <small>{user.email}</small>
             </span>
           )}
         </div>
@@ -297,14 +333,58 @@ export function RequireAdminRoute({ children }: { children: ReactNode }) {
         <Panel className="state-card">
           <IconShield size={32} />
           <h2>Admin access required</h2>
-          <p>Your account has staff permissions. Only administrators can access this tool.</p>
-          <Link className="btn secondary" to="/admin">Back to admin overview</Link>
+          <p>Only administrators can access system campaign, people, and archive tools.</p>
+          <Link className="btn secondary" to={defaultWorkspaceHome(auth.user)}>Back to workspace</Link>
         </Panel>
       </div>
     )
   }
 
   return <>{children}</>
+}
+
+export function RequireStaffRoute({ children }: { children: ReactNode }) {
+  const auth = useAuthContext()
+
+  if (!auth.user?.isStaff) {
+    return (
+      <div className="page-stack admin-page">
+        <Panel className="state-card">
+          <IconShield size={32} />
+          <h2>Tournament staff access required</h2>
+          <p>Your account is set up for Host Year campaign access. Tournament operations require a staff or admin role.</p>
+          <Link className="btn secondary" to={defaultWorkspaceHome(auth.user)}>Open Host Year workspace</Link>
+        </Panel>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+export function RequireCampaignRoute({ children }: { children: ReactNode }) {
+  const auth = useAuthContext()
+
+  if (!hasCampaignAccess(auth.user)) {
+    return (
+      <div className="page-stack admin-page">
+        <Panel className="state-card">
+          <IconShield size={32} />
+          <h2>Host campaign access required</h2>
+          <p>Ask an administrator to invite your email to a Host Year campaign role (chair, treasurer, or board).</p>
+          <Link className="btn secondary" to={defaultWorkspaceHome(auth.user)}>Back to workspace</Link>
+        </Panel>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+export function AdminIndexRoute({ staffElement }: { staffElement: ReactNode }) {
+  const auth = useAuthContext()
+  if (auth.user?.isStaff) return <>{staffElement}</>
+  return <Navigate to={defaultWorkspaceHome(auth.user)} replace />
 }
 
 export function AdminLayout() {
@@ -379,15 +459,15 @@ export function AdminLayout() {
     )
   }
 
-  if (auth.isLoading || backend.isChecking) return <div className="admin-shell"><LoadingState label="Verifying admin access" /></div>
+  if (auth.isLoading || backend.isChecking) return <div className="admin-shell"><LoadingState label="Verifying workspace access" /></div>
 
   if (auth.isClerkEnabled && !auth.isSignedIn) {
     return (
       <div className="admin-shell centered-shell">
         <div className="auth-card">
           <IconShield size={32} />
-          <h1>Admin access</h1>
-          <p>Sign in with an allowlisted organizer account to manage tournament data.</p>
+          <h1>Organizer &amp; Host Class sign in</h1>
+          <p>Sign in with an allowlisted organizer or invited host class board account.</p>
           <SignInButton mode="modal" forceRedirectUrl={returnTo}>
             <button className="btn primary">Sign in</button>
           </SignInButton>
@@ -396,13 +476,15 @@ export function AdminLayout() {
     )
   }
 
-  if (!auth.user?.isStaff) {
+  const hasAccess = Boolean(auth.user && (auth.user.isStaff || hasCampaignAccess(auth.user)))
+
+  if (!hasAccess || !auth.user) {
     return (
       <div className="admin-shell centered-shell">
         <div className="auth-card">
           <IconShield size={32} />
           <h1>Access pending</h1>
-          <p>{auth.error || 'This account is not on the FD Alumni Hub admin allowlist yet.'}</p>
+          <p>{auth.error || 'This account is not on the FD Alumni Hub allowlist or invited to a host class campaign yet.'}</p>
           {auth.isClerkEnabled ? (
             <SignOutButton><button className="btn secondary">Sign out</button></SignOutButton>
           ) : (
@@ -414,9 +496,9 @@ export function AdminLayout() {
   }
 
   const closeMobileNav = () => setMobileOpen(false)
-  const userEmail = auth.user.email
   const userName = auth.user.fullName
-  const userRole = auth.user.isAdmin ? 'Admin' : 'Staff'
+  const userRole = displayUserRole(auth.user)
+  const workspaceSubtitle = auth.user.isStaff ? 'Tournament workspace' : 'Host Year workspace'
 
   return (
     <div className="admin-shell">
@@ -434,7 +516,7 @@ export function AdminLayout() {
         </button>
         <div>
           <strong>FD Hub Admin</strong>
-          <span>Tournament workspace</span>
+          <span>{workspaceSubtitle}</span>
         </div>
         <span className="brand-mark">FD</span>
       </header>
@@ -443,12 +525,12 @@ export function AdminLayout() {
       {mobileOpen && (
         <aside id={mobileNavId} className="admin-sidebar admin-sidebar-mobile open" role="dialog" aria-modal="true" aria-label="Admin navigation">
           <button ref={mobileCloseButtonRef} type="button" className="admin-mobile-close" onClick={closeMobileNav} aria-label="Close admin navigation"><IconClose /></button>
-          <SidebarContent collapsed={false} tournamentId={tournamentId} userEmail={userEmail} userName={userName} userRole={userRole} isAdmin={auth.user.isAdmin} onNavigate={closeMobileNav} />
+          <SidebarContent collapsed={false} tournamentId={tournamentId} user={auth.user} onNavigate={closeMobileNav} />
         </aside>
       )}
 
       <aside className={`admin-sidebar admin-sidebar-desktop ${desktopCollapsed ? 'collapsed' : ''}`}>
-        <SidebarContent collapsed={desktopCollapsed} tournamentId={tournamentId} userEmail={userEmail} userName={userName} userRole={userRole} isAdmin={auth.user.isAdmin} onNavigate={() => undefined} onToggleCollapse={() => setDesktopCollapsed((value) => !value)} />
+        <SidebarContent collapsed={desktopCollapsed} tournamentId={tournamentId} user={auth.user} onNavigate={() => undefined} onToggleCollapse={() => setDesktopCollapsed((value) => !value)} />
       </aside>
 
       <section className={`admin-content ${desktopCollapsed ? 'sidebar-collapsed' : ''}`}>

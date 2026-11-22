@@ -3,7 +3,13 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
-import { AdminLayout, RequireAdminRoute } from './components/AdminLayout'
+import {
+  AdminIndexRoute,
+  AdminLayout,
+  RequireAdminRoute,
+  RequireCampaignRoute,
+  RequireStaffRoute,
+} from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
 import { HostYearPage } from './pages/public/HostYearPage'
 import { TodayPage } from './pages/public/TodayPage'
@@ -31,6 +37,9 @@ import { AdminNewsPage } from './pages/admin/AdminNewsPage'
 import { AdminMediaPage } from './pages/admin/AdminMediaPage'
 import { AdminSponsorsPage } from './pages/admin/AdminSponsorsPage'
 import { AdminIngestPage } from './pages/admin/AdminIngestPage'
+import { AdminCampaignHostYearPage } from './pages/admin/AdminCampaignHostYearPage'
+import { AdminCampaignsPage } from './pages/admin/AdminCampaignsPage'
+import { AdminPeoplePage } from './pages/admin/AdminPeoplePage'
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
 const clerkEnabled = Boolean(clerkKey && clerkKey.startsWith('pk_'))
@@ -60,18 +69,21 @@ export function App() {
             <Route path="info" element={<InfoPage />} />
           </Route>
           <Route path="admin" element={<AdminLayout />}>
-            <Route index element={<AdminOverviewPage />} />
-            <Route path="tournaments" element={<AdminTournamentsPage />} />
-            <Route path="tournaments/:tournamentId" element={<AdminTournamentDetailPage />} />
-            <Route path="games" element={<AdminGamesPage />} />
-            <Route path="game-day" element={<AdminGameDayPage />} />
-            <Route path="standings" element={<AdminStandingsPage />} />
-            <Route path="divisions" element={<AdminDivisionsPage />} />
-            <Route path="links" element={<AdminLinksPage />} />
-            <Route path="missing-links" element={<AdminMissingLinksPage />} />
-            <Route path="news" element={<AdminNewsPage />} />
-            <Route path="media" element={<AdminMediaPage />} />
-            <Route path="sponsors" element={<AdminSponsorsPage />} />
+            <Route index element={<AdminIndexRoute staffElement={<AdminOverviewPage />} />} />
+            <Route path="campaign/host-year" element={<RequireCampaignRoute><AdminCampaignHostYearPage /></RequireCampaignRoute>} />
+            <Route path="tournaments" element={<RequireStaffRoute><AdminTournamentsPage /></RequireStaffRoute>} />
+            <Route path="tournaments/:tournamentId" element={<RequireStaffRoute><AdminTournamentDetailPage /></RequireStaffRoute>} />
+            <Route path="games" element={<RequireStaffRoute><AdminGamesPage /></RequireStaffRoute>} />
+            <Route path="game-day" element={<RequireStaffRoute><AdminGameDayPage /></RequireStaffRoute>} />
+            <Route path="standings" element={<RequireStaffRoute><AdminStandingsPage /></RequireStaffRoute>} />
+            <Route path="divisions" element={<RequireStaffRoute><AdminDivisionsPage /></RequireStaffRoute>} />
+            <Route path="links" element={<RequireStaffRoute><AdminLinksPage /></RequireStaffRoute>} />
+            <Route path="missing-links" element={<RequireStaffRoute><AdminMissingLinksPage /></RequireStaffRoute>} />
+            <Route path="news" element={<RequireStaffRoute><AdminNewsPage /></RequireStaffRoute>} />
+            <Route path="media" element={<RequireStaffRoute><AdminMediaPage /></RequireStaffRoute>} />
+            <Route path="sponsors" element={<RequireStaffRoute><AdminSponsorsPage /></RequireStaffRoute>} />
+            <Route path="campaigns" element={<RequireAdminRoute><AdminCampaignsPage /></RequireAdminRoute>} />
+            <Route path="people" element={<RequireAdminRoute><AdminPeoplePage /></RequireAdminRoute>} />
             <Route path="ingest" element={<RequireAdminRoute><AdminIngestPage /></RequireAdminRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

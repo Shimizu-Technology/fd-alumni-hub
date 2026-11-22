@@ -382,6 +382,93 @@ export type HostYearResponse = {
   }
 }
 
+export type CampaignRole = 'chair' | 'treasurer' | 'board'
+
+export type UserCampaignMembership = {
+  campaignId: string
+  campaignSlug: string
+  campaignTitle: string
+  status: HostCampaignStatus
+  roles: CampaignRole[]
+}
+
+export type AdminHostCampaign = PublicHostCampaign & {
+  tournamentId: string
+  classCohortId: string
+  goalCents: number
+  hafapassOrganizerSlug: string | null
+  hafapassTournamentOrganizerSlug: string | null
+  hafapassDistributionCode: string | null
+  fdaaUpfrontCents: number
+  fdaaTicketShareBps: number
+  publicMeterEnabled: boolean
+  includeFdaaInPublicMeter: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type AdminCampaignEvent = PublicCampaignEvent & {
+  hostCampaignId: string
+  publicVisible: boolean
+  goalCents: number | null
+  archivedAt: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type AdminCampaignPost = PublicCampaignPost & {
+  hostCampaignId: string
+  authorId: string | null
+  published: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type CampaignMembershipRecord = {
+  id: string
+  hostCampaignId: string
+  userId: string
+  userEmail: string | null
+  userName: string | null
+  role: CampaignRole
+  active: boolean
+  invitedById: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type AdminUserSummary = {
+  id: string
+  email: string
+  fullName: string
+  role: string
+}
+
+export type CampaignInvitationRecord = {
+  id: string
+  hostCampaignId: string
+  email: string
+  role: CampaignRole
+  status: 'pending' | 'accepted' | 'revoked'
+  invitedById: string
+  invitedByName: string | null
+  acceptedAt: string | null
+  acceptedByUserId: string | null
+  revokedAt: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type AdminWhitelistRecord = {
+  id: string
+  email: string
+  role: 'admin' | 'staff' | 'viewer'
+  active: boolean
+  notes: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
 export type CurrentUser = {
   id: string
   clerkId: string | null
@@ -393,6 +480,7 @@ export type CurrentUser = {
   active: boolean
   isAdmin: boolean
   isStaff: boolean
+  campaignMemberships?: UserCampaignMembership[]
 }
 
 export type ApiErrorPayload = {
