@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -480,6 +480,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000008) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index "team_id, lower(btrim((name)::text))", name: "index_roster_entries_on_team_and_lower_name", unique: true
     t.index ["team_id", "active", "sort_order"], name: "index_roster_entries_on_team_id_and_active_and_sort_order"
     t.index ["team_id", "name"], name: "index_roster_entries_on_team_id_and_name"
     t.index ["team_id"], name: "index_roster_entries_on_team_id"

@@ -657,3 +657,100 @@ export type ApiErrorPayload = {
   error?: string
   errors?: string[] | Array<{ id?: string; errors: string[] }>
 }
+
+export type ScheduleImportRow = {
+  rowIndex: number
+  action: 'create' | 'update' | 'unchanged' | 'error'
+  matchedGameId: string | null
+  gameNumber: string | null
+  bracketCode: string | null
+  bracketRound: BracketRound | null
+  bracketSlot: number | null
+  phase: GamePhase
+  startTime: string | null
+  awayTeam: string | null
+  awayTeamId: string | null
+  homeTeam: string | null
+  homeTeamId: string | null
+  division: string | null
+  divisionId: string | null
+  venue: string | null
+  notes: string | null
+  status: GameStatus | null
+  homeScore: number | null
+  awayScore: number | null
+  errors: string[]
+  warnings: string[]
+}
+
+export type UnmatchedExistingGame = {
+  id: string
+  gameNumber: string | null
+  startTime: string | null
+  awayTeam: string | null
+  homeTeam: string | null
+  division: string | null
+  phase: GamePhase
+  status: GameStatus
+  hasScores: boolean
+}
+
+export type ScheduleImportPreview = {
+  tournamentId: string
+  detectedFormat: string
+  summary: {
+    totalRows: number
+    createCount: number
+    updateCount: number
+    unchangedCount: number
+    errorCount: number
+    newTeamsCount: number
+    unmatchedExistingCount: number
+  }
+  newTeams: Array<{ displayName: string; division: string | null; inferredClassKeys: string[] }>
+  rows: ScheduleImportRow[]
+  unmatchedExistingGames: UnmatchedExistingGame[]
+}
+
+export type ScheduleImportCommitResult = {
+  tournamentId: string
+  createdTeams: number
+  createdGames: number
+  updatedGames: number
+  unchangedGames: number
+  recompute: { teams: number; games: number }
+}
+
+export type RosterImportRow = {
+  rowIndex: number
+  action: 'create' | 'update' | 'unchanged' | 'error'
+  teamId: string | null
+  team: string | null
+  matchedEntryId: string | null
+  name: string
+  jerseyNumber: string | null
+  position: string | null
+  nickname: string | null
+  errors: string[]
+  warnings: string[]
+}
+
+export type RosterImportPreview = {
+  tournamentId: string
+  detectedFormat: string
+  summary: {
+    totalRows: number
+    createCount: number
+    updateCount: number
+    unchangedCount: number
+    errorCount: number
+  }
+  rows: RosterImportRow[]
+}
+
+export type RosterImportCommitResult = {
+  tournamentId: string
+  created: number
+  updated: number
+  unchanged: number
+}

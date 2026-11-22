@@ -42,6 +42,7 @@ export function AdminTournamentsPage() {
         eyebrow="Admin"
         title="Tournament command center"
         description="Pick a tournament, review its operating state, and jump into the right workspace. Completed years are treated as archive records; current years surface setup and game-day tasks."
+        actions={isAdmin && <Link className="btn primary" to="/admin/tournaments/setup">New tournament wizard</Link>}
       />
 
       <TournamentModeGuide />

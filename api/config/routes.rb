@@ -61,7 +61,12 @@ Rails.application.routes.draw do
         end
         resources :whitelists, only: [ :index, :create, :update ]
         resources :tournaments, only: [ :index, :show, :create, :update ] do
+          post :setup, on: :collection
           post :recompute_standings, path: "recompute-standings", on: :member
+          post "schedule-import/preview", to: "imports#schedule_preview", on: :member
+          post "schedule-import/commit", to: "imports#schedule_commit", on: :member
+          post "roster-import/preview", to: "imports#roster_preview", on: :member
+          post "roster-import/commit", to: "imports#roster_commit", on: :member
         end
         resources :divisions, only: [ :index, :create, :update ]
         resources :class_cohorts, path: "class-cohorts", only: :index
