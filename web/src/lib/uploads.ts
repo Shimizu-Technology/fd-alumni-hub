@@ -3,7 +3,7 @@ import { api, type AdminImageUploadPresign } from './api'
 export const ADMIN_IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
 export const ADMIN_IMAGE_UPLOAD_ACCEPT = 'image/*,.jpg,.jpeg,.png,.webp,.gif,.svg,.heic,.heif,.avif'
 export const RECEIPT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
-export const RECEIPT_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.pdf'
+export const RECEIPT_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf'
 
 const RECEIPT_ALLOWED_TYPES = new Set([
   'image/jpeg',
@@ -19,6 +19,7 @@ const RECEIPT_EXTENSION_TYPES: Record<string, string> = {
   png: 'image/png',
   webp: 'image/webp',
   heic: 'image/heic',
+  heif: 'image/heic',
   pdf: 'application/pdf',
 }
 
@@ -67,7 +68,8 @@ export async function uploadCampaignImage({ file, campaignSlug }: { file: File; 
 }
 
 export async function uploadCampaignReceipt({ file, campaignSlug }: { file: File; campaignSlug: string }) {
-  const declared = file.type.split(';')[0]?.trim().toLowerCase()
+  const rawDeclared = file.type.split(';')[0]?.trim().toLowerCase()
+  const declared = rawDeclared === 'image/heif' ? 'image/heic' : rawDeclared
   const ext = file.name.split('.').pop()?.toLowerCase() || ''
   const contentType = (declared && RECEIPT_ALLOWED_TYPES.has(declared))
     ? declared

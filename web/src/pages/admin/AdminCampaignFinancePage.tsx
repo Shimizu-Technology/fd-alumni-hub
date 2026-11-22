@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
+import { safeHttpsHref } from '../../lib/urls'
 import { RECEIPT_UPLOAD_ACCEPT, uploadCampaignReceipt } from '../../lib/uploads'
 import type {
   AdminHostCampaign,
@@ -29,6 +30,9 @@ import {
 } from '../../components/ui'
 
 type FinanceTab = 'ledger' | 'budget' | 'pledges' | 'reimbursements' | 'audit'
+
+const MAX_DOLLARS = 1_000_000_000 // $1B cap matching backend MAX_CENTS
+const DOLLAR_REGEX = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/
 
 const INCOME_SOURCES = [
   { value: 'fundraiser_gross', label: 'Fundraiser (Gross)' },
@@ -65,30 +69,39 @@ const PAYMENT_METHODS = [
 const PLEDGE_TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Donor', 'In-Kind']
 const PLEDGE_STATUSES: PledgeStatus[] = ['promised', 'partial', 'fulfilled', 'cancelled']
 
+const MODAL_FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
 function formatUsd(cents: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100)
 }
 
 function parseDollarsToCents(raw: string, { positive = false }: { positive?: boolean } = {}): { ok: true; value: number } | { ok: false; error: string } {
-  const trimmed = raw.trim().replace(/[$,\s]/g, '')
-  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
-    return { ok: false, error: 'Enter a valid dollar amount (for example, 250 or 250.00).' }
+  const trimmed = raw.trim().replace(/^\$\s*/, '')
+  if (!trimmed || !DOLLAR_REGEX.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid dollar amount (for example, 250, 1,250.00, or 250.50).' }
   }
-  const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || (positive ? parsed <= 0 : parsed < 0)) {
-    return { ok: false, error: positive ? 'Amount must be greater than $0.' : 'Amount cannot be negative.' }
+  const parsed = Number(trimmed.replace(/,/g, ''))
+  if (!Number.isFinite(parsed) || parsed > MAX_DOLLARS || (positive ? parsed <= 0 : parsed < 0)) {
+    return { ok: false, error: positive ? 'Amount must be greater than $0 and within range.' : 'Amount must be non-negative and within range.' }
   }
   return { ok: true, value: Math.round(parsed * 100) }
 }
 
 function parsePercentToBps(raw: string): { ok: true; value: number } | { ok: false; error: string } {
-  const trimmed = raw.trim().replace(/[%\s]/g, '')
-  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+  const trimmed = raw.trim().replace(/%$/, '').trim()
+  if (!trimmed || !/^\d+(?:\.\d{1,2})?$/.test(trimmed)) {
     return { ok: false, error: 'Enter a valid percentage between 0 and 100.' }
   }
   const parsed = Number(trimmed)
@@ -108,6 +121,54 @@ function todayIsoDate() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10)
 }
 
+function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.RefObject<HTMLDivElement | null>, initialFocusRef: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+
+    const previousOverflow = document.body.style.overflow
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    document.body.style.overflow = 'hidden'
+    const focusTimer = window.setTimeout(() => {
+      if (initialFocusRef.current) initialFocusRef.current.focus({ preventScroll: true })
+      else panelRef.current?.focus({ preventScroll: true })
+    }, 0)
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE) || [])
+      if (focusable.length === 0) {
+        event.preventDefault()
+        panelRef.current?.focus({ preventScroll: true })
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus({ preventScroll: true })
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus({ preventScroll: true })
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) {
+        previouslyFocused.focus({ preventScroll: true })
+      }
+    }
+  }, [open, onClose, panelRef, initialFocusRef])
+}
+
 export function AdminCampaignFinancePage() {
   const auth = useAuthContext()
   const isAdmin = Boolean(auth.user?.isAdmin)
@@ -117,7 +178,7 @@ export function AdminCampaignFinancePage() {
   const [includeVoided, setIncludeVoided] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [csvError, setCsvError] = useState('')
-  const [receiptPreview, setReceiptPreview] = useState<SignedReceiptUrlResponse | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<{ entryId: string; signed: SignedReceiptUrlResponse; fetchedAt: number } | null>(null)
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null)
   const [receiptError, setReceiptError] = useState('')
 
@@ -144,58 +205,93 @@ export function AdminCampaignFinancePage() {
     return preferred?.slug || campaignOptions[0]?.slug || ''
   }, [requestedSlug, campaignOptions])
 
-  const financeQuery = useAsync(async () => {
+  const selectedSlugRef = useRef(selectedSlug)
+  useEffect(() => {
+    selectedSlugRef.current = selectedSlug
+    setReceiptPreview(null)
+    setCsvError('')
+    setReceiptError('')
+  }, [selectedSlug])
+
+  // Core overview + secondary tabs loaded with allSettled so partial failures never crash the ledger
+  const overviewQuery = useAsync(async () => {
     if (!selectedSlug) return null
-    const [summaryRes, ledgerRes, budgetRes, pledgesRes, auditRes] = await Promise.all([
-      api.campaignFinanceSummary(selectedSlug),
-      api.campaignLedgerEntries(selectedSlug, { entryType: entryTypeFilter || undefined, includeVoided }),
+    const summaryRes = await api.campaignFinanceSummary(selectedSlug)
+    const [budgetSettled, pledgesSettled, reimbSettled, auditSettled] = await Promise.allSettled([
       api.campaignBudgetLines(selectedSlug, { includeArchived: true }),
       api.campaignPledges(selectedSlug),
+      api.campaignLedgerEntries(selectedSlug, { entryType: 'expense', includeVoided: false }),
       api.campaignFinanceAuditEvents(selectedSlug, 100),
     ])
     return {
+      slug: selectedSlug,
       campaign: summaryRes.campaign,
       roles: summaryRes.roles,
       summary: summaryRes.summary,
-      ledgerEntries: ledgerRes.ledgerEntries,
-      options: ledgerRes.options,
-      budgetLines: budgetRes.budgetLines,
-      pledges: pledgesRes.pledges,
-      sponsors: pledgesRes.sponsors,
-      auditEvents: auditRes.auditEvents,
+      budgetLines: budgetSettled.status === 'fulfilled' ? budgetSettled.value.budgetLines : [],
+      budgetError: budgetSettled.status === 'rejected' ? mutationErrorMessage(budgetSettled.reason, 'Unable to load budget lines') : null,
+      pledges: pledgesSettled.status === 'fulfilled' ? pledgesSettled.value.pledges : [],
+      sponsors: pledgesSettled.status === 'fulfilled' ? pledgesSettled.value.sponsors : [],
+      pledgesError: pledgesSettled.status === 'rejected' ? mutationErrorMessage(pledgesSettled.reason, 'Unable to load pledges') : null,
+      reimbursementExpenses: reimbSettled.status === 'fulfilled' ? reimbSettled.value.ledgerEntries : [],
+      reimbursementsError: reimbSettled.status === 'rejected' ? mutationErrorMessage(reimbSettled.reason, 'Unable to load reimbursements') : null,
+      auditEvents: auditSettled.status === 'fulfilled' ? auditSettled.value.auditEvents : [],
+      auditError: auditSettled.status === 'rejected' ? mutationErrorMessage(auditSettled.reason, 'Unable to load audit log') : null,
     }
+  }, [selectedSlug])
+
+  // Filtered ledger query runs independently so changing ledger filters doesn't refetch summary/budget/audit
+  const ledgerQuery = useAsync(async () => {
+    if (!selectedSlug) return null
+    const res = await api.campaignLedgerEntries(selectedSlug, {
+      entryType: entryTypeFilter || undefined,
+      includeVoided,
+    })
+    return { slug: selectedSlug, ...res }
   }, [selectedSlug, entryTypeFilter, includeVoided])
 
+  const reloadAll = async () => {
+    await Promise.all([overviewQuery.reload(), ledgerQuery.reload()])
+  }
+
   const handleDownloadCsv = async () => {
-    if (!selectedSlug) return
+    const slugAtStart = selectedSlug
+    if (!slugAtStart) return
     setExportingCsv(true)
     setCsvError('')
     try {
-      const blob = await api.campaignDownloadLedgerCsv(selectedSlug)
+      const blob = await api.campaignDownloadLedgerCsv(slugAtStart)
+      if (selectedSlugRef.current !== slugAtStart) return
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${selectedSlug}-ledger-${todayIsoDate()}.csv`
+      link.download = `${slugAtStart}-ledger-${todayIsoDate()}.csv`
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
     } catch (err) {
-      setCsvError(mutationErrorMessage(err, 'Unable to download CSV export'))
+      if (selectedSlugRef.current === slugAtStart) {
+        setCsvError(mutationErrorMessage(err, 'Unable to download CSV export'))
+      }
     } finally {
       setExportingCsv(false)
     }
   }
 
   const handleOpenReceipt = async (entryId: string) => {
-    if (!selectedSlug) return
+    const slugAtStart = selectedSlug
+    if (!slugAtStart) return
     setReceiptLoadingId(entryId)
     setReceiptError('')
     try {
-      const signed = await api.campaignReceiptUrl(selectedSlug, entryId)
-      setReceiptPreview(signed)
+      const signed = await api.campaignReceiptUrl(slugAtStart, entryId)
+      if (selectedSlugRef.current !== slugAtStart) return
+      setReceiptPreview({ entryId, signed, fetchedAt: Date.now() })
     } catch (err) {
-      setReceiptError(mutationErrorMessage(err, 'Unable to open receipt'))
+      if (selectedSlugRef.current === slugAtStart) {
+        setReceiptError(mutationErrorMessage(err, 'Unable to open receipt'))
+      }
     } finally {
       setReceiptLoadingId(null)
     }
@@ -211,7 +307,7 @@ export function AdminCampaignFinancePage() {
 
   if (campaignOptions.length === 0) {
     return (
-      <div className="page-stack admin-page">
+      <div className="page-stack admin-page finance-page">
         <PageHeader
           eyebrow="Board Finance"
           title="Host Year Finance Tracker"
@@ -226,24 +322,44 @@ export function AdminCampaignFinancePage() {
     )
   }
 
-  if (financeQuery.loading && (!financeQuery.data || financeQuery.data.campaign.slug !== selectedSlug)) {
+  if (overviewQuery.loading && (!overviewQuery.data || overviewQuery.data.slug !== selectedSlug)) {
     return <LoadingState label="Loading campaign finance data" />
   }
 
-  if (financeQuery.error) {
-    return <ErrorState message={financeQuery.error} onRetry={financeQuery.reload} />
+  if (overviewQuery.error && (!overviewQuery.data || overviewQuery.data.slug !== selectedSlug)) {
+    return <ErrorState message={overviewQuery.error} onRetry={overviewQuery.reload} />
   }
 
-  const data = financeQuery.data
+  const data = overviewQuery.data
   if (!data) return null
 
-  const { campaign, roles, summary, ledgerEntries, options, budgetLines, pledges, sponsors, auditEvents } = data
+  const {
+    campaign,
+    roles,
+    summary,
+    budgetLines,
+    budgetError,
+    pledges,
+    sponsors,
+    pledgesError,
+    reimbursementExpenses,
+    reimbursementsError,
+    auditEvents,
+    auditError,
+  } = data
+
+  const ledgerReady = Boolean(ledgerQuery.data && ledgerQuery.data.slug === selectedSlug)
+  const ledgerEntries = ledgerReady ? (ledgerQuery.data?.ledgerEntries || []) : []
+  const ledgerOptions = ledgerReady && ledgerQuery.data
+    ? ledgerQuery.data.options
+    : { budgetLines: [], events: [], pledges: [], sponsors: [], members: [] }
+
   const isArchived = campaign.status === 'archived'
   const canWriteFinance = (isAdmin || roles.includes('treasurer')) && !isArchived
   const canApproveReimbursements = (isAdmin || roles.includes('chair') || roles.includes('treasurer')) && !isArchived
 
   return (
-    <div className="page-stack admin-page">
+    <div className="page-stack admin-page finance-page">
       <PageHeader
         eyebrow="Board Finance · Confidential"
         title={`${campaign.title} — Finance`}
@@ -261,7 +377,13 @@ export function AdminCampaignFinancePage() {
                 ))}
               </select>
             )}
-            <button type="button" className="btn secondary" onClick={() => void handleDownloadCsv()} disabled={exportingCsv}>
+            <button
+              type="button"
+              className="btn secondary"
+              title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
+              onClick={() => void handleDownloadCsv()}
+              disabled={exportingCsv}
+            >
               {exportingCsv ? 'Exporting…' : 'Export CSV'}
             </button>
           </div>
@@ -290,7 +412,7 @@ export function AdminCampaignFinancePage() {
       {summary.mixedNetEventIds.length > 0 && (
         <Panel>
           <p className="form-error" role="status" style={{ margin: 0 }}>
-            <strong>Accounting check:</strong> At least one event mixes a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
+            <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
           </p>
         </Panel>
       )}
@@ -330,80 +452,113 @@ export function AdminCampaignFinancePage() {
       </div>
 
       {canWriteFinance && (
-        <FinanceSettingsPanel campaign={campaign} summary={summary} onSaved={financeQuery.reload} />
+        <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
       )}
 
-      <div className="row-actions" role="tablist" aria-label="Finance tracker tabs" style={{ flexWrap: 'wrap' }}>
-        <button type="button" role="tab" aria-selected={tab === 'ledger'} className={`btn ${tab === 'ledger' ? 'primary' : 'secondary'}`} onClick={() => setTab('ledger')}>
+      <nav className="finance-tabs" aria-label="Finance tracker sections">
+        <button type="button" aria-current={tab === 'ledger' ? 'page' : undefined} className={`btn small ${tab === 'ledger' ? 'primary' : 'secondary'}`} onClick={() => setTab('ledger')}>
           Ledger ({ledgerEntries.length})
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'budget'} className={`btn ${tab === 'budget' ? 'primary' : 'secondary'}`} onClick={() => setTab('budget')}>
-          Budget vs Actual ({budgetLines.length})
+        <button type="button" aria-current={tab === 'budget' ? 'page' : undefined} className={`btn small ${tab === 'budget' ? 'primary' : 'secondary'}`} onClick={() => setTab('budget')}>
+          Budget ({summary.budgetVsActual.length})
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'pledges'} className={`btn ${tab === 'pledges' ? 'primary' : 'secondary'}`} onClick={() => setTab('pledges')}>
+        <button type="button" aria-current={tab === 'pledges' ? 'page' : undefined} className={`btn small ${tab === 'pledges' ? 'primary' : 'secondary'}`} onClick={() => setTab('pledges')}>
           Pledges ({pledges.length})
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'reimbursements'} className={`btn ${tab === 'reimbursements' ? 'primary' : 'secondary'}`} onClick={() => setTab('reimbursements')}>
+        <button type="button" aria-current={tab === 'reimbursements' ? 'page' : undefined} className={`btn small ${tab === 'reimbursements' ? 'primary' : 'secondary'}`} onClick={() => setTab('reimbursements')}>
           Reimbursements ({summary.pendingReimbursementsCount})
         </button>
-        <button type="button" role="tab" aria-selected={tab === 'audit'} className={`btn ${tab === 'audit' ? 'primary' : 'secondary'}`} onClick={() => setTab('audit')}>
+        <button type="button" aria-current={tab === 'audit' ? 'page' : undefined} className={`btn small ${tab === 'audit' ? 'primary' : 'secondary'}`} onClick={() => setTab('audit')}>
           Audit Log ({auditEvents.length})
         </button>
-      </div>
+      </nav>
 
       {tab === 'ledger' && (
-        <LedgerTab
-          campaign={campaign}
-          entries={ledgerEntries}
-          options={options}
-          canWrite={canWriteFinance}
-          entryTypeFilter={entryTypeFilter}
-          includeVoided={includeVoided}
-          onEntryTypeFilter={setEntryTypeFilter}
-          onIncludeVoided={setIncludeVoided}
-          onOpenReceipt={handleOpenReceipt}
-          receiptLoadingId={receiptLoadingId}
-          onSaved={financeQuery.reload}
-        />
+        ledgerQuery.error && !ledgerReady ? (
+          <ErrorState message={ledgerQuery.error} onRetry={ledgerQuery.reload} />
+        ) : (
+          <LedgerTab
+            key={campaign.slug}
+            campaign={campaign}
+            entries={ledgerEntries}
+            loading={ledgerQuery.loading && !ledgerReady}
+            options={ledgerOptions}
+            canWrite={canWriteFinance}
+            entryTypeFilter={entryTypeFilter}
+            includeVoided={includeVoided}
+            onEntryTypeFilter={setEntryTypeFilter}
+            onIncludeVoided={setIncludeVoided}
+            onOpenReceipt={handleOpenReceipt}
+            receiptLoadingId={receiptLoadingId}
+            onSaved={reloadAll}
+          />
+        )
       )}
 
       {tab === 'budget' && (
-        <BudgetTab
-          campaign={campaign}
-          summary={summary}
-          budgetLines={budgetLines}
-          canWrite={canWriteFinance}
-          onSaved={financeQuery.reload}
-        />
+        budgetError ? (
+          <ErrorState message={budgetError} onRetry={overviewQuery.reload} />
+        ) : (
+          <BudgetTab
+            key={campaign.slug}
+            campaign={campaign}
+            summary={summary}
+            budgetLines={budgetLines}
+            canWrite={canWriteFinance}
+            onSaved={reloadAll}
+          />
+        )
       )}
 
       {tab === 'pledges' && (
-        <PledgesTab
-          campaign={campaign}
-          pledges={pledges}
-          sponsors={sponsors}
-          canWrite={canWriteFinance}
-          onSaved={financeQuery.reload}
-        />
+        pledgesError ? (
+          <ErrorState message={pledgesError} onRetry={overviewQuery.reload} />
+        ) : (
+          <PledgesTab
+            key={campaign.slug}
+            campaign={campaign}
+            pledges={pledges}
+            sponsors={sponsors}
+            canWrite={canWriteFinance}
+            onSaved={reloadAll}
+          />
+        )
       )}
 
       {tab === 'reimbursements' && (
-        <ReimbursementsTab
-          campaign={campaign}
-          entries={ledgerEntries}
-          currentUserId={auth.user?.id || ''}
-          isAdmin={isAdmin}
-          canApprove={canApproveReimbursements}
-          canMarkReimbursed={canWriteFinance}
-          onOpenReceipt={handleOpenReceipt}
-          onSaved={financeQuery.reload}
-        />
+        reimbursementsError ? (
+          <ErrorState message={reimbursementsError} onRetry={overviewQuery.reload} />
+        ) : (
+          <ReimbursementsTab
+            key={campaign.slug}
+            campaign={campaign}
+            entries={reimbursementExpenses}
+            currentUserId={auth.user?.id || ''}
+            isAdmin={isAdmin}
+            canApprove={canApproveReimbursements}
+            canMarkReimbursed={canWriteFinance}
+            receiptLoadingId={receiptLoadingId}
+            onOpenReceipt={handleOpenReceipt}
+            onSaved={reloadAll}
+          />
+        )
       )}
 
-      {tab === 'audit' && <AuditLogTab auditEvents={auditEvents} />}
+      {tab === 'audit' && (
+        auditError ? (
+          <ErrorState message={auditError} onRetry={overviewQuery.reload} />
+        ) : (
+          <AuditLogTab auditEvents={auditEvents} />
+        )
+      )}
 
       {receiptPreview && (
-        <ReceiptPreviewModal receipt={receiptPreview} onClose={() => setReceiptPreview(null)} />
+        <ReceiptPreviewModal
+          receipt={receiptPreview.signed}
+          fetchedAt={receiptPreview.fetchedAt}
+          onRefresh={() => void handleOpenReceipt(receiptPreview.entryId)}
+          onClose={() => setReceiptPreview(null)}
+        />
       )}
     </div>
   )
@@ -429,12 +584,13 @@ function FinanceSettingsPanel({
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (open) return
     setGoalDollars(centsToInput(summary.goalCents))
     setFdaaUpfrontDollars(centsToInput(summary.fdaaUpfrontCents))
     setFdaaSharePercent(String((summary.fdaaTicketShareBps / 100).toFixed(summary.fdaaTicketShareBps % 100 === 0 ? 0 : 2)))
     setPublicMeterEnabled(summary.publicMeterEnabled)
     setIncludeFdaaInPublicMeter(summary.includeFdaaInPublicMeter)
-  }, [summary])
+  }, [summary, open])
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -465,6 +621,7 @@ function FinanceSettingsPanel({
         includeFdaaInPublicMeter,
       })
       setMessage('Finance settings updated.')
+      setOpen(false)
       await onSaved()
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to update finance settings'))
@@ -484,6 +641,7 @@ function FinanceSettingsPanel({
           {open ? 'Hide settings' : 'Edit goal & meter'}
         </button>
       </div>
+      {message && !open && <p role="status" style={{ marginTop: '0.5rem' }}>{message}</p>}
       {open && (
         <form onSubmit={handleSubmit} style={{ marginTop: '0.75rem' }}>
           <FormGrid>
@@ -510,7 +668,6 @@ function FinanceSettingsPanel({
           <div className="row-actions" style={{ marginTop: '0.75rem' }}>
             <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save finance settings'}</button>
           </div>
-          {message && <p role="status">{message}</p>}
           {error && <p className="form-error" role="alert">{error}</p>}
         </form>
       )}
@@ -521,6 +678,7 @@ function FinanceSettingsPanel({
 function LedgerTab({
   campaign,
   entries,
+  loading,
   options,
   canWrite,
   entryTypeFilter,
@@ -533,6 +691,7 @@ function LedgerTab({
 }: {
   campaign: AdminHostCampaign
   entries: LedgerEntryRecord[]
+  loading: boolean
   options: {
     budgetLines: Array<{ id: string; kind: LedgerEntryType; category: string }>
     events: Array<{ id: string; title: string }>
@@ -569,7 +728,6 @@ function LedgerTab({
   const [uploadingReceipt, setUploadingReceipt] = useState(false)
   const [attachingEntryId, setAttachingEntryId] = useState<string | null>(null)
   const [voidingEntry, setVoidingEntry] = useState<LedgerEntryRecord | null>(null)
-  const [voidReason, setVoidReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -671,26 +829,14 @@ function LedgerTab({
       setMessage(`${entryType === 'income' ? 'Income' : 'Expense'} recorded.`)
       await onSaved()
     } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to record ledger entry'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleConfirmVoid = async (event: FormEvent) => {
-    event.preventDefault()
-    if (!voidingEntry || !voidReason.trim()) return
-    setSaving(true)
-    setError('')
-    setMessage('')
-    try {
-      await api.campaignVoidLedgerEntry(campaign.slug, voidingEntry.id, voidReason.trim())
-      setVoidingEntry(null)
-      setVoidReason('')
-      setMessage('Ledger entry voided and logged in audit trail.')
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to void ledger entry'))
+      const msg = mutationErrorMessage(err, 'Unable to record ledger entry')
+      if (receiptUploadToken && /token|expired/i.test(msg)) {
+        setReceiptUploadToken('')
+        setReceiptFileName('')
+        setError(`${msg} Please re-attach the receipt and try again.`)
+      } else {
+        setError(msg)
+      }
     } finally {
       setSaving(false)
     }
@@ -789,9 +935,9 @@ function LedgerTab({
             )}
 
             <div className="row-actions" style={{ marginTop: '0.75rem', flexWrap: 'wrap' }}>
-              <label className="btn secondary small" style={{ cursor: 'pointer' }}>
-                {uploadingReceipt ? 'Uploading receipt…' : receiptFileName ? `Receipt ready: ${receiptFileName}` : 'Attach receipt photo / PDF'}
-                <input type="file" accept={RECEIPT_UPLOAD_ACCEPT} onChange={handleReceiptSelect} disabled={uploadingReceipt} style={{ display: 'none' }} />
+              <label className="btn secondary small file-upload-btn">
+                <span>{uploadingReceipt ? 'Uploading receipt…' : receiptFileName ? `Receipt ready: ${receiptFileName}` : 'Attach receipt photo / PDF'}</span>
+                <input className="sr-only" type="file" accept={RECEIPT_UPLOAD_ACCEPT} onChange={handleReceiptSelect} disabled={uploadingReceipt} />
               </label>
               <button type="submit" className="btn primary" disabled={saving || uploadingReceipt}>
                 {saving ? 'Recording…' : `Record ${entryType}`}
@@ -804,23 +950,16 @@ function LedgerTab({
       )}
 
       {voidingEntry && (
-        <Panel>
-          <div className="section-heading">
-            <h2>Void ledger entry #{voidingEntry.id}</h2>
-            <button type="button" className="btn secondary small" onClick={() => { setVoidingEntry(null); setVoidReason('') }}>Cancel</button>
-          </div>
-          <p className="muted">
-            Voiding preserves audit history instead of deleting: <strong>{voidingEntry.counterparty}</strong> · {formatUsd(voidingEntry.amountCents)} ({voidingEntry.entryDate}).
-          </p>
-          <form onSubmit={handleConfirmVoid}>
-            <Field label="Reason for void (required)">
-              <input value={voidReason} onChange={(e) => setVoidReason(e.target.value)} required placeholder="Duplicate entry / entered wrong amount" />
-            </Field>
-            <div className="row-actions" style={{ marginTop: '0.75rem' }}>
-              <button type="submit" className="btn primary" disabled={saving || !voidReason.trim()}>Confirm void</button>
-            </div>
-          </form>
-        </Panel>
+        <VoidEntryModal
+          campaignSlug={campaign.slug}
+          entry={voidingEntry}
+          onClose={() => setVoidingEntry(null)}
+          onVoided={async () => {
+            setVoidingEntry(null)
+            setMessage('Ledger entry voided and logged in audit trail.')
+            await onSaved()
+          }}
+        />
       )}
 
       <Panel>
@@ -839,7 +978,9 @@ function LedgerTab({
           </div>
         </div>
 
-        {entries.length === 0 ? (
+        {loading ? (
+          <LoadingState label="Loading ledger entries" />
+        ) : entries.length === 0 ? (
           <EmptyState title="No ledger entries yet" description="Record your first fundraiser payout, sponsorship, or expense above." />
         ) : (
           <div className="admin-list">
@@ -858,7 +999,7 @@ function LedgerTab({
                     {entry.entryType === 'income' ? '+' : '−'}{formatUsd(entry.amountCents)} · {entry.counterparty}
                   </strong>{' '}
                   <span className="pill">{entry.source.replace(/_/g, ' ')}</span>{' '}
-                  {entry.voided && <StatusBadge status="cancelled" />}
+                  {entry.voided && <span className="status-badge status-cancelled">voided</span>}
                   {entry.reimbursementStatus !== 'not_applicable' && (
                     <> <StatusBadge status={entry.reimbursementStatus} /></>
                   )}
@@ -888,14 +1029,14 @@ function LedgerTab({
                     </button>
                   ) : (
                     canWrite && !entry.voided && (
-                      <label className="btn secondary small" style={{ cursor: 'pointer' }}>
-                        {attachingEntryId === entry.id ? 'Uploading…' : 'Add receipt'}
+                      <label className="btn secondary small file-upload-btn">
+                        <span>{attachingEntryId === entry.id ? 'Uploading…' : 'Add receipt'}</span>
                         <input
+                          className="sr-only"
                           type="file"
                           accept={RECEIPT_UPLOAD_ACCEPT}
                           onChange={(e) => void handleAttachReceiptToExisting(entry.id, e)}
                           disabled={attachingEntryId === entry.id}
-                          style={{ display: 'none' }}
                         />
                       </label>
                     )
@@ -911,6 +1052,74 @@ function LedgerTab({
           </div>
         )}
       </Panel>
+    </div>
+  )
+}
+
+function VoidEntryModal({
+  campaignSlug,
+  entry,
+  onClose,
+  onVoided,
+}: {
+  campaignSlug: string
+  entry: LedgerEntryRecord
+  onClose: () => void
+  onVoided: () => Promise<void>
+}) {
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useAccessibleModal(true, onClose, panelRef, inputRef)
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!reason.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      await api.campaignVoidLedgerEntry(campaignSlug, entry.id, reason.trim())
+      await onVoided()
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to void ledger entry'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="finance-modal-backdrop" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div
+        ref={panelRef}
+        className="panel finance-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Void ledger entry ${entry.id}`}
+        tabIndex={-1}
+      >
+        <div className="section-heading">
+          <h2>Void ledger entry #{entry.id}</h2>
+          <button type="button" className="btn secondary small" onClick={onClose}>Cancel</button>
+        </div>
+        <p className="muted" style={{ margin: 0 }}>
+          Voiding preserves audit history instead of deleting: <strong>{entry.counterparty}</strong> · {formatUsd(entry.amountCents)} ({entry.entryDate}).
+        </p>
+        <form onSubmit={handleSubmit}>
+          <Field label="Reason for void (required)">
+            <input ref={inputRef} value={reason} onChange={(e) => setReason(e.target.value)} required placeholder="Duplicate entry / entered wrong amount" />
+          </Field>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="row-actions" style={{ marginTop: '0.75rem' }}>
+            <button type="button" className="btn secondary" onClick={onClose}>Keep entry</button>
+            <button type="submit" className="btn primary" disabled={saving || !reason.trim()}>
+              {saving ? 'Voiding…' : 'Confirm void'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
@@ -1010,6 +1219,12 @@ function BudgetTab({
           <div className="admin-list">
             {summary.budgetVsActual.map((row) => {
               const record = budgetLines.find((b) => b.id === row.id)
+              const varianceLabel = row.varianceCents === 0
+                ? 'On budget'
+                : row.kind === 'expense'
+                  ? (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} over budget` : `${formatUsd(Math.abs(row.varianceCents))} under budget`)
+                  : (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} above target` : `${formatUsd(Math.abs(row.varianceCents))} below target`)
+
               return (
                 <div key={row.id} className="compact-admin-row" style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--line)' }}>
                   <div>
@@ -1017,7 +1232,7 @@ function BudgetTab({
                     <span className="pill">{row.kind}</span>{' '}
                     {row.archived && <span className="pill">Archived</span>}
                     <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                      Budget {formatUsd(row.budgetCents)} · Actual {formatUsd(row.actualCents)} · Variance {row.varianceCents >= 0 ? '+' : '−'}{formatUsd(Math.abs(row.varianceCents))}
+                      Budget {formatUsd(row.budgetCents)} · Actual {formatUsd(row.actualCents)} · {varianceLabel}
                     </p>
                   </div>
                   {canWrite && record && !record.archivedAt && (
@@ -1152,6 +1367,7 @@ function PledgesTab({
 
       <Panel>
         <h2>Pledges ({pledges.length})</h2>
+        <p className="muted">Cash pledge fulfillment updates automatically as linked income entries are recorded or voided.</p>
         {pledges.length === 0 ? (
           <EmptyState title="No pledges tracked yet" description="Log promised sponsorships or donations to monitor follow-up and fulfillment." />
         ) : (
@@ -1164,19 +1380,36 @@ function PledgesTab({
                   {p.isInKind && <span className="pill">In-Kind</span>}{' '}
                   <StatusBadge status={p.status} />
                   <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                    Promised {formatUsd(p.promisedCents)} · Received {formatUsd(p.receivedCents)} · Outstanding {formatUsd(p.outstandingCents)}
-                    {p.overpaymentCents > 0 ? ` · Overpaid +${formatUsd(p.overpaymentCents)}` : ''}
+                    Promised {formatUsd(p.promisedCents)}
+                    {!p.isInKind && (
+                      <>
+                        {' '}· Received {formatUsd(p.receivedCents)} · Outstanding {formatUsd(p.outstandingCents)}
+                        {p.overpaymentCents > 0 ? ` · Overpaid +${formatUsd(p.overpaymentCents)}` : ''}
+                      </>
+                    )}
                     {p.dueOn ? ` · Due ${p.dueOn}` : ''}
                   </p>
                 </div>
                 {canWrite && (
-                  <select
-                    aria-label={`Status for ${p.donorName}`}
-                    value={p.status}
-                    onChange={(e) => void handleStatusChange(p.id, e.target.value as PledgeStatus)}
-                  >
-                    {PLEDGE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  p.isInKind ? (
+                    <select
+                      aria-label={`Status for ${p.donorName}`}
+                      value={p.status}
+                      onChange={(e) => void handleStatusChange(p.id, e.target.value as PledgeStatus)}
+                    >
+                      {PLEDGE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  ) : p.status === 'cancelled' ? (
+                    <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(p.id, 'promised')}>
+                      Reopen pledge
+                    </button>
+                  ) : p.receivedCents === 0 ? (
+                    <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(p.id, 'cancelled')}>
+                      Cancel pledge
+                    </button>
+                  ) : (
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>Auto-synced</span>
+                  )
                 )}
               </div>
             ))}
@@ -1194,6 +1427,7 @@ function ReimbursementsTab({
   isAdmin,
   canApprove,
   canMarkReimbursed,
+  receiptLoadingId,
   onOpenReceipt,
   onSaved,
 }: {
@@ -1203,6 +1437,7 @@ function ReimbursementsTab({
   isAdmin: boolean
   canApprove: boolean
   canMarkReimbursed: boolean
+  receiptLoadingId: string | null
   onOpenReceipt: (entryId: string) => Promise<void>
   onSaved: () => Promise<void>
 }) {
@@ -1219,7 +1454,7 @@ function ReimbursementsTab({
     setMessage('')
     try {
       let overrideReason: string | undefined
-      if (!entry.paidByUserId && entry.recordedById === currentUserId && isAdmin) {
+      if (entry.recordedById === currentUserId && isAdmin) {
         const prompted = window.prompt('Admin override reason (required when approving an entry you recorded):')
         if (!prompted?.trim()) {
           setBusyId(null)
@@ -1257,7 +1492,7 @@ function ReimbursementsTab({
   return (
     <Panel>
       <h2>Reimbursement approval queue ({reimbEntries.length})</h2>
-      <p className="muted">Separation of duties: the person who paid out of pocket cannot approve their own reimbursement.</p>
+      <p className="muted">Separation of duties: neither the out-of-pocket payer nor the officer who recorded the expense can self-approve.</p>
       {message && <p role="status">{message}</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
 
@@ -1267,7 +1502,7 @@ function ReimbursementsTab({
         <div className="admin-list">
           {reimbEntries.map((entry) => {
             const isSelfPayer = Boolean(entry.paidByUserId && entry.paidByUserId === currentUserId)
-            const isRecorderOnly = !entry.paidByUserId && entry.recordedById === currentUserId && !isAdmin
+            const isRecorderOnly = entry.recordedById === currentUserId && !isAdmin
             return (
               <div key={entry.id} className="compact-admin-row" style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--line)' }}>
                 <div>
@@ -1283,8 +1518,13 @@ function ReimbursementsTab({
 
                 <div className="row-actions" style={{ flexWrap: 'wrap' }}>
                   {entry.hasReceipt && (
-                    <button type="button" className="btn secondary small" onClick={() => void onOpenReceipt(entry.id)}>
-                      View receipt
+                    <button
+                      type="button"
+                      className="btn secondary small"
+                      disabled={receiptLoadingId === entry.id}
+                      onClick={() => void onOpenReceipt(entry.id)}
+                    >
+                      {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
                     </button>
                   )}
                   {entry.reimbursementStatus === 'requested' && canApprove && (
@@ -1347,81 +1587,106 @@ function AuditLogTab({ auditEvents }: { auditEvents: FinanceAuditEvent[] }) {
 
 function ReceiptPreviewModal({
   receipt,
+  fetchedAt,
+  onRefresh,
   onClose,
 }: {
   receipt: SignedReceiptUrlResponse
+  fetchedAt: number
+  onRefresh: () => void
   onClose: () => void
 }) {
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null)
+  const [remainingSeconds, setRemainingSeconds] = useState(() => Math.max(0, receipt.expiresIn - Math.floor((Date.now() - fetchedAt) / 1000)))
+
+  useAccessibleModal(true, onClose, panelRef, closeBtnRef)
+
+  useEffect(() => {
+    const tick = () => {
+      const next = Math.max(0, receipt.expiresIn - Math.floor((Date.now() - fetchedAt) / 1000))
+      setRemainingSeconds(next)
+    }
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [receipt.expiresIn, fetchedAt])
+
+  const safeUrl = safeHttpsHref(receipt.url)
+  const expired = remainingSeconds <= 0
   const isHeic = receipt.contentType === 'image/heic'
   const isPdf = receipt.contentType === 'application/pdf'
   const isInlineImage = receipt.contentType.startsWith('image/') && !isHeic
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Receipt: ${receipt.filename}`}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 80,
-        background: 'rgba(23, 20, 26, 0.65)',
-        display: 'grid',
-        placeItems: 'center',
-        padding: '1rem',
-      }}
-    >
+    <div className="finance-modal-backdrop" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div
-        className="panel"
-        style={{
-          width: 'min(48rem, 96vw)',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          display: 'grid',
-          gap: '0.85rem',
-        }}
+        ref={panelRef}
+        className="panel finance-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Receipt: ${receipt.filename}`}
+        tabIndex={-1}
       >
         <div className="section-heading">
           <div>
             <h2>{receipt.filename}</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Temporary private link expires in {receipt.expiresIn}s · {receipt.contentType}
+              {expired
+                ? 'Temporary link expired — refresh to generate a new signed link.'
+                : `Temporary private link expires in ${remainingSeconds}s · ${receipt.contentType}`}
             </p>
           </div>
-          <button type="button" className="btn secondary small" onClick={onClose}>Close</button>
+          <div className="row-actions">
+            {expired && <button type="button" className="btn primary small" onClick={onRefresh}>Refresh link</button>}
+            <button ref={closeBtnRef} type="button" className="btn secondary small" onClick={onClose}>Close</button>
+          </div>
         </div>
 
-        {isInlineImage && (
-          <img
-            src={receipt.url}
-            alt={receipt.filename}
-            style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '0.75rem' }}
-          />
-        )}
-
-        {isPdf && (
-          <iframe
-            title={receipt.filename}
-            src={receipt.url}
-            style={{ width: '100%', height: '65vh', border: '1px solid var(--line)', borderRadius: '0.75rem' }}
-          />
-        )}
-
-        {isHeic && (
+        {!safeUrl ? (
+          <p className="form-error" role="alert">Receipt URL failed HTTPS safety validation.</p>
+        ) : expired ? (
           <div className="state-card">
-            <p>HEIC photos cannot be previewed inline in most desktop browsers.</p>
-            <a className="btn primary" href={receipt.url} target="_blank" rel="noreferrer">
-              Download HEIC receipt
-            </a>
+            <p>This signed receipt link has expired for security.</p>
+            <button type="button" className="btn primary" onClick={onRefresh}>Generate fresh link</button>
           </div>
-        )}
+        ) : (
+          <>
+            {isInlineImage && (
+              <img
+                src={safeUrl}
+                alt={receipt.filename}
+                referrerPolicy="no-referrer"
+                style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain', borderRadius: '0.75rem' }}
+              />
+            )}
 
-        {!isHeic && (
-          <div className="row-actions">
-            <a className="btn secondary small" href={receipt.url} target="_blank" rel="noreferrer">
-              Open in new tab
-            </a>
-          </div>
+            {isPdf && (
+              <iframe
+                title={receipt.filename}
+                src={safeUrl}
+                referrerPolicy="no-referrer"
+                style={{ width: '100%', height: '65vh', border: '1px solid var(--line)', borderRadius: '0.75rem' }}
+              />
+            )}
+
+            {isHeic && (
+              <div className="state-card">
+                <p>HEIC photos cannot be previewed inline in most desktop browsers.</p>
+                <a className="btn primary" href={safeUrl} target="_blank" rel="noreferrer">
+                  Download HEIC receipt
+                </a>
+              </div>
+            )}
+
+            {!isHeic && (
+              <div className="row-actions">
+                <a className="btn secondary small" href={safeUrl} target="_blank" rel="noreferrer">
+                  Open in new tab
+                </a>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
