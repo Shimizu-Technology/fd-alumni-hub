@@ -23,6 +23,10 @@ const routeSeo: Record<string, SeoRoute> = {
     title: `${SITE_NAME} | Schedule, Standings, Tickets & Streams`,
     description: DEFAULT_DESCRIPTION,
   },
+  '/host-year': {
+    title: `Host Year & Fundraisers | ${SITE_NAME}`,
+    description: 'Upcoming host-class fundraisers, HåfaPass ticket links, Alumni Golf registration, tournament countdown, and class announcements.',
+  },
   '/today': {
     title: `Today at The Jungle | ${SITE_NAME}`,
     description: 'Game-day schedule, roster details, live links, and fan predictions for FD Alumni Basketball Tournament action in Guam.',
@@ -68,6 +72,10 @@ function seoForPath(pathname: string): SeoRoute {
       description: 'Secure admin workspace for FD Alumni Basketball Hub staff.',
       robots: 'noindex,nofollow',
     }
+  }
+
+  if (pathname.startsWith('/host-year/')) {
+    return routeSeo['/host-year']
   }
 
   if (pathname.startsWith('/history/')) {

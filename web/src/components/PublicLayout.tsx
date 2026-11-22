@@ -16,6 +16,7 @@ const menuFocusableSelector = [
 
 const navItems = [
   { to: '/', label: 'Home' },
+  { to: '/host-year', label: 'Host Year' },
   { to: '/today', label: 'Today' },
   { to: '/schedule', label: 'Schedule' },
   { to: '/standings', label: 'Standings' },

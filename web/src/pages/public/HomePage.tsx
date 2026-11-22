@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
-import { externalHref } from '../../lib/urls'
+import { externalHref, safeHttpsHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
 import { staticChampionRecords } from '../../lib/staticChampions'
+import { useMotionOk } from '../../hooks/useMotionOk'
 import { EmptyState, LoadingState, Panel, SectionUnavailable, StatCard } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
 import { PredictionPollCard } from '../../components/PredictionPollCard'
@@ -18,6 +19,7 @@ export function HomePage() {
   const [voterToken] = useState(readOrCreateVoterToken)
   const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
   const [voteError, setVoteError] = useState('')
+  const motionOk = useMotionOk()
   const { data, loading, error, reload } = useAsync(() => api.publicHome(voterToken), [voterToken])
 
   useEffect(() => {
@@ -66,13 +68,14 @@ export function HomePage() {
 
   return (
     <div className="page-stack">
-      <section className="hero-card public-hero-card">
+      <section className={`hero-card public-hero-card ${motionOk ? 'hero-reveal' : ''}`}>
         <div className="hero-text">
           <p className="eyebrow">Central hub · FD Alumni Basketball</p>
           <h1>Schedules, scores, streams, and stories from The Jungle.</h1>
           <p>{tournamentLabel}. A clean guide for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
           <div className="hero-actions">
             <Link className="btn primary" to="/today"><IconCalendar /> Today at The Jungle <IconArrowRight /></Link>
+            <Link className="btn secondary" to="/host-year">Host Year &amp; Fundraisers</Link>
             <Link className="btn secondary" to="/schedule">Schedule</Link>
             <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
             <Link className="btn secondary" to="/history">History</Link>
@@ -131,6 +134,40 @@ export function HomePage() {
               <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
             </Panel>
           )}
+          {data.activeHostCampaign && (
+            <Panel className="home-host-year-callout">
+              <div className="home-host-year-copy">
+                <p className="eyebrow">
+                  {data.activeHostCampaign.hostClass ? `${data.activeHostCampaign.hostClass.displayName} · ` : ''}Host Year
+                </p>
+                <h2>{data.activeHostCampaign.title}</h2>
+                <p>
+                  {data.activeHostCampaign.tagline || 'Follow host-year fundraisers, tournament tickets, golf registration, and class announcements.'}
+                </p>
+                {data.activeHostCampaign.nextEvent && (
+                  <p className="home-host-year-next">
+                    <strong>Next up:</strong> {data.activeHostCampaign.nextEvent.title}
+                    {data.activeHostCampaign.nextEvent.startsAt
+                      ? ` · ${formatGuamDateTime(data.activeHostCampaign.nextEvent.startsAt)}`
+                      : data.activeHostCampaign.nextEvent.dateLabel
+                        ? ` · ${data.activeHostCampaign.nextEvent.dateLabel}`
+                        : ''}
+                  </p>
+                )}
+              </div>
+              <div className="home-host-year-actions">
+                <Link className="btn primary" to={`/host-year/${data.activeHostCampaign.slug}`}>
+                  Open Host Year <IconArrowRight size={16} />
+                </Link>
+                {safeHttpsHref(data.activeHostCampaign.golfUrl) && (
+                  <a className="btn secondary" href={safeHttpsHref(data.activeHostCampaign.golfUrl) || undefined} target="_blank" rel="noreferrer">
+                    Alumni Golf
+                  </a>
+                )}
+              </div>
+            </Panel>
+          )}
+
           <div className="stats-grid">
             <StatCard label="Games today" value={data.todayGames.length} tone="maroon" />
             <StatCard label="Live now" value={data.liveGames.length} detail={data.liveGames.length ? 'Game in progress' : 'No active games'} tone={data.liveGames.length ? 'live' : 'neutral'} />
