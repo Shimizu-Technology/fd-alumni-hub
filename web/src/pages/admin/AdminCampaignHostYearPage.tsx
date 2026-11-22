@@ -48,12 +48,17 @@ function centsToDollarsInput(cents: number | null | undefined) {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)
 }
 
-function dollarsInputToCents(raw: string): number | null {
+function parseOptionalDollarsToCents(raw: string): { ok: true; value: number | null } | { ok: false; error: string } {
   const trimmed = raw.trim().replace(/[$,\s]/g, '')
-  if (!trimmed) return null
+  if (!trimmed) return { ok: true, value: null }
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid non-negative dollar amount (for example, 5000 or 2500.50).' }
+  }
   const parsed = Number(trimmed)
-  if (!Number.isFinite(parsed) || parsed < 0) return null
-  return Math.round(parsed * 100)
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return { ok: false, error: 'Enter a valid non-negative dollar amount.' }
+  }
+  return { ok: true, value: Math.round(parsed * 100) }
 }
 
 export function AdminCampaignHostYearPage() {
@@ -112,6 +117,10 @@ export function AdminCampaignHostYearPage() {
     return <LoadingState label="Loading host campaigns" />
   }
 
+  if (isAdmin && adminCampaignsQuery.error) {
+    return <ErrorState message={adminCampaignsQuery.error} onRetry={adminCampaignsQuery.reload} />
+  }
+
   if (campaignOptions.length === 0) {
     return (
       <div className="page-stack admin-page">
@@ -129,7 +138,7 @@ export function AdminCampaignHostYearPage() {
     )
   }
 
-  if (workspaceQuery.loading && !workspaceQuery.data) {
+  if (workspaceQuery.loading && (!workspaceQuery.data || workspaceQuery.data.campaign.slug !== selectedSlug)) {
     return <LoadingState label="Loading host year content" />
   }
 
@@ -145,6 +154,7 @@ export function AdminCampaignHostYearPage() {
   if (!campaign) return null
 
   const isArchived = campaign.status === 'archived'
+  const isDraft = campaign.status === 'draft'
   const canEditContent = (isAdmin || roles.includes('chair')) && !isArchived
 
   return (
@@ -169,9 +179,13 @@ export function AdminCampaignHostYearPage() {
                 </select>
               </label>
             )}
-            <Link className="btn secondary" to={`/host-year/${campaign.slug}`} target="_blank" rel="noreferrer">
-              View public page
-            </Link>
+            {isDraft ? (
+              <span className="pill">Draft · Not public yet</span>
+            ) : (
+              <Link className="btn secondary" to={`/host-year/${campaign.slug}`} target="_blank" rel="noreferrer">
+                View public page
+              </Link>
+            )}
           </div>
         )}
       />
@@ -204,11 +218,12 @@ export function AdminCampaignHostYearPage() {
       </div>
 
       {tab === 'settings' && (
-        <HostYearSettingsPanel campaign={campaign} canEdit={canEditContent} onSaved={workspaceQuery.reload} />
+        <HostYearSettingsPanel key={campaign.slug} campaign={campaign} canEdit={canEditContent} onSaved={workspaceQuery.reload} />
       )}
 
       {tab === 'events' && (
         <HostYearEventsPanel
+          key={campaign.slug}
           campaign={campaign}
           events={events}
           canEdit={canEditContent}
@@ -220,6 +235,7 @@ export function AdminCampaignHostYearPage() {
 
       {tab === 'posts' && (
         <HostYearPostsPanel
+          key={campaign.slug}
           campaign={campaign}
           posts={posts}
           canEdit={canEditContent}
@@ -243,6 +259,7 @@ function HostYearSettingsPanel({
   const [tagline, setTagline] = useState(campaign.tagline || '')
   const [description, setDescription] = useState(campaign.description || '')
   const [countdownTargetAt, setCountdownTargetAt] = useState(toDatetimeLocalValue(campaign.countdownTargetAt))
+  const [countdownDirty, setCountdownDirty] = useState(false)
   const [countdownLabel, setCountdownLabel] = useState(campaign.countdownLabel || '')
   const [heroImageUrl, setHeroImageUrl] = useState(campaign.heroImageUrl || '')
   const [golfUrl, setGolfUrl] = useState(campaign.golfUrl || '')
@@ -259,6 +276,7 @@ function HostYearSettingsPanel({
     setTagline(campaign.tagline || '')
     setDescription(campaign.description || '')
     setCountdownTargetAt(toDatetimeLocalValue(campaign.countdownTargetAt))
+    setCountdownDirty(false)
     setCountdownLabel(campaign.countdownLabel || '')
     setHeroImageUrl(campaign.heroImageUrl || '')
     setGolfUrl(campaign.golfUrl || '')
@@ -292,18 +310,22 @@ function HostYearSettingsPanel({
     setMessage('')
     setError('')
     try {
-      await api.campaignUpdateSettings(campaign.slug, {
+      const payload: Record<string, unknown> = {
         title: title.trim(),
         tagline: tagline.trim() || null,
         description: description.trim() || null,
-        countdownTargetAt: fromDatetimeLocalValue(countdownTargetAt),
         countdownLabel: countdownLabel.trim() || null,
         heroImageUrl: heroImageUrl.trim() || null,
         golfUrl: golfUrl.trim() || null,
         hafapassOrganizerSlug: hafapassOrganizerSlug.trim().toLowerCase() || null,
         hafapassTournamentOrganizerSlug: hafapassTournamentOrganizerSlug.trim().toLowerCase() || null,
         hafapassDistributionCode: hafapassDistributionCode.trim().toLowerCase() || null,
-      })
+      }
+      if (countdownDirty) {
+        payload.countdownTargetAt = fromDatetimeLocalValue(countdownTargetAt)
+      }
+      await api.campaignUpdateSettings(campaign.slug, payload)
+      setCountdownDirty(false)
       setMessage('Host Year settings saved.')
       await onSaved()
     } catch (err) {
@@ -329,8 +351,16 @@ function HostYearSettingsPanel({
           <Field label="Tagline">
             <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Road to the 2027 FD Alumni Tournament" disabled={!canEdit} />
           </Field>
-          <Field label="Countdown target date & time">
-            <input type="datetime-local" value={countdownTargetAt} onChange={(e) => setCountdownTargetAt(e.target.value)} disabled={!canEdit} />
+          <Field label="Countdown target date & time (local browser time; leave unchanged to follow tournament start)">
+            <input
+              type="datetime-local"
+              value={countdownTargetAt}
+              onChange={(e) => {
+                setCountdownTargetAt(e.target.value)
+                setCountdownDirty(true)
+              }}
+              disabled={!canEdit}
+            />
           </Field>
           <Field label="Countdown label">
             <input value={countdownLabel} onChange={(e) => setCountdownLabel(e.target.value)} placeholder="Tentative tip-off · Jun 25, 2027" disabled={!canEdit} />
@@ -476,6 +506,11 @@ function HostYearEventsPanel({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!canEdit) return
+    const parsedGoal = parseOptionalDollarsToCents(goalDollars)
+    if (!parsedGoal.ok) {
+      setError(`Fundraiser goal: ${parsedGoal.error}`)
+      return
+    }
     setSaving(true)
     setMessage('')
     setError('')
@@ -495,7 +530,7 @@ function HostYearEventsPanel({
         hafapassDistributionCode: hafapassDistributionCode.trim().toLowerCase() || null,
         externalUrl: externalUrl.trim() || null,
         ctaLabel: ctaLabel.trim() || null,
-        goalCents: dollarsInputToCents(goalDollars),
+        goalCents: parsedGoal.value,
         position: Number.parseInt(position, 10) || 0,
         publicVisible,
       }

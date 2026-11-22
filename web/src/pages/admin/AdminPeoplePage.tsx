@@ -33,6 +33,7 @@ export function AdminPeoplePage() {
       api.adminCampaignInvitations(effectiveCampaignId),
     ])
     return {
+      campaignId: effectiveCampaignId,
       memberships: membershipsRes.memberships,
       users: membershipsRes.users,
       invitations: invitationsRes.invitations,
@@ -68,8 +69,9 @@ export function AdminPeoplePage() {
     }
   }
 
-  const handleRevokeInvitation = async (invitationId: string) => {
+  const handleRevokeInvitation = async (invitationId: string, email: string) => {
     if (!effectiveCampaignId) return
+    if (!window.confirm(`Revoke pending invitation for ${email}?`)) return
     setBusy(true)
     setMessage('')
     setError('')
@@ -102,8 +104,9 @@ export function AdminPeoplePage() {
     }
   }
 
-  const handleToggleMembership = async (membershipId: string, nextActive: boolean) => {
+  const handleToggleMembership = async (membershipId: string, label: string, nextActive: boolean) => {
     if (!effectiveCampaignId) return
+    if (!nextActive && !window.confirm(`Deactivate campaign access for ${label}?`)) return
     setBusy(true)
     setMessage('')
     setError('')
@@ -136,7 +139,9 @@ export function AdminPeoplePage() {
     }
   }
 
-  const handleUpdateWhitelist = async (id: string, payload: { active?: boolean; role?: 'admin' | 'staff' }) => {
+  const handleUpdateWhitelist = async (id: string, email: string, payload: { active?: boolean; role?: 'admin' | 'staff' | 'viewer' }) => {
+    if (payload.role === 'admin' && !window.confirm(`Grant full system Admin role to ${email}?`)) return
+    if (payload.active === false && !window.confirm(`Deactivate site-wide allowlist entry for ${email}?`)) return
     setBusy(true)
     setMessage('')
     setError('')
@@ -155,9 +160,10 @@ export function AdminPeoplePage() {
   if (baseQuery.error) return <ErrorState message={baseQuery.error} onRetry={baseQuery.reload} />
 
   const whitelists = baseQuery.data?.whitelists || []
-  const memberships = campaignPeopleQuery.data?.memberships || []
-  const invitations = campaignPeopleQuery.data?.invitations || []
-  const users = campaignPeopleQuery.data?.users || []
+  const campaignPeopleReady = Boolean(campaignPeopleQuery.data && campaignPeopleQuery.data.campaignId === effectiveCampaignId)
+  const memberships = campaignPeopleReady ? (campaignPeopleQuery.data?.memberships || []) : []
+  const invitations = campaignPeopleReady ? (campaignPeopleQuery.data?.invitations || []) : []
+  const users = campaignPeopleReady ? (campaignPeopleQuery.data?.users || []) : []
 
   return (
     <div className="page-stack admin-page">
@@ -185,6 +191,10 @@ export function AdminPeoplePage() {
 
         {!effectiveCampaignId ? (
           <EmptyState title="No host campaigns yet" description="Create a host campaign first before inviting host class officers." />
+        ) : campaignPeopleQuery.error ? (
+          <ErrorState message={campaignPeopleQuery.error} onRetry={campaignPeopleQuery.reload} />
+        ) : campaignPeopleQuery.loading && !campaignPeopleReady ? (
+          <LoadingState label="Loading campaign members and invitations" />
         ) : (
           <div className="page-stack">
             <form onSubmit={handleInvite}>
@@ -240,7 +250,7 @@ export function AdminPeoplePage() {
                         type="button"
                         className="btn secondary small"
                         disabled={busy}
-                        onClick={() => void handleToggleMembership(m.id, !m.active)}
+                        onClick={() => void handleToggleMembership(m.id, m.userEmail || m.userName || m.id, !m.active)}
                       >
                         {m.active ? 'Deactivate' : 'Reactivate'}
                       </button>
@@ -264,7 +274,7 @@ export function AdminPeoplePage() {
                         <StatusBadge status={inv.status} />
                       </div>
                       {inv.status === 'pending' && (
-                        <button type="button" className="btn secondary small" disabled={busy} onClick={() => void handleRevokeInvitation(inv.id)}>
+                        <button type="button" className="btn secondary small" disabled={busy} onClick={() => void handleRevokeInvitation(inv.id, inv.email)}>
                           Revoke
                         </button>
                       )}
@@ -313,19 +323,21 @@ export function AdminPeoplePage() {
                 {wl.notes && <p className="muted" style={{ margin: '0.2rem 0 0' }}>{wl.notes}</p>}
               </div>
               <div className="row-actions">
-                <button
-                  type="button"
-                  className="btn secondary small"
+                <select
+                  aria-label={`Site role for ${wl.email}`}
+                  value={wl.role}
                   disabled={busy}
-                  onClick={() => void handleUpdateWhitelist(wl.id, { role: wl.role === 'admin' ? 'staff' : 'admin' })}
+                  onChange={(e) => void handleUpdateWhitelist(wl.id, wl.email, { role: e.target.value as 'admin' | 'staff' | 'viewer' })}
                 >
-                  {wl.role === 'admin' ? 'Set staff' : 'Set admin'}
-                </button>
+                  <option value="viewer">Viewer</option>
+                  <option value="staff">Staff</option>
+                  <option value="admin">Admin</option>
+                </select>
                 <button
                   type="button"
                   className="btn secondary small"
                   disabled={busy}
-                  onClick={() => void handleUpdateWhitelist(wl.id, { active: !wl.active })}
+                  onClick={() => void handleUpdateWhitelist(wl.id, wl.email, { active: !wl.active })}
                 >
                   {wl.active ? 'Deactivate' : 'Reactivate'}
                 </button>

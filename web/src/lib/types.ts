@@ -462,7 +462,7 @@ export type CampaignInvitationRecord = {
 export type AdminWhitelistRecord = {
   id: string
   email: string
-  role: 'admin' | 'staff'
+  role: 'admin' | 'staff' | 'viewer'
   active: boolean
   notes: string | null
   createdAt?: string

@@ -301,9 +301,9 @@ export const api = {
   adminRevokeCampaignInvitation: (campaignId: string, id: string) =>
     request<{ invitation: CampaignInvitationRecord }>(`/admin/campaigns/${campaignId}/invitations/${id}/revoke`, json('POST')),
   adminWhitelists: () => request<{ whitelists: AdminWhitelistRecord[] }>('/admin/whitelists'),
-  adminCreateWhitelist: (payload: { email: string; role: 'admin' | 'staff'; notes?: string | null; active?: boolean }) =>
+  adminCreateWhitelist: (payload: { email: string; role: 'admin' | 'staff' | 'viewer'; notes?: string | null; active?: boolean }) =>
     request<{ whitelist: AdminWhitelistRecord }>('/admin/whitelists', json('POST', { whitelist: payload })),
-  adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff'; active?: boolean; notes?: string | null }) =>
+  adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff' | 'viewer'; active?: boolean; notes?: string | null }) =>
     request<{ whitelist: AdminWhitelistRecord }>(`/admin/whitelists/${id}`, json('PATCH', { whitelist: payload })),
 }
 

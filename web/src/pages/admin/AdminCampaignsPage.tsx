@@ -13,10 +13,28 @@ function centsToDollars(cents: number | null | undefined) {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)
 }
 
-function dollarsToCents(raw: string) {
-  const parsed = Number(raw.trim().replace(/[$,\s]/g, ''))
-  if (!Number.isFinite(parsed) || parsed < 0) return 0
-  return Math.round(parsed * 100)
+function parseDollarsToCents(raw: string, { positive = false }: { positive?: boolean } = {}): { ok: true; value: number } | { ok: false; error: string } {
+  const trimmed = raw.trim().replace(/[$,\s]/g, '')
+  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid dollar amount (for example, 30000 or 15000.00).' }
+  }
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || (positive ? parsed <= 0 : parsed < 0)) {
+    return { ok: false, error: positive ? 'Amount must be greater than $0.' : 'Amount cannot be negative.' }
+  }
+  return { ok: true, value: Math.round(parsed * 100) }
+}
+
+function parsePercentToBps(raw: string): { ok: true; value: number } | { ok: false; error: string } {
+  const trimmed = raw.trim().replace(/[%\s]/g, '')
+  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid percentage between 0 and 100.' }
+  }
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+    return { ok: false, error: 'Ticket share percentage must be between 0 and 100.' }
+  }
+  return { ok: true, value: Math.round(parsed * 100) }
 }
 
 function formatUsd(cents: number) {
@@ -111,20 +129,34 @@ export function AdminCampaignsPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    const goalParsed = parseDollarsToCents(goalDollars, { positive: true })
+    if (!goalParsed.ok) {
+      setError(`Fundraising goal: ${goalParsed.error}`)
+      return
+    }
+    const upfrontParsed = parseDollarsToCents(fdaaUpfrontDollars)
+    if (!upfrontParsed.ok) {
+      setError(`FDAA upfront allocation: ${upfrontParsed.error}`)
+      return
+    }
+    const shareParsed = parsePercentToBps(fdaaSharePercent)
+    if (!shareParsed.ok) {
+      setError(`FDAA ticket share: ${shareParsed.error}`)
+      return
+    }
+
     setSaving(true)
     setMessage('')
     setError('')
     try {
-      const shareBps = Math.round((Number(fdaaSharePercent) || 0) * 100)
       const basePayload = {
-        slug: slug.trim().toLowerCase(),
         title: title.trim(),
         tagline: tagline.trim() || null,
         status,
         featured,
-        goalCents: dollarsToCents(goalDollars),
-        fdaaUpfrontCents: dollarsToCents(fdaaUpfrontDollars),
-        fdaaTicketShareBps: shareBps,
+        goalCents: goalParsed.value,
+        fdaaUpfrontCents: upfrontParsed.value,
+        fdaaTicketShareBps: shareParsed.value,
         publicMeterEnabled,
         includeFdaaInPublicMeter,
         donationUrl: donationUrl.trim() || null,
@@ -141,6 +173,7 @@ export function AdminCampaignsPage() {
       } else {
         await api.adminCreateCampaign({
           ...basePayload,
+          slug: slug.trim().toLowerCase(),
           tournamentId,
           classCohortId,
         })
@@ -195,7 +228,7 @@ export function AdminCampaignsPage() {
               </select>
             </Field>
             <Field label="URL slug">
-              <input value={slug} onChange={(e) => setSlug(e.target.value)} required placeholder="2027-class-of-2017" />
+              <input value={slug} onChange={(e) => setSlug(e.target.value)} required disabled={Boolean(editing)} placeholder="2027-class-of-2017" />
             </Field>
             <Field label="Campaign title">
               <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Class of 2017 Host Year" />
