@@ -176,7 +176,7 @@ class TournamentChampion < ApplicationRecord
     self.bracket = bracket.to_s.strip.presence || "overall"
     self.champion_key = self.class.canonical_key(champion_key.presence || champion_label)
     self.runner_up_key = self.class.canonical_key(runner_up_key.presence || runner_up_label)
-    bracket_slug = bracket.present? && bracket != "overall" ? bracket : nil
+    bracket_slug = bracket.present? && !%w[overall unknown].include?(bracket) ? bracket : nil
     self.slug = slug.to_s.strip.presence || [ year, edition_label.presence, bracket_slug ].compact.join("-").parameterize
   end
 

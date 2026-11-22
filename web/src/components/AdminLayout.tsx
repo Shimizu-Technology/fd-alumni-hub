@@ -328,8 +328,14 @@ export function AdminLayout() {
     }
   }, [desktopCollapsed])
 
+  const showUnavailableState = backend.isUnavailable || auth.errorKind === 'network'
+
   useEffect(() => {
-    if (!mobileOpen || typeof document === 'undefined') return
+    if (showUnavailableState && mobileOpen) setMobileOpen(false)
+  }, [showUnavailableState, mobileOpen])
+
+  useEffect(() => {
+    if (!mobileOpen || showUnavailableState || typeof document === 'undefined') return
 
     const previousOverflow = document.body.style.overflow
     const opener = mobileMenuButtonRef.current
@@ -348,14 +354,14 @@ export function AdminLayout() {
       const mobileNav = document.getElementById(mobileNavId)
       if (document.activeElement instanceof HTMLElement && mobileNav?.contains(document.activeElement)) opener?.focus()
     }
-  }, [mobileOpen])
+  }, [mobileOpen, showUnavailableState])
 
   const retryConnection = async () => {
     await backend.retry()
     await auth.refreshUser()
   }
 
-  if (backend.isUnavailable || auth.errorKind === 'network') {
+  if (showUnavailableState) {
     return (
       <div className="admin-shell centered-shell">
         <div className="auth-card">

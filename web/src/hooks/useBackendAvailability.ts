@@ -55,18 +55,22 @@ export function useBackendAvailability(healthUrl: string) {
   }, [check, status])
 
   const reportUnavailable = useCallback(() => {
+    requestId.current += 1
     setStatus('unavailable')
   }, [])
 
   const reportAvailable = useCallback(() => {
+    requestId.current += 1
     setStatus('available')
   }, [])
+
+  const retry = useCallback(() => check(true), [check])
 
   return {
     status,
     isChecking: status === 'checking',
     isUnavailable: status === 'unavailable',
-    retry: () => check(true),
+    retry,
     reportUnavailable,
     reportAvailable,
   }

@@ -25,7 +25,7 @@ export function HomePage() {
   }, [data])
 
   useEffect(() => {
-    if (!data || error) return undefined
+    if (!data) return undefined
 
     const intervalId = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
@@ -33,7 +33,7 @@ export function HomePage() {
     }, homeRefreshIntervalMs)
 
     return () => window.clearInterval(intervalId)
-  }, [data, error, reload])
+  }, [data, reload])
 
   const homePolls = useMemo(() => {
     const base = data?.predictionPolls || []
@@ -125,6 +125,12 @@ export function HomePage() {
         </>
       ) : data ? (
         <>
+          {error && (
+            <Panel className="notice-panel">
+              <span>Live refresh failed — showing last loaded data.</span>{' '}
+              <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+            </Panel>
+          )}
           <div className="stats-grid">
             <StatCard label="Games today" value={data.todayGames.length} tone="maroon" />
             <StatCard label="Live now" value={data.liveGames.length} detail={data.liveGames.length ? 'Game in progress' : 'No active games'} tone={data.liveGames.length ? 'live' : 'neutral'} />

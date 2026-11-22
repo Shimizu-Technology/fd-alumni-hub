@@ -10,7 +10,14 @@ export function StandingsPage() {
   const [year] = useState(() => numericSearchParam('year'))
   const [division, setDivision] = useState('')
   const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
-  const { data, loading, error, reload } = useAsync(() => api.publicStandings({ year, division }), [year, division])
+  const queryKey = JSON.stringify({ year, division })
+  const { data: rawData, loading, error, reload } = useAsync(async () => ({
+    queryKey,
+    payload: await api.publicStandings({ year, division }),
+  }), [queryKey])
+
+  const data = rawData?.queryKey === queryKey ? rawData.payload : null
+  const filterOptions = rawData?.payload || null
   const filteredStandings = useMemo(() => {
     const standings = data?.standings || []
     return teamId ? standings.filter((standing) => standing.team.id === teamId) : standings
@@ -19,10 +26,18 @@ export function StandingsPage() {
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow={data?.tournament ? `${data.tournament.year} standings` : 'Standings'}
+        eyebrow={filterOptions?.tournament ? `${filterOptions.tournament.year} standings` : 'Standings'}
         title="Division standings"
         description="Records update from final scores entered by tournament staff. Score coverage shows how much of the schedule has verified results."
       />
+
+      {filterOptions && (
+        <Panel className="toolbar-panel standings-filter-panel">
+          <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{filterOptions.standings.map((standing) => <option key={standing.team.id} value={standing.team.id}>{standing.team.displayName}</option>)}</select></label>
+          <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{filterOptions.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          {(teamId || division) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision('') }}>Clear filters</button>}
+        </Panel>
+      )}
 
       {loading && !data ? (
         <LoadingState label="Loading standings" />
@@ -35,17 +50,17 @@ export function StandingsPage() {
         />
       ) : (
         <>
+          {error && (
+            <Panel className="notice-panel">
+              <span>Could not refresh standings — showing last loaded records.</span>{' '}
+              <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+            </Panel>
+          )}
           <div className="stats-grid three">
             <StatCard label="Scored games" value={data?.scoreCoverage.scoredGames || 0} tone="maroon" />
             <StatCard label="Total games" value={data?.scoreCoverage.totalGames || 0} />
             <StatCard label="Coverage" value={`${data?.scoreCoverage.percent || 0}%`} tone="gold" />
           </div>
-
-          <Panel className="toolbar-panel standings-filter-panel">
-            <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.standings.map((standing) => <option key={standing.team.id} value={standing.team.id}>{standing.team.displayName}</option>)}</select></label>
-            <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-            {(teamId || division) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision('') }}>Clear filters</button>}
-          </Panel>
 
           {!data?.standings.length ? (
             <EmptyState title="No standings yet" description="Standings appear after games have final scores and the recompute job has run." />

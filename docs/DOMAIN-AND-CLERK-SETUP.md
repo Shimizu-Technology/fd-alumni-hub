@@ -22,11 +22,11 @@ Modeled after HåfaPass's production setup on `hafapass.shimizu-technology.com`.
 | Variable | Value for `fd-alumni.shimizu-technology.com` | Notes |
 | --- | --- | --- |
 | `PUBLIC_SITE_URL` | `https://fd-alumni.shimizu-technology.com` | Canonical public frontend origin (automatically included in CORS). |
-| `ALLOWED_ORIGINS` | `https://fd-alumni.shimizu-technology.com,https://fd-alumni-tourney.netlify.app` | Keep both origins during cutover; remove the Netlify origin once traffic moves. Production fails closed without explicit origins. |
+| `ALLOWED_ORIGINS` | `https://fd-alumni.shimizu-technology.com,https://fd-alumni-tourney.netlify.app` | Keep both origins during cutover so public pages on the old Netlify URL still work before redirect; remove the Netlify origin once traffic moves. Production fails closed without explicit origins. |
 | `CLERK_PUBLISHABLE_KEY` | `pk_live_...` | Matches Netlify's live publishable key. Used to derive issuer/JWKS if `CLERK_ISSUER` is omitted. |
 | `CLERK_ISSUER` | `https://clerk.fd-alumni.shimizu-technology.com` | Production Clerk Frontend API origin (custom domain created in Clerk). |
 | `CLERK_JWKS_URL` | `https://clerk.fd-alumni.shimizu-technology.com/.well-known/jwks.json` | Optional when `CLERK_ISSUER` is set; explicit value avoids ambiguity. |
-| `CLERK_AUTHORIZED_PARTIES` | `https://fd-alumni.shimizu-technology.com,https://fd-alumni-tourney.netlify.app` | Enforces JWT `azp` claim matching against allowed frontend origins. |
+| `CLERK_AUTHORIZED_PARTIES` | `https://fd-alumni.shimizu-technology.com` | Enforces JWT `azp` claim matching against the production frontend origin (falls back to `ALLOWED_ORIGINS` in production if unset). Note: a `pk_live_` Clerk instance bound to `fd-alumni.shimizu-technology.com` serves admin sign-in on that custom domain only, not on `*.netlify.app`. |
 | `CLERK_SECRET_KEY` | `sk_live_...` | Production Clerk secret key for Backend API email fallback. |
 | `CLERK_AUDIENCE` | *(optional)* | Set only if using a custom JWT template with an `aud` claim. |
 
@@ -39,7 +39,7 @@ Add `https://fd-alumni.shimizu-technology.com` to the S3 bucket's CORS `AllowedO
 1. **Cloudflare DNS (`shimizu-technology.com`):**
    - Add DNS-only (grey cloud) CNAME: `fd-alumni` → `fd-alumni-tourney.netlify.app`.
 2. **Netlify (`fd-alumni-tourney`):**
-   - Add custom domain `fd-alumni.shimizu-technology.com` and wait for TLS provisioning.
+   - Add custom domain `fd-alumni.shimizu-technology.com`, wait for TLS provisioning, and set `fd-alumni.shimizu-technology.com` as the **primary domain** so `fd-alumni-tourney.netlify.app` redirects to it (required so `/admin` Clerk sign-in always runs on the custom domain).
 3. **Clerk production instance:**
    - Create/configure a production Clerk instance for `fd-alumni.shimizu-technology.com`.
    - Add Clerk's five DNS CNAME records in Cloudflare (`clerk.fd-alumni`, `accounts.fd-alumni`, `clkmail.fd-alumni`, `clk._domainkey.fd-alumni`, `clk2._domainkey.fd-alumni`) and verify in Clerk.
@@ -50,7 +50,7 @@ Add `https://fd-alumni.shimizu-technology.com` to the S3 bucket's CORS `AllowedO
    - Run reviewed data tasks once migrations complete:
      - `bin/rails db:migrate` (aligns default divisions to Maroon/Gold/Platinum/Special)
      - `bin/rails fd:history:seed_champions` (updates 2021/2022/2024 runners-up and adds 2026 champions)
-     - `DRY_RUN=1 bin/rails fd:standings:recompute_all` → review output → `bin/rails fd:standings:recompute_all`
+     - `DRY_RUN=1 bin/rails fd:standings:recompute_all` → inspect excluded team/game names → `CONFIRM=1 bin/rails fd:standings:recompute_all` (or `YEAR=2026 bin/rails fd:standings:recompute_all`)
 5. **Netlify redeploy:**
    - Set `VITE_SITE_URL=https://fd-alumni.shimizu-technology.com` and `VITE_CLERK_PUBLISHABLE_KEY=pk_live_...` in Netlify UI and trigger a fresh production build (`VITE_*` values are baked at build time).
 6. **Post-cutover verification:**

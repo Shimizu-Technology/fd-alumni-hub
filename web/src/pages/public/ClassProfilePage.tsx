@@ -11,13 +11,31 @@ import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function ClassProfilePage() {
   const { classKey = '' } = useParams()
-  const { data, loading, error, reload } = useAsync(async () => {
+  const { data, loading, error, errorStatus, reload } = useAsync(async () => {
     if (!classKey) throw new Error('Class archive not found')
     return api.publicClass(classKey)
   }, [classKey])
 
   if (loading && !data) return <LoadingState label="Loading class archive" />
   if (error) {
+    if (errorStatus === 404) {
+      return (
+        <div className="page-stack class-profile-page">
+          <PageHeader
+            eyebrow="Class archive"
+            title="Class archive not found"
+            description="No class archive matches this link."
+            actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
+          />
+          <EmptyState
+            title="Class archive not found"
+            description="Browse the tournament history timeline to pick an alumni class."
+            action={<Link className="btn secondary" to="/history">Browse history</Link>}
+          />
+        </div>
+      )
+    }
+
     return (
       <div className="page-stack class-profile-page">
         <PageHeader

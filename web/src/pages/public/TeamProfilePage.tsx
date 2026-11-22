@@ -11,13 +11,31 @@ import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function TeamProfilePage() {
   const { teamId = '' } = useParams()
-  const { data, loading, error, reload } = useAsync(async () => {
+  const { data, loading, error, errorStatus, reload } = useAsync(async () => {
     if (!teamId) throw new Error('Team entry profile not found')
     return api.publicTeam(teamId)
   }, [teamId])
 
   if (loading && !data) return <LoadingState label="Loading team entry profile" />
   if (error) {
+    if (errorStatus === 404) {
+      return (
+        <div className="page-stack team-profile-page">
+          <PageHeader
+            eyebrow="Team entry"
+            title="Team entry not found"
+            description="No team profile matches this link."
+            actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
+          />
+          <EmptyState
+            title="Team entry not found"
+            description="Check the schedule or champion history to find a valid team profile."
+            action={<Link className="btn secondary" to="/schedule">View schedule</Link>}
+          />
+        </div>
+      )
+    }
+
     return (
       <div className="page-stack team-profile-page">
         <PageHeader

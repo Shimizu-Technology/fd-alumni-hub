@@ -8,7 +8,7 @@
   base = "."
   command = "npm ci --include=optional && npm run build"
   publish = "web/dist"
-  ignore = '[ -n "$CACHED_COMMIT_REF" ] && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web/ package.json package-lock.json netlify.toml'
+  ignore = '[ -n "$CACHED_COMMIT_REF" ] && [ "$CACHED_COMMIT_REF" != "$COMMIT_REF" ] && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web/ data/historical/ package.json package-lock.json netlify.toml'
 
 [build.environment]
   # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.

@@ -1,5 +1,6 @@
 require "test_helper"
 require "base64"
+require "openssl"
 
 class ClerkAuthTest < ActiveSupport::TestCase
   ENV_KEYS = %w[
@@ -64,5 +65,67 @@ class ClerkAuthTest < ActiveSupport::TestCase
     assert ClerkAuth.valid_authorized_party?({ "azp" => "https://fd-alumni-tourney.netlify.app/" })
     assert ClerkAuth.valid_authorized_party?({ "sub" => "user_123" })
     assert_not ClerkAuth.valid_authorized_party?({ "azp" => "https://evil.example.com" })
+  end
+
+  test "fails closed when CLERK_AUTHORIZED_PARTIES is configured with malformed entries" do
+    ENV["CLERK_AUTHORIZED_PARTIES"] = "fd-alumni.shimizu-technology.com"
+
+    assert_equal [], ClerkAuth.authorized_parties
+    assert_not ClerkAuth.valid_authorized_party?({ "azp" => "https://evil.example.com" })
+    assert_not ClerkAuth.valid_authorized_party?({ "sub" => "user_123" })
+  end
+
+  test "verifies signed RS256 token end-to-end and enforces iss, azp, and exp" do
+    rsa_key = OpenSSL::PKey::RSA.generate(2048)
+    jwk = JWT::JWK.new(rsa_key, kid: "test-kid-1")
+    jwks = { "keys" => [ jwk.export.transform_keys(&:to_s) ] }
+
+    ENV["CLERK_ISSUER"] = "https://clerk.fd-alumni.shimizu-technology.com"
+    ENV["CLERK_AUTHORIZED_PARTIES"] = "https://fd-alumni.shimizu-technology.com"
+
+    now = Time.now.to_i
+    valid_token = JWT.encode(
+      { "sub" => "user_abc", "iss" => "https://clerk.fd-alumni.shimizu-technology.com", "azp" => "https://fd-alumni.shimizu-technology.com", "iat" => now - 5, "exp" => now + 300 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-1" }
+    )
+    wrong_iss_token = JWT.encode(
+      { "sub" => "user_abc", "iss" => "https://other.clerk.accounts.dev", "azp" => "https://fd-alumni.shimizu-technology.com", "iat" => now - 5, "exp" => now + 300 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-1" }
+    )
+    wrong_azp_token = JWT.encode(
+      { "sub" => "user_abc", "iss" => "https://clerk.fd-alumni.shimizu-technology.com", "azp" => "https://evil.example.com", "iat" => now - 5, "exp" => now + 300 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-1" }
+    )
+    expired_token = JWT.encode(
+      { "sub" => "user_abc", "iss" => "https://clerk.fd-alumni.shimizu-technology.com", "azp" => "https://fd-alumni.shimizu-technology.com", "iat" => now - 600, "exp" => now - 120 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-1" }
+    )
+
+    with_stubbed_jwks(jwks) do
+      payload = ClerkAuth.verify(valid_token)
+      assert_equal "user_abc", payload["sub"]
+      assert_nil ClerkAuth.verify(wrong_iss_token)
+      assert_nil ClerkAuth.verify(wrong_azp_token)
+      assert_nil ClerkAuth.verify(expired_token)
+    end
+  end
+
+  private
+
+  def with_stubbed_jwks(jwks)
+    singleton = ClerkAuth.singleton_class
+    original = singleton.instance_method(:fetch_jwks)
+    singleton.define_method(:fetch_jwks) { |force_refresh: false| jwks }
+    yield
+  ensure
+    singleton.define_method(:fetch_jwks, original) if original
   end
 end

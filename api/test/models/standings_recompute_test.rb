@@ -73,11 +73,15 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     class_2017 = tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
     fs1 = tournament.teams.create!(class_year_label: "FS1", display_name: "FS1")
     fs2 = tournament.teams.create!(class_year_label: "FS2", display_name: "FS2")
-    tbd = tournament.teams.create!(class_year_label: "TBD", display_name: "Class TBD", division: "Special")
+    tbd = tournament.teams.create!(class_year_label: "TBD", display_name: "Class TBD", division: "Maroon")
+    special_team = tournament.teams.create!(class_year_label: "1980", display_name: "Class of 1980", division: "Special")
     wmp1 = tournament.teams.create!(class_year_label: "WMP1", display_name: "Class WMP1", division: "Maroon")
+    m1_winner = tournament.teams.create!(class_year_label: "M1 Winner", display_name: "M1 Winner", division: "Maroon")
+    fs_alumni = tournament.teams.create!(class_year_label: "FS Alumni", display_name: "FS Alumni", division: "Gold")
     sixties = tournament.teams.create!(class_year_label: "60s", display_name: "Class 60s", division: "Gold")
+    seventies = tournament.teams.create!(class_year_label: "70s", display_name: "Class 70s", division: "Gold")
 
-    # Counts: pool game
+    # Counts: pool games (including real Gold division 60s and non-father-son "FS Alumni" teams)
     tournament.games.create!(
       home_team: class_2016,
       away_team: class_2017,
@@ -87,7 +91,23 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
       away_score: 65,
       notes: "phase=pool"
     )
-    # Excluded: playoff game
+    tournament.games.create!(
+      home_team: sixties,
+      away_team: seventies,
+      start_time: Time.zone.local(2026, 7, 4, 15, 0),
+      status: "final",
+      home_score: 48,
+      away_score: 42
+    )
+    tournament.games.create!(
+      home_team: fs_alumni,
+      away_team: seventies,
+      start_time: Time.zone.local(2026, 7, 5, 16, 0),
+      status: "final",
+      home_score: 52,
+      away_score: 49
+    )
+    # Excluded: playoff game (notes)
     tournament.games.create!(
       home_team: class_2017,
       away_team: class_2016,
@@ -96,6 +116,16 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
       home_score: 80,
       away_score: 75,
       notes: "phase=playoff"
+    )
+    # Excluded: division-prefixed playoff bracket code
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: class_2017,
+      start_time: Time.zone.local(2026, 7, 20, 19, 0),
+      status: "final",
+      home_score: 64,
+      away_score: 61,
+      bracket_code: "MSF1"
     )
     # Excluded: father-son game
     tournament.games.create!(
@@ -118,17 +148,34 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
       away_score: 1,
       placeholder: true
     )
-    # Excluded: special division game
+    # Excluded: special division game between two otherwise eligible teams
     tournament.games.create!(
       home_team: class_2016,
-      away_team: tbd,
+      away_team: class_2017,
       start_time: Time.zone.local(2026, 7, 11, 14, 0),
       status: "final",
       home_score: 55,
       away_score: 45,
       division: "Special"
     )
-
+    # Excluded: placeholder team (TBD) in Maroon
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: tbd,
+      start_time: Time.zone.local(2026, 7, 11, 16, 0),
+      status: "final",
+      home_score: 55,
+      away_score: 45
+    )
+    # Excluded: numeric-class team in Special division
+    tournament.games.create!(
+      home_team: special_team,
+      away_team: class_2016,
+      start_time: Time.zone.local(2026, 7, 12, 16, 0),
+      status: "final",
+      home_score: 51,
+      away_score: 49
+    )
     # Excluded: bracket placeholder team game
     tournament.games.create!(
       home_team: class_2016,
@@ -139,11 +186,11 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
       away_score: 50,
       bracket_code: "MP9"
     )
-    # Excluded: 60s exhibition team
+    # Excluded: named winner placeholder team
     tournament.games.create!(
-      home_team: sixties,
+      home_team: m1_winner,
       away_team: class_2016,
-      start_time: Time.zone.local(2026, 7, 12, 15, 0),
+      start_time: Time.zone.local(2026, 7, 21, 19, 0),
       status: "final",
       home_score: 40,
       away_score: 42
@@ -151,12 +198,12 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
 
     result = Standings::Recompute.call(tournament)
 
-    assert_equal 2, result.teams
-    assert_equal 1, result.games
-    assert_equal 5, result.excluded_teams
-    assert_equal 6, result.excluded_games
+    assert_equal 5, result.teams
+    assert_equal 3, result.games
+    assert_equal 6, result.excluded_teams
+    assert_equal 9, result.excluded_games
 
-    assert_equal [ class_2016.id, class_2017.id ].sort, tournament.standings.pluck(:team_id).sort
+    assert_equal [ class_2016.id, class_2017.id, fs_alumni.id, sixties.id, seventies.id ].sort, tournament.standings.pluck(:team_id).sort
 
     standing_2016 = tournament.standings.find_by!(team: class_2016)
     standing_2017 = tournament.standings.find_by!(team: class_2017)

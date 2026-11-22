@@ -98,7 +98,7 @@ export function HistoryPage() {
   )
 }
 
-type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes'>
+type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes' | 'primary' | 'position'>
 
 function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournament[]): HistoryRecord[] {
   const historyRecords: HistoryRecord[] = records.map((record) => ({ ...record }))
@@ -119,8 +119,15 @@ function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournam
       source: 'Tournament database',
       status: tournament.status === 'completed' || tournament.status === 'cancelled' || tournament.status === 'upcoming' || tournament.status === 'live' ? tournament.status === 'live' ? 'upcoming' : tournament.status : 'unknown',
       notes: tournament.status === 'completed' ? null : `${tournament.status} tournament`,
+      primary: true,
+      position: 0,
     })
   })
 
-  return historyRecords.sort((a, b) => b.year - a.year || a.label.localeCompare(b.label))
+  return historyRecords.sort((a, b) => (
+    b.year - a.year ||
+    Number(Boolean(b.primary)) - Number(Boolean(a.primary)) ||
+    (a.position ?? 999) - (b.position ?? 999) ||
+    a.label.localeCompare(b.label)
+  ))
 }

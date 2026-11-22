@@ -15,14 +15,20 @@ export function SchedulePage() {
   const [division, setDivision] = useState('')
   const [phase, setPhase] = useState('')
   const [teamId, setTeamId] = useState(() => new URLSearchParams(window.location.search).get('teamId') || '')
-  const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ year, division, phase, teamId }), [year, division, phase, teamId])
+  const queryKey = JSON.stringify({ year, division, phase, teamId })
+  const { data: rawData, loading, error, reload } = useAsync(async () => ({
+    queryKey,
+    payload: await api.publicSchedule({ year, division, phase, teamId }),
+  }), [queryKey])
 
+  const data = rawData?.queryKey === queryKey ? rawData.payload : null
+  const filterOptions = rawData?.payload || null
   const grouped = useMemo(() => groupGamesByDay(data?.games || []), [data?.games])
 
   return (
     <div className="page-stack schedule-page">
       <PageHeader
-        eyebrow={data?.tournament ? `${data.tournament.year} tournament` : 'Schedule'}
+        eyebrow={filterOptions?.tournament ? `${filterOptions.tournament.year} tournament` : 'Schedule'}
         title="Tournament schedule"
         description="Game times are shown for Guam. Ticket and stream buttons route to partner platforms when links are available."
         actions={<Link className="btn secondary" to="/info">Rules and ticket info <IconArrowRight /></Link>}
@@ -36,6 +42,15 @@ export function SchedulePage() {
         <Link className="btn primary" to="/today">Open Today <IconArrowRight /></Link>
       </Panel>
 
+      {filterOptions && (
+        <Panel className="toolbar-panel schedule-filter-panel">
+          <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{filterOptions.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
+          <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{filterOptions.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{filterOptions.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
+          {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
+        </Panel>
+      )}
+
       {loading && !data ? (
         <LoadingState label="Loading tournament schedule" />
       ) : error && !data ? (
@@ -47,12 +62,12 @@ export function SchedulePage() {
         />
       ) : (
         <>
-          <Panel className="toolbar-panel schedule-filter-panel">
-            <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
-            <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-            <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
-            {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
-          </Panel>
+          {error && (
+            <Panel className="notice-panel">
+              <span>Could not refresh schedule — showing last loaded games.</span>{' '}
+              <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+            </Panel>
+          )}
 
           {grouped.length > 1 && (
             <nav className="schedule-day-jump" aria-label="Schedule day shortcuts">

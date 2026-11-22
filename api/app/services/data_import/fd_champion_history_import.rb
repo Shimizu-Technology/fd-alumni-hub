@@ -68,7 +68,7 @@ module DataImport
       return source["slug"].to_s.strip.parameterize if source["slug"].present?
 
       bracket = source["bracket"].to_s.strip.downcase
-      bracket_slug = bracket.present? && bracket != "overall" ? bracket : nil
+      bracket_slug = bracket.present? && !%w[overall unknown].include?(bracket) ? bracket : nil
       [ source.fetch("year"), source["editionLabel"].presence, bracket_slug ].compact.join("-").parameterize
     end
 

@@ -41,6 +41,12 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
     post "/api/v1/admin/tournaments", params: { tournament: { name: "Anon", year: 2028, startDate: "2028-06-25", endDate: "2028-07-16" } }, as: :json
     assert_response :unauthorized
 
+    patch "/api/v1/admin/games/#{@game.id}", params: { game: { homeScore: 10 } }, as: :json
+    assert_response :unauthorized
+
+    delete "/api/v1/admin/articles/#{@article.id}"
+    assert_response :unauthorized
+
     get "/api/v1/admin/content-ingest-items"
     assert_response :unauthorized
   end
@@ -50,6 +56,12 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
 
     get "/api/v1/admin/tournaments", headers: headers_for(@viewer)
+    assert_response :forbidden
+
+    patch "/api/v1/admin/games/#{@game.id}", params: { game: { homeScore: 10 } }, headers: headers_for(@viewer), as: :json
+    assert_response :forbidden
+
+    delete "/api/v1/admin/sponsors/#{@sponsor.id}", headers: headers_for(@viewer)
     assert_response :forbidden
 
     get "/api/v1/admin/content-ingest-items", headers: headers_for(@viewer)
@@ -147,6 +159,24 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
     get "/api/v1/admin/content-ingest-items", headers: headers_for(@staff)
     assert_response :forbidden
 
+    get "/api/v1/admin/content-ingest-items/#{@ingest_item.id}", headers: headers_for(@staff)
+    assert_response :forbidden
+
+    post "/api/v1/admin/content-ingest-items",
+      params: { contentIngestItem: { tournamentId: @tournament.id, kind: "article", source: "GSPN", title: "Blocked", url: "https://example.test/blocked" } },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :forbidden
+
+    patch "/api/v1/admin/content-ingest-items/#{@ingest_item.id}",
+      params: { contentIngestItem: { title: "Blocked edit" } },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :forbidden
+
+    delete "/api/v1/admin/content-ingest-items/#{@ingest_item.id}", headers: headers_for(@staff)
+    assert_response :forbidden
+
     post "/api/v1/admin/content-ingest-items/#{@ingest_item.id}/approve", headers: headers_for(@staff)
     assert_response :forbidden
 
@@ -173,8 +203,26 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
       as: :json
     assert_response :created
 
+    patch "/api/v1/admin/divisions/#{@division.id}",
+      params: { division: { position: 2 } },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :success
+
     get "/api/v1/admin/content-ingest-items", headers: headers_for(@admin)
     assert_response :success
+
+    get "/api/v1/admin/content-ingest-items/#{@ingest_item.id}", headers: headers_for(@admin)
+    assert_response :success
+
+    patch "/api/v1/admin/content-ingest-items/#{@ingest_item.id}",
+      params: { contentIngestItem: { title: "Updated candidate" } },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :success
+
+    delete "/api/v1/admin/content-ingest-items/#{@ingest_item.id}", headers: headers_for(@admin)
+    assert_response :no_content
 
     delete "/api/v1/admin/teams/#{@removable_team.id}",
       params: { tournamentId: @tournament.id },

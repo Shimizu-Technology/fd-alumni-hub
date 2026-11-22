@@ -34,12 +34,11 @@ class Game < ApplicationRecord
 
   def playoff_phase?
     notes.to_s.include?("phase=playoff") ||
-      bracket_code.to_s.strip.match?(/\A(?:W?(?:MP|GP|PP)|QF|SF|F)\d*\z/i)
+      bracket_code.to_s.strip.match?(/\A(?:[WL]?(?:MP|GP|PP)|[MGP]?(?:QF|SF|F)|L)\d*\z/i)
   end
 
   def fatherson_phase?
-    notes.to_s.include?("phase=fatherson") || bracket_code.to_s.match?(/\AFS/i) ||
-      home_team&.fatherson_team? || away_team&.fatherson_team?
+    notes.to_s.include?("phase=fatherson") || bracket_code.to_s.match?(/\AFS/i)
   end
 
   def special_division?
@@ -48,16 +47,20 @@ class Game < ApplicationRecord
       away_team&.special_division?
   end
 
+  def standings_exclusion_reason
+    return "not_final" unless status == "final" && home_score.present? && away_score.present?
+    return "placeholder_game" if placeholder?
+    return "fatherson_phase" if fatherson_phase?
+    return "playoff_phase" if playoff_phase?
+    return "special_division" if special_division?
+    return "excluded_home_team" if home_team&.excluded_from_standings?
+    return "excluded_away_team" if away_team&.excluded_from_standings?
+
+    nil
+  end
+
   def counts_toward_standings?
-    status == "final" &&
-      home_score.present? &&
-      away_score.present? &&
-      !placeholder? &&
-      !fatherson_phase? &&
-      !playoff_phase? &&
-      !special_division? &&
-      !home_team&.excluded_from_standings? &&
-      !away_team&.excluded_from_standings?
+    standings_exclusion_reason.nil?
   end
 
   def summary_json

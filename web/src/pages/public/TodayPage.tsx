@@ -24,7 +24,7 @@ export function TodayPage() {
   }, [data])
 
   useEffect(() => {
-    if (!data || error) return undefined
+    if (!data) return undefined
 
     const intervalId = window.setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
@@ -32,7 +32,7 @@ export function TodayPage() {
     }, todayRefreshIntervalMs)
 
     return () => window.clearInterval(intervalId)
-  }, [data, error, reload])
+  }, [data, reload])
 
   const polls = useMemo(() => {
     const base = data?.predictionPolls || []
@@ -72,6 +72,12 @@ export function TodayPage() {
         />
       ) : (
         <>
+          {error && (
+            <Panel className="notice-panel">
+              <span>Live refresh failed — showing last loaded scores.</span>{' '}
+              <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+            </Panel>
+          )}
           <section className="today-brief-grid">
             <Panel className="today-brief-card">
               <span>Host class</span>

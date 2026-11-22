@@ -14,35 +14,16 @@ class ClerkAuth
         return handle_test_token(token)
       end
 
-      jwks = fetch_jwks
-      return nil if jwks.nil?
-
-      decode_options = {
-        algorithms: [ "RS256" ],
-        jwks: jwks,
-        verify_iat: true,
-        leeway: TOKEN_CLOCK_SKEW_LEEWAY_SECONDS
-      }
-
-      if expected_issuer.present?
-        decode_options[:iss] = expected_issuer
-        decode_options[:verify_iss] = true
-      end
-
-      if expected_audience.present?
-        decode_options[:aud] = expected_audience
-        decode_options[:verify_aud] = true
-      end
-
-      payload = JWT.decode(token, nil, true, decode_options).first
+      payload = decode_with_jwks(token)
+      return nil unless payload
       return nil unless valid_authorized_party?(payload)
 
       payload
-    rescue JWT::DecodeError => e
-      Rails.logger.warn("JWT decode error: #{e.message}")
-      nil
     rescue JWT::ExpiredSignature
       Rails.logger.debug("JWT token expired")
+      nil
+    rescue JWT::DecodeError => e
+      Rails.logger.warn("JWT decode error: #{e.message}")
       nil
     end
 
@@ -82,9 +63,15 @@ class ClerkAuth
 
     def authorized_parties
       raw = ENV.fetch("CLERK_AUTHORIZED_PARTIES", nil).presence
-      return [] unless raw
+      if raw
+        return raw.split(",").filter_map { |origin| normalize_origin(origin) }.uniq
+      end
 
-      raw.split(",").filter_map { |origin| normalize_origin(origin) }.uniq
+      if Rails.env.production? && defined?(CorsOrigins)
+        return CorsOrigins.allowed_origins(production: true)
+      end
+
+      []
     end
 
     def test_instance?
@@ -98,7 +85,12 @@ class ClerkAuth
     end
 
     def valid_authorized_party?(payload)
+      configured_raw = ENV.fetch("CLERK_AUTHORIZED_PARTIES", nil).presence
       parties = authorized_parties
+      if configured_raw && parties.empty?
+        Rails.logger.error("ClerkAuth: CLERK_AUTHORIZED_PARTIES is set but contains no valid origins; rejecting token.")
+        return false
+      end
       return true if parties.empty?
       return true unless payload.key?("azp")
 
@@ -108,13 +100,52 @@ class ClerkAuth
 
     private
 
-    def fetch_jwks
+    def decode_with_jwks(token)
+      jwks = fetch_jwks
+      return nil if jwks.nil?
+
+      decode_token_with_jwks(token, jwks)
+    rescue JWT::ExpiredSignature
+      raise
+    rescue JWT::DecodeError => e
+      raise unless e.message.to_s.include?("Could not find public key for kid")
+
+      refreshed_jwks = fetch_jwks(force_refresh: true)
+      return nil if refreshed_jwks.nil?
+
+      decode_token_with_jwks(token, refreshed_jwks)
+    end
+
+    def decode_token_with_jwks(token, jwks)
+      decode_options = {
+        algorithms: [ "RS256" ],
+        jwks: jwks,
+        verify_iat: true,
+        leeway: TOKEN_CLOCK_SKEW_LEEWAY_SECONDS
+      }
+
+      if expected_issuer.present?
+        decode_options[:iss] = expected_issuer
+        decode_options[:verify_iss] = true
+      end
+
+      if expected_audience.present?
+        decode_options[:aud] = expected_audience
+        decode_options[:verify_aud] = true
+      end
+
+      JWT.decode(token, nil, true, decode_options).first
+    end
+
+    def fetch_jwks(force_refresh: false)
       jwks_uri = jwks_url
       return nil unless jwks_uri
 
       cache_key = "#{JWKS_CACHE_KEY}:#{jwks_uri}"
-      cached = Rails.cache.read(cache_key)
-      return cached if cached.present?
+      unless force_refresh
+        cached = Rails.cache.read(cache_key)
+        return cached if cached.present?
+      end
 
       response = HTTParty.get(jwks_uri, timeout: 5)
 

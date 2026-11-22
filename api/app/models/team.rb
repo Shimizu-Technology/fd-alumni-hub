@@ -28,21 +28,31 @@ class Team < ApplicationRecord
 
   def fatherson_team?
     [ display_name, class_year_label ].any? do |label|
-      text = label.to_s
-      text.match?(/\bFS\d*\b/i) || text.match?(/father[\s-]*son/i)
+      text = label.to_s.strip
+      text.match?(/\A(?:class\s+)?(?:\d+s?\s+)?FS\d*\z/i) || text.match?(/father[\s-]*son/i)
     end
   end
 
   def placeholder_team?
     [ display_name, class_year_label ].any? do |label|
       text = label.to_s.strip
-      text.match?(/\A(?:class\s+)?(?:tbd|placeholder|winner\b|loser\b|60s\b)/i) ||
+      text.match?(/\A(?:class\s+)?(?:tbd|placeholder)\b/i) ||
+        text.match?(/\b(?:winner|loser)\b/i) ||
+        text.match?(/\bseed\s*\d+\b/i) ||
         text.match?(/\b[WL](?:MP|GP|PP)\d*\b/i)
     end
   end
 
+  def standings_exclusion_reason
+    return "special_division" if special_division?
+    return "fatherson_team" if fatherson_team?
+    return "placeholder_team" if placeholder_team?
+
+    nil
+  end
+
   def excluded_from_standings?
-    special_division? || fatherson_team? || placeholder_team?
+    standings_exclusion_reason.present?
   end
 
   def api_json(include_roster: false)

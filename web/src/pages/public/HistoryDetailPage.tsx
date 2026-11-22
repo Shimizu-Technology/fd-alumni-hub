@@ -89,6 +89,13 @@ export function HistoryDetailPage() {
         <img src="/brand/fd-crest.png" alt="" aria-hidden="true" />
       </section>
 
+      {failed?.champions && (
+        <Panel className="notice-panel">
+          <span>Showing preserved offline champion records because the live champions API could not be reached.</span>{' '}
+          <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+        </Panel>
+      )}
+
       {championRecords.length > 0 && <ChampionRecordsPanel records={championRecords} />}
 
       <div className="stats-grid four">

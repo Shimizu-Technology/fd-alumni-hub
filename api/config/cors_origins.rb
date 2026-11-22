@@ -20,13 +20,24 @@ module CorsOrigins
     origins = (configured + [ site_origin ].compact).uniq
 
     return origins if origins.any?
-    return [] if production
+
+    if production
+      log_warn("CorsOrigins: no valid CORS origins configured in production; set ALLOWED_ORIGINS or PUBLIC_SITE_URL.")
+      return []
+    end
 
     DEFAULT_LOCAL_ORIGINS
   end
 
   def parse_list(raw)
-    raw.to_s.split(",").filter_map { |value| normalize_origin(value) }.uniq
+    raw.to_s.split(",").filter_map do |value|
+      trimmed = value.to_s.strip
+      next if trimmed.empty?
+
+      normalized = normalize_origin(trimmed)
+      log_warn("CorsOrigins: ignoring invalid CORS origin entry #{trimmed.inspect}") if normalized.nil?
+      normalized
+    end.uniq
   end
 
   def normalize_origin(raw)
@@ -41,5 +52,9 @@ module CorsOrigins
     origin
   rescue URI::InvalidURIError
     nil
+  end
+
+  def log_warn(message)
+    Rails.logger&.warn(message) if defined?(Rails)
   end
 end
