@@ -1,6 +1,7 @@
 class Tournament < ApplicationRecord
   STATUSES = %w[upcoming live completed cancelled].freeze
 
+  has_one :host_campaign, dependent: :restrict_with_error
   has_many :teams, dependent: :destroy
   has_many :games, dependent: :destroy
   has_many :standings, dependent: :destroy
@@ -17,14 +18,19 @@ class Tournament < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :name, uniqueness: { scope: :year }
 
-  scope :upcoming_or_live, -> { where(status: %w[live upcoming]).order(year: :desc) }
+  scope :live_tournaments, -> { where(status: "live").order(year: :desc, start_date: :desc, id: :desc) }
+  scope :upcoming_or_live, -> { where(status: %w[live upcoming]).order(Arel.sql("CASE status WHEN 'live' THEN 0 ELSE 1 END, start_date ASC, year ASC, id ASC")) }
   scope :completed, -> { where(status: "completed") }
   scope :with_games, -> { joins(:games).distinct }
 
   def self.home_context
+    live = live_tournaments.first
+    upcoming_with_games = where(status: "upcoming").with_games.order(start_date: :asc, year: :asc, id: :asc).first
+    earliest_upcoming = where(status: "upcoming").order(start_date: :asc, year: :asc, id: :asc).first
+
     {
-      upcoming_or_live: upcoming_or_live.first,
-      latest_completed_with_games: completed.with_games.order(year: :desc).first
+      upcoming_or_live: live || upcoming_with_games || earliest_upcoming,
+      latest_completed_with_games: completed.with_games.order(year: :desc, id: :desc).first
     }
   end
 
@@ -32,7 +38,7 @@ class Tournament < ApplicationRecord
     context ||= home_context
     upcoming = context[:upcoming_or_live]
 
-    if upcoming&.games&.exists?
+    if upcoming&.status == "live" || upcoming&.games&.exists?
       upcoming
     else
       context[:latest_completed_with_games] || upcoming
