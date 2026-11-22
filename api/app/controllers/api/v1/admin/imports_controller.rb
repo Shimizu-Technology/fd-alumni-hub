@@ -36,6 +36,7 @@ module Api
             tournament: tournament,
             rows: rows,
             overwrite_scores: overwrite_scores,
+            actor: current_user,
             default_venue: params[:defaultVenue].presence || params[:default_venue].presence || "The Jungle"
           )
 

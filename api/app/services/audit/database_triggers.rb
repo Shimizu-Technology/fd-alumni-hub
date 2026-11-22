@@ -1,7 +1,7 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 6
+    TRIGGER_VERSION = 7
 
     RECORD_TYPES = {
       users: "User",
@@ -12,6 +12,7 @@ module Audit
       host_campaigns: "HostCampaign",
       site_publications: "SitePublication",
       games: "Game",
+      score_correction_requests: "ScoreCorrectionRequest",
       tournaments: "Tournament",
       divisions: "Division",
       teams: "Team",
@@ -239,7 +240,10 @@ module Audit
             audit_area := 'results';
             label := 'Game #' || coalesce(record_data->>'game_number', record_data->>'id');
             subject := label;
-            IF TG_OP = 'UPDATE' AND (old_data->'home_score', old_data->'away_score')
+            IF current_setting('app.audit_action_override', true) IN ('score_recorded', 'score_corrected') THEN
+              description := format('%s %s the result for %s', actor_label,
+                CASE current_setting('app.audit_action_override', true) WHEN 'score_corrected' THEN 'corrected' ELSE 'recorded' END, label);
+            ELSIF TG_OP = 'UPDATE' AND (old_data->'home_score', old_data->'away_score')
                 IS DISTINCT FROM (new_data->'home_score', new_data->'away_score') THEN
               audit_action := 'score_updated';
               description := format('%s updated %s score from %s-%s to %s-%s', actor_label, label,
@@ -248,6 +252,13 @@ module Audit
             ELSIF TG_OP = 'UPDATE' AND old_data->>'status' IS DISTINCT FROM new_data->>'status' THEN
               description := format('%s changed %s status from %s to %s', actor_label, label,
                 replace(old_data->>'status', '_', ' '), replace(new_data->>'status', '_', ' '));
+            END IF;
+          WHEN 'score_correction_requests' THEN
+            audit_area := 'results';
+            label := format('Correction request #%s (Game #%s)', record_data->>'id', record_data->>'game_id');
+            IF TG_OP = 'UPDATE' AND old_data->>'status' IS DISTINCT FROM new_data->>'status' THEN
+              verb := new_data->>'status';
+              audit_action := 'correction_' || verb;
             END IF;
           WHEN 'tournaments' THEN
             audit_area := 'schedule';

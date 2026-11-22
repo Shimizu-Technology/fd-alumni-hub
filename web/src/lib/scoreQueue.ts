@@ -1,5 +1,5 @@
 import { ApiError } from './api'
-import type { Game, GameStatus } from './types'
+import type { BatchResultRow, Game, GameOutcome, GameStatus, SavedResult } from './types'
 
 export const SCORE_QUEUE_STORAGE_PREFIX = 'fd_score_queue_v1:'
 export const SCORE_QUEUE_BACKOFF_MS = [5_000, 15_000, 30_000] as const
@@ -10,7 +10,10 @@ export type ScoreMutationPayload = {
   status: GameStatus
   statusNote: string | null
   lockVersion?: number
-  forceOverwrite?: boolean
+  resultOutcome?: GameOutcome | null
+  officialWinnerTeamId?: string | null
+  startTime?: string
+  reason?: string
 }
 
 export type ScoreQueueItemState =
@@ -22,6 +25,7 @@ export type ScoreQueueItemState =
 
 export type QueuedScoreItem = {
   gameId: string
+  tournamentId?: string
   clientMutationId: string
   payload: ScoreMutationPayload
   queuedAt: string
@@ -35,10 +39,16 @@ export type QueuedScoreItem = {
 export type ScoreSendFn = (
   gameId: string,
   body: ScoreMutationPayload & { clientMutationId: string },
-) => Promise<{ game: Game; idempotentReplay?: boolean }>
+) => Promise<SavedResult>
+
+type BatchSendFn = (
+  results: (ScoreMutationPayload & { gameId: string; clientMutationId: string })[],
+) => Promise<{ results: BatchResultRow[]; standingsStatus?: SavedResult['standingsStatus'] }>
 
 export type FlushScoreQueueResult = {
   syncedGames: Game[]
+  savedResults: SavedResult[]
+  standingsFailed: boolean
   remaining: QueuedScoreItem[]
   pausedForAuth: boolean
   hasNewerPending: boolean
@@ -59,7 +69,11 @@ export function createMutationId(): string {
 function normalizedScoreKey(payload: ScoreMutationPayload) {
   return JSON.stringify({
     awayScore: payload.awayScore ?? null,
-    forceOverwrite: Boolean(payload.forceOverwrite),
+    resultOutcome: payload.resultOutcome,
+    officialWinnerTeamId: payload.officialWinnerTeamId,
+    startTime: payload.startTime,
+    reason: payload.reason?.trim() || undefined,
+    lockVersion: payload.lockVersion,
     homeScore: payload.homeScore ?? null,
     status: payload.status,
     statusNote: payload.statusNote?.trim() || null,
@@ -73,7 +87,11 @@ export function readScoreQueue(userId: string, storage: Storage | null = default
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(isValidQueueItem)
+    return parsed.filter(isValidQueueItem).map((item) => {
+      // Queues saved before final correction guardrails may carry a force flag.
+      const { forceOverwrite: _legacyForce, ...payload } = item.payload as ScoreMutationPayload & { forceOverwrite?: boolean }
+      return { ...item, payload }
+    })
   } catch {
     return []
   }
@@ -102,10 +120,12 @@ export function enqueueScoreMutation(
   gameId: string,
   payload: ScoreMutationPayload,
   {
+    tournamentId,
     storage = defaultStorage(),
     idGenerator = createMutationId,
     now = Date.now(),
   }: {
+    tournamentId?: string
     storage?: Storage | null
     idGenerator?: () => string
     now?: number
@@ -120,7 +140,10 @@ export function enqueueScoreMutation(
     status: payload.status,
     statusNote: payload.statusNote?.trim() || null,
     lockVersion: payload.lockVersion,
-    forceOverwrite: Boolean(payload.forceOverwrite),
+    resultOutcome: payload.resultOutcome,
+    officialWinnerTeamId: payload.officialWinnerTeamId,
+    startTime: payload.startTime,
+    reason: payload.reason?.trim() || undefined,
   }
 
   // Always mint a fresh clientMutationId whenever the payload changes so a subsequent
@@ -131,6 +154,7 @@ export function enqueueScoreMutation(
 
   const nextItem: QueuedScoreItem = {
     gameId,
+    tournamentId: tournamentId ?? existing?.tournamentId,
     clientMutationId: payloadUnchanged ? existing.clientMutationId : idGenerator(),
     payload: normalizedPayload,
     queuedAt: new Date(now).toISOString(),
@@ -155,15 +179,16 @@ export function resolveConflictUseServer(
   return writeScoreQueue(userId, updated, storage)
 }
 
-export function resolveConflictKeepMine(
+export function rebaseScoreConflict(
   userId: string,
   gameId: string,
-  serverLockVersion?: number,
   {
+    reason,
     storage = defaultStorage(),
     idGenerator = createMutationId,
     now = Date.now(),
   }: {
+    reason?: string
     storage?: Storage | null
     idGenerator?: () => string
     now?: number
@@ -171,15 +196,14 @@ export function resolveConflictKeepMine(
 ): QueuedScoreItem[] {
   const current = readScoreQueue(userId, storage)
   const updated = current.map((item) => {
-    if (item.gameId !== gameId) return item
+    const version = item.serverGame?.lockVersion
+    const correctionReason = reason?.trim() || item.payload.reason
+    if (item.gameId !== gameId || item.state !== 'conflict' || version === undefined) return item
+    if (item.serverGame?.status === 'final' && (!correctionReason || correctionReason.length < 3 || correctionReason.length > 500)) return item
     return {
       ...item,
       clientMutationId: idGenerator(),
-      payload: {
-        ...item.payload,
-        lockVersion: serverLockVersion ?? item.payload.lockVersion,
-        forceOverwrite: true,
-      },
+      payload: { ...item.payload, lockVersion: version, reason: correctionReason },
       queuedAt: new Date(now).toISOString(),
       attempts: 0,
       nextRetryAt: 0,
@@ -207,21 +231,41 @@ export async function flushScoreQueue(
     storage = defaultStorage(),
     now = Date.now(),
     force = false,
+    gameIds,
+    tournamentId,
+    sendBatch,
   }: {
     storage?: Storage | null
     now?: number
     force?: boolean
+    gameIds?: string[]
+    tournamentId?: string
+    sendBatch?: BatchSendFn
   } = {},
 ): Promise<FlushScoreQueueResult> {
   const candidates = readScoreQueue(userId, storage).filter((item) => {
     const eligible = item.state === 'pending' || (force && item.state === 'paused_auth')
-    if (!eligible) return false
+    if (!eligible || (gameIds && !gameIds.includes(item.gameId))) return false
+    if (tournamentId && item.tournamentId && item.tournamentId !== tournamentId) return false
     return force || item.nextRetryAt <= now
-  })
+  }).slice(0, 500)
 
-  const syncedGames: Game[] = []
+  const savedResults: SavedResult[] = []
+  let standingsFailed = false
   let pausedForAuth = false
   let hasNewerPending = false
+
+  let batchRows: Map<string, BatchResultRow> | undefined
+  let batchError: unknown
+  if (sendBatch && candidates.length) {
+    try {
+      const batch = await sendBatch(candidates.map(({ gameId, clientMutationId, payload }) => ({ ...payload, gameId, clientMutationId })))
+      batchRows = new Map(batch.results.map((row) => [row.gameId, row]))
+      standingsFailed = batch.standingsStatus === 'failed'
+    } catch (error) {
+      batchError = error
+    }
+  }
 
   for (const item of candidates) {
     if (pausedForAuth) break
@@ -234,11 +278,12 @@ export async function flushScoreQueue(
     }
 
     try {
-      const response = await sendFn(item.gameId, {
-        ...item.payload,
-        clientMutationId: item.clientMutationId,
-      })
-      syncedGames.push(response.game)
+      if (batchError) throw batchError
+      const response = batchRows
+        ? savedBatchRow(batchRows.get(item.gameId))
+        : await sendFn(item.gameId, { ...item.payload, clientMutationId: item.clientMutationId })
+      savedResults.push(response)
+      standingsFailed ||= response.standingsStatus === 'failed'
 
       // Re-read storage after await: only remove if clientMutationId still matches.
       // If a newer tap replaced this item while in flight, keep it and rebase its lockVersion (B1 + H1).
@@ -256,7 +301,7 @@ export async function flushScoreQueue(
         // Newer tap arrived during in-flight send: preserve it and rebase its base lockVersion!
         hasNewerPending = true
         const rebasedLockVersion =
-          response.game.lockVersion !== undefined &&
+          !response.idempotentReplay && response.game.lockVersion !== undefined &&
           (entry.payload.lockVersion === undefined || entry.payload.lockVersion === item.payload.lockVersion)
             ? response.game.lockVersion
             : entry.payload.lockVersion
@@ -308,7 +353,7 @@ export async function flushScoreQueue(
             }
           }
 
-          if (err.status === 422) {
+          if (err.status === 422 || err.status === 404) {
             return {
               ...entry,
               state: 'validation_error' as const,
@@ -344,7 +389,13 @@ export async function flushScoreQueue(
   }
 
   const remaining = readScoreQueue(userId, storage)
-  return { syncedGames, remaining, pausedForAuth, hasNewerPending }
+  return { syncedGames: savedResults.map((item) => item.game), savedResults, standingsFailed, remaining, pausedForAuth, hasNewerPending }
+}
+
+function savedBatchRow(row: BatchResultRow | undefined): SavedResult {
+  if (row?.ok && row.game) return { ...row, game: row.game }
+  if (row && !row.ok) throw new ApiError(row.error || row.errors?.join(' ') || 'Unable to save result.', row.status, row)
+  throw new Error('No confirmation received for this result.')
 }
 
 function defaultStorage(): Storage | null {
@@ -359,10 +410,17 @@ function defaultStorage(): Storage | null {
 function isValidQueueItem(item: unknown): item is QueuedScoreItem {
   if (!item || typeof item !== 'object') return false
   const candidate = item as Partial<QueuedScoreItem>
+  const payload = candidate.payload
   return (
     typeof candidate.gameId === 'string' &&
+    (candidate.tournamentId === undefined || typeof candidate.tournamentId === 'string') &&
     typeof candidate.clientMutationId === 'string' &&
-    Boolean(candidate.payload) &&
-    typeof candidate.state === 'string'
+    /^[a-zA-Z0-9_-]{8,64}$/.test(candidate.clientMutationId) &&
+    Boolean(payload && ['scheduled', 'live', 'final', 'delayed', 'postponed', 'cancelled'].includes(payload.status) &&
+      [payload.homeScore, payload.awayScore].every((score) => score === null || Number.isInteger(score)) &&
+      (payload.reason === undefined || typeof payload.reason === 'string') &&
+      (payload.statusNote === null || typeof payload.statusNote === 'string')) &&
+    Number.isInteger(candidate.attempts) && Number.isFinite(candidate.nextRetryAt) &&
+    ['pending', 'paused_auth', 'conflict', 'validation_error', 'forbidden'].includes(candidate.state ?? '')
   )
 }

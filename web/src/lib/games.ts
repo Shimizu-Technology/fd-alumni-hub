@@ -44,9 +44,15 @@ export function teamDivision(teamId: string, teams: Team[]) {
   return teams.find((team) => team.id === teamId)?.division || ''
 }
 
-export function gameResultLabel(game?: Pick<Game, 'homeScore' | 'awayScore' | 'homeTeam' | 'awayTeam'> | Pick<RelatedGameSummary, 'homeScore' | 'awayScore' | 'homeTeam' | 'awayTeam'> | null) {
-  if (!game || game.homeScore === null || game.awayScore === null) return null
+type GameResult = Pick<RelatedGameSummary, 'homeScore' | 'awayScore' | 'homeTeam' | 'awayTeam' | 'officialWinnerTeamId' | 'resultOutcome'>
 
+export function gameResultLabel(game?: GameResult | null) {
+  if (!game) return null
+  const officialWinner = [game.homeTeam, game.awayTeam].find((team) => team && team.id === game.officialWinnerTeamId)
+  if (game.resultOutcome === 'forfeit') return officialWinner ? `${officialWinner.displayName} wins by forfeit` : 'Forfeit'
+  if (game.resultOutcome === 'shootout' && officialWinner) return `${officialWinner.displayName} wins the shootout`
+  if (officialWinner) return `Winner: ${officialWinner.displayName}`
+  if (game.homeScore === null || game.awayScore === null) return null
   if (game.homeScore === game.awayScore) return 'Tie score'
 
   const winner = game.homeScore > game.awayScore ? game.homeTeam?.displayName : game.awayTeam?.displayName

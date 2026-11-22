@@ -25,7 +25,7 @@ function open() {
 beforeEach(() => {
   localStorage.clear()
   vi.spyOn(api, 'adminTournaments').mockResolvedValue({ tournaments: [tournament] })
-  vi.spyOn(api, 'adminGames').mockResolvedValue({ games: [] })
+  vi.spyOn(api, 'adminGames').mockResolvedValue({ games: [], availableDates: [], requestedDate: null, nextScheduledDate: null, pendingCorrectionCount: 0 })
   vi.spyOn(api, 'adminGameDay').mockResolvedValue({
     tournament, date, gameDayNote: null, games: [], predictionPolls: [],
     infoGuide: {

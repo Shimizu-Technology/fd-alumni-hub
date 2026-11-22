@@ -83,10 +83,10 @@ class AdvanceBracketWinnerTest < ActiveSupport::TestCase
     @semifinal.update!(home_team: @team_c)
     assert_equal "slot_occupied_by_other_team", Games::AdvanceBracketWinner.call(@quarterfinal).reason
 
-    @semifinal.update!(home_team: @placeholder_home, status: "live")
+    @semifinal.reload.update!(home_team: @placeholder_home, status: "live")
     assert_equal "next_game_not_scheduled", Games::AdvanceBracketWinner.call(@quarterfinal).reason
 
-    @semifinal.update!(status: "scheduled", away_team: @team_a)
+    @semifinal.reload.update!(status: "scheduled", away_team: @team_a)
     assert_equal "winner_already_in_opposite_slot", Games::AdvanceBracketWinner.call(@quarterfinal).reason
   end
 end

@@ -3,6 +3,8 @@ class Game < ApplicationRecord
 
   PHASES = %w[pool playoff fatherson exhibition].freeze
   STATUSES = %w[scheduled live final delayed postponed cancelled].freeze
+  ACTIVE_STATUSES = %w[scheduled live delayed].freeze
+  RESULT_OUTCOMES = %w[regulation overtime shootout forfeit postponed cancelled].freeze
   BRACKET_ROUNDS = %w[play_in round_of_16 quarterfinal semifinal final third_place].freeze
   NEXT_GAME_SLOTS = %w[home away].freeze
   MUTATION_ID_FORMAT = /\A[a-zA-Z0-9_-]{8,64}\z/
@@ -13,6 +15,7 @@ class Game < ApplicationRecord
   belongs_to :home_team, class_name: "Team", inverse_of: :home_games
   belongs_to :away_team, class_name: "Team", inverse_of: :away_games
   belongs_to :next_game, class_name: "Game", optional: true
+  belongs_to :official_winner_team, class_name: "Team", optional: true
   belongs_to :score_updated_by, class_name: "User", optional: true
 
   has_many :feeder_games, class_name: "Game", foreign_key: :next_game_id
@@ -28,6 +31,7 @@ class Game < ApplicationRecord
   validates :start_time, presence: true
   validates :phase, inclusion: { in: PHASES }
   validates :status, inclusion: { in: STATUSES }
+  validates :result_outcome, inclusion: { in: RESULT_OUTCOMES }, allow_nil: true
   validates :bracket_round, inclusion: { in: BRACKET_ROUNDS }, allow_nil: true
   validates :bracket_slot, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validates :game_number, length: { maximum: 32 }, uniqueness: { scope: :tournament_id, case_sensitive: false }, allow_nil: true
@@ -38,6 +42,7 @@ class Game < ApplicationRecord
 
   validate :division_record_exists
   validate :division_record_belongs_to_tournament
+  validate :official_winner_is_participating
   validate :teams_are_distinct
   validate :teams_belong_to_tournament
   validate :next_game_is_valid
@@ -51,7 +56,7 @@ class Game < ApplicationRecord
 
   scope :ordered, -> { order(:start_time, :id) }
   scope :scored, -> { where.not(home_score: nil).where.not(away_score: nil) }
-  scope :finals, -> { where(status: "final").scored }
+  scope :finals, -> { where(status: "final").merge(scored.or(where(result_outcome: "forfeit").where.not(official_winner_team_id: nil))) }
   scope :pool_games, -> { where(phase: "pool") }
   scope :playoff_games, -> { where(phase: "playoff") }
 
@@ -97,7 +102,7 @@ class Game < ApplicationRecord
   end
 
   def standings_exclusion_reason
-    return "not_final" unless status == "final" && home_score.present? && away_score.present?
+    return "not_final" unless final_result?
     return "placeholder_game" if placeholder?
     return "non_pool_phase" unless pool_phase?
     return "non_standings_division" if special_division?
@@ -109,12 +114,29 @@ class Game < ApplicationRecord
     nil
   end
 
+  def result_placeholder?
+    placeholder? || home_team&.placeholder_team? || away_team&.placeholder_team?
+  end
+
+  def final_result?
+    status == "final" && ((home_score.present? && away_score.present?) ||
+      (result_outcome == "forfeit" && official_winner_team_id.present?))
+  end
+
+  def winner_team_id
+    return unless status == "final"
+    return official_winner_team_id if official_winner_team_id.present?
+    return unless home_score && away_score && home_score != away_score
+
+    home_score > away_score ? home_team_id : away_team_id
+  end
+
   def counts_toward_standings?
     standings_exclusion_reason.nil?
   end
 
-  def summary_json
-    {
+  def summary_json(include_bracket_review: false)
+    result = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
       startTime: start_time&.iso8601,
@@ -125,10 +147,14 @@ class Game < ApplicationRecord
       statusNote: status_note,
       homeScore: home_score,
       awayScore: away_score,
+      resultOutcome: result_outcome,
+      officialWinnerTeamId: official_winner_team_id&.to_s,
       lockVersion: lock_version,
       homeTeam: team_summary(home_team),
       awayTeam: team_summary(away_team)
     }
+    result.merge!(bracket_review_json) if include_bracket_review
+    result
   end
 
   def api_json(include_teams: true, include_rosters: false, include_score_audit: false)
@@ -145,6 +171,8 @@ class Game < ApplicationRecord
       statusNote: status_note,
       homeScore: home_score,
       awayScore: away_score,
+      resultOutcome: result_outcome,
+      officialWinnerTeamId: official_winner_team_id&.to_s,
       streamUrl: external_url(stream_url),
       ticketUrl: external_url(ticket_url),
       notes: notes,
@@ -155,14 +183,17 @@ class Game < ApplicationRecord
       bracketSlot: bracket_slot,
       nextGameId: next_game_id&.to_s,
       nextGameSlot: next_game_slot,
-      placeholder: placeholder,
+      placeholder: !!result_placeholder?,
       lockVersion: lock_version,
       scoreUpdatedAt: score_updated_at&.iso8601,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
 
-    payload[:scoreUpdatedByName] = score_updated_by&.full_name if include_score_audit
+    if include_score_audit
+      payload.merge!(bracket_review_json)
+      payload[:scoreUpdatedByName] = score_updated_by&.full_name
+    end
 
     if include_teams
       payload[:homeTeam] = team_summary(home_team, include_roster: include_rosters)
@@ -173,6 +204,10 @@ class Game < ApplicationRecord
   end
 
   private
+
+  def bracket_review_json
+    { bracketNeedsReview: bracket_needs_review, bracketExceptionNote: bracket_exception_note }
+  end
 
   def infer_phase_from_legacy_metadata
     return if @explicit_phase_assigned
@@ -249,6 +284,12 @@ class Game < ApplicationRecord
     return unless will_save_change_to_tournament_id?
 
     errors.add(:tournament_id, "cannot be changed once created")
+  end
+
+  def official_winner_is_participating
+    return if official_winner_team_id.nil? || [ home_team_id, away_team_id ].include?(official_winner_team_id)
+
+    errors.add(:official_winner_team_id, "must be the home or away team")
   end
 
   def teams_are_distinct

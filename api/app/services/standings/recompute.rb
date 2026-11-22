@@ -67,15 +67,15 @@ module Standings
           home = rows_by_team_id[game.home_team_id]
           away = rows_by_team_id[game.away_team_id]
 
-          home[:points_for] += game.home_score
-          home[:points_against] += game.away_score
-          away[:points_for] += game.away_score
-          away[:points_against] += game.home_score
+          home[:points_for] += game.home_score.to_i
+          home[:points_against] += game.away_score.to_i
+          away[:points_for] += game.away_score.to_i
+          away[:points_against] += game.home_score.to_i
 
-          if game.home_score > game.away_score
+          if game.winner_team_id == game.home_team_id
             home[:wins] += 1
             away[:losses] += 1
-          elsif game.away_score > game.home_score
+          elsif game.winner_team_id == game.away_team_id
             away[:wins] += 1
             home[:losses] += 1
           end

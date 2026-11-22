@@ -1,3 +1,4 @@
+import type { ScoreMutationPayload } from './scoreQueue'
 import type { SiteMode, SiteModeAdmin, SiteModePreview, SiteModeSettings } from './siteMode'
 import type { AccessDirectory, GrantScope, GrantSelection } from './access'
 import type {
@@ -26,6 +27,10 @@ import type {
   FinanceAuditEvent,
   FinanceSummary,
   Game,
+  AdminGamesResponse,
+  BatchResultRow,
+  SavedResult,
+  ScoreCorrectionRequest,
   GameDayNote,
   TonightPayload,
   TournamentUpdate,
@@ -313,26 +318,22 @@ export const api = {
   adminCreatePredictionPoll: (payload: Partial<PredictionPoll>) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls${query({ tournamentId: payload.tournamentId })}`, json('POST', { predictionPoll: payload })),
   adminUpdatePredictionPoll: (id: string, payload: Partial<PredictionPoll>, tournamentId?: string | null) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls/${id}${query({ tournamentId })}`, json('PATCH', { predictionPoll: payload })),
 
-  adminGames: (tournamentId?: string | null) => request<{ games: Game[] }>(`/admin/games${query({ tournamentId })}`),
+  adminGames: (tournamentId?: string | null, filter?: { date?: string; unscoredOnly?: boolean }) => request<AdminGamesResponse>(`/admin/games${query({ tournamentId, date: filter?.date, unscoredOnly: filter?.unscoredOnly ? 'true' : undefined })}`),
+  adminGame: (id: string) => request<{ game: Game }>(`/admin/games/${encodeURIComponent(id)}`),
   adminCreateGame: (payload: Partial<Game>) => request<{ game: Game }>('/admin/games', json('POST', { game: payload })),
-  adminUpdateGame: (id: string, payload: Partial<Game>) => request<{ game: Game; recompute?: { teams: number; games: number }; bracketAdvancement?: { advanced: boolean; reason?: string; nextGameId?: string; slot?: string; winnerTeamId?: string } }>(`/admin/games/${id}`, json('PATCH', { game: payload })),
-  adminScoreGame: (
-    id: string,
-    payload: {
-      homeScore?: number | null
-      awayScore?: number | null
-      status?: Game['status']
-      statusNote?: string | null
-      lockVersion?: number
-      forceOverwrite?: boolean
-      clientMutationId?: string
-    },
-  ) => request<{
-    game: Game
-    idempotentReplay?: boolean
-    recompute?: { teams: number; games: number }
-    bracketAdvancement?: { advanced: boolean; reason?: string; nextGameId?: string; slot?: string; winnerTeamId?: string }
-  }>(`/admin/games/${id}/score`, json('PATCH', payload)),
+  adminUpdateGame: (id: string, payload: Partial<Game & ScoreMutationPayload>) => request<SavedResult>(`/admin/games/${id}`, json('PATCH', { game: payload })),
+  adminScoreGame: (id: string, payload: Partial<ScoreMutationPayload> & { clientMutationId?: string }) =>
+    request<SavedResult>(`/admin/games/${id}/score`, json('PATCH', payload)),
+  adminBatchResults: (results: (ScoreMutationPayload & { gameId: string; clientMutationId: string })[], tournamentId?: string) =>
+    request<Omit<SavedResult, 'game'> & { results: BatchResultRow[] }>('/admin/games/batch-results', json('POST', { tournamentId, results })),
+  adminScoreCorrectionRequests: (tournamentId: string, status: 'pending' | 'approved' | 'rejected' = 'pending') =>
+    request<{ correctionRequests: ScoreCorrectionRequest[] }>(`/admin/score-correction-requests${query({ tournamentId, status })}`),
+  adminRequestScoreCorrection: (id: string, payload: ScoreMutationPayload) =>
+    request<{ correctionRequest: ScoreCorrectionRequest }>(`/admin/games/${id}/correction-requests`, json('POST', payload)),
+  adminResolveScoreCorrection: (id: string, resolution: 'approve' | 'reject', resolutionNote?: string) =>
+    request<Partial<SavedResult> & { correctionRequest: ScoreCorrectionRequest }>(`/admin/score-correction-requests/${id}/${resolution}`, json('POST', { resolutionNote })),
+  adminResolveBracketReview: (id: string, note?: string) =>
+    request<{ game: Game }>(`/admin/games/${id}/resolve-bracket-review`, json('PATCH', { note })),
 
   adminStandings: (tournamentId?: string | null) => request<{ tournament: Tournament | null; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings${query({ tournamentId })}`),
   adminRecomputeStandings: (tournamentId?: string | null) => request<{ tournament: Tournament; recompute: { teams: number; games: number }; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings/recompute${query({ tournamentId })}`, json('POST')),

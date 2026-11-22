@@ -146,9 +146,11 @@ export function BracketPage() {
 
 function BracketGameCard({ game }: { game: Game }) {
   const hasScore = game.homeScore !== null && game.awayScore !== null
-  const isFinal = game.status === 'final' && hasScore
-  const awayWon = isFinal && (game.awayScore ?? 0) > (game.homeScore ?? 0)
-  const homeWon = isFinal && (game.homeScore ?? 0) > (game.awayScore ?? 0)
+  const isFinal = game.status === 'final'
+  const awayWon = isFinal && (game.officialWinnerTeamId
+    ? game.officialWinnerTeamId === game.awayTeamId : hasScore && (game.awayScore ?? 0) > (game.homeScore ?? 0))
+  const homeWon = isFinal && (game.officialWinnerTeamId
+    ? game.officialWinnerTeamId === game.homeTeamId : hasScore && (game.homeScore ?? 0) > (game.awayScore ?? 0))
 
   return (
     <article className={`panel bracket-card${game.placeholder ? ' bracket-card--placeholder' : ''}`}>

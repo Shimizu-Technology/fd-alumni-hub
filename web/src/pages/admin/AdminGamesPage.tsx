@@ -1,10 +1,11 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, divisionNameById, gameResultLabel, teamDivision } from '../../lib/games'
-import { createMutationId } from '../../lib/scoreQueue'
+import { scorekeeperPath } from '../../lib/resultDrafts'
 import { normalizeHttpsInput, safeHttpsHref } from '../../lib/urls'
 import type { BracketRound, Division, Game, GamePhase, GameStatus, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
@@ -257,67 +258,10 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [conflict, setConflict] = useState(false)
-  const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
-  const detailsDirty = gameDetailsChanged(form, game, divisions)
-  const projectedResult = gameResultLabel({
-    ...game,
-    homeScore: form.homeScore === '' ? null : Number(form.homeScore),
-    awayScore: form.awayScore === '' ? null : Number(form.awayScore),
-  })
-
   useEffect(() => {
-    setForm((current) => {
-      const next = gameFormState(game, divisions)
-      // Preserve pending score/status drafts when a detail-only save refreshes the game with unchanged server score/status
-      const serverScoreUnchanged =
-        current.persistedStatus === game.status &&
-        current.persistedStatusNote === (game.statusNote || '') &&
-        current.persistedHomeScore === (game.homeScore?.toString() || '') &&
-        current.persistedAwayScore === (game.awayScore?.toString() || '') &&
-        current.persistedGameId === game.id
-      if (serverScoreUnchanged) {
-        return {
-          ...next,
-          status: current.status,
-          statusNote: current.statusNote,
-          homeScore: current.homeScore,
-          awayScore: current.awayScore,
-        }
-      }
-      return next
-    })
+    setForm(gameFormState(game, divisions))
     setConflict(false)
   }, [game, divisions])
-
-  const saveScores = async (statusOverride?: GameStatus) => {
-    if (detailsDirty) {
-      setEditingDetails(true)
-      setSaveError('Save or cancel game detail changes before saving scores.')
-      return
-    }
-
-    setSaving(true)
-    setSaveError('')
-    setConflict(false)
-    try {
-      const nextStatus = statusOverride || form.status
-      await api.adminScoreGame(game.id, {
-        status: nextStatus,
-        statusNote: form.statusNote.trim() || null,
-        homeScore: form.homeScore === '' ? null : Number(form.homeScore),
-        awayScore: form.awayScore === '' ? null : Number(form.awayScore),
-        lockVersion: game.lockVersion,
-        clientMutationId: createMutationId(),
-      })
-      if (statusOverride) setForm((current) => ({ ...current, status: statusOverride }))
-      await onSaved()
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) setConflict(true)
-      setSaveError(err instanceof Error ? err.message : 'Unable to save score')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const saveDetails = async () => {
     const ticket = normalizeHttpsInput(form.ticketUrl, 'Ticket URL')
@@ -378,45 +322,18 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 
       <GameDetailsSummary game={game} />
 
-      <div className="score-entry-panel" aria-label={`Score entry for ${game.awayTeam?.displayName} at ${game.homeTeam?.displayName}`}>
-        <FormGrid>
-          <Field label="Away score"><input type="number" value={form.awayScore} onChange={(event) => setForm({ ...form, awayScore: event.target.value })} /></Field>
-          <Field label="Home score"><input type="number" value={form.homeScore} onChange={(event) => setForm({ ...form, homeScore: event.target.value })} /></Field>
-          <Field label="Status">
-            <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as GameStatus })}>
-              {GAME_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Status note (delay / reschedule)">
-            <input value={form.statusNote} onChange={(event) => setForm({ ...form, statusNote: event.target.value })} placeholder="Optional delay or gym note" />
-          </Field>
-        </FormGrid>
-        {projectedResult && <p className="form-note">{projectedResult}</p>}
-        {saveError && (
-          <p className="form-error" role="alert">
-            {saveError}{' '}
-            {conflict && (
-              <button
-                type="button"
-                className="btn secondary small"
-                onClick={() => {
-                  setForm(gameFormState(game, divisions))
-                  setSaveError('')
-                  setConflict(false)
-                  void onSaved()
-                }}
-              >
-                Reload latest
-              </button>
-            )}
-          </p>
-        )}
-        <div className="row-actions">
-          <button className="btn secondary" onClick={() => saveScores()} disabled={saving}>{saving ? 'Saving' : 'Save score & status'}</button>
-          <button className="btn primary" onClick={() => saveScores('final')} disabled={saving || !scoreComplete}>{saving ? 'Saving' : 'Save final score'}</button>
-          <button className="btn secondary" type="button" onClick={() => setEditingDetails((value) => !value)} aria-expanded={editingDetails}>{editingDetails ? 'Hide game details' : 'Edit game details'}</button>
-        </div>
+      {gameResultLabel(game) && <p className="form-note">{gameResultLabel(game)}</p>}
+      <div className="row-actions">
+        <Link className="btn primary" to={scorekeeperPath(game)}>Enter result</Link>
+        <button className="btn secondary" type="button" onClick={() => setEditingDetails((value) => !value)} aria-expanded={editingDetails}>{editingDetails ? 'Hide game details' : 'Edit game details'}</button>
       </div>
+      {saveError && <p className="form-error" role="alert">
+        {saveError}{' '}
+        {conflict && <button type="button" className="btn secondary small" onClick={() => {
+          setSaveError('')
+          void onSaved()
+        }}>Reload latest</button>}
+      </p>}
 
       {editingDetails && (
         <div className="game-detail-editor">
@@ -455,35 +372,8 @@ function GameDetailsSummary({ game }: { game: Game }) {
   )
 }
 
-function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, divisions: Division[]) {
-  const persisted = gameFormState(game, divisions)
-
-  return form.startTime !== persisted.startTime ||
-    form.divisionId !== persisted.divisionId ||
-    form.phase !== persisted.phase ||
-    form.gameNumber !== persisted.gameNumber ||
-    form.bracketCode !== persisted.bracketCode ||
-    form.bracketRound !== persisted.bracketRound ||
-    form.bracketSlot !== persisted.bracketSlot ||
-    form.ticketUrl !== persisted.ticketUrl ||
-    form.streamUrl !== persisted.streamUrl ||
-    form.notes !== persisted.notes
-}
-
 function gameFormState(game: Game, divisions: Division[]) {
-  const statusNote = game.statusNote || ''
-  const homeScore = game.homeScore?.toString() || ''
-  const awayScore = game.awayScore?.toString() || ''
   return {
-    persistedGameId: game.id,
-    persistedStatus: game.status,
-    persistedStatusNote: statusNote,
-    persistedHomeScore: homeScore,
-    persistedAwayScore: awayScore,
-    status: game.status,
-    statusNote,
-    homeScore,
-    awayScore,
     startTime: toLocalDateTimeInputValue(game.startTime),
     divisionId: divisionValueFor(game, divisions),
     phase: (game.phase || 'pool') as GamePhase,

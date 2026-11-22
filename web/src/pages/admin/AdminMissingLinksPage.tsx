@@ -5,6 +5,7 @@ import { selectedTournament, tournamentScopedPath, useTournamentSelection } from
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameMatchupLabel } from '../../lib/games'
+import { scorekeeperPath } from '../../lib/resultDrafts'
 import { normalizeHttpsInput } from '../../lib/urls'
 import type { Game, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, PaginationControls, Panel, StatCard } from '../../components/ui'
@@ -93,19 +94,14 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
   const { game } = gap
   const [ticketUrl, setTicketUrl] = useState('')
   const [streamUrl, setStreamUrl] = useState('')
-  const [homeScore, setHomeScore] = useState(scoreDraft(game.homeScore))
-  const [awayScore, setAwayScore] = useState(scoreDraft(game.awayScore))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [conflict, setConflict] = useState(false)
   const linksPath = tournamentScopedPath('/admin/links', tournamentId, { gameId: game.id })
-  const gamesPath = tournamentScopedPath('/admin/games', tournamentId)
 
   useEffect(() => {
     setTicketUrl('')
     setStreamUrl('')
-    setHomeScore(scoreDraft(game.homeScore))
-    setAwayScore(scoreDraft(game.awayScore))
     setMessage('')
   }, [game.id, game.homeScore, game.awayScore, gap.missingTicket, gap.missingStream, gap.missingScore])
 
@@ -136,52 +132,20 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
       hasLinkUpdate = true
     }
 
-    const scoreChanged = gap.missingScore && (homeScore.trim() !== scoreDraft(game.homeScore) || awayScore.trim() !== scoreDraft(game.awayScore))
-    const parsedHomeScore = parseScore(homeScore)
-    const parsedAwayScore = parseScore(awayScore)
-
-    if (scoreChanged && (parsedHomeScore === null || parsedAwayScore === null)) {
-      setMessage('Enter both final scores as whole numbers before saving scores.')
-      return
-    }
-
-    if (!hasLinkUpdate && !scoreChanged) {
-      setMessage('Add at least one missing link or score before saving.')
+    if (!hasLinkUpdate) {
+      setMessage('Add at least one missing link before saving.')
       return
     }
 
     setSaving(true)
     setMessage('')
     setConflict(false)
-    let linksSaved = false
     try {
-      let nextLockVersion = game.lockVersion
-      if (hasLinkUpdate) {
-        const linkRes = await api.adminBulkLinks([linkUpdate])
-        linksSaved = true
-        const updatedGame = linkRes.games.find((item) => item.id === game.id)
-        if (updatedGame?.lockVersion !== undefined) nextLockVersion = updatedGame.lockVersion
-      }
-      if (scoreChanged) {
-        await api.adminUpdateGame(game.id, {
-          homeScore: parsedHomeScore,
-          awayScore: parsedAwayScore,
-          status: 'final',
-          lockVersion: nextLockVersion,
-        })
-      }
+      await api.adminBulkLinks([linkUpdate])
       await onSaved()
     } catch (err) {
-      const isConflict = err instanceof ApiError && err.status === 409
-      const errorText = err instanceof Error ? err.message : 'Unable to save updates'
-      if (linksSaved) {
-        await onSaved()
-        setConflict(isConflict)
-        setMessage(`Links saved, but score update failed: ${errorText}`)
-      } else {
-        setConflict(isConflict)
-        setMessage(errorText)
-      }
+      setConflict(err instanceof ApiError && err.status === 409)
+      setMessage(err instanceof Error ? err.message : 'Unable to save links')
     } finally {
       setSaving(false)
     }
@@ -203,17 +167,12 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
         <div className="gap-field-grid">
           {gap.missingTicket && <Field label="GuamTime ticket URL"><input value={ticketUrl} onChange={(event) => setTicketUrl(event.target.value)} placeholder="https://..." /></Field>}
           {gap.missingStream && <Field label="Clutch / stream URL"><input value={streamUrl} onChange={(event) => setStreamUrl(event.target.value)} placeholder="https://..." /></Field>}
-          {gap.missingScore && (
-            <div className="score-gap-fields">
-              <Field label={`Home score · ${game.homeTeam?.displayName || 'Home'}`}><input inputMode="numeric" pattern="[0-9]*" value={homeScore} onChange={(event) => setHomeScore(event.target.value)} placeholder="0" /></Field>
-              <Field label={`Away score · ${game.awayTeam?.displayName || 'Away'}`}><input inputMode="numeric" pattern="[0-9]*" value={awayScore} onChange={(event) => setAwayScore(event.target.value)} placeholder="0" /></Field>
-            </div>
-          )}
+
         </div>
         <div className="row-actions">
-          <button className="btn primary small" type="button" onClick={saveUpdates} disabled={saving}>{saving ? 'Saving' : 'Save updates'}</button>
+          {(gap.missingTicket || gap.missingStream) && <button className="btn primary small" type="button" onClick={saveUpdates} disabled={saving}>{saving ? 'Saving' : 'Save links'}</button>}
           {(gap.missingTicket || gap.missingStream) && <Link className="btn secondary small" to={linksPath}>Open in Links</Link>}
-          {gap.missingScore && <Link className="btn secondary small" to={gamesPath}>Open Games</Link>}
+          {gap.missingScore && <Link className="btn secondary small" to={scorekeeperPath(game)}>Enter result</Link>}
         </div>
         {message && (
           <p className="form-error" role="alert">
@@ -275,14 +234,4 @@ function compareMissingGames(a: Game, b: Game, sort: MissingSort) {
   if (sort === 'startDesc') return new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
   if (sort === 'matchup') return gameMatchupLabel(a).localeCompare(gameMatchupLabel(b), undefined, { numeric: true })
   return new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-}
-
-function scoreDraft(score: number | null) {
-  return score === null ? '' : String(score)
-}
-
-function parseScore(value: string) {
-  const trimmed = value.trim()
-  if (!/^\d+$/.test(trimmed)) return null
-  return Number.parseInt(trimmed, 10)
 }
