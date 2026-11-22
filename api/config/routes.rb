@@ -56,6 +56,7 @@ Rails.application.routes.draw do
       end
 
       namespace :admin do
+        resources :audit_events, only: [ :index ]
         resource :dashboard, only: :show, controller: "dashboard"
         resources :campaigns, only: [ :index, :show, :create, :update ] do
           get :closeout_check, path: "closeout-check", on: :member

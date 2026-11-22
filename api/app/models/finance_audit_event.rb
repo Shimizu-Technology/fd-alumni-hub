@@ -6,6 +6,7 @@ class FinanceAuditEvent < ApplicationRecord
   validates :created_at, presence: true
 
   before_validation :set_default_created_at, on: :create
+  after_create :sync_to_audit_events
 
   scope :recent_first, -> { order(created_at: :desc, id: :desc) }
 
@@ -43,6 +44,11 @@ class FinanceAuditEvent < ApplicationRecord
   end
 
   private
+
+  def sync_to_audit_events
+    Audit::LegacyFinanceSync.sync_event!(self)
+  end
+
 
   def set_default_created_at
     self.created_at ||= Time.current

@@ -33,6 +33,8 @@ module ClerkAuthenticatable
       last_name: decoded["last_name"] || decoded.dig("user", "last_name")
     )
 
+    Audit::Context.set_actor!(@current_user)
+
     if @current_user && verified_email.present?
       begin
         CampaignInvitation.accept_pending_for!(
@@ -59,6 +61,7 @@ module ClerkAuthenticatable
     return unless decoded
 
     @current_user = User.active.find_by(clerk_id: decoded["sub"])
+    Audit::Context.set_actor!(@current_user)
   end
 
   def current_user

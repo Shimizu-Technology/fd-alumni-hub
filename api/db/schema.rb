@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000011) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,42 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000011) do
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
+  end
+
+  create_table "audit_events", force: :cascade do |t|
+    t.datetime "occurred_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.string "operation_id", null: false
+    t.string "actor_type", default: "system", null: false
+    t.bigint "actor_id"
+    t.string "actor_name"
+    t.string "actor_email"
+    t.string "actor_role"
+    t.string "area", null: false
+    t.string "action", null: false
+    t.string "record_type", null: false
+    t.string "record_id", null: false
+    t.string "record_label"
+    t.bigint "tournament_id"
+    t.bigint "host_campaign_id"
+    t.string "summary", null: false
+    t.jsonb "before_json", default: {}, null: false
+    t.jsonb "after_json", default: {}, null: false
+    t.jsonb "metadata_json", default: {}, null: false
+    t.string "reason"
+    t.string "request_id"
+    t.string "http_method"
+    t.string "route_path"
+    t.string "ip_address"
+    t.bigint "legacy_finance_audit_event_id"
+    t.index ["actor_id", "occurred_at"], name: "index_audit_events_on_actor_id_and_occurred_at"
+    t.index ["area", "occurred_at"], name: "index_audit_events_on_area_and_occurred_at"
+    t.index ["host_campaign_id", "occurred_at"], name: "index_audit_events_on_host_campaign_id_and_occurred_at"
+    t.index ["legacy_finance_audit_event_id"], name: "index_audit_events_on_legacy_finance_audit_event_id", unique: true, where: "(legacy_finance_audit_event_id IS NOT NULL)"
+    t.index ["occurred_at", "id"], name: "index_audit_events_on_occurred_at_and_id"
+    t.index ["operation_id"], name: "index_audit_events_on_operation_id"
+    t.index ["record_type", "record_id"], name: "index_audit_events_on_record_type_and_record_id"
+    t.index ["tournament_id", "occurred_at"], name: "index_audit_events_on_tournament_id_and_occurred_at"
+    t.check_constraint "actor_type::text = ANY (ARRAY['user'::character varying, 'system'::character varying, 'anonymous'::character varying]::text[])", name: "chk_audit_events_actor_type"
   end
 
   create_table "budget_lines", force: :cascade do |t|
