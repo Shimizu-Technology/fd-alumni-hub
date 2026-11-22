@@ -1,6 +1,11 @@
-import type { Team, TournamentChampion } from './types'
+import type { ClassCohort, Team, TournamentChampion } from './types'
 
 export type ChampionRecord = TournamentChampion
+
+export function graduationYearFor(cohort?: ClassCohort | null) {
+  if (!cohort) return null
+  return cohort.graduationYear || Number(cohort.displayName.match(/\b(?:19|20)\d{2}\b/)?.[0]) || null
+}
 
 export function classRouteKey(value?: string | null) {
   return canonicalClassKey(value).replaceAll('/', '-')

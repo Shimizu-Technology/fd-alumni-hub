@@ -5,16 +5,11 @@ import { formatGuamDateTime } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { safeHttpsHref } from '../../lib/urls'
 import { useMotionOk } from '../../hooks/useMotionOk'
+import { HardwoodCourtMeter } from '../../components/HardwoodCourtMeter'
 import { RevealOnScroll } from '../../components/RevealOnScroll'
 import { EmptyState, LoadingState, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconExternal, IconTrophy } from '../../components/Icons'
-import type { HafapassEventSummary, HafapassTicketState, HostCampaignMeter, PublicCampaignEvent } from '../../lib/types'
-
-const currencyWhole = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-})
+import type { HafapassEventSummary, HafapassTicketState, PublicCampaignEvent } from '../../lib/types'
 
 const currencyPrecise = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -22,10 +17,6 @@ const currencyPrecise = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 })
-
-function formatDollarsWhole(cents: number) {
-  return currencyWhole.format(cents / 100)
-}
 
 function formatTicketPrice(cents: number | null) {
   if (cents === null || cents === undefined) return null
@@ -93,74 +84,6 @@ function isPastEvent(event: PublicCampaignEvent) {
   if (!boundary) return false
   const parsed = Date.parse(boundary)
   return Number.isFinite(parsed) && parsed < Date.now()
-}
-
-function FundraisingMeter({ meter }: { meter: Extract<HostCampaignMeter, { enabled: true }> }) {
-  const motionOk = useMotionOk()
-  const clampedPercent = Math.min(100, Math.max(0, meter.percent))
-  const [fillWidth, setFillWidth] = useState(() => (motionOk ? 0 : clampedPercent))
-
-  useEffect(() => {
-    if (!motionOk) {
-      setFillWidth(clampedPercent)
-      return
-    }
-
-    let raf2 = 0
-    const raf1 = window.requestAnimationFrame(() => {
-      raf2 = window.requestAnimationFrame(() => {
-        setFillWidth(clampedPercent)
-      })
-    })
-    return () => {
-      window.cancelAnimationFrame(raf1)
-      if (raf2) window.cancelAnimationFrame(raf2)
-    }
-  }, [clampedPercent, motionOk])
-
-  const raisedLabel = formatDollarsWhole(meter.raisedCents)
-  const goalLabel = formatDollarsWhole(meter.goalCents)
-
-  return (
-    <Panel className="host-meter-panel">
-      <div className="host-meter-head">
-        <div>
-          <p className="eyebrow">Host-year fundraising goal</p>
-          <h2>
-            Raised {raisedLabel} of {goalLabel}
-          </h2>
-        </div>
-        <div className="host-meter-meta">
-          <strong className="host-meter-percent">{clampedPercent.toFixed(0)}%</strong>
-          {meter.goalReached && <span className="status-badge completed">Goal reached</span>}
-        </div>
-      </div>
-
-      <div
-        className="host-meter-track"
-        role="progressbar"
-        aria-label="Fundraising goal progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(clampedPercent)}
-        aria-valuetext={`Raised ${raisedLabel} of ${goalLabel}`}
-      >
-        <div
-          className={`host-meter-fill ${motionOk ? 'host-meter-fill--animated' : ''}`}
-          style={{ width: `${fillWidth}%` }}
-        />
-      </div>
-
-      <div className="host-meter-foot">
-        <span>
-          {meter.goalReached
-            ? 'Goal reached — thank you to every alumnus, sponsor, and supporter.'
-            : `${formatDollarsWhole(Math.max(meter.goalCents - meter.raisedCents, 0))} remaining toward the host-year goal.`}
-        </span>
-        {meter.updatedAt && <small>Updated {formatGuamDateTime(meter.updatedAt)}</small>}
-      </div>
-    </Panel>
-  )
 }
 
 function CampaignEventCard({ event, stale }: { event: PublicCampaignEvent; stale: boolean }) {
@@ -431,7 +354,7 @@ export function HostYearPage() {
         </div>
       </section>
 
-      {campaign.meter.enabled && <FundraisingMeter key={campaign.id} meter={campaign.meter} />}
+      {campaign.meter.enabled && <HardwoodCourtMeter key={campaign.id} meter={campaign.meter} />}
 
       {campaign.donationInstructions && (
         <Panel className="host-donate-panel">

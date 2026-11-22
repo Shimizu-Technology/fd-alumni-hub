@@ -1,16 +1,20 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
-import { classRouteKey } from '../../lib/history'
+import { classRouteKey, graduationYearFor } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import { staticChampionRecords, staticTitleCounts } from '../../lib/staticChampions'
 import type { Tournament, TournamentChampion } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
+import { useSiteMode } from '../../contexts/SiteModeContext'
+import { FindYourClassCard } from '../../components/FindYourClassCard'
+import { JungleRaftersWall } from '../../components/JungleRaftersWall'
 import { ArchiveChampionDetails } from '../../components/ArchiveChampionDetails'
 import { DivisionPill } from '../../components/ArchiveBadges'
 import { IconArrowRight } from '../../components/Icons'
 
 export function HistoryPage() {
+  const { siteMode } = useSiteMode()
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, champions] = await Promise.all([api.publicTournaments(), api.publicChampions()])
     return { tournaments: tournaments.tournaments, championRecords: champions.championRecords, titleCounts: champions.titleCounts }
@@ -35,6 +39,8 @@ export function HistoryPage() {
         description="Explore champions, results, and tournament coverage by year."
       />
 
+      <FindYourClassCard championRecords={data?.championRecords} hostClassYear={graduationYearFor(siteMode.hostCampaign?.hostClass)} />
+
       {loading && !data ? (
         <LoadingState label="Loading history" />
       ) : (
@@ -51,6 +57,8 @@ export function HistoryPage() {
             <StatCard label="Completed records" value={completed.length} />
             <StatCard label="Most titles in archive" value={dynasty?.titles || 0} detail={dynasty?.championLabel} tone="gold" />
           </div>
+
+          <JungleRaftersWall records={records} />
 
           <Panel className="title-leaderboard-panel">
             <div className="section-heading">
@@ -101,10 +109,8 @@ export function HistoryPage() {
   )
 }
 
-type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes' | 'primary' | 'position' | 'bracket' | 'mvpName' | 'mvpNote' | 'sourceUrl' | 'highlightVideoId'>
-
-function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournament[]): HistoryRecord[] {
-  const historyRecords: HistoryRecord[] = records.map((record) => ({ ...record }))
+function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournament[]): TournamentChampion[] {
+  const historyRecords = [...records]
   const existingYears = new Set(records.map((record) => record.year))
 
   tournaments.forEach((tournament) => {
@@ -117,7 +123,11 @@ function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournam
       editionLabel: null,
       label: String(tournament.year),
       championLabel: null,
+      championKey: null,
+      championComponents: [],
+      creditedClasses: [],
       runnerUpLabel: null,
+      runnerUpKey: null,
       score: null,
       source: 'Tournament database',
       status: tournament.status === 'completed' || tournament.status === 'cancelled' || tournament.status === 'upcoming' || tournament.status === 'live' ? tournament.status === 'live' ? 'upcoming' : tournament.status : 'unknown',

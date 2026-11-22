@@ -99,7 +99,11 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(page.getByRole('dialog', { name: 'Site menu' })).toBeHidden()
     await expect(moreButton).toBeFocused()
 
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    await expect(page.getByRole('heading', { name: 'Recent champions' })).toBeVisible()
+    await page.evaluate(async () => {
+      await document.fonts.ready
+      window.scrollTo(0, document.body.scrollHeight)
+    })
     const clearance = await page.evaluate(() => {
       const navRect = document.querySelector('nav.mobile-bottom-nav')?.getBoundingClientRect()
       const links = Array.from(document.querySelectorAll('footer a'))
