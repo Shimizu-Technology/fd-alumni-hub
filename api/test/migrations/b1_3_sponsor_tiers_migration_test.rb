@@ -38,9 +38,18 @@ class B13SponsorTiersMigrationTest < ActiveSupport::TestCase
     end
     assert_includes out, "cleared invalid target_url"
     assert_includes out, "cleared invalid logo_url"
+    refute_includes out, "user:pass"
+    refute_includes out, "evil.example"
   end
 
   test "migration 000010 down raises IrreversibleMigration" do
     assert_raises(ActiveRecord::IrreversibleMigration) { StandardizeSponsorTiers.new.down }
+  end
+
+  test "Sponsor.normalize_legacy_https_url upgrades http and schemeless links while preserving https" do
+    assert_equal "https://example.com/a", Sponsor.normalize_legacy_https_url("http://example.com/a")
+    assert_equal "https://example.com/b", Sponsor.normalize_legacy_https_url("example.com/b")
+    assert_equal "https://example.com/c", Sponsor.normalize_legacy_https_url("https://example.com/c")
+    assert_nil Sponsor.normalize_legacy_https_url("javascript:alert(1)")
   end
 end

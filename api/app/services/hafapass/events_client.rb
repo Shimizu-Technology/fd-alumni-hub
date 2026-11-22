@@ -300,9 +300,11 @@ module Hafapass
         if host_slug && snapshots_by_slug[host_slug]&.has_data?
           h_snapshot = snapshots_by_slug[host_slug]
           h_stale = !h_snapshot.fresh?(ttl)
+          shared_with_tournament = host_slug == tournament_slug
           Array(h_snapshot.payload_json).each do |hp|
             next unless hp.is_a?(Hash) && hp["id"].present?
             next if matched_ids.include?(hp["id"]) || tournament_event_ids.include?(hp["id"])
+            next if shared_with_tournament && !in_tournament_window?(hp, tournament)
 
             presented = present_event(hp, stale: h_stale)
             fundraiser_events << {
@@ -596,7 +598,7 @@ module Hafapass
         end
 
         text = "#{hp['title']} #{hp['slug']}"
-        years = text.scan(/\b(20\d{2})\b/).flatten.uniq
+        years = text.scan(/(?<!\d)(20\d{2})(?!\d)/).flatten.uniq
         return true if years.empty?
 
         years.include?(tournament.year.to_s)

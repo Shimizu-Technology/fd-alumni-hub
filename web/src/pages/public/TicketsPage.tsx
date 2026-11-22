@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDateTime } from '../../lib/datetime'
@@ -49,17 +50,26 @@ function ticketBadgeClass(state: HafapassTicketState) {
   return 'upcoming'
 }
 
+const MAX_COLD_SNAPSHOT_RETRIES = 2
+const COLD_SNAPSHOT_RETRY_DELAY_MS = 2_500
+
 export function TicketsPage() {
   const [searchParams] = useSearchParams()
   const campaignSlug = searchParams.get('campaignSlug')
   const rawYear = searchParams.get('year')
   const year = rawYear && /^\d{4}$/.test(rawYear) ? Number(rawYear) : null
+  const queryKey = JSON.stringify({ campaignSlug, year })
+  const retryCountRef = useRef(0)
 
-  const { data, loading, error, reload } = useAsync(
-    () => api.publicTickets({ campaignSlug, year }),
-    [campaignSlug, year],
+  const { data: rawData, loading, error, reload } = useAsync(
+    async () => ({
+      queryKey,
+      payload: await api.publicTickets({ campaignSlug, year }),
+    }),
+    [queryKey],
   )
 
+  const data = rawData?.queryKey === queryKey ? rawData.payload : null
   const allTicketsHref = safeHttpsHref(data?.campaign?.allTicketsUrl)
   const passes = data?.passes || []
   const gameNights = data?.gameNights || []
@@ -68,6 +78,22 @@ export function TicketsPage() {
   const stale = Boolean(data?.hafapass.stale)
   const doorInfo = data?.doorInfo || FALLBACK_DOOR_INFO
   const hasAnyListings = passes.length > 0 || gameNights.length > 0 || otherEvents.length > 0 || fundraiserEvents.length > 0
+
+  useEffect(() => {
+    retryCountRef.current = 0
+  }, [queryKey])
+
+  useEffect(() => {
+    if (loading || error || !data || hasAnyListings || !data.campaign || data.hafapass.available) return
+    if (retryCountRef.current >= MAX_COLD_SNAPSHOT_RETRIES) return
+
+    const timer = window.setTimeout(() => {
+      retryCountRef.current += 1
+      void reload()
+    }, COLD_SNAPSHOT_RETRY_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [loading, error, data, hasAnyListings, reload, queryKey])
 
   return (
     <div className="page-stack tickets-page">
@@ -175,6 +201,7 @@ export function TicketsPage() {
                     key={event.id}
                     event={event}
                     stale={stale}
+                    categoryLabel="Tournament event"
                     fallbackHref={allTicketsHref}
                   />
                 ))}
@@ -234,22 +261,25 @@ function HafapassTicketCard({
   event,
   stale,
   isPass = false,
+  categoryLabel,
   fallbackHref,
 }: {
   event: HafapassEventSummary
   stale: boolean
   isPass?: boolean
+  categoryLabel?: string
   fallbackHref: string | null
 }) {
   const buyHref = safeHttpsHref(event.buyUrl) || fallbackHref
   const itemStale = event.stale ?? stale
   const visibleState = !itemStale || event.ticketState === 'cancelled' ? event.ticketState : null
   const priceLabel = !itemStale ? formatTicketPrice(event.minAllInPriceCents) : null
+  const badgeText = categoryLabel || (isPass ? 'Tournament pass' : 'Game night')
 
   return (
     <article className={`panel ticket-card${isPass ? ' ticket-card--pass' : ''}`}>
       <div className="ticket-card-badges">
-        <span className="division-pill">{isPass ? 'Tournament pass' : 'Game night'}</span>
+        <span className="division-pill">{badgeText}</span>
         {itemStale && visibleState !== 'cancelled' ? (
           <span className="status-badge upcoming">Check live availability on HåfaPass</span>
         ) : visibleState ? (

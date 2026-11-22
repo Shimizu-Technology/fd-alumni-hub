@@ -200,8 +200,8 @@ module DataMigration
             legacy_id: source.fetch("id"),
             tournament_id: tournament_id,
             name: source.fetch("name"),
-            logo_url: blank_to_nil(source["logoUrl"]),
-            target_url: blank_to_nil(source["targetUrl"]),
+            logo_url: Sponsor.normalize_legacy_https_url(source["logoUrl"]),
+            target_url: Sponsor.normalize_legacy_https_url(source["targetUrl"]),
             tier: Sponsor.normalize_legacy_tier(source["tier"]),
             active: source.fetch("active"),
             position: source.fetch("position")

@@ -152,7 +152,9 @@ function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: 
   return (
     <article className="admin-row-card sponsor-admin-row">
       {previewLogo && <img src={previewLogo} alt="" loading="lazy" />}
-      <SponsorFields form={form} setForm={setForm} />
+      <fieldset disabled={saving || deleting} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+        <SponsorFields form={form} setForm={setForm} />
+      </fieldset>
       {mutationError && <p className="form-error" role="alert">{mutationError}</p>}
       <div className="row-actions">
         <button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button>

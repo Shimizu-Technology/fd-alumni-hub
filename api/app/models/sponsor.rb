@@ -60,6 +60,29 @@ class Sponsor < ApplicationRecord
     LEGACY_TIER_ALIASES.fetch(cleaned, "community")
   end
 
+  def self.normalize_legacy_https_url(raw_value)
+    value = raw_value.to_s.strip
+    return nil if value.empty? || value.length > MAX_URL_LENGTH || value.match?(/[\r\n\t\0]/)
+
+    candidate =
+      if value.start_with?("//")
+        "https:#{value}"
+      elsif value.match?(/\Ahttp:\/\//i)
+        "https://#{value.sub(/\Ahttp:\/\//i, "")}"
+      elsif !value.match?(/\A[a-z][a-z0-9+.-]*:/i)
+        "https://#{value}"
+      else
+        value
+      end
+
+    uri = URI.parse(candidate)
+    return uri.to_s if uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.blank?
+
+    nil
+  rescue URI::InvalidURIError
+    nil
+  end
+
   def tier_label
     TIER_LABELS.fetch(tier, "Community Partners")
   end

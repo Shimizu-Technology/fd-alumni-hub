@@ -155,8 +155,8 @@ class PublicSponsorsAndTicketsControllerTest < ActionDispatch::IntegrationTest
         },
         {
           "id" => "hp_old_no_date",
-          "slug" => "fd-2025-season-pass",
-          "title" => "FD 2025 Season Pass",
+          "slug" => "fd2025-season-pass",
+          "title" => "FD2025 Season Pass",
           "startsAt" => nil,
           "organizerSlug" => "fdaa-guam",
           "isPass" => true,
@@ -264,5 +264,32 @@ class PublicSponsorsAndTicketsControllerTest < ActionDispatch::IntegrationTest
     assert_nil pass["ticketState"]
     assert_nil pass["minAllInPriceCents"]
     assert_equal [], pass["ticketTypes"]
+  end
+
+  test "public tickets does not leak out-of-window events into fundraiserEvents when host and tournament organizer slugs match" do
+    @campaign.update!(hafapass_organizer_slug: "fdaa-guam", hafapass_tournament_organizer_slug: "fdaa-guam")
+    HafapassEventSnapshot.create!(
+      organizer_slug: "fdaa-guam",
+      fetched_at: Time.current,
+      payload_json: [
+        {
+          "id" => "hp_old_shared",
+          "slug" => "fd2025-old-night",
+          "title" => "FD2025 Old Night",
+          "startsAt" => "2025-07-01T08:00:00Z",
+          "organizerSlug" => "fdaa-guam",
+          "isPass" => false,
+          "ticketState" => "sales_ended",
+          "minAllInPriceCents" => 1000,
+          "ticketTypes" => []
+        }
+      ]
+    )
+
+    get "/api/v1/public/tickets"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal [], body.fetch("gameNights")
+    assert_equal [], body.fetch("fundraiserEvents")
   end
 end

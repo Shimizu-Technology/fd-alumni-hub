@@ -86,7 +86,7 @@ class StandardizeSponsorTiers < ActiveRecord::Migration[8.1]
     return nil if value.empty?
 
     if value.length > 2048 || value.match?(/[\r\n\t\0]/)
-      log_cleared_url(sponsor_id, field, raw_value)
+      log_cleared_url(sponsor_id, field, "invalid_format")
       return nil
     end
 
@@ -105,17 +105,18 @@ class StandardizeSponsorTiers < ActiveRecord::Migration[8.1]
     if uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.blank?
       uri.to_s
     else
-      log_cleared_url(sponsor_id, field, raw_value)
+      reason = uri.userinfo.present? ? "contains_credentials" : "unsupported_scheme_or_host"
+      log_cleared_url(sponsor_id, field, reason)
       nil
     end
   rescue URI::InvalidURIError
-    log_cleared_url(sponsor_id, field, raw_value)
+    log_cleared_url(sponsor_id, field, "invalid_uri")
     nil
   end
 
-  def log_cleared_url(sponsor_id, field, raw_value)
+  def log_cleared_url(sponsor_id, field, reason)
     return if sponsor_id.nil?
 
-    puts "StandardizeSponsorTiers: cleared invalid #{field} #{raw_value.inspect} for sponsor id=#{sponsor_id}"
+    puts "StandardizeSponsorTiers: cleared invalid #{field} (#{reason}) for sponsor id=#{sponsor_id}"
   end
 end
