@@ -40,11 +40,13 @@ Rails.application.routes.draw do
             post :archive, on: :member
           end
           resources :pledges, only: [ :index, :create, :update ]
+          post "receipts/presign", to: "receipts#presign"
           get "ledger-entries/export", to: "ledger_entries#export", defaults: { format: :csv }
           resources :ledger_entries, path: "ledger-entries", only: [ :index, :create, :update ] do
             post :void, on: :member
             post :approve_reimbursement, path: "approve-reimbursement", on: :member
             post :mark_reimbursed, path: "mark-reimbursed", on: :member
+            get :receipt_url, path: "receipt-url", on: :member
           end
         end
       end

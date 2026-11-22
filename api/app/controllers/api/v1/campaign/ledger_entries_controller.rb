@@ -4,12 +4,11 @@ module Api
   module V1
     module Campaign
       class LedgerEntriesController < BaseController
-        RECEIPT_PARAM_KEYS = %w[
+        RAW_RECEIPT_PARAM_KEYS = %w[
           receipt_key receiptKey
           receipt_filename receiptFilename
           receipt_content_type receiptContentType
           receipt_byte_size receiptByteSize
-          receipt_upload_token receiptUploadToken
         ].freeze
 
         IMMUTABLE_UPDATE_KEYS = %w[
@@ -33,7 +32,7 @@ module Api
 
         CSV_FORMULA_REGEX = /\A[\t\r\n]|^\s*[=+\-@]/
 
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index, :export ]
+        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index, :export, :receipt_url ]
         before_action -> { require_campaign_role!("treasurer") }, only: [ :create, :update, :void, :mark_reimbursed ]
         before_action -> { require_campaign_role!("chair", "treasurer") }, only: [ :approve_reimbursement ]
         before_action :require_campaign_writable!, only: [ :create, :update, :void, :approve_reimbursement, :mark_reimbursed ]
@@ -110,8 +109,8 @@ module Api
           raw = extract_object_params(:ledgerEntry, :ledger_entry)
           return if performed?
 
-          if supplied_keys_in?(raw, RECEIPT_PARAM_KEYS)
-            return render json: { error: "Receipt attachment is not yet enabled; private receipt storage ships in the next release." },
+          if supplied_keys_in?(raw, RAW_RECEIPT_PARAM_KEYS)
+            return render json: { error: "Direct receipt metadata parameters are not accepted; use receiptUploadToken from /receipts/presign." },
               status: :unprocessable_entity
           end
 
@@ -122,6 +121,16 @@ module Api
             return render json: { error: "New entries can only start with reimbursementStatus 'not_applicable' or 'requested'." },
               status: :unprocessable_entity
           end
+
+          upload_token = extract_receipt_upload_token(raw)
+          return if performed?
+
+          verified_receipt = nil
+          if upload_token.present?
+            verified_receipt = resolve_and_verify_receipt!(upload_token)
+            return if performed?
+          end
+
           entry = nil
 
           LedgerEntry.transaction do
@@ -134,10 +143,39 @@ module Api
               end
             end
 
-            entry = @campaign.ledger_entries.build(attrs.merge(recorded_by: current_user))
+            pending = nil
+            receipt_attrs = {}
+            if verified_receipt
+              pending = @campaign.pending_receipt_uploads.lock.find_by(id: verified_receipt[:pending_id], uploaded_by_id: current_user.id)
+              unless pending&.attachable? && !LedgerEntry.where(receipt_key: pending.s3_key).exists?
+                render json: { error: "Receipt upload token is expired or already used." }, status: :unprocessable_entity
+                raise ActiveRecord::Rollback
+              end
+              receipt_attrs = {
+                receipt_key: pending.s3_key,
+                receipt_filename: pending.original_filename,
+                receipt_content_type: verified_receipt[:content_type],
+                receipt_byte_size: verified_receipt[:byte_size]
+              }
+            end
+
+            entry = @campaign.ledger_entries.build(attrs.merge(receipt_attrs).merge(recorded_by: current_user))
             unless entry.save
               render_errors(entry)
               raise ActiveRecord::Rollback
+            end
+
+            if pending
+              pending.update!(attached_at: Time.current)
+              record_audit!(
+                record: entry,
+                action: "attach_receipt",
+                changes: {
+                  "receipt_filename" => entry.receipt_filename,
+                  "receipt_content_type" => entry.receipt_content_type,
+                  "receipt_byte_size" => entry.receipt_byte_size
+                }
+              )
             end
 
             pledge&.sync_fulfillment_status!
@@ -150,7 +188,8 @@ module Api
                 "amount_cents" => entry.amount_cents,
                 "source" => entry.source,
                 "counterparty" => entry.counterparty,
-                "pledge_id" => entry.pledge_id
+                "pledge_id" => entry.pledge_id,
+                "has_receipt" => entry.has_receipt?
               }
             )
           end
@@ -163,8 +202,8 @@ module Api
           raw = extract_object_params(:ledgerEntry, :ledger_entry)
           return if performed?
 
-          if supplied_keys_in?(raw, RECEIPT_PARAM_KEYS)
-            return render json: { error: "Receipt attachment is not yet enabled; private receipt storage ships in the next release." },
+          if supplied_keys_in?(raw, RAW_RECEIPT_PARAM_KEYS)
+            return render json: { error: "Direct receipt metadata parameters are not accepted; use receiptUploadToken from /receipts/presign." },
               status: :unprocessable_entity
           end
 
@@ -179,24 +218,94 @@ module Api
             return render json: { error: "Voided ledger entries cannot be modified." }, status: :unprocessable_entity
           end
 
+          upload_token = extract_receipt_upload_token(raw)
+          return if performed?
+
+          verified_receipt = nil
+          if upload_token.present?
+            verified_receipt = resolve_and_verify_receipt!(upload_token)
+            return if performed?
+          end
+
           LedgerEntry.transaction do
+            pending = nil
+            receipt_attrs = {}
+            if verified_receipt
+              pending = @campaign.pending_receipt_uploads.lock.find_by(id: verified_receipt[:pending_id], uploaded_by_id: current_user.id)
+              unless pending&.attachable? && !LedgerEntry.where(receipt_key: pending.s3_key).exists?
+                render json: { error: "Receipt upload token is expired or already used." }, status: :unprocessable_entity
+                raise ActiveRecord::Rollback
+              end
+              receipt_attrs = {
+                receipt_key: pending.s3_key,
+                receipt_filename: pending.original_filename,
+                receipt_content_type: verified_receipt[:content_type],
+                receipt_byte_size: verified_receipt[:byte_size]
+              }
+            end
+
             entry.lock!
-            entry.assign_attributes(update_metadata_params(raw))
+            if entry.voided?
+              render json: { error: "Voided ledger entries cannot be modified." }, status: :unprocessable_entity
+              raise ActiveRecord::Rollback
+            end
+
+            had_previous_receipt = entry.has_receipt?
+            entry.assign_attributes(update_metadata_params(raw).merge(receipt_attrs))
             changes = entry.changes
             unless entry.save
               render_errors(entry)
               raise ActiveRecord::Rollback
             end
 
-            if changes.any?
-              audit_changes = changes.except("reference_number")
-              audit_changes["reference_number_updated"] = true if changes.key?("reference_number")
+            if pending
+              pending.update!(attached_at: Time.current)
+              attach_changes = {
+                "receipt_filename" => entry.receipt_filename,
+                "receipt_content_type" => entry.receipt_content_type,
+                "receipt_byte_size" => entry.receipt_byte_size
+              }
+              attach_changes["replaced_previous_receipt"] = true if had_previous_receipt
+              record_audit!(
+                record: entry,
+                action: "attach_receipt",
+                changes: attach_changes
+              )
+            end
+
+            non_receipt_changes = changes.except("receipt_key", "receipt_filename", "receipt_content_type", "receipt_byte_size")
+            if non_receipt_changes.any?
+              audit_changes = non_receipt_changes.except("reference_number")
+              audit_changes["reference_number_updated"] = true if non_receipt_changes.key?("reference_number")
               record_audit!(record: entry, action: "update", changes: audit_changes)
             end
           end
           return if performed?
 
           render json: { ledgerEntry: entry.api_json }
+        end
+
+        def receipt_url
+          entry = @campaign.ledger_entries.find(params[:id])
+          unless entry.has_receipt?
+            return render json: { error: "No receipt is attached to this ledger entry." }, status: :not_found
+          end
+
+          signed = PrivateReceiptStorage.presign_get(
+            key: entry.receipt_key,
+            filename: entry.receipt_filename,
+            content_type: entry.receipt_content_type
+          )
+
+          record_audit!(
+            record: entry,
+            action: "view_receipt",
+            changes: { "receipt_filename" => entry.receipt_filename }
+          )
+
+          render json: signed.merge(byteSize: entry.receipt_byte_size)
+        rescue PrivateReceiptStorage::ConfigurationError => e
+          render json: { error: e.message }, status: :service_unavailable
         end
 
         def void
@@ -363,6 +472,61 @@ module Api
             val = params[k].presence || raw[k].presence
             return val.to_s.strip if val.present?
           end
+          nil
+        end
+
+        def extract_receipt_upload_token(raw)
+          token_val = if params.key?(:receiptUploadToken)
+            params[:receiptUploadToken]
+          elsif params.key?(:receipt_upload_token)
+            params[:receipt_upload_token]
+          elsif raw.key?(:receiptUploadToken)
+            raw[:receiptUploadToken]
+          elsif raw.key?(:receipt_upload_token)
+            raw[:receipt_upload_token]
+          end
+          return nil if token_val.nil?
+
+          unless token_val.is_a?(String)
+            render json: { error: "receiptUploadToken must be a string." }, status: :unprocessable_entity
+            return nil
+          end
+
+          token_val.strip.presence
+        end
+
+        def resolve_and_verify_receipt!(upload_token)
+          pending = @campaign.pending_receipt_uploads.attachable.find_by(
+            upload_token: upload_token,
+            uploaded_by_id: current_user.id
+          )
+          unless pending
+            render json: { error: "Receipt upload token is invalid, expired, or belongs to another campaign." },
+              status: :unprocessable_entity
+            return nil
+          end
+
+          if LedgerEntry.where(receipt_key: pending.s3_key).exists?
+            render json: { error: "Receipt has already been attached to a ledger entry." },
+              status: :unprocessable_entity
+            return nil
+          end
+
+          verified = PrivateReceiptStorage.verify_object(
+            key: pending.s3_key,
+            expected_content_type: pending.expected_content_type
+          )
+
+          {
+            pending_id: pending.id,
+            content_type: verified[:contentType],
+            byte_size: verified[:byteSize]
+          }
+        rescue PrivateReceiptStorage::ConfigurationError => e
+          render json: { error: e.message }, status: :service_unavailable
+          nil
+        rescue PrivateReceiptStorage::VerificationError => e
+          render json: { error: e.message }, status: :unprocessable_entity
           nil
         end
 

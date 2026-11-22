@@ -61,3 +61,34 @@ Good implementation references: existing Shimizu Rails/Vite projects with S3 upl
 - Upload endpoint should validate image MIME (`image/*`).
 - Uploads should be size-limited in presign conditions, typically 10MB or less.
 - If no file is selected, manual image URL should still work.
+
+---
+
+## Private Receipt Storage (Board Finance Tracker — Slice A3.2)
+
+Finance receipts (photos of receipts, bank transfer confirmations, PDF invoices) are stored in a **dedicated private S3 bucket** separate from the public `S3_BUCKET`.
+
+### Fail-closed env vars
+
+- `S3_PRIVATE_BUCKET` (**required** — intentionally **never** falls back to `S3_BUCKET`; if unset, receipt presign and receipt view return `503 Service Unavailable`)
+- `S3_PRIVATE_REGION` (optional; defaults to `S3_REGION` / `AWS_REGION` / `ap-southeast-2`)
+- `S3_RECEIPT_UPLOAD_MAX_BYTES` (optional; defaults to `15728640` / 15MB)
+- Reuses `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` (or `AWS_*` aliases)
+
+### Required AWS bucket settings
+
+1. **Block all public access:** Enable all four S3 Block Public Access settings on `S3_PRIVATE_BUCKET`. Do not attach a public-read bucket policy.
+2. **Encryption:** Enable default server-side encryption (SSE-S3 or SSE-KMS).
+3. **IAM permissions** on `arn:aws:s3:::<private-bucket>/*`:
+   - `s3:PutObject`
+   - `s3:GetObject`
+   - `s3:HeadObject` (used server-side on attach to verify existence, byte size, and content type)
+4. **Bucket CORS:** Allow browser uploads from the Hub origins (`POST`, `GET`, `HEAD`).
+
+### Security flow
+
+1. `treasurer` or `admin` calls `POST /api/v1/campaign/:slug/receipts/presign` with `filename`, `contentType` (`image/jpeg`, `image/png`, `image/webp`, `image/heic`, `application/pdf`), and `byteSize` (<= 15MB).
+2. Rails creates a `pending_receipt_uploads` row (expires in 10 min) and returns a 60-second presigned S3 POST plus an opaque `uploadToken` (never a public URL or raw S3 key).
+3. Browser uploads directly to S3, then sends `receiptUploadToken` when creating or updating the ledger entry.
+4. Rails verifies the object via signed S3 `HEAD`, locks & marks the pending upload attached (preventing replay or cross-campaign key reuse), saves the receipt metadata, and writes an `attach_receipt` audit event.
+5. Any campaign member (`board`, `chair`, `treasurer`, `admin`) views a receipt via `GET /api/v1/campaign/:slug/ledger-entries/:id/receipt-url`, which returns a 120-second signed GET URL with sanitized RFC 5987 `Content-Disposition` and logs a `view_receipt` audit event.
