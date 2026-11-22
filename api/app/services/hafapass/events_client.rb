@@ -244,10 +244,11 @@ module Hafapass
 
         Time.iso8601(trimmed).iso8601
       rescue ArgumentError
-        parsed = Time.zone.parse(trimmed)
-        parsed&.iso8601
-      rescue ArgumentError
-        nil
+        begin
+          Time.zone.parse(trimmed)&.iso8601
+        rescue ArgumentError
+          nil
+        end
       end
 
       def truncate_text(value, max_length)
