@@ -5,6 +5,7 @@ export const SITE_URL_TOKEN = '%VITE_SITE_URL%'
 
 const SITEMAP_PATHS = [
   { path: '/', changefreq: 'weekly', priority: '1.0' },
+  { path: '/host-year', changefreq: 'weekly', priority: '0.98' },
   { path: '/today', changefreq: 'daily', priority: '0.98' },
   { path: '/schedule', changefreq: 'daily', priority: '0.95' },
   { path: '/standings', changefreq: 'daily', priority: '0.9' },

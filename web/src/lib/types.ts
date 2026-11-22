@@ -264,6 +264,124 @@ export type ClassProfile = {
   componentClasses: ClassCohort[]
 }
 
+export type HostCampaignStatus = 'draft' | 'active' | 'closing' | 'archived'
+export type CampaignEventKind = 'fundraiser' | 'host_night' | 'golf' | 'merch_drop' | 'meeting' | 'other'
+export type CampaignEventStatus = 'planned' | 'open' | 'sold_out' | 'completed' | 'cancelled'
+export type HafapassTicketState = 'on_sale' | 'sold_out' | 'upcoming' | 'sales_ended' | 'cancelled'
+
+export type HostCampaignMeter =
+  | { enabled: false }
+  | {
+      enabled: true
+      goalCents: number
+      raisedCents: number
+      percent: number
+      goalReached: boolean
+      updatedAt: string | null
+    }
+
+export type HafapassTicketType = {
+  name: string
+  allInPriceCents: number | null
+  quantityRemaining: number | null
+  onSale: boolean
+}
+
+export type HafapassEventSummary = {
+  id: string
+  slug: string | null
+  title: string
+  shortDescription: string | null
+  startsAt: string | null
+  endsAt: string | null
+  venueName: string | null
+  venueCity: string | null
+  organizerSlug: string | null
+  isPass: boolean
+  seriesSlug: string | null
+  ticketState: HafapassTicketState | null
+  minAllInPriceCents: number | null
+  ticketTypes: HafapassTicketType[]
+  availabilityLabel: string | null
+  buyUrl: string | null
+}
+
+export type PublicHostCampaign = {
+  id: string
+  slug: string
+  title: string
+  tagline: string | null
+  description: string | null
+  status: HostCampaignStatus
+  featured: boolean
+  tournament: Tournament | null
+  hostClass: ClassCohort | null
+  countdownTargetAt: string | null
+  countdownLabel: string | null
+  heroImageUrl: string | null
+  donationUrl: string | null
+  donationInstructions: string | null
+  golfUrl: string | null
+  meter: HostCampaignMeter
+}
+
+export type PublicCampaignEvent = {
+  id: string
+  kind: CampaignEventKind
+  title: string
+  startsAt: string | null
+  endsAt: string | null
+  dateLabel: string | null
+  venue: string | null
+  description: string | null
+  imageUrl: string | null
+  hafapassEventId: string | null
+  hafapassEventSlug: string | null
+  hafapassDistributionCode: string | null
+  externalUrl: string | null
+  ctaLabel: string | null
+  status: CampaignEventStatus
+  position: number
+  hafapass?: HafapassEventSummary | null
+}
+
+export type PublicCampaignPost = {
+  id: string
+  title: string
+  body: string
+  imageUrl: string | null
+  publishedAt: string | null
+  pinned: boolean
+  authorName: string | null
+}
+
+export type HomeHostCampaignSummary = {
+  slug: string
+  title: string
+  tagline: string | null
+  status: HostCampaignStatus
+  hostClass: ClassCohort | null
+  countdownTargetAt: string | null
+  countdownLabel: string | null
+  donationUrl: string | null
+  golfUrl: string | null
+  meter: HostCampaignMeter
+  nextEvent: PublicCampaignEvent | null
+}
+
+export type HostYearResponse = {
+  campaign: PublicHostCampaign
+  events: PublicCampaignEvent[]
+  posts: PublicCampaignPost[]
+  hafapass: {
+    available: boolean
+    stale: boolean
+    fetchedAt: string | null
+    allTicketsUrl?: string | null
+    events: HafapassEventSummary[]
+  }
+}
+
 export type CurrentUser = {
   id: string
   clerkId: string | null
