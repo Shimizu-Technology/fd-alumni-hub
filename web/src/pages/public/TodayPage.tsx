@@ -7,7 +7,7 @@ import { useAsync } from '../../lib/hooks'
 import { externalHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import type { Game, PredictionPoll, RosterEntry } from '../../lib/types'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 import { PredictionPollCard } from '../../components/PredictionPollCard'
 
@@ -27,6 +27,7 @@ export function TodayPage() {
     if (!data) return undefined
 
     const intervalId = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
       void reload()
     }, todayRefreshIntervalMs)
 
@@ -51,9 +52,6 @@ export function TodayPage() {
     }
   }
 
-  if (loading && !data) return <LoadingState label="Loading today at The Jungle" />
-  if (error && !data) return <ErrorState message={error} onRetry={reload} />
-
   return (
     <div className="page-stack today-page">
       <PageHeader
@@ -63,43 +61,62 @@ export function TodayPage() {
         actions={<Link className="btn secondary" to="/schedule">Full schedule <IconArrowRight /></Link>}
       />
 
-      <section className="today-brief-grid">
-        <Panel className="today-brief-card">
-          <span>Host class</span>
-          <strong>{data?.gameDayNote?.hostClass || 'Host details pending'}</strong>
-        </Panel>
-        <Panel className="today-brief-card">
-          <span>Food / menu</span>
-          <strong>{data?.gameDayNote?.foodMenu || 'Food notes pending'}</strong>
-        </Panel>
-        <Panel className="today-brief-card today-brief-card--wide">
-          <span>Announcements</span>
-          <strong>{data?.gameDayNote?.announcement || 'No announcements posted yet.'}</strong>
-          {data?.lastUpdatedAt && <small>Last updated {formatGuamDateTime(data.lastUpdatedAt)}</small>}
-        </Panel>
-      </section>
+      {loading && !data ? (
+        <LoadingState label="Loading today at The Jungle" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Today’s live guide is unavailable"
+          description="Game-day notes, rosters, and fan polls could not be loaded right now."
+          onRetry={reload}
+          action={<Link className="btn secondary" to="/history">Browse champion history</Link>}
+        />
+      ) : (
+        <>
+          {error && (
+            <Panel className="notice-panel">
+              <span>Live refresh failed — showing last loaded scores.</span>{' '}
+              <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+            </Panel>
+          )}
+          <section className="today-brief-grid">
+            <Panel className="today-brief-card">
+              <span>Host class</span>
+              <strong>{data?.gameDayNote?.hostClass || 'Host details pending'}</strong>
+            </Panel>
+            <Panel className="today-brief-card">
+              <span>Food / menu</span>
+              <strong>{data?.gameDayNote?.foodMenu || 'Food notes pending'}</strong>
+            </Panel>
+            <Panel className="today-brief-card today-brief-card--wide">
+              <span>Announcements</span>
+              <strong>{data?.gameDayNote?.announcement || 'No announcements posted yet.'}</strong>
+              {data?.lastUpdatedAt && <small>Last updated {formatGuamDateTime(data.lastUpdatedAt)}</small>}
+            </Panel>
+          </section>
 
-      {data?.gameDayNote?.sponsorShoutout && <Panel className="notice-panel">{data.gameDayNote.sponsorShoutout}</Panel>}
+          {data?.gameDayNote?.sponsorShoutout && <Panel className="notice-panel">{data.gameDayNote.sponsorShoutout}</Panel>}
 
-      {voteError && <p className="form-error" role="alert">{voteError}</p>}
+          {voteError && <p className="form-error" role="alert">{voteError}</p>}
 
-      {tournamentPolls.length > 0 && (
-        <Panel>
-          <div className="section-heading"><h2>Tournament predictions</h2><span>{tournamentPolls.length}</span></div>
-          <div className="prediction-grid">
-            {tournamentPolls.map((poll) => <PredictionPollCard key={poll.id} poll={poll} onVote={vote} />)}
-          </div>
-        </Panel>
+          {tournamentPolls.length > 0 && (
+            <Panel>
+              <div className="section-heading"><h2>Tournament predictions</h2><span>{tournamentPolls.length}</span></div>
+              <div className="prediction-grid">
+                {tournamentPolls.map((poll) => <PredictionPollCard key={poll.id} poll={poll} onVote={vote} />)}
+              </div>
+            </Panel>
+          )}
+
+          <Panel>
+            <div className="section-heading"><h2>Games today</h2><span>{data?.games.length || 0}</span></div>
+            {!data?.games.length ? <EmptyState title="No games scheduled today" description="Check the full schedule for the next matchup at The Jungle." /> : (
+              <div className="today-game-list">
+                {data.games.map((game) => <TodayGameCard key={game.id} game={game} poll={gamePolls.get(game.id)} onVote={vote} />)}
+              </div>
+            )}
+          </Panel>
+        </>
       )}
-
-      <Panel>
-        <div className="section-heading"><h2>Games today</h2><span>{data?.games.length || 0}</span></div>
-        {!data?.games.length ? <EmptyState title="No games scheduled today" description="Check the full schedule for the next matchup at The Jungle." /> : (
-          <div className="today-game-list">
-            {data.games.map((game) => <TodayGameCard key={game.id} game={game} poll={gamePolls.get(game.id)} onVote={vote} />)}
-          </div>
-        )}
-      </Panel>
     </div>
   )
 }

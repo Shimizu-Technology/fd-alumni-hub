@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class ArticlesController < BaseController
+        before_action :require_admin!, only: [ :destroy ]
+
         def index
           articles = ArticleLink.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
           articles = articles.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?

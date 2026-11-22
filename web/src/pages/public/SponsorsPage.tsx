@@ -1,13 +1,10 @@
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { LoadingState, PageHeader, Panel, SectionUnavailable } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
 
 export function SponsorsPage() {
   const { data, loading, error, reload } = useAsync(() => api.publicSponsors(), [])
-
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
 
   const grouped = groupSponsors(data?.sponsors || [])
 
@@ -19,7 +16,15 @@ export function SponsorsPage() {
         description="A dedicated space for the businesses and community partners supporting the tournament."
       />
 
-      {Object.keys(grouped).length === 0 ? (
+      {loading && !data ? (
+        <LoadingState label="Loading sponsors" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Sponsor listings are temporarily unavailable"
+          description="Could not load sponsor placements right now."
+          onRetry={reload}
+        />
+      ) : Object.keys(grouped).length === 0 ? (
         <Panel className="sponsor-placeholder">
           <h2>Sponsor announcements coming soon</h2>
           <p>Approved tournament partners will appear here with logos and links as sponsor packages are confirmed.</p>

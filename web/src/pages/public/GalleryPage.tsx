@@ -2,14 +2,11 @@ import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
 import { gameOptionLabel } from '../../lib/games'
-import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, SectionUnavailable } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
 
 export function GalleryPage() {
   const { data, loading, error, reload } = useAsync(() => api.publicMedia({ limit: 200 }), [])
-
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
 
   return (
     <div className="page-stack">
@@ -19,7 +16,15 @@ export function GalleryPage() {
         description="A sourced gallery of tournament imagery. Images link back to their original article or media source where available."
       />
 
-      {!data?.mediaAssets.length ? (
+      {loading && !data ? (
+        <LoadingState label="Loading photo gallery" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Photo gallery is temporarily unavailable"
+          description="Could not reach the media archive API right now."
+          onRetry={reload}
+        />
+      ) : !data?.mediaAssets.length ? (
         <EmptyState title="No gallery photos posted yet" description="Photos and visual coverage will appear here once tournament media is approved." />
       ) : (
         <div className="gallery-grid">

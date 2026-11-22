@@ -1,8 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth, useUser } from '@clerk/clerk-react'
-import { api, setAuthTokenGetter } from '../lib/api'
+import { ApiError, api, setAuthTokenGetter } from '../lib/api'
 import { identifyAnalyticsUser, resetAnalytics } from '../lib/analytics'
+import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 import type { CurrentUser } from '../lib/types'
+
+export type AuthErrorKind = 'auth' | 'network' | null
 
 type AuthContextValue = {
   isClerkEnabled: boolean
@@ -10,6 +13,7 @@ type AuthContextValue = {
   isLoading: boolean
   user: CurrentUser | null
   error: string | null
+  errorKind: AuthErrorKind
   refreshUser: () => Promise<void>
 }
 
@@ -33,7 +37,7 @@ function ClerkRequiredAuthProvider({ children }: { children: ReactNode }) {
     return () => setAuthTokenGetter(null)
   }, [])
 
-  const refreshUser = async () => {}
+  const refreshUser = useCallback(async () => {}, [])
 
   const value = useMemo<AuthContextValue>(() => ({
     isClerkEnabled: false,
@@ -41,8 +45,9 @@ function ClerkRequiredAuthProvider({ children }: { children: ReactNode }) {
     isLoading: false,
     user: null,
     error: 'Clerk is not configured. Add VITE_CLERK_PUBLISHABLE_KEY before using admin routes.',
+    errorKind: 'auth',
     refreshUser,
-  }), [])
+  }), [refreshUser])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
@@ -50,8 +55,10 @@ function ClerkRequiredAuthProvider({ children }: { children: ReactNode }) {
 function ClerkBackedAuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, getToken } = useAuth()
   const { user: clerkUser } = useUser()
+  const backend = useBackendAvailabilityContext()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<AuthErrorKind>(null)
   const [isChecking, setIsChecking] = useState(false)
 
   useEffect(() => {
@@ -65,31 +72,43 @@ function ClerkBackedAuthProvider({ children }: { children: ReactNode }) {
     return () => setAuthTokenGetter(null)
   }, [getToken])
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (!isLoaded || !isSignedIn) {
       setUser(null)
+      setError(null)
+      setErrorKind(null)
       resetAnalytics()
       return
     }
 
     setIsChecking(true)
     setError(null)
+    setErrorKind(null)
     try {
       const response = await api.getCurrentUser()
       setUser(response.user)
       identifyAnalyticsUser(response.user)
+      backend.reportAvailable()
     } catch (err) {
       setUser(null)
       resetAnalytics()
-      setError(err instanceof Error ? err.message : 'Unable to verify user')
+      const isNetworkOrServerFailure = !(err instanceof ApiError) || err.status >= 500
+      if (isNetworkOrServerFailure) {
+        backend.reportUnavailable()
+        setErrorKind('network')
+        setError('Unable to reach the FD Alumni Hub API. Try again once the server is online.')
+      } else {
+        setErrorKind('auth')
+        setError(err.message || 'Unable to verify user')
+      }
     } finally {
       setIsChecking(false)
     }
-  }
+  }, [isLoaded, isSignedIn, backend.reportAvailable, backend.reportUnavailable])
 
   useEffect(() => {
     void refreshUser()
-  }, [isLoaded, isSignedIn, clerkUser?.id])
+  }, [refreshUser, clerkUser?.id])
 
   const value = useMemo<AuthContextValue>(() => ({
     isClerkEnabled: true,
@@ -97,8 +116,9 @@ function ClerkBackedAuthProvider({ children }: { children: ReactNode }) {
     isLoading: !isLoaded || isChecking,
     user,
     error,
+    errorKind,
     refreshUser,
-  }), [isLoaded, isSignedIn, isChecking, user, error])
+  }), [isLoaded, isSignedIn, isChecking, user, error, errorKind, refreshUser])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

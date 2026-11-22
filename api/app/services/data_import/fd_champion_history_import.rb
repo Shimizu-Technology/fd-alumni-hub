@@ -65,7 +65,11 @@ module DataImport
     end
 
     def slug_for(source)
-      [ source.fetch("year"), source["editionLabel"].presence ].compact.join("-").parameterize
+      return source["slug"].to_s.strip.parameterize if source["slug"].present?
+
+      bracket = source["bracket"].to_s.strip.downcase
+      bracket_slug = bracket.present? && !%w[overall unknown].include?(bracket) ? bracket : nil
+      [ source.fetch("year"), source["editionLabel"].presence, bracket_slug ].compact.join("-").parameterize
     end
 
     def tournament_for(year)

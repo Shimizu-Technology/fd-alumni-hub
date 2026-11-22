@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class DivisionsController < BaseController
+        before_action :require_admin!, only: [ :create, :update ]
+
         def index
           tournament = tournament_from_params
           divisions = if tournament

@@ -1,6 +1,6 @@
 class TournamentChampion < ApplicationRecord
   STATUSES = %w[completed cancelled research_pending upcoming unknown].freeze
-  BRACKETS = %w[overall maroon gold unknown].freeze
+  BRACKETS = %w[overall maroon gold platinum unknown].freeze
 
   belongs_to :tournament, optional: true
   has_many :tournament_champion_credits, dependent: :destroy
@@ -130,7 +130,13 @@ class TournamentChampion < ApplicationRecord
   end
 
   def label
-    edition_label.present? ? "#{year} #{edition_label}" : year.to_s
+    if edition_label.present?
+      "#{year} #{edition_label}"
+    elsif %w[maroon gold platinum].include?(bracket)
+      "#{year} #{bracket.capitalize}"
+    else
+      year.to_s
+    end
   end
 
   def champion_components
@@ -170,7 +176,8 @@ class TournamentChampion < ApplicationRecord
     self.bracket = bracket.to_s.strip.presence || "overall"
     self.champion_key = self.class.canonical_key(champion_key.presence || champion_label)
     self.runner_up_key = self.class.canonical_key(runner_up_key.presence || runner_up_label)
-    self.slug = slug.to_s.strip.presence || [ year, edition_label.presence ].compact.join("-").parameterize
+    bracket_slug = bracket.present? && !%w[overall unknown].include?(bracket) ? bracket : nil
+    self.slug = slug.to_s.strip.presence || [ year, edition_label.presence, bracket_slug ].compact.join("-").parameterize
   end
 
   def champion_credit_source_changed?

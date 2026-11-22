@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class TournamentsController < BaseController
+        before_action :require_admin!, only: [ :create, :update ]
+
         def index
           tournaments = Tournament.order(year: :desc, start_date: :desc)
           render json: { tournaments: tournaments.map(&:api_json) }

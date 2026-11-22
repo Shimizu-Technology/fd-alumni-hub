@@ -1,8 +1,9 @@
 import { ClerkProvider } from '@clerk/clerk-react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
-import { AdminLayout } from './components/AdminLayout'
+import { AdminLayout, RequireAdminRoute } from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
 import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
@@ -29,8 +30,6 @@ import { AdminNewsPage } from './pages/admin/AdminNewsPage'
 import { AdminMediaPage } from './pages/admin/AdminMediaPage'
 import { AdminSponsorsPage } from './pages/admin/AdminSponsorsPage'
 import { AdminIngestPage } from './pages/admin/AdminIngestPage'
-import { StaticArchivePage } from './pages/public/StaticArchivePage'
-import { useBackendAvailability } from './hooks/useBackendAvailability'
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined
 const clerkEnabled = Boolean(clerkKey && clerkKey.startsWith('pk_'))
@@ -38,52 +37,44 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001
 const HEALTH_URL = new URL('/health', API_BASE_URL).toString()
 
 export function App() {
-  const { status, retry } = useBackendAvailability(HEALTH_URL)
-
-  if (status === 'checking') {
-    return <main className="service-check" role="status"><div className="service-check-spinner" /><p>Checking tournament services…</p></main>
-  }
-
-  if (status === 'unavailable') {
-    return <Routes><Route path="*" element={<StaticArchivePage onRetry={retry} />} /></Routes>
-  }
-
   const content = (
-    <AuthProvider isClerkEnabled={clerkEnabled}>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route index element={<HomePage />} />
-          <Route path="today" element={<TodayPage />} />
-          <Route path="schedule" element={<SchedulePage />} />
-          <Route path="standings" element={<StandingsPage />} />
-          <Route path="watch" element={<WatchPage />} />
-          <Route path="news" element={<NewsPage />} />
-          <Route path="gallery" element={<GalleryPage />} />
-          <Route path="history" element={<HistoryPage />} />
-          <Route path="history/:year" element={<HistoryDetailPage />} />
-          <Route path="classes/:classKey" element={<ClassProfilePage />} />
-          <Route path="teams/:teamId" element={<TeamProfilePage />} />
-          <Route path="sponsors" element={<SponsorsPage />} />
-          <Route path="info" element={<InfoPage />} />
-        </Route>
-        <Route path="admin" element={<AdminLayout />}>
-          <Route index element={<AdminOverviewPage />} />
-          <Route path="tournaments" element={<AdminTournamentsPage />} />
-          <Route path="tournaments/:tournamentId" element={<AdminTournamentDetailPage />} />
-          <Route path="games" element={<AdminGamesPage />} />
-          <Route path="game-day" element={<AdminGameDayPage />} />
-          <Route path="standings" element={<AdminStandingsPage />} />
-          <Route path="divisions" element={<AdminDivisionsPage />} />
-          <Route path="links" element={<AdminLinksPage />} />
-          <Route path="missing-links" element={<AdminMissingLinksPage />} />
-          <Route path="news" element={<AdminNewsPage />} />
-          <Route path="media" element={<AdminMediaPage />} />
-          <Route path="sponsors" element={<AdminSponsorsPage />} />
-          <Route path="ingest" element={<AdminIngestPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AuthProvider>
+    <BackendAvailabilityProvider healthUrl={HEALTH_URL}>
+      <AuthProvider isClerkEnabled={clerkEnabled}>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route index element={<HomePage />} />
+            <Route path="today" element={<TodayPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="standings" element={<StandingsPage />} />
+            <Route path="watch" element={<WatchPage />} />
+            <Route path="news" element={<NewsPage />} />
+            <Route path="gallery" element={<GalleryPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="history/:year" element={<HistoryDetailPage />} />
+            <Route path="classes/:classKey" element={<ClassProfilePage />} />
+            <Route path="teams/:teamId" element={<TeamProfilePage />} />
+            <Route path="sponsors" element={<SponsorsPage />} />
+            <Route path="info" element={<InfoPage />} />
+          </Route>
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverviewPage />} />
+            <Route path="tournaments" element={<AdminTournamentsPage />} />
+            <Route path="tournaments/:tournamentId" element={<AdminTournamentDetailPage />} />
+            <Route path="games" element={<AdminGamesPage />} />
+            <Route path="game-day" element={<AdminGameDayPage />} />
+            <Route path="standings" element={<AdminStandingsPage />} />
+            <Route path="divisions" element={<AdminDivisionsPage />} />
+            <Route path="links" element={<AdminLinksPage />} />
+            <Route path="missing-links" element={<AdminMissingLinksPage />} />
+            <Route path="news" element={<AdminNewsPage />} />
+            <Route path="media" element={<AdminMediaPage />} />
+            <Route path="sponsors" element={<AdminSponsorsPage />} />
+            <Route path="ingest" element={<RequireAdminRoute><AdminIngestPage /></RequireAdminRoute>} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BackendAvailabilityProvider>
   )
 
   if (!clerkEnabled) return content

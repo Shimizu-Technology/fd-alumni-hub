@@ -235,7 +235,7 @@ export type TournamentChampion = {
   runnerUpLabel: string | null
   runnerUpKey: string | null
   score: string | null
-  bracket: 'overall' | 'maroon' | 'gold' | 'unknown'
+  bracket: 'overall' | 'maroon' | 'gold' | 'platinum' | 'unknown'
   primary: boolean
   status: 'completed' | 'cancelled' | 'research_pending' | 'upcoming' | 'unknown'
   source: string

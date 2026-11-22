@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { tournamentScopedPath } from '../../lib/admin'
@@ -22,6 +23,8 @@ const STATUSES: TournamentStatus[] = ['upcoming', 'live', 'completed', 'cancelle
 const STATUS_ORDER: Record<TournamentStatus, number> = { live: 0, upcoming: 1, completed: 2, cancelled: 3 }
 
 export function AdminTournamentsPage() {
+  const auth = useAuthContext()
+  const isAdmin = Boolean(auth.user?.isAdmin)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sort, setSort] = useState<TournamentSortOption>('yearDesc')
@@ -43,7 +46,7 @@ export function AdminTournamentsPage() {
 
       <TournamentModeGuide />
 
-      <CreateTournamentPanel tournamentsCount={tournaments.length} onSaved={reload} />
+      {isAdmin && <CreateTournamentPanel tournamentsCount={tournaments.length} onSaved={reload} />}
 
       <Panel>
         <div className="section-heading"><h2>Tournaments</h2><span>{visibleTournaments.length} of {tournaments.length}</span></div>
@@ -52,7 +55,7 @@ export function AdminTournamentsPage() {
         {tournaments.length > 0 && !visibleTournaments.length ? <EmptyState title="No tournaments match those filters" description="Clear the search or status filter to see more tournament years." /> : null}
         {visibleTournaments.length > 0 && (
           <div className="admin-list tournament-list">
-            {visibleTournaments.map((tournament) => <TournamentRow key={tournament.id} tournament={tournament} onSaved={reload} />)}
+            {visibleTournaments.map((tournament) => <TournamentRow key={tournament.id} tournament={tournament} isAdmin={isAdmin} onSaved={reload} />)}
           </div>
         )}
       </Panel>
@@ -158,7 +161,7 @@ function TournamentToolbar({ query, status, sort, onQueryChange, onStatusChange,
   )
 }
 
-function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSaved: () => Promise<void> }) {
+function TournamentRow({ tournament, isAdmin, onSaved }: { tournament: Tournament; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<TournamentForm>(tournamentFormState(tournament))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -203,7 +206,7 @@ function TournamentRow({ tournament, onSaved }: { tournament: Tournament; onSave
         </div>
         <div className="row-actions">
           <StatusBadge status={tournament.status} />
-          {!editing && <button className="btn secondary small" type="button" onClick={() => setEditing(true)}>Edit tournament</button>}
+          {isAdmin && !editing && <button className="btn secondary small" type="button" onClick={() => setEditing(true)}>Edit tournament</button>}
         </div>
       </div>
 

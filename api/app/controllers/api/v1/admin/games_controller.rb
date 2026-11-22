@@ -92,7 +92,9 @@ module Api
 
         def standings_sensitive_change?(incoming)
           incoming.key?(:status) || incoming.key?(:home_score) || incoming.key?(:away_score) ||
-            incoming.key?(:home_team_id) || incoming.key?(:away_team_id)
+            incoming.key?(:home_team_id) || incoming.key?(:away_team_id) ||
+            incoming.key?(:notes) || incoming.key?(:bracket_code) ||
+            incoming.key?(:division_id) || incoming.key?(:division)
         end
       end
     end

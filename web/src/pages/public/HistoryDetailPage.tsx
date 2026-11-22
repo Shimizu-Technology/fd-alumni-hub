@@ -5,8 +5,9 @@ import { formatGuamDate, formatGuamDateTime, guamDayLabel } from '../../lib/date
 import { DEFAULT_GAME_VENUE, formatTournamentWindow, gameResultLabel } from '../../lib/games'
 import { classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
+import { staticChampionsForYear } from '../../lib/staticChampions'
 import type { Article, Game, MediaAsset, Sponsor, Standing, TournamentChampion } from '../../lib/types'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
+import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, SectionUnavailable, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function HistoryDetailPage() {
@@ -24,14 +25,27 @@ export function HistoryDetailPage() {
       api.publicSponsors({ year: numericYear }),
     ])
 
+    const staticChampions = staticChampionsForYear(numericYear)
+    const championsFailed = championsResult.status === 'rejected'
+
     return {
       year: numericYear,
-      champions: settledValue(championsResult, emptyChampionsArchive()),
+      champions: championsFailed
+        ? { championRecords: staticChampions, titleCounts: [], entryTitleCounts: [] }
+        : championsResult.value,
       schedule: settledValue(scheduleResult, emptyScheduleArchive()),
       standings: settledValue(standingsResult, emptyStandingsArchive()),
       articles: settledValue(articlesResult, emptyArticlesArchive()),
       media: settledValue(mediaResult, emptyMediaArchive()),
       sponsors: settledValue(sponsorsResult, emptySponsorsArchive()),
+      failedSections: {
+        champions: championsFailed,
+        schedule: scheduleResult.status === 'rejected',
+        standings: standingsResult.status === 'rejected',
+        articles: articlesResult.status === 'rejected',
+        media: mediaResult.status === 'rejected',
+        sponsors: sponsorsResult.status === 'rejected',
+      },
     }
   }, [numericYear])
 
@@ -49,7 +63,8 @@ export function HistoryDetailPage() {
   const scoreCoverage = archiveData?.standings.scoreCoverage
   const finalGames = games.filter((game) => game.status === 'final' && game.homeScore !== null && game.awayScore !== null)
   const championRecords = archiveData?.champions.championRecords || []
-  const primaryChampion = championRecords.find((record) => record.status === 'completed') || championRecords[0]
+  const primaryChampion = championRecords.find((record) => record.primary && record.status === 'completed') || championRecords.find((record) => record.status === 'completed') || championRecords[0]
+  const failed = archiveData?.failedSections
 
   return (
     <div className="page-stack archive-detail-page">
@@ -74,34 +89,52 @@ export function HistoryDetailPage() {
         <img src="/brand/fd-crest.png" alt="" aria-hidden="true" />
       </section>
 
+      {failed?.champions && (
+        <Panel className="notice-panel">
+          <span>Showing preserved offline champion records because the live champions API could not be reached.</span>{' '}
+          <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
+        </Panel>
+      )}
+
       {championRecords.length > 0 && <ChampionRecordsPanel records={championRecords} />}
 
       <div className="stats-grid four">
-        <StatCard label="Games tracked" value={games.length} tone="maroon" />
-        <StatCard label="Final scores" value={finalGames.length} detail={scoreCoverage ? `${scoreCoverage.percent}% coverage` : 'Coverage pending'} />
-        <StatCard label="Articles" value={articles.length} tone="gold" />
-        <StatCard label="Photos" value={mediaAssets.length} />
+        <StatCard label="Games tracked" value={failed?.schedule ? '—' : games.length} tone="maroon" />
+        <StatCard label="Final scores" value={failed?.schedule ? '—' : finalGames.length} detail={failed?.standings ? 'Unavailable' : scoreCoverage ? `${scoreCoverage.percent}% coverage` : 'Coverage pending'} />
+        <StatCard label="Articles" value={failed?.articles ? '—' : articles.length} tone="gold" />
+        <StatCard label="Photos" value={failed?.media ? '—' : mediaAssets.length} />
       </div>
 
       <section className="split-grid archive-split">
         <Panel>
-          <div className="section-heading"><h2>Results and schedule</h2><span>{games.length} games</span></div>
-          {!games.length ? <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the Rails archive yet." /> : <ArchiveGameList games={games} />}
+          <div className="section-heading"><h2>Results and schedule</h2><span>{failed?.schedule ? 'Unavailable' : `${games.length} games`}</span></div>
+          {failed?.schedule ? (
+            <SectionUnavailable title="Schedule archive unavailable" description="Could not load archived games right now." onRetry={reload} />
+          ) : !games.length ? (
+            <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the Rails archive yet." />
+          ) : (
+            <ArchiveGameList games={games} />
+          )}
         </Panel>
         <Panel>
-          <div className="section-heading"><h2>Standings snapshot</h2><span>{visibleCountLabel(standings.length, Math.min(standings.length, 12), 'teams')}</span></div>
-          {!standings.length ? <EmptyState title="Standings pending" description="Standings appear here when verified results are available for this tournament." /> : <ArchiveStandings standings={standings} />}
+          <div className="section-heading"><h2>Standings snapshot</h2><span>{failed?.standings ? 'Unavailable' : visibleCountLabel(standings.length, Math.min(standings.length, 12), 'teams')}</span></div>
+          {failed?.standings ? (
+            <SectionUnavailable title="Standings archive unavailable" description="Could not load archived standings right now." onRetry={reload} />
+          ) : !standings.length ? (
+            <EmptyState title="Standings pending" description="Standings appear here when verified results are available for this tournament." />
+          ) : (
+            <ArchiveStandings standings={standings} />
+          )}
         </Panel>
       </section>
 
-      <ArchiveArticles articles={articles} />
-      <ArchiveMedia mediaAssets={mediaAssets} />
+      <ArchiveArticles articles={articles} unavailable={Boolean(failed?.articles)} onRetry={reload} />
+      <ArchiveMedia mediaAssets={mediaAssets} unavailable={Boolean(failed?.media)} onRetry={reload} />
       <ArchiveSponsors sponsors={sponsors} />
     </div>
   )
 }
 
-type ChampionsArchive = Awaited<ReturnType<typeof api.publicChampions>>
 type ScheduleArchive = Awaited<ReturnType<typeof api.publicSchedule>>
 type StandingsArchive = Awaited<ReturnType<typeof api.publicStandings>>
 type ArticlesArchive = Awaited<ReturnType<typeof api.publicArticles>>
@@ -122,10 +155,6 @@ function settledValue<T>(result: PromiseSettledResult<T>, fallback: T) {
 function visibleCountLabel(total: number, visible: number, noun?: string) {
   const suffix = noun ? ` ${noun}` : ''
   return total > visible ? `${visible} of ${total}${suffix}` : `${total}${suffix}`
-}
-
-function emptyChampionsArchive(): ChampionsArchive {
-  return { championRecords: [], titleCounts: [], entryTitleCounts: [] }
 }
 
 function emptyScheduleArchive(): ScheduleArchive {
@@ -221,13 +250,17 @@ function ArchiveStandings({ standings }: { standings: Standing[] }) {
   )
 }
 
-function ArchiveArticles({ articles }: { articles: Article[] }) {
+function ArchiveArticles({ articles, unavailable, onRetry }: { articles: Article[]; unavailable: boolean; onRetry: () => void }) {
   const visibleArticles = articles.slice(0, 9)
 
   return (
     <Panel>
-      <div className="section-heading"><h2>Coverage from this tournament</h2><span>{visibleCountLabel(articles.length, visibleArticles.length)}</span></div>
-      {!articles.length ? <EmptyState title="Coverage pending" description="Articles and recaps will appear here as the archive is verified." /> : (
+      <div className="section-heading"><h2>Coverage from this tournament</h2><span>{unavailable ? 'Unavailable' : visibleCountLabel(articles.length, visibleArticles.length)}</span></div>
+      {unavailable ? (
+        <SectionUnavailable title="Coverage archive unavailable" description="Could not load archived articles right now." onRetry={onRetry} />
+      ) : !articles.length ? (
+        <EmptyState title="Coverage pending" description="Articles and recaps will appear here as the archive is verified." />
+      ) : (
         <div className="archive-card-grid">
           {visibleArticles.map((article) => (
             <a key={article.id} className="archive-link-card" href={article.url} target="_blank" rel="noreferrer">
@@ -243,13 +276,17 @@ function ArchiveArticles({ articles }: { articles: Article[] }) {
   )
 }
 
-function ArchiveMedia({ mediaAssets }: { mediaAssets: MediaAsset[] }) {
+function ArchiveMedia({ mediaAssets, unavailable, onRetry }: { mediaAssets: MediaAsset[]; unavailable: boolean; onRetry: () => void }) {
   const visibleMedia = mediaAssets.slice(0, 8)
 
   return (
     <Panel>
-      <div className="section-heading"><h2>Photos and media</h2><span>{visibleCountLabel(mediaAssets.length, visibleMedia.length)}</span></div>
-      {!mediaAssets.length ? <EmptyState title="Media pending" description="Photos will appear here when this tournament's media archive is available." /> : (
+      <div className="section-heading"><h2>Photos and media</h2><span>{unavailable ? 'Unavailable' : visibleCountLabel(mediaAssets.length, visibleMedia.length)}</span></div>
+      {unavailable ? (
+        <SectionUnavailable title="Media archive unavailable" description="Could not load archived photos right now." onRetry={onRetry} />
+      ) : !mediaAssets.length ? (
+        <EmptyState title="Media pending" description="Photos will appear here when this tournament's media archive is available." />
+      ) : (
         <div className="archive-media-strip">
           {visibleMedia.map((asset) => <article key={asset.id}><img src={asset.imageUrl} alt={asset.caption || asset.title} loading="lazy" /><div><strong>{asset.title}</strong><span>{asset.source}</span></div></article>)}
         </div>

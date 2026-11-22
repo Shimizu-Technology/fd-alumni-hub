@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export type BackendAvailability = 'checking' | 'available' | 'unavailable'
 
-const PROBE_TIMEOUT_MS = 7_000
+export type BackendAvailabilityContextValue = {
+  status: BackendAvailability
+  isChecking: boolean
+  isUnavailable: boolean
+  retry: () => Promise<void>
+  reportUnavailable: () => void
+  reportAvailable: () => void
+}
+
+const PROBE_TIMEOUT_MS = 5_000
 const RETRY_INTERVAL_MS = 30_000
+
+const BackendAvailabilityContext = createContext<BackendAvailabilityContextValue | null>(null)
 
 export function useBackendAvailability(healthUrl: string) {
   const [status, setStatus] = useState<BackendAvailability>('checking')
@@ -36,9 +47,53 @@ export function useBackendAvailability(healthUrl: string) {
 
   useEffect(() => {
     if (status !== 'unavailable') return
-    const interval = window.setInterval(() => void check(false), RETRY_INTERVAL_MS)
+    const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      void check(false)
+    }, RETRY_INTERVAL_MS)
     return () => window.clearInterval(interval)
   }, [check, status])
 
-  return { status, retry: () => check() }
+  const reportUnavailable = useCallback(() => {
+    requestId.current += 1
+    setStatus('unavailable')
+  }, [])
+
+  const reportAvailable = useCallback(() => {
+    requestId.current += 1
+    setStatus('available')
+  }, [])
+
+  const retry = useCallback(() => check(true), [check])
+
+  return {
+    status,
+    isChecking: status === 'checking',
+    isUnavailable: status === 'unavailable',
+    retry,
+    reportUnavailable,
+    reportAvailable,
+  }
+}
+
+export function BackendAvailabilityProvider({ healthUrl, children }: { healthUrl: string; children: ReactNode }) {
+  const availability = useBackendAvailability(healthUrl)
+  const value = useMemo(() => availability, [
+    availability.status,
+    availability.isChecking,
+    availability.isUnavailable,
+    availability.retry,
+    availability.reportUnavailable,
+    availability.reportAvailable,
+  ])
+
+  return createElement(BackendAvailabilityContext.Provider, { value }, children)
+}
+
+export function useBackendAvailabilityContext(): BackendAvailabilityContextValue {
+  const value = useContext(BackendAvailabilityContext)
+  if (!value) {
+    throw new Error('useBackendAvailabilityContext must be used within BackendAvailabilityProvider')
+  }
+  return value
 }

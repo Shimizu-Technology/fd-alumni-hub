@@ -1,3 +1,4 @@
+require "base64"
 require "uri"
 
 class ClerkAuth
@@ -13,32 +14,16 @@ class ClerkAuth
         return handle_test_token(token)
       end
 
-      jwks = fetch_jwks
-      return nil if jwks.nil?
+      payload = decode_with_jwks(token)
+      return nil unless payload
+      return nil unless valid_authorized_party?(payload)
 
-      decode_options = {
-        algorithms: [ "RS256" ],
-        jwks: jwks,
-        verify_iat: true,
-        leeway: TOKEN_CLOCK_SKEW_LEEWAY_SECONDS
-      }
-
-      if expected_issuer.present?
-        decode_options[:iss] = expected_issuer
-        decode_options[:verify_iss] = true
-      end
-
-      if expected_audience.present?
-        decode_options[:aud] = expected_audience
-        decode_options[:verify_aud] = true
-      end
-
-      JWT.decode(token, nil, true, decode_options).first
-    rescue JWT::DecodeError => e
-      Rails.logger.warn("JWT decode error: #{e.message}")
-      nil
+      payload
     rescue JWT::ExpiredSignature
       Rails.logger.debug("JWT token expired")
+      nil
+    rescue JWT::DecodeError => e
+      Rails.logger.warn("JWT decode error: #{e.message}")
       nil
     end
 
@@ -64,20 +49,109 @@ class ClerkAuth
       nil
     end
 
+    def expected_issuer
+      configured_issuer || issuer_from_jwks_url || issuer_from_publishable_key
+    end
+
+    def jwks_url
+      explicit = ENV.fetch("CLERK_JWKS_URL", nil).presence
+      return explicit if explicit
+
+      issuer = configured_issuer || issuer_from_publishable_key
+      issuer.present? ? "#{issuer}/.well-known/jwks.json" : nil
+    end
+
+    def authorized_parties
+      raw = ENV.fetch("CLERK_AUTHORIZED_PARTIES", nil).presence
+      if raw
+        return raw.split(",").filter_map { |origin| normalize_origin(origin) }.uniq
+      end
+
+      if Rails.env.production? && defined?(CorsOrigins)
+        return CorsOrigins.allowed_origins(production: true)
+      end
+
+      []
+    end
+
+    def test_instance?
+      publishable_key = ENV.fetch("CLERK_PUBLISHABLE_KEY", "").strip
+      secret_key = ENV.fetch("CLERK_SECRET_KEY", "").strip
+      issuer = expected_issuer.to_s
+
+      publishable_key.start_with?("pk_test_") ||
+        secret_key.start_with?("sk_test_") ||
+        issuer.include?(".clerk.accounts.dev")
+    end
+
+    def valid_authorized_party?(payload)
+      configured_raw = ENV.fetch("CLERK_AUTHORIZED_PARTIES", nil).presence
+      parties = authorized_parties
+      if configured_raw && parties.empty?
+        Rails.logger.error("ClerkAuth: CLERK_AUTHORIZED_PARTIES is set but contains no valid origins; rejecting token.")
+        return false
+      end
+      return true if parties.empty?
+      return true unless payload.key?("azp")
+
+      azp = normalize_origin(payload["azp"])
+      azp.present? && parties.include?(azp)
+    end
+
     private
 
-    def fetch_jwks
-      cached = Rails.cache.read(JWKS_CACHE_KEY)
-      return cached if cached.present?
+    def decode_with_jwks(token)
+      jwks = fetch_jwks
+      return nil if jwks.nil?
 
+      decode_token_with_jwks(token, jwks)
+    rescue JWT::ExpiredSignature
+      raise
+    rescue JWT::DecodeError => e
+      raise unless e.message.to_s.include?("Could not find public key for kid")
+
+      refreshed_jwks = fetch_jwks(force_refresh: true)
+      return nil if refreshed_jwks.nil?
+
+      decode_token_with_jwks(token, refreshed_jwks)
+    end
+
+    def decode_token_with_jwks(token, jwks)
+      decode_options = {
+        algorithms: [ "RS256" ],
+        jwks: jwks,
+        verify_iat: true,
+        leeway: TOKEN_CLOCK_SKEW_LEEWAY_SECONDS
+      }
+
+      if expected_issuer.present?
+        decode_options[:iss] = expected_issuer
+        decode_options[:verify_iss] = true
+      end
+
+      if expected_audience.present?
+        decode_options[:aud] = expected_audience
+        decode_options[:verify_aud] = true
+      end
+
+      JWT.decode(token, nil, true, decode_options).first
+    end
+
+    def fetch_jwks(force_refresh: false)
       jwks_uri = jwks_url
       return nil unless jwks_uri
+
+      cache_key = "#{JWKS_CACHE_KEY}:#{jwks_uri}"
+      unless force_refresh
+        cached = Rails.cache.read(cache_key)
+        return cached if cached.present?
+      end
 
       response = HTTParty.get(jwks_uri, timeout: 5)
 
       if response.success?
         jwks = response.parsed_response
-        Rails.cache.write(JWKS_CACHE_KEY, jwks, expires_in: JWKS_CACHE_TTL)
+        Rails.cache.write(cache_key, jwks, expires_in: JWKS_CACHE_TTL)
         jwks
       else
         Rails.logger.error("Failed to fetch Clerk JWKS: #{response.code}")
@@ -88,33 +162,45 @@ class ClerkAuth
       nil
     end
 
-    def jwks_url
-      ENV.fetch("CLERK_JWKS_URL", nil).presence || begin
-        issuer = configured_issuer
-        issuer.present? ? "#{issuer}/.well-known/jwks.json" : nil
-      end
-    end
-
-    def expected_issuer
-      configured_issuer || issuer_from_jwks_url
-    end
-
     def configured_issuer
-      ENV.fetch("CLERK_ISSUER", nil).presence
+      normalize_origin(ENV.fetch("CLERK_ISSUER", nil))
     end
 
     def issuer_from_jwks_url
       raw_url = ENV.fetch("CLERK_JWKS_URL", nil).presence
       return nil unless raw_url
 
-      uri = URI.parse(raw_url)
+      normalize_origin(raw_url)
+    end
+
+    def issuer_from_publishable_key
+      key = ENV.fetch("CLERK_PUBLISHABLE_KEY", "").strip
+      return nil unless key.match?(/\Apk_(?:test|live)_/)
+
+      encoded = key.split("_", 3).last.to_s
+      return nil if encoded.blank?
+
+      padded = encoded + ("=" * ((4 - encoded.length % 4) % 4))
+      domain = Base64.strict_decode64(padded).delete_suffix("$")
+      return nil unless domain.match?(/\A[a-zA-Z0-9.-]+\z/)
+
+      "https://#{domain}"
+    rescue ArgumentError
+      nil
+    end
+
+    def normalize_origin(raw_value)
+      value = raw_value.to_s.strip
+      return nil if value.blank?
+
+      uri = URI.parse(value)
       return nil if uri.scheme.blank? || uri.host.blank?
 
       origin = +"#{uri.scheme}://#{uri.host}"
       origin << ":#{uri.port}" unless uri.port == uri.default_port
       origin
     rescue URI::InvalidURIError => e
-      Rails.logger.warn("Invalid Clerk JWKS URL: #{e.message}")
+      Rails.logger.warn("Invalid Clerk URL: #{e.message}")
       nil
     end
 

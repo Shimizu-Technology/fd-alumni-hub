@@ -1,9 +1,10 @@
 import { createPortal } from 'react-dom'
-import { useEffect, useRef, useState, type ReactElement, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { SignInButton, SignOutButton } from '@clerk/clerk-react'
 import { tournamentScopedPath } from '../lib/admin'
 import { useAuthContext } from '../contexts/AuthContext'
+import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 import {
   IconCalendar,
   IconChart,
@@ -24,7 +25,7 @@ import {
   IconTrophy,
   IconUsers,
 } from './Icons'
-import { LoadingState } from './ui'
+import { LoadingState, Panel } from './ui'
 
 type IconComponent = (props: { size?: number; className?: string }) => ReactElement
 
@@ -33,6 +34,7 @@ type NavItem = {
   label: string
   icon: IconComponent
   end?: boolean
+  adminOnly?: boolean
 }
 
 type NavSection = {
@@ -68,7 +70,7 @@ const navSections: NavSection[] = [
       { to: '/admin/news', label: 'News', icon: IconNewspaper },
       { to: '/admin/media', label: 'Media', icon: IconImage },
       { to: '/admin/sponsors', label: 'Sponsors', icon: IconHandshake },
-      { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase },
+      { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase, adminOnly: true },
     ],
   },
 ]
@@ -181,10 +183,38 @@ function UtilityLink({ to, label, icon: Icon, collapsed, onNavigate }: { to: str
   )
 }
 
-function SidebarContent({ collapsed, tournamentId, userEmail, userName, onNavigate, onToggleCollapse }: { collapsed: boolean; tournamentId: string | null; userEmail: string; userName: string; onNavigate: () => void; onToggleCollapse?: () => void }) {
+function visibleNavSections(isAdmin: boolean) {
+  return navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    }))
+    .filter((section) => section.items.length > 0)
+}
+
+function SidebarContent({
+  collapsed,
+  tournamentId,
+  userEmail,
+  userName,
+  userRole,
+  isAdmin,
+  onNavigate,
+  onToggleCollapse,
+}: {
+  collapsed: boolean
+  tournamentId: string | null
+  userEmail: string
+  userName: string
+  userRole: string
+  isAdmin: boolean
+  onNavigate: () => void
+  onToggleCollapse?: () => void
+}) {
   const collapseButtonRef = useRef<HTMLButtonElement | null>(null)
   const [collapseTooltipVisible, setCollapseTooltipVisible] = useState(false)
   const collapseLabel = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
+  const sections = visibleNavSections(isAdmin)
 
   useEffect(() => setCollapseTooltipVisible(false), [collapsed])
 
@@ -222,7 +252,7 @@ function SidebarContent({ collapsed, tournamentId, userEmail, userName, onNaviga
       </div>
 
       <div className="admin-sidebar-scroll">
-        {navSections.map((section, sectionIndex) => (
+        {sections.map((section, sectionIndex) => (
           <div className="admin-nav-section" key={section.label}>
             {collapsed ? (
               <div className={sectionIndex === 0 ? 'sr-only' : 'admin-nav-divider'}><span className="sr-only">{section.label}</span></div>
@@ -240,7 +270,12 @@ function SidebarContent({ collapsed, tournamentId, userEmail, userName, onNaviga
         <UtilityLink to="/" label="View public hub" icon={IconHome} collapsed={collapsed} onNavigate={onNavigate} />
         <div className={`admin-account-card ${collapsed ? 'collapsed' : ''}`}>
           <span className="admin-account-avatar">{(userName || userEmail || 'A').charAt(0).toUpperCase()}</span>
-          {!collapsed && <span className="admin-account-meta"><strong>{userName || 'Admin'}</strong><small>{userEmail}</small></span>}
+          {!collapsed && (
+            <span className="admin-account-meta">
+              <strong>{userName || 'Admin'} <span className="admin-role-pill">{userRole}</span></strong>
+              <small>{userEmail}</small>
+            </span>
+          )}
         </div>
         <SignOutButton>
           <button className={`admin-signout-button ${collapsed ? 'collapsed' : ''}`} aria-label="Sign out">
@@ -253,8 +288,28 @@ function SidebarContent({ collapsed, tournamentId, userEmail, userName, onNaviga
   )
 }
 
+export function RequireAdminRoute({ children }: { children: ReactNode }) {
+  const auth = useAuthContext()
+
+  if (!auth.user?.isAdmin) {
+    return (
+      <div className="page-stack admin-page">
+        <Panel className="state-card">
+          <IconShield size={32} />
+          <h2>Admin access required</h2>
+          <p>Your account has staff permissions. Only administrators can access this tool.</p>
+          <Link className="btn secondary" to="/admin">Back to admin overview</Link>
+        </Panel>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 export function AdminLayout() {
   const auth = useAuthContext()
+  const backend = useBackendAvailabilityContext()
   const location = useLocation()
   const returnTo = `${window.location.pathname}${window.location.search}`
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -273,8 +328,14 @@ export function AdminLayout() {
     }
   }, [desktopCollapsed])
 
+  const showUnavailableState = backend.isUnavailable || auth.errorKind === 'network'
+
   useEffect(() => {
-    if (!mobileOpen || typeof document === 'undefined') return
+    if (showUnavailableState && mobileOpen) setMobileOpen(false)
+  }, [showUnavailableState, mobileOpen])
+
+  useEffect(() => {
+    if (!mobileOpen || showUnavailableState || typeof document === 'undefined') return
 
     const previousOverflow = document.body.style.overflow
     const opener = mobileMenuButtonRef.current
@@ -293,9 +354,32 @@ export function AdminLayout() {
       const mobileNav = document.getElementById(mobileNavId)
       if (document.activeElement instanceof HTMLElement && mobileNav?.contains(document.activeElement)) opener?.focus()
     }
-  }, [mobileOpen])
+  }, [mobileOpen, showUnavailableState])
 
-  if (auth.isLoading) return <div className="admin-shell"><LoadingState label="Verifying admin access" /></div>
+  const retryConnection = async () => {
+    await backend.retry()
+    await auth.refreshUser()
+  }
+
+  if (showUnavailableState) {
+    return (
+      <div className="admin-shell centered-shell">
+        <div className="auth-card">
+          <IconShield size={32} />
+          <h1>Admin API unavailable</h1>
+          <p>The FD Alumni Hub API is currently paused or unreachable. Admin tools require a live API connection.</p>
+          <div className="row-actions">
+            <button type="button" className="btn primary" onClick={() => void retryConnection()} disabled={backend.isChecking || auth.isLoading}>
+              {backend.isChecking || auth.isLoading ? 'Checking…' : 'Retry connection'}
+            </button>
+            <Link className="btn secondary" to="/">View public hub</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (auth.isLoading || backend.isChecking) return <div className="admin-shell"><LoadingState label="Verifying admin access" /></div>
 
   if (auth.isClerkEnabled && !auth.isSignedIn) {
     return (
@@ -332,6 +416,7 @@ export function AdminLayout() {
   const closeMobileNav = () => setMobileOpen(false)
   const userEmail = auth.user.email
   const userName = auth.user.fullName
+  const userRole = auth.user.isAdmin ? 'Admin' : 'Staff'
 
   return (
     <div className="admin-shell">
@@ -358,18 +443,18 @@ export function AdminLayout() {
       {mobileOpen && (
         <aside id={mobileNavId} className="admin-sidebar admin-sidebar-mobile open" role="dialog" aria-modal="true" aria-label="Admin navigation">
           <button ref={mobileCloseButtonRef} type="button" className="admin-mobile-close" onClick={closeMobileNav} aria-label="Close admin navigation"><IconClose /></button>
-          <SidebarContent collapsed={false} tournamentId={tournamentId} userEmail={userEmail} userName={userName} onNavigate={closeMobileNav} />
+          <SidebarContent collapsed={false} tournamentId={tournamentId} userEmail={userEmail} userName={userName} userRole={userRole} isAdmin={auth.user.isAdmin} onNavigate={closeMobileNav} />
         </aside>
       )}
 
       <aside className={`admin-sidebar admin-sidebar-desktop ${desktopCollapsed ? 'collapsed' : ''}`}>
-        <SidebarContent collapsed={desktopCollapsed} tournamentId={tournamentId} userEmail={userEmail} userName={userName} onNavigate={() => undefined} onToggleCollapse={() => setDesktopCollapsed((value) => !value)} />
+        <SidebarContent collapsed={desktopCollapsed} tournamentId={tournamentId} userEmail={userEmail} userName={userName} userRole={userRole} isAdmin={auth.user.isAdmin} onNavigate={() => undefined} onToggleCollapse={() => setDesktopCollapsed((value) => !value)} />
       </aside>
 
       <section className={`admin-content ${desktopCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="admin-topbar">
           <div className="admin-topbar-icons" aria-hidden="true"><IconCalendar /><IconTrophy /><IconLink /><IconImage /></div>
-          <span>{userName}</span>
+          <span>{userName} · {userRole}</span>
         </div>
         <Outlet />
       </section>

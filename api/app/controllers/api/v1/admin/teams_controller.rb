@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class TeamsController < BaseController
+        before_action :require_admin!, only: [ :destroy ]
+
         def index
           teams = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).order(:tournament_id, :division, :display_name)
           teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
@@ -37,15 +39,20 @@ module Api
           class_cohort_keys = attrs.delete(:class_cohort_keys)
           class_cohort_keys_changed = attrs.delete(:class_cohort_keys_changed)
 
+          standings_sensitive = false
+
           Team.transaction do
             unless team.update(attrs.except(:tournament_id))
               render_errors(team)
               raise ActiveRecord::Rollback
             end
 
+            standings_sensitive = (team.previous_changes.keys & %w[division_id division display_name class_year_label]).any?
             sync_manual_memberships(team, class_cohort_keys) if manual_class_cohort_update?(class_cohort_keys, class_cohort_keys_changed)
           end
           return if performed?
+
+          Standings::Recompute.call(team.tournament) if standings_sensitive
 
           render json: { team: team_for_response(team.id).api_json(include_roster: true) }
         rescue ClassArchive::SyncManualTeamMemberships::ConflictError => error

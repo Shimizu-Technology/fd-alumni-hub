@@ -3,14 +3,11 @@ import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
 import { gameOptionLabel } from '../../lib/games'
-import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, SectionUnavailable } from '../../components/ui'
 import { IconExternal } from '../../components/Icons'
 
 export function NewsPage() {
   const { data, loading, error, reload } = useAsync(() => api.publicArticles({ limit: 200 }), [])
-
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
 
   return (
     <div className="page-stack">
@@ -20,7 +17,15 @@ export function NewsPage() {
         description="Linked coverage from GSPN, PostGuam, GuamPDN, and other sources. This hub preserves context and sends readers to the original publisher."
       />
 
-      {!data?.articles.length ? (
+      {loading && !data ? (
+        <LoadingState label="Loading news archive" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Coverage links are temporarily unavailable"
+          description="Could not reach the coverage archive API right now."
+          onRetry={reload}
+        />
+      ) : !data?.articles.length ? (
         <EmptyState title="No coverage links posted yet" description="Tournament stories, recaps, and partner coverage will appear here as they are published." />
       ) : (
         <div className="article-grid">

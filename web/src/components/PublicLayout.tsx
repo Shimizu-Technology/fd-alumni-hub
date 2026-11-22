@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { IconClose, IconMenu, IconShield } from './Icons'
 import { externalHref } from '../lib/urls'
+import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
 const publicMenuId = 'fd-public-mobile-menu'
 const menuFocusableSelector = [
@@ -28,6 +29,7 @@ const navItems = [
 
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
+  const backend = useBackendAvailabilityContext()
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
@@ -115,6 +117,17 @@ export function PublicLayout() {
       )}
 
       <main className="site-main">
+        {backend.isUnavailable && (
+          <div className="api-status-banner" role="status">
+            <div>
+              <strong>Live tournament services are currently paused or unreachable.</strong>
+              <span>Historical champions and tournament info remain available while live schedules and scores are offline.</span>
+            </div>
+            <button type="button" className="btn secondary small" onClick={() => void backend.retry()} disabled={backend.isChecking}>
+              {backend.isChecking ? 'Checking…' : 'Retry connection'}
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
 

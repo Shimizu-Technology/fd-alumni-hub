@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { SITE_URL } from '../lib/site'
 
 const SITE_NAME = 'FD Alumni Basketball Hub'
-const SITE_URL = ((import.meta.env.VITE_SITE_URL as string | undefined) || 'https://fd-alumni-tourney.netlify.app').replace(/\/$/, '')
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
 const DEFAULT_DESCRIPTION = 'Central hub for FD Alumni Basketball Tournament schedules, standings, GuamTime tickets, Clutch streams, news, media, sponsors, and history.'
 

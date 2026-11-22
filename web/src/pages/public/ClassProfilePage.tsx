@@ -6,18 +6,53 @@ import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { classDisplayLabel, classKeyFromRoute, classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Article, Game, Team, TournamentChampion } from '../../lib/types'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function ClassProfilePage() {
   const { classKey = '' } = useParams()
-  const { data, loading, error, reload } = useAsync(async () => {
+  const { data, loading, error, errorStatus, reload } = useAsync(async () => {
     if (!classKey) throw new Error('Class archive not found')
     return api.publicClass(classKey)
   }, [classKey])
 
   if (loading && !data) return <LoadingState label="Loading class archive" />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  if (error) {
+    if (errorStatus === 404) {
+      return (
+        <div className="page-stack class-profile-page">
+          <PageHeader
+            eyebrow="Class archive"
+            title="Class archive not found"
+            description="No class archive matches this link."
+            actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
+          />
+          <EmptyState
+            title="Class archive not found"
+            description="Browse the tournament history timeline to pick an alumni class."
+            action={<Link className="btn secondary" to="/history">Browse history</Link>}
+          />
+        </div>
+      )
+    }
+
+    return (
+      <div className="page-stack class-profile-page">
+        <PageHeader
+          eyebrow="Class archive"
+          title={classDisplayLabel(classKeyFromRoute(classKey))}
+          description="Class archive details require a live API connection."
+          actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
+        />
+        <SectionUnavailable
+          title="Class archive is temporarily unavailable"
+          description={error}
+          onRetry={reload}
+          action={<Link className="btn secondary" to="/history">Browse offline champions</Link>}
+        />
+      </div>
+    )
+  }
   if (!data) return <EmptyState title="Class archive unavailable" />
 
   const profile = data.classProfile
@@ -185,5 +220,6 @@ function titleRecordSubhead(record: TournamentChampion) {
 function championBracketLabel(record: TournamentChampion) {
   if (record.bracket === 'maroon') return 'Maroon champion'
   if (record.bracket === 'gold') return 'Gold champion'
+  if (record.bracket === 'platinum') return 'Platinum champion'
   return record.primary ? 'Primary champion' : 'Champion record'
 }
