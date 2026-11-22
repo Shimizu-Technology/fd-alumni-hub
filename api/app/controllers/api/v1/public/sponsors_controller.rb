@@ -6,7 +6,7 @@ module Api
           tournament = current_tournament
           return render json: { tournament: nil, sponsors: [] } unless tournament
 
-          sponsors = tournament.sponsors.active.ordered
+          sponsors = tournament.sponsors.active.ordered_by_tier
 
           render json: {
             tournament: tournament.api_json,

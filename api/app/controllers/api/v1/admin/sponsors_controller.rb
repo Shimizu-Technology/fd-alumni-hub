@@ -5,7 +5,7 @@ module Api
         before_action :require_admin!, only: [ :destroy ]
 
         def index
-          sponsors = Sponsor.includes(:tournament).ordered
+          sponsors = Sponsor.includes(:tournament).ordered_by_tier
           sponsors = sponsors.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           render json: { sponsors: sponsors.limit(300).map(&:api_json) }
         end
@@ -43,7 +43,7 @@ module Api
 
         def sponsor_params
           raw = params.fetch(:sponsor, params)
-          permitted = raw.permit(:tournament_id, :tournamentId, :name, :logo_url, :logoUrl, :target_url, :targetUrl, :tier, :active, :position)
+          permitted = raw.permit(:tournament_id, :tournamentId, :name, :logo_url, :logoUrl, :target_url, :targetUrl, :tier, :description, :active, :position)
 
           attrs = {}
           assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
@@ -51,6 +51,7 @@ module Api
           assign_param(attrs, permitted, :logo_url, :logo_url, :logoUrl)
           assign_param(attrs, permitted, :target_url, :target_url, :targetUrl)
           assign_param(attrs, permitted, :tier, :tier)
+          assign_param(attrs, permitted, :description, :description)
           assign_param(attrs, permitted, :active, :active)
           assign_param(attrs, permitted, :position, :position)
           attrs

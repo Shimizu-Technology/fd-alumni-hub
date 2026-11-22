@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   IconCalendar,
   IconChart,
@@ -9,6 +9,7 @@ import {
   IconShield,
   IconTicket,
 } from './Icons'
+import { api } from '../lib/api'
 import { externalHref } from '../lib/urls'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
@@ -28,6 +29,7 @@ const navItems = [
   { to: '/today', label: 'Today' },
   { to: '/schedule', label: 'Schedule' },
   { to: '/standings', label: 'Standings' },
+  { to: '/tickets', label: 'Tickets' },
   { to: '/watch', label: 'Watch' },
   { to: '/info', label: 'Info' },
   { to: '/news', label: 'News' },
@@ -36,24 +38,19 @@ const navItems = [
   { to: '/sponsors', label: 'Sponsors' },
 ]
 
-const bottomNavItems = [
-  { to: '/', label: 'Home', end: true, icon: IconHome },
-  { to: '/schedule', label: 'Schedule', end: false, icon: IconCalendar },
-  { to: '/standings', label: 'Standings', end: false, icon: IconChart },
-  { to: '/host-year', label: 'Host Year', end: false, icon: IconTicket },
-]
-
-function isMoreRoute(pathname: string) {
+function isMoreRoute(pathname: string, isLiveTournament: boolean) {
   if (pathname === '/') return false
+  const secondTabPrefix = isLiveTournament ? '/today' : '/schedule'
   return !(
-    pathname.startsWith('/schedule')
+    pathname.startsWith(secondTabPrefix)
     || pathname.startsWith('/standings')
-    || pathname.startsWith('/host-year')
+    || pathname.startsWith('/tickets')
   )
 }
 
 export function PublicLayout() {
   const [open, setOpen] = useState(false)
+  const [isLiveTournament, setIsLiveTournament] = useState(false)
   const location = useLocation()
   const backend = useBackendAvailabilityContext()
   const menuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -63,6 +60,32 @@ export function PublicLayout() {
   useEffect(() => {
     setOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (backend.status !== 'available') return
+
+    let active = true
+    api.publicTournaments()
+      .then((res) => {
+        if (active) setIsLiveTournament(res.activeTournament?.status === 'live')
+      })
+      .catch(() => {
+        // Non-blocking: default mobile bottom nav slot remains Schedule.
+      })
+
+    return () => {
+      active = false
+    }
+  }, [backend.status])
+
+  const bottomNavItems = useMemo(() => [
+    { to: '/', label: 'Home', end: true, icon: IconHome },
+    isLiveTournament
+      ? { to: '/today', label: 'Today', end: false, icon: IconCalendar }
+      : { to: '/schedule', label: 'Schedule', end: false, icon: IconCalendar },
+    { to: '/standings', label: 'Standings', end: false, icon: IconChart },
+    { to: '/tickets', label: 'Tickets', end: false, icon: IconTicket },
+  ], [isLiveTournament])
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -110,7 +133,7 @@ export function PublicLayout() {
     }
   }, [open])
 
-  const moreActive = open || isMoreRoute(location.pathname)
+  const moreActive = open || isMoreRoute(location.pathname, isLiveTournament)
 
   return (
     <div className="site-shell">

@@ -25,6 +25,7 @@ import type {
   MediaAsset,
   PledgeRecord,
   PredictionPoll,
+  PublicTicketsResponse,
   ReceiptPresignResponse,
   RosterEntry,
   RosterImportCommitResult,
@@ -191,6 +192,8 @@ export const api = {
     request<{ tournament: Tournament | null; mediaAssets: MediaAsset[] }>(`/public/media-assets${query(params)}`),
   publicSponsors: (params: { tournamentId?: string | null; year?: number | null } = {}) =>
     request<{ tournament: Tournament | null; sponsors: Sponsor[] }>(`/public/sponsors${query(params)}`),
+  publicTickets: (params: { campaignSlug?: string | null; year?: number | null } = {}) =>
+    request<PublicTicketsResponse>(`/public/tickets${query(params)}`),
 
   adminDashboard: () => request<{
     tournament: Tournament | null
