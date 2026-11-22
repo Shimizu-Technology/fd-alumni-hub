@@ -118,6 +118,43 @@ class ClerkAuthTest < ActiveSupport::TestCase
     end
   end
 
+  test "respects clock-skew leeway for iat claim while rejecting tokens issued far in the future" do
+    rsa_key = OpenSSL::PKey::RSA.generate(2048)
+    jwk = JWT::JWK.new(rsa_key, kid: "test-kid-iat")
+    jwks = { "keys" => [ jwk.export.transform_keys(&:to_s) ] }
+
+    ENV["CLERK_ISSUER"] = "https://clerk.fd-alumni.shimizu-technology.com"
+    now = Time.now.to_i
+    slightly_ahead_token = JWT.encode(
+      { "sub" => "user_skew", "iss" => "https://clerk.fd-alumni.shimizu-technology.com", "iat" => now + 5, "exp" => now + 300 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-iat" }
+    )
+    far_future_token = JWT.encode(
+      { "sub" => "user_skew", "iss" => "https://clerk.fd-alumni.shimizu-technology.com", "iat" => now + 120, "exp" => now + 600 },
+      rsa_key,
+      "RS256",
+      { "kid" => "test-kid-iat" }
+    )
+
+    with_stubbed_jwks(jwks) do
+      assert_equal "user_skew", ClerkAuth.verify(slightly_ahead_token)&.dig("sub")
+      assert_nil ClerkAuth.verify(far_future_token)
+    end
+  end
+
+  test "parse_json_body parses raw string bodies directly without triggering HTTParty quirks_mode" do
+    fake_response = Struct.new(:body) do
+      def parsed_response
+        raise ArgumentError, "unknown keyword: quirks_mode"
+      end
+    end.new('{"keys":[{"kid":"k1"}]}')
+
+    parsed = ClerkAuth.send(:parse_json_body, fake_response)
+    assert_equal [ { "kid" => "k1" } ], parsed["keys"]
+  end
+
   private
 
   def with_stubbed_jwks(jwks)

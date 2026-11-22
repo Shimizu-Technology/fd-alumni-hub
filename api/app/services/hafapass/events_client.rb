@@ -82,7 +82,7 @@ module Hafapass
             raise FetchError, "HafaPass response exceeded size limit"
           end
 
-          parsed = response.parsed_response
+          parsed = parse_json_response(response)
           raw_events, total_pages = extract_events_page(parsed)
           raw_events.each do |raw|
             normalized = normalize_event(raw, organizer_slug: slug)
@@ -438,6 +438,16 @@ module Hafapass
         HafapassEventSnapshot.find_or_create_by!(organizer_slug: slug)
       rescue ActiveRecord::RecordNotUnique
         HafapassEventSnapshot.find_by!(organizer_slug: slug)
+      end
+
+      def parse_json_response(response)
+        if response.is_a?(HTTParty::Response)
+          JSON.parse(response.body.to_s)
+        elsif response.respond_to?(:parsed_response) && !response.parsed_response.nil?
+          response.parsed_response
+        elsif response.respond_to?(:body) && response.body.is_a?(String) && !response.body.empty?
+          JSON.parse(response.body)
+        end
       end
 
       def extract_events_page(parsed)
