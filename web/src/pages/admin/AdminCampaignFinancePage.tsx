@@ -122,6 +122,9 @@ function todayIsoDate() {
 }
 
 function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.RefObject<HTMLDivElement | null>, initialFocusRef: React.RefObject<HTMLElement | null>) {
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
 
@@ -136,7 +139,7 @@ function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') return
@@ -166,7 +169,7 @@ function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.
         previouslyFocused.focus({ preventScroll: true })
       }
     }
-  }, [open, onClose, panelRef, initialFocusRef])
+  }, [open, panelRef, initialFocusRef])
 }
 
 export function AdminCampaignFinancePage() {
@@ -474,14 +477,14 @@ export function AdminCampaignFinancePage() {
       </nav>
 
       {tab === 'ledger' && (
-        ledgerQuery.error && !ledgerReady ? (
+        ledgerQuery.error ? (
           <ErrorState message={ledgerQuery.error} onRetry={ledgerQuery.reload} />
         ) : (
           <LedgerTab
             key={campaign.slug}
             campaign={campaign}
             entries={ledgerEntries}
-            loading={ledgerQuery.loading && !ledgerReady}
+            loading={ledgerQuery.loading}
             options={ledgerOptions}
             canWrite={canWriteFinance}
             entryTypeFilter={entryTypeFilter}
@@ -556,8 +559,10 @@ export function AdminCampaignFinancePage() {
         <ReceiptPreviewModal
           receipt={receiptPreview.signed}
           fetchedAt={receiptPreview.fetchedAt}
+          refreshing={receiptLoadingId === receiptPreview.entryId}
+          error={receiptError}
           onRefresh={() => void handleOpenReceipt(receiptPreview.entryId)}
-          onClose={() => setReceiptPreview(null)}
+          onClose={() => { setReceiptPreview(null); setReceiptError('') }}
         />
       )}
     </div>
@@ -1588,11 +1593,15 @@ function AuditLogTab({ auditEvents }: { auditEvents: FinanceAuditEvent[] }) {
 function ReceiptPreviewModal({
   receipt,
   fetchedAt,
+  refreshing,
+  error,
   onRefresh,
   onClose,
 }: {
   receipt: SignedReceiptUrlResponse
   fetchedAt: number
+  refreshing: boolean
+  error: string
   onRefresh: () => void
   onClose: () => void
 }) {
@@ -1638,17 +1647,25 @@ function ReceiptPreviewModal({
             </p>
           </div>
           <div className="row-actions">
-            {expired && <button type="button" className="btn primary small" onClick={onRefresh}>Refresh link</button>}
+            {expired && (
+              <button type="button" className="btn primary small" disabled={refreshing} onClick={onRefresh}>
+                {refreshing ? 'Refreshing…' : 'Refresh link'}
+              </button>
+            )}
             <button ref={closeBtnRef} type="button" className="btn secondary small" onClick={onClose}>Close</button>
           </div>
         </div>
+
+        {error && <p className="form-error" role="alert" style={{ margin: 0 }}>{error}</p>}
 
         {!safeUrl ? (
           <p className="form-error" role="alert">Receipt URL failed HTTPS safety validation.</p>
         ) : expired ? (
           <div className="state-card">
             <p>This signed receipt link has expired for security.</p>
-            <button type="button" className="btn primary" onClick={onRefresh}>Generate fresh link</button>
+            <button type="button" className="btn primary" disabled={refreshing} onClick={onRefresh}>
+              {refreshing ? 'Refreshing…' : 'Generate fresh link'}
+            </button>
           </div>
         ) : (
           <>
