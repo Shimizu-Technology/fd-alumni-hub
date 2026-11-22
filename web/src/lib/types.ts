@@ -469,6 +469,153 @@ export type AdminWhitelistRecord = {
   updatedAt?: string
 }
 
+export type LedgerEntryType = 'income' | 'expense'
+export type LedgerReimbursementStatus = 'not_applicable' | 'requested' | 'approved' | 'reimbursed'
+export type PledgeStatus = 'promised' | 'partial' | 'fulfilled' | 'cancelled'
+
+export type BudgetLineRecord = {
+  id: string
+  hostCampaignId: string
+  kind: LedgerEntryType
+  category: string
+  budgetCents: number
+  actualCents?: number
+  position: number
+  notes: string | null
+  archivedAt: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type PledgeRecord = {
+  id: string
+  hostCampaignId: string
+  sponsorId: string | null
+  sponsorName: string | null
+  donorName: string
+  contactInfo: string | null
+  tier: string | null
+  isInKind: boolean
+  promisedCents: number
+  receivedCents: number
+  outstandingCents: number
+  overpaymentCents: number
+  dueOn: string | null
+  status: PledgeStatus
+  notes: string | null
+  recordedById: string
+  recordedByName: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type LedgerEntryRecord = {
+  id: string
+  hostCampaignId: string
+  entryType: LedgerEntryType
+  amountCents: number
+  entryDate: string
+  budgetLineId: string | null
+  budgetLineCategory: string | null
+  campaignEventId: string | null
+  campaignEventTitle: string | null
+  sponsorId: string | null
+  sponsorName: string | null
+  pledgeId: string | null
+  pledgeDonorName: string | null
+  source: string
+  paymentMethod: string
+  counterparty: string
+  description: string | null
+  referenceNumber: string | null
+  paidBy: string | null
+  paidByUserId: string | null
+  paidByUserName: string | null
+  reimbursementStatus: LedgerReimbursementStatus
+  reimbursementApprovedById: string | null
+  reimbursementApprovedByName: string | null
+  reimbursedAt: string | null
+  reimbursementReference: string | null
+  hasReceipt: boolean
+  receiptFilename: string | null
+  receiptContentType: string | null
+  receiptByteSize: number | null
+  recordedById: string
+  recordedByName: string | null
+  voided: boolean
+  voidedAt: string | null
+  voidedById: string | null
+  voidedByName: string | null
+  voidReason: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type FinanceSummary = {
+  goalCents: number
+  raisedCents: number
+  raisedExcludingFdaaCents: number
+  spentCents: number
+  netCents: number
+  stillNeededCents: number
+  stillNeededGrossCents: number
+  publicMeterRaisedCents: number
+  publicMeterEnabled: boolean
+  includeFdaaInPublicMeter: boolean
+  fdaaUpfrontCents: number
+  fdaaTicketShareBps: number
+  pledgedTotalCents: number
+  pledgedReceivedCents: number
+  outstandingPledgesCents: number
+  inKindPledgesCount: number
+  pendingReimbursementsCents: number
+  pendingReimbursementsCount: number
+  bySource: Array<{ entryType: LedgerEntryType; source: string; amountCents: number }>
+  byMethod: Array<{ entryType: LedgerEntryType; paymentMethod: string; amountCents: number }>
+  budgetVsActual: Array<{
+    id: string
+    kind: LedgerEntryType
+    category: string
+    budgetCents: number
+    actualCents: number
+    varianceCents: number
+    archived: boolean
+  }>
+  mixedNetEventIds: string[]
+}
+
+export type FinanceAuditEvent = {
+  id: string
+  hostCampaignId: string
+  actorId: string
+  actorName: string | null
+  actorEmail: string | null
+  recordType: string
+  recordId: string
+  action: string
+  changes: Record<string, unknown>
+  reason: string | null
+  createdAt: string | null
+}
+
+export type ReceiptPresignResponse = {
+  uploadToken: string
+  maxBytes: number
+  expiresIn: number
+  upload: {
+    url: string
+    fields: Record<string, string>
+  }
+}
+
+export type SignedReceiptUrlResponse = {
+  url: string
+  expiresIn: number
+  filename: string
+  contentType: string
+  byteSize: number | null
+}
+
 export type CurrentUser = {
   id: string
   clerkId: string | null

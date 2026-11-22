@@ -5,6 +5,7 @@ import type {
   AdminUserSummary,
   AdminWhitelistRecord,
   Article,
+  BudgetLineRecord,
   CampaignInvitationRecord,
   CampaignMembershipRecord,
   CampaignRole,
@@ -12,15 +13,21 @@ import type {
   ClassProfile,
   CurrentUser,
   Division,
+  FinanceAuditEvent,
+  FinanceSummary,
   Game,
   GameDayNote,
   HomeHostCampaignSummary,
   HostYearResponse,
   IngestItem,
+  LedgerEntryRecord,
   MediaAsset,
+  PledgeRecord,
   PredictionPoll,
+  ReceiptPresignResponse,
   RosterEntry,
   ScoreCoverage,
+  SignedReceiptUrlResponse,
   Sponsor,
   Standing,
   Team,
@@ -305,6 +312,78 @@ export const api = {
     request<{ whitelist: AdminWhitelistRecord }>('/admin/whitelists', json('POST', { whitelist: payload })),
   adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff' | 'viewer'; active?: boolean; notes?: string | null }) =>
     request<{ whitelist: AdminWhitelistRecord }>(`/admin/whitelists/${id}`, json('PATCH', { whitelist: payload })),
+
+  campaignFinanceSummary: (campaignSlug: string) =>
+    request<{ campaign: AdminHostCampaign; roles: string[]; summary: FinanceSummary }>(`/campaign/${encodeURIComponent(campaignSlug)}/finance/summary`),
+  campaignFinanceAuditEvents: (campaignSlug: string, limit = 100) =>
+    request<{ auditEvents: FinanceAuditEvent[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/finance/audit-events?limit=${limit}`),
+  campaignBudgetLines: (campaignSlug: string, params: { includeArchived?: boolean } = {}) =>
+    request<{ budgetLines: BudgetLineRecord[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/budget-lines${params.includeArchived ? '?includeArchived=true' : ''}`),
+  campaignCreateBudgetLine: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ budgetLine: BudgetLineRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/budget-lines`, json('POST', { budgetLine: payload })),
+  campaignUpdateBudgetLine: (campaignSlug: string, id: string, payload: Record<string, unknown>) =>
+    request<{ budgetLine: BudgetLineRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/budget-lines/${id}`, json('PATCH', { budgetLine: payload })),
+  campaignArchiveBudgetLine: (campaignSlug: string, id: string) =>
+    request<{ budgetLine: BudgetLineRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/budget-lines/${id}/archive`, json('POST')),
+  campaignPledges: (campaignSlug: string) =>
+    request<{ pledges: PledgeRecord[]; sponsors: Array<{ id: string; name: string }> }>(`/campaign/${encodeURIComponent(campaignSlug)}/pledges`),
+  campaignCreatePledge: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ pledge: PledgeRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/pledges`, json('POST', { pledge: payload })),
+  campaignUpdatePledge: (campaignSlug: string, id: string, payload: Record<string, unknown>) =>
+    request<{ pledge: PledgeRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/pledges/${id}`, json('PATCH', { pledge: payload })),
+  campaignLedgerEntries: (
+    campaignSlug: string,
+    params: { entryType?: string; includeVoided?: boolean; reimbursementStatus?: string } = {},
+  ) =>
+    request<{
+      ledgerEntries: LedgerEntryRecord[]
+      options: {
+        budgetLines: Array<{ id: string; kind: 'income' | 'expense'; category: string }>
+        events: Array<{ id: string; title: string }>
+        pledges: Array<{ id: string; donorName: string; status: string }>
+        sponsors: Array<{ id: string; name: string }>
+        members: Array<{ id: string; fullName: string; email: string }>
+      }
+    }>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries${query({
+      entryType: params.entryType || undefined,
+      includeVoided: params.includeVoided ? 'true' : undefined,
+      reimbursementStatus: params.reimbursementStatus || undefined,
+    })}`),
+  campaignCreateLedgerEntry: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ ledgerEntry: LedgerEntryRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries`, json('POST', { ledgerEntry: payload })),
+  campaignUpdateLedgerEntry: (campaignSlug: string, id: string, payload: Record<string, unknown>) =>
+    request<{ ledgerEntry: LedgerEntryRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/${id}`, json('PATCH', { ledgerEntry: payload })),
+  campaignVoidLedgerEntry: (campaignSlug: string, id: string, voidReason: string) =>
+    request<{ ledgerEntry: LedgerEntryRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/${id}/void`, json('POST', { voidReason })),
+  campaignApproveReimbursement: (campaignSlug: string, id: string, overrideReason?: string) =>
+    request<{ ledgerEntry: LedgerEntryRecord }>(
+      `/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/${id}/approve-reimbursement`,
+      json('POST', overrideReason ? { overrideReason } : {}),
+    ),
+  campaignMarkReimbursed: (campaignSlug: string, id: string, payload: { reimbursedAt?: string; reimbursementReference?: string }) =>
+    request<{ ledgerEntry: LedgerEntryRecord }>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/${id}/mark-reimbursed`, json('POST', payload)),
+  campaignPresignReceipt: (campaignSlug: string, payload: { filename: string; contentType: string; byteSize: number }) =>
+    request<ReceiptPresignResponse>(`/campaign/${encodeURIComponent(campaignSlug)}/receipts/presign`, json('POST', { upload: payload })),
+  campaignReceiptUrl: (campaignSlug: string, entryId: string) =>
+    request<SignedReceiptUrlResponse>(`/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/${entryId}/receipt-url`),
+  campaignDownloadLedgerCsv: async (campaignSlug: string) => {
+    const headers = new Headers({ Accept: 'text/csv' })
+    if (tokenGetter) {
+      const token = await tokenGetter()
+      if (token) headers.set('Authorization', `Bearer ${token}`)
+    }
+    const response = await fetch(`${API_BASE_URL}/campaign/${encodeURIComponent(campaignSlug)}/ledger-entries/export.csv`, {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      let payload: unknown = null
+      try { payload = text ? JSON.parse(text) : null } catch { payload = null }
+      throw new ApiError(apiErrorMessage(payload, `CSV export failed (${response.status})`), response.status, payload)
+    }
+    return response.blob()
+  },
 }
 
 function json(method: string, body?: unknown): RequestInit {
