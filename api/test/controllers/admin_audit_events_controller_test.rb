@@ -42,9 +42,13 @@ class AdminAuditEventsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 3, response.parsed_body.fetch("auditEvents").size
     %w[ip_address ipAddress 192.0.2.1 token=private private-object-key].each { |value| refute_includes response.body, value }
 
+    export_event = AuditEvent.find_by!(area: "access", action: "audit_exported")
+    assert_equal @admin.id, export_event.actor_id
+    assert_equal 3, export_event.metadata_json["exportedCount"]
+
     get PATH, headers: auth_headers(@admin)
     assert_equal checkpoint.event_count, response.parsed_body.dig("checkpointSummary", "coveredEventCount")
-    assert_equal 1, response.parsed_body.dig("checkpointSummary", "uncheckpointedEventCount")
+    assert_equal 2, response.parsed_body.dig("checkpointSummary", "uncheckpointedEventCount")
   end
 
   test "supports combined filters and treats search punctuation literally" do

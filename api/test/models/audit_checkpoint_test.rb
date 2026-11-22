@@ -20,14 +20,32 @@ class AuditCheckpointTest < ActiveSupport::TestCase
       assert_equal first.chain_digest, second.previous_digest
       assert_equal latest_event.id, second.first_audit_event_id
       assert_equal 1, second.event_count
-      assert_equal({ valid: true, checked_count: 2, latest_checkpoint_id: second.id,
-                     uncheckpointed_events: 0, errors: [] }, Audit::CheckpointService.verify!)
+      assert_equal({
+        valid: true,
+        signed: true,
+        checked_count: 2,
+        unsigned_checkpoints: 0,
+        latest_checkpoint_id: second.id,
+        uncheckpointed_events: 0,
+        warnings: [],
+        errors: []
+      }, Audit::CheckpointService.verify!)
 
       with_signing_key("incorrect-key") do
         result = Audit::CheckpointService.verify!
         refute result[:valid]
         assert_match(/HMAC signature mismatch/, result[:errors].first)
       end
+    end
+
+    with_signing_key(nil) do
+      create_event
+      Audit::CheckpointService.create!
+      result = Audit::CheckpointService.verify!
+      assert result[:valid]
+      refute result[:signed]
+      assert_equal 1, result[:unsigned_checkpoints]
+      assert result[:warnings].any? { |warning| warning.include?("AUDIT_CHECKPOINT_SIGNING_KEY") }
     end
   end
 

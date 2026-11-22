@@ -988,3 +988,9 @@ export type AdminAuditResponse = {
     campaigns: AuditFilterOption[]
   }
 }
+
+export type AdminAuditExportResponse = {
+  auditEvents: AuditEvent[]
+  latestCheckpoint: Record<string, unknown> | null
+  truncated: boolean
+}

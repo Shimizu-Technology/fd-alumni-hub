@@ -62,6 +62,7 @@ export function AdminAuditHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string>()
+  const [exportNotice, setExportNotice] = useState<string>()
   const [error, setError] = useState<string>()
 
   useEffect(() => {
@@ -96,6 +97,7 @@ export function AdminAuditHistoryPage() {
   async function exportHistory() {
     setExporting(true)
     setExportError(undefined)
+    setExportNotice(undefined)
     try {
       const payload = await api.adminAuditExport(filters)
       const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
@@ -104,6 +106,9 @@ export function AdminAuditHistoryPage() {
       link.download = 'audit-history.json'
       link.click()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      if (payload.truncated) {
+        setExportNotice(`Exported the first ${payload.auditEvents.length.toLocaleString()} matching events. Narrow your filters to export more.`)
+      }
     } catch (cause) {
       setExportError(cause instanceof Error ? cause.message : 'Unable to export audit history.')
     } finally {
@@ -133,6 +138,7 @@ export function AdminAuditHistoryPage() {
           </button>
         </div>
         {exportError && <p role="alert">{exportError}</p>}
+        {exportNotice && <p role="status">{exportNotice}</p>}
         <form className="audit-search" role="search" onSubmit={(event) => {
           event.preventDefault()
           replaceFilters({ ...filters, q: search.trim() })

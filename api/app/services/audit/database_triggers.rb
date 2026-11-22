@@ -93,9 +93,13 @@ module Audit
         connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture ON #{table}")
         connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture_delete ON #{table}")
       end
+      %i[audit_events audit_checkpoints].each do |table|
+        next unless connection.table_exists?(table)
+
+        connection.execute("DROP TRIGGER IF EXISTS fd_audit_immutable ON #{table}")
+        connection.execute("DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON #{table}")
+      end
       connection.execute(<<~SQL)
-        DROP TRIGGER IF EXISTS fd_audit_immutable ON audit_events;
-        DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON audit_events;
         DROP FUNCTION IF EXISTS fd_audit_immutable();
         DROP FUNCTION IF EXISTS fd_audit_capture();
         DROP FUNCTION IF EXISTS fd_audit_redact_changes(jsonb, jsonb, jsonb, jsonb);
@@ -182,6 +186,8 @@ module Audit
         actor_email text := nullif(current_setting('app.audit_actor_email', true), '');
         actor_type text := coalesce(nullif(current_setting('app.audit_actor_type', true), ''), 'system');
         actor_label text := coalesce(actor_name, actor_email, initcap(actor_type));
+        event_request_id text := nullif(current_setting('app.audit_request_id', true), '');
+        event_ip_address text := nullif(current_setting('app.audit_ip_address', true), '');
         audit_action text;
         verb text;
         description text;
@@ -201,9 +207,12 @@ module Audit
         END IF;
 
         record_data := CASE WHEN TG_OP = 'DELETE' THEN old_data ELSE new_data END;
-        IF TG_TABLE_NAME = 'prediction_votes' AND nullif(current_setting('app.audit_actor_id', true), '') IS NULL THEN
+        IF TG_TABLE_NAME = 'prediction_votes' AND TG_OP IN ('INSERT', 'UPDATE') AND
+          nullif(current_setting('app.audit_actor_id', true), '') IS NULL THEN
           actor_type := 'anonymous';
           actor_label := 'Anonymous';
+          event_request_id := NULL;
+          event_ip_address := NULL;
         END IF;
         campaign_id := (record_data->>'host_campaign_id')::bigint;
         season_id := (record_data->>'tournament_id')::bigint;
@@ -371,10 +380,10 @@ module Audit
           coalesce(description, format('%s %s %s', actor_label, verb, subject)),
           old_data, new_data,
           fd_audit_redact(to_jsonb(nullif(current_setting('app.audit_reason', true), ''))) #>> '{}',
-          nullif(current_setting('app.audit_request_id', true), ''),
+          event_request_id,
           nullif(current_setting('app.audit_http_method', true), ''),
           fd_audit_redact(to_jsonb(nullif(current_setting('app.audit_route_path', true), ''))) #>> '{}',
-          nullif(current_setting('app.audit_ip_address', true), '')
+          event_ip_address
         );
         IF TG_OP = 'DELETE' THEN
           RETURN OLD;

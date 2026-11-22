@@ -3,18 +3,62 @@ require "openssl"
 
 module Audit
   class CheckpointService
+    # Explicit v1 column list so future additive migrations on audit_events
+    # never invalidate historical checkpoint digests.
+    CANONICAL_EVENT_SQL = <<~SQL.squish.freeze
+      jsonb_build_object(
+        'id', id,
+        'occurred_at', occurred_at,
+        'operation_id', operation_id,
+        'actor_type', actor_type,
+        'actor_id', actor_id,
+        'actor_name', actor_name,
+        'actor_email', actor_email,
+        'actor_role', actor_role,
+        'area', area,
+        'action', action,
+        'record_type', record_type,
+        'record_id', record_id,
+        'record_label', record_label,
+        'tournament_id', tournament_id,
+        'host_campaign_id', host_campaign_id,
+        'summary', summary,
+        'before_json', before_json,
+        'after_json', after_json,
+        'metadata_json', metadata_json,
+        'reason', reason,
+        'request_id', request_id,
+        'http_method', http_method,
+        'route_path', route_path,
+        'ip_address', ip_address,
+        'legacy_finance_audit_event_id', legacy_finance_audit_event_id
+      )::text
+    SQL
+
     class << self
       def create!
+        # Briefly drain in-flight audit inserts to fix a safe upper bound without
+        # holding LOCK TABLE audit_events while hashing in Ruby.
+        upper_bound = capture_upper_bound!
+        previous = latest
+        return previous if upper_bound.nil? || (previous && upper_bound <= previous.last_audit_event_id)
+
+        range = range_digest(previous&.last_audit_event_id, previous&.chain_digest, through: upper_bound)
+        return previous if range[:event_count].zero?
+
         AuditCheckpoint.transaction do
           connection = AuditCheckpoint.connection
-          # Drain in-flight inserts before choosing the upper bound. Sequence IDs
-          # can be allocated in a different order from transaction commits.
-          connection.execute("LOCK TABLE audit_events IN SHARE MODE")
+          connection.execute("SET LOCAL lock_timeout = '5s'")
           connection.execute("LOCK TABLE audit_checkpoints IN SHARE ROW EXCLUSIVE MODE")
 
-          previous = latest
-          range = range_digest(previous&.last_audit_event_id, previous&.chain_digest)
-          next previous if range[:event_count].zero?
+          current_previous = latest
+          if current_previous&.id != previous&.id
+            previous = current_previous
+            next previous if previous && upper_bound <= previous.last_audit_event_id
+
+            range = range_digest(previous&.last_audit_event_id, previous&.chain_digest, through: upper_bound)
+            next previous if range[:event_count].zero?
+          end
 
           AuditCheckpoint.create!(range.merge(
             previous_digest: previous&.chain_digest,
@@ -25,20 +69,35 @@ module Audit
 
       def verify!
         errors = []
+        warnings = []
         previous = nil
         checked_count = 0
+        unsigned_checkpoints = 0
         key = signing_key
 
         AuditCheckpoint.find_each do |checkpoint|
           range = range_digest(previous&.last_audit_event_id, previous&.chain_digest, through: checkpoint.last_audit_event_id)
           errors.concat(checkpoint_errors(checkpoint, range, previous, key))
+          unsigned_checkpoints += 1 if checkpoint.hmac_signature.blank?
           previous = checkpoint
           checked_count += 1
         end
 
+        if key.blank?
+          warnings << "AUDIT_CHECKPOINT_SIGNING_KEY is not set; checkpoints are hash-chained only and not HMAC-signed."
+        elsif unsigned_checkpoints.positive?
+          warnings << "#{unsigned_checkpoints} checkpoint(s) are unsigned."
+        end
+
         {
-          valid: errors.empty?, checked_count: checked_count, latest_checkpoint_id: previous&.id,
-          uncheckpointed_events: after(previous).count, errors: errors
+          valid: errors.empty?,
+          signed: key.present? && checked_count.positive? && unsigned_checkpoints.zero?,
+          checked_count: checked_count,
+          unsigned_checkpoints: unsigned_checkpoints,
+          latest_checkpoint_id: previous&.id,
+          uncheckpointed_events: after(previous).count,
+          warnings: warnings,
+          errors: errors
         }
       end
 
@@ -57,6 +116,15 @@ module Audit
 
       private
 
+      def capture_upper_bound!
+        AuditCheckpoint.transaction do
+          connection = AuditCheckpoint.connection
+          connection.execute("SET LOCAL lock_timeout = '5s'")
+          connection.execute("LOCK TABLE audit_events IN SHARE MODE")
+          AuditEvent.maximum(:id)
+        end
+      end
+
       def after(checkpoint)
         AuditEvent.where("id > ?", checkpoint&.last_audit_event_id || 0)
       end
@@ -69,9 +137,9 @@ module Audit
         count = 0
 
         # PostgreSQL JSONB supplies a deterministic field order and preserves the
-        # numeric precision of the stored snapshots. Hash every ledger column.
+        # numeric precision of the stored snapshots across the explicit v1 columns.
         scope.in_batches(of: 1000) do |batch|
-          batch.order(:id).pluck(:id, Arel.sql("to_jsonb(audit_events)::text")).each do |id, json|
+          batch.order(:id).pluck(:id, Arel.sql(CANONICAL_EVENT_SQL)).each do |id, json|
             first ||= id
             last = id
             count += 1

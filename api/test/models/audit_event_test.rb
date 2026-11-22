@@ -198,6 +198,23 @@ class AuditEventTest < ActiveSupport::TestCase
     assert_equal [ "delete" ], rows.distinct.pluck(:action)
     assert_equal [ @tournament.id ], rows.distinct.pluck(:tournament_id)
     assert_equal 1, rows.distinct.count(:operation_id)
+    vote_delete = rows.find_by!(record_type: "PredictionVote")
+    assert_equal "system", vote_delete.actor_type
+  end
+
+  test "anonymous prediction votes drop ip_address and request_id from audit history" do
+    team = @tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018")
+    poll = PredictionPoll.create!(tournament: @tournament, poll_type: "tournament", question: "Champion?")
+    Audit::Context.with(request_id: "vote-req-1", http_method: "POST", route_path: "/api/v1/public/prediction_votes", ip_address: "203.0.113.9") do
+      poll.prediction_votes.create!(team: team, voter_token_hash: "secret-voter-hash")
+    end
+
+    event = AuditEvent.where(record_type: "PredictionVote", action: "create").last
+    assert_equal "anonymous", event.actor_type
+    assert_nil event.ip_address
+    assert_nil event.request_id
+    assert_equal "[Redacted]", event.after_json["voter_token_hash"]
+    refute_includes event.after_json.to_json, "secret-voter-hash"
   end
 
   test "sensitive field rotations identify the change without storing raw values" do

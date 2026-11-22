@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import type { AdminAuditResponse } from '../../lib/types'
 import { AdminAuditHistoryPage } from './AdminAuditHistoryPage'
 
-vi.mock('../../lib/api', () => ({ api: { adminAuditEvents: vi.fn() } }))
+vi.mock('../../lib/api', () => ({ api: { adminAuditEvents: vi.fn(), adminAuditExport: vi.fn() } }))
 
 const firstPage: AdminAuditResponse = {
   auditEvents: [{
@@ -86,5 +86,25 @@ describe('AdminAuditHistoryPage', () => {
     await screen.findByText('Ari Admin created a ledger entry')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect((screen.getByLabelText('Area') as HTMLSelectElement).options.length).toBe(2)
+  })
+
+  it('shows a truncation notice when exported audit history is capped', async () => {
+    vi.mocked(api.adminAuditExport).mockResolvedValueOnce({
+      auditEvents: firstPage.auditEvents,
+      latestCheckpoint: null,
+      truncated: true,
+    })
+    const createObjectURL = vi.fn(() => 'blob:audit-export')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    render(<AdminAuditHistoryPage />)
+    await screen.findByText('Finance ledger')
+    fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/Exported the first 1 matching events/)
+    clickSpy.mockRestore()
+    vi.unstubAllGlobals()
   })
 })

@@ -68,8 +68,13 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
 
     latest = AuditEvent.last.id
     Standings::Recompute.call(tournament)
+    assert_empty AuditEvent.where("id > ?", latest).where(record_type: "Standing")
+
+    tournament.games.find_by!(status: "final", away_score: 64).update!(home_score: 75)
+    latest = AuditEvent.last.id
+    Standings::Recompute.call(tournament)
     rows = AuditEvent.where("id > ?", latest).where(record_type: "Standing")
-    assert_equal %w[delete delete create create], rows.order(:id).pluck(:action)
+    assert_equal %w[update update], rows.order(:id).pluck(:action)
     assert_equal 1, rows.distinct.count(:operation_id)
     assert_equal [ tournament.id ], rows.distinct.pluck(:tournament_id)
 
