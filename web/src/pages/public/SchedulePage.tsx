@@ -1,3 +1,4 @@
+import { GameBoxScoreButton } from '../../components/GameBoxScoreDrawer'
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
@@ -121,6 +122,7 @@ function GameCard({ game }: { game: Game }) {
         {game.bracketCode && <span>{game.bracketCode}</span>}
       </div>
       <div className="game-actions">
+        <GameBoxScoreButton game={game} />
         {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Ticket link pending</span>}
         {game.streamUrl ? <a className="btn secondary small" href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream link pending</span>}
       </div>

@@ -1,3 +1,4 @@
+import { GameBoxScoreButton } from '../../components/GameBoxScoreDrawer'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
@@ -209,6 +210,7 @@ function TodayGameCard({
         {game.statusNote && <p className="game-status-note">{game.statusNote}</p>}
         <p>{game.venue || DEFAULT_GAME_VENUE}</p>
         <div className="game-actions">
+          <GameBoxScoreButton game={game} />
           {effectiveTicketHref ? (
             <a className="btn secondary small" href={effectiveTicketHref} target="_blank" rel="noreferrer">
               {directTicketHref ? 'Tickets' : 'Tournament tickets'} <IconExternal />

@@ -224,3 +224,88 @@ it('resolves a deep-linked gameId without date param to that game’s Guam date'
   expect(await screen.findByRole('article', { name: 'Gold Alumni at Red Alumni' })).toBeVisible()
   expect(query).toHaveBeenCalledWith('5', { date: nextDate, unscoredOnly: undefined })
 })
+
+const homeRoster = [{ id: '78', teamId: '10', name: 'Jamie Santos', jerseyNumber: '7', position: null, nickname: null, sortOrder: 0, active: true }]
+
+const emptyBox = {
+  game: saved,
+  enablePlayerStats: true,
+  boxScoreStatus: 'none' as const,
+  boxScoreCoverage: null,
+  boxScorePublishedAt: null,
+  homeRoster,
+  awayRoster: [],
+  stats: [],
+  discrepancies: { homePointsSum: 0, awayPointsSum: 0, homeOfficialScore: 20, awayOfficialScore: 15, hasDiscrepancy: false, warnings: [] },
+}
+
+it('keeps the finalized scorekeeper card free of player stats when the feature is off', async () => {
+  vi.mocked(api.adminGames).mockResolvedValue(fixtures([saved]))
+  const getBox = vi.spyOn(api, 'adminGameBoxScore')
+  open()
+  expect(await screen.findByDisplayValue('20')).toBeVisible()
+  expect(screen.queryByRole('button', { name: /player stats/ })).not.toBeInTheDocument()
+  expect(getBox).not.toHaveBeenCalled()
+})
+
+it('offers optional stats after saving a final and lets a scorekeeper draft a zero with other metrics blank', async () => {
+  vi.mocked(api.adminTournaments).mockResolvedValue({ tournaments: [{ ...tournament, enablePlayerStats: true }] })
+  const getBox = vi.spyOn(api, 'adminGameBoxScore').mockResolvedValue(emptyBox)
+  vi.spyOn(api, 'adminScoreGame').mockResolvedValue({ game: saved })
+  const saveBox = vi.spyOn(api, 'adminSaveGameBoxScore').mockResolvedValue({
+    ...emptyBox, game: { ...saved, boxScoreStatus: 'draft', lockVersion: 3 }, boxScoreStatus: 'draft', boxScoreCoverage: 'selected_scorers',
+  })
+
+  open()
+  const card = await screen.findByRole('article')
+  expect(within(card).queryByRole('button', { name: 'Add player stats' })).not.toBeInTheDocument()
+  enter(card, '20', '15')
+  fireEvent.click(within(card).getByRole('button', { name: 'Save result' }))
+  const expand = await within(card).findByRole('button', { name: 'Add player stats' })
+  expect(expand).toHaveAttribute('aria-expanded', 'false')
+  expect(getBox).not.toHaveBeenCalled()
+  fireEvent.click(expand)
+  expect(await screen.findByRole('button', { name: 'Quick points only' })).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Find player by name or jersey' }), { target: { value: '#7' } })
+  fireEvent.click(screen.getByRole('button', { name: '#7 Jamie Santos' }))
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Points for Jamie Santos' }), { target: { value: '21' } })
+  expect(screen.getByText('Player points exceed the official score.')).toBeVisible()
+  expect(screen.getByText('Player stats never change the official game score or standings.')).toBeVisible()
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Points for Jamie Santos' }), { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Full box score' }))
+  expect(screen.getByRole('spinbutton', { name: 'Points for Jamie Santos' })).toHaveValue(0)
+  expect(screen.getByRole('spinbutton', { name: 'Rebounds for Jamie Santos' })).toHaveValue(null)
+  expect(screen.getByRole('textbox', { name: 'Private notes for Jamie Santos' })).toHaveValue('')
+  expect(screen.queryByRole('button', { name: 'Publish box score' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Unpublish' })).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+  expect(await screen.findByText('Box score draft saved.')).toBeVisible()
+  expect(screen.getByText('Draft')).toBeVisible()
+  expect(saveBox).toHaveBeenCalledExactlyOnceWith('42', {
+    entries: [{ rosterEntryId: '78', points: '0', remove: false }], coverage: 'selected_scorers', status: 'draft',
+  })
+})
+
+it('allows publishing and unpublishing with publish_stats and shows the publication badge', async () => {
+  user.capabilities?.[0].actions.push('publish_stats')
+  vi.mocked(api.adminTournaments).mockResolvedValue({ tournaments: [{ ...tournament, enablePlayerStats: true }] })
+  vi.mocked(api.adminGames).mockResolvedValue(fixtures([saved]))
+  vi.spyOn(api, 'adminGameBoxScore').mockResolvedValue(emptyBox)
+  const saveBox = vi.spyOn(api, 'adminSaveGameBoxScore').mockImplementation(async (_, update) => ({
+    ...emptyBox,
+    game: { ...saved, boxScoreStatus: update.status, lockVersion: update.status === 'published' ? 3 : 4 },
+    boxScoreStatus: update.status, boxScoreCoverage: update.coverage,
+  }))
+
+  open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Add player stats' }))
+  fireEvent.click(await screen.findByRole('button', { name: '#7 Jamie Santos' }))
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Points for Jamie Santos' }), { target: { value: '6' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Publish box score' }))
+  expect(await screen.findByText('Published')).toBeVisible()
+  expect(saveBox.mock.calls[0][1].status).toBe('published')
+  fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }))
+  expect(await screen.findByText('Box score unpublished and saved as a draft.')).toBeVisible()
+  expect(saveBox.mock.calls[1][1].status).toBe('draft')
+})

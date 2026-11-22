@@ -1,3 +1,4 @@
+import type { AdminBoxScore, BoxScoreUpdate, LeaderMetric, LeaderScope, PublicBoxScore, StatLeadersResponse } from './boxScores'
 import type { ScoreMutationPayload } from './scoreQueue'
 import type { SiteMode, SiteModeAdmin, SiteModePreview, SiteModeSettings } from './siteMode'
 import type { AccessDirectory, GrantScope, GrantSelection } from './access'
@@ -222,6 +223,9 @@ export const api = {
   publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
+  publicGameBoxScore: (id: string) => request<PublicBoxScore>(`/public/games/${id}/box-score`),
+  publicStatLeaders: (params: { tournamentId?: string; year?: number; division?: string; metric?: LeaderMetric; scope?: LeaderScope } = {}) =>
+    request<StatLeadersResponse>(`/public/stat-leaders${query(params)}`),
   publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; divisionId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
   publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
@@ -289,7 +293,7 @@ export const api = {
   adminCreateRosterEntry: (payload: Partial<RosterEntry>, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries${query({ tournamentId })}`, json('POST', { rosterEntry: payload })),
   adminBulkRosterEntries: (payload: Array<Partial<RosterEntry>>, tournamentId?: string | null) => request<{ created: number; rosterEntries: RosterEntry[] }>(`/admin/roster-entries/bulk${query({ tournamentId })}`, json('POST', { rosterEntries: payload })),
   adminUpdateRosterEntry: (id: string, payload: Partial<RosterEntry>, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry }>(`/admin/roster-entries/${id}${query({ tournamentId })}`, json('PATCH', { rosterEntry: payload })),
-  adminDeleteRosterEntry: (id: string, tournamentId?: string | null) => request<void>(`/admin/roster-entries/${id}${query({ tournamentId })}`, { method: 'DELETE' }),
+  adminDeleteRosterEntry: (id: string, tournamentId?: string | null) => request<{ rosterEntry: RosterEntry; deactivated: true; message: string } | undefined>(`/admin/roster-entries/${id}${query({ tournamentId })}`, { method: 'DELETE' }),
 
   adminGameDay: (params: { tournamentId?: string | null; date?: string | null } = {}) => request<{
     tournament: Tournament
@@ -320,6 +324,9 @@ export const api = {
   adminCreatePredictionPoll: (payload: Partial<PredictionPoll>) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls${query({ tournamentId: payload.tournamentId })}`, json('POST', { predictionPoll: payload })),
   adminUpdatePredictionPoll: (id: string, payload: Partial<PredictionPoll>, tournamentId?: string | null) => request<{ predictionPoll: PredictionPoll }>(`/admin/prediction-polls/${id}${query({ tournamentId })}`, json('PATCH', { predictionPoll: payload })),
 
+  adminGameBoxScore: (id: string) => request<AdminBoxScore>(`/admin/games/${id}/box-score`),
+  adminSaveGameBoxScore: (id: string, payload: BoxScoreUpdate) =>
+    request<AdminBoxScore>(`/admin/games/${id}/box-score`, json('PUT', payload)),
   adminGames: (tournamentId?: string | null, filter?: { date?: string; unscoredOnly?: boolean }) => request<AdminGamesResponse>(`/admin/games${query({ tournamentId, date: filter?.date, unscoredOnly: filter?.unscoredOnly ? 'true' : undefined })}`),
   adminGame: (id: string) => request<{ game: Game }>(`/admin/games/${encodeURIComponent(id)}`),
   adminCreateGame: (payload: Partial<Game>) => request<{ game: Game }>('/admin/games', json('POST', { game: payload })),

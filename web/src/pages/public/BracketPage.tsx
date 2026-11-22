@@ -1,3 +1,4 @@
+import { GameBoxScoreButton } from '../../components/GameBoxScoreDrawer'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
@@ -184,6 +185,7 @@ function BracketGameCard({ game }: { game: Game }) {
         <span>{formatGuamDateTime(game.startTime)}</span>
         <span> · {game.venue || DEFAULT_GAME_VENUE}</span>
       </p>
+      <GameBoxScoreButton game={game} />
     </article>
   )
 }

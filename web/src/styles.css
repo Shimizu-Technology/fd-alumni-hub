@@ -2046,3 +2046,158 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   padding: 0;
   accent-color: var(--fd-maroon);
 }
+
+.player-stats-setting {
+  grid-column: 1 / -1;
+}
+
+.player-stats-toggle {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.player-stats-toggle input {
+  flex: 0 0 auto;
+  width: 1.2rem;
+  height: 1.2rem;
+  min-height: 0;
+  accent-color: var(--fd-maroon);
+}
+
+.box-score-editor {
+  display: grid;
+  gap: .7rem;
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: .85rem;
+}
+
+.box-score-form,
+.box-score-fields,
+.stat-leaders-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: .9rem;
+  min-width: 0;
+}
+
+.box-score-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.box-score-fields > section {
+  min-width: 0;
+}
+
+.box-score-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+
+.box-score-actions .btn[aria-pressed="true"] {
+  color: #fff;
+  background: var(--fd-maroon);
+  border-color: var(--fd-maroon);
+}
+
+.box-score-field {
+  display: grid;
+  gap: .3rem;
+  width: min(100%, 20rem);
+  font-weight: 700;
+}
+
+.box-score-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .55rem 1rem;
+  padding: .7rem .85rem;
+  border: 1px solid var(--line);
+  border-radius: .85rem;
+  background: var(--surface-strong);
+}
+
+.box-score-totals div,
+.box-score-quick-row label {
+  display: grid;
+  gap: .2rem;
+}
+
+.box-score-totals p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.box-score-warning {
+  background: #fff1d5;
+  color: #67420c;
+  border-color: #d7b477;
+}
+
+.box-score-quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .55rem;
+  margin-top: .55rem;
+}
+
+.box-score-quick-row input,
+.box-score-table input[type="number"] {
+  width: 4.8rem;
+  padding-inline: .55rem;
+}
+
+.box-score-table input[maxlength] {
+  min-width: 11rem;
+}
+
+.box-score-table th[scope="row"],
+.stat-leaders-panel th[scope="row"] {
+  min-width: 8rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.box-score-table:focus-visible,
+.stat-leaders-panel .table-wrap:focus-visible {
+  outline: 2px solid var(--fd-maroon);
+  outline-offset: 2px;
+}
+
+.box-score-badge {
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  padding: .25rem .6rem;
+  font-size: .875rem;
+  font-weight: 750;
+}
+
+.game-box-score-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: min(100%, 46rem);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  padding: clamp(1rem, 4vw, 2rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.game-box-score-drawer::backdrop {
+  background: rgb(23 20 26 / 60%);
+}
+
+.public-box-score-team {
+  margin-block: 1.2rem;
+}

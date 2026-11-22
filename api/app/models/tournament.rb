@@ -3,7 +3,7 @@ class Tournament < ApplicationRecord
 
   has_one :host_campaign, dependent: :restrict_with_error
   has_many :standings, dependent: :destroy
-  has_many :games, dependent: :destroy
+  has_many :games, dependent: :destroy, inverse_of: :tournament
   has_many :teams, dependent: :destroy
   has_many :divisions, dependent: :destroy
   has_many :article_links, dependent: :destroy
@@ -19,6 +19,7 @@ class Tournament < ApplicationRecord
   validates :year, presence: true, numericality: { only_integer: true }
   validates :start_date, :end_date, presence: true
   validates :status, inclusion: { in: STATUSES }
+  validates :enable_player_stats, inclusion: { in: [ true, false ] }
   validates :name, uniqueness: { scope: :year }
 
   validate do
@@ -82,6 +83,7 @@ class Tournament < ApplicationRecord
       startDate: start_date&.iso8601,
       endDate: end_date&.iso8601,
       status: status,
+      enablePlayerStats: enable_player_stats?,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }

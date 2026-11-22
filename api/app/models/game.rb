@@ -9,6 +9,8 @@ class Game < ApplicationRecord
   NEXT_GAME_SLOTS = %w[home away].freeze
   MUTATION_ID_FORMAT = /\A[a-zA-Z0-9_-]{8,64}\z/
   MAX_BRACKET_DEPTH = 8
+  BOX_SCORE_STATUSES = %w[none draft published needs_review].freeze
+  BOX_SCORE_COVERAGES = %w[selected_scorers full_box_score].freeze
 
   belongs_to :tournament
   belongs_to :division_record, class_name: "Division", foreign_key: :division_id, optional: true, inverse_of: false
@@ -17,11 +19,13 @@ class Game < ApplicationRecord
   belongs_to :next_game, class_name: "Game", optional: true
   belongs_to :official_winner_team, class_name: "Team", optional: true
   belongs_to :score_updated_by, class_name: "User", optional: true
+  belongs_to :box_score_updated_by, class_name: "User", optional: true
 
   has_many :feeder_games, class_name: "Game", foreign_key: :next_game_id
   has_many :article_links, dependent: :nullify
   has_many :media_assets, dependent: :nullify
   has_many :prediction_polls, dependent: :destroy
+  has_many :player_game_stats, dependent: :destroy
 
   before_validation :infer_phase_from_legacy_metadata, on: :create
   before_validation :normalize_fields
@@ -31,6 +35,8 @@ class Game < ApplicationRecord
   validates :start_time, presence: true
   validates :phase, inclusion: { in: PHASES }
   validates :status, inclusion: { in: STATUSES }
+  validates :box_score_status, inclusion: { in: BOX_SCORE_STATUSES }
+  validates :box_score_coverage, inclusion: { in: BOX_SCORE_COVERAGES }, allow_nil: true
   validates :result_outcome, inclusion: { in: RESULT_OUTCOMES }, allow_nil: true
   validates :bracket_round, inclusion: { in: BRACKET_ROUNDS }, allow_nil: true
   validates :bracket_slot, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
@@ -157,6 +163,11 @@ class Game < ApplicationRecord
     result
   end
 
+  def publicly_visible_box_score?
+    %w[published needs_review].include?(box_score_status) &&
+      tournament.enable_player_stats? && tournament.publicly_visible_schedule?
+  end
+
   def api_json(include_teams: true, include_rosters: false, include_score_audit: false)
     payload = {
       id: id.to_s,
@@ -190,7 +201,14 @@ class Game < ApplicationRecord
       updatedAt: updated_at&.iso8601
     }
 
+    visible_box_score = publicly_visible_box_score?
+    payload[:hasPublishedBoxScore] = visible_box_score
+    payload[:boxScoreUnderReview] = visible_box_score && box_score_status == "needs_review"
+
+    payload[:boxScoreCoverage] = box_score_coverage if visible_box_score || include_score_audit
+
     if include_score_audit
+      payload[:boxScoreStatus] = box_score_status
       payload.merge!(bracket_review_json)
       payload[:scoreUpdatedByName] = score_updated_by&.full_name
     end

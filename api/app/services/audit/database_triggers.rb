@@ -1,7 +1,7 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 7
+    TRIGGER_VERSION = 8
 
     RECORD_TYPES = {
       users: "User",
@@ -12,6 +12,7 @@ module Audit
       host_campaigns: "HostCampaign",
       site_publications: "SitePublication",
       games: "Game",
+      player_game_stats: "PlayerGameStat",
       score_correction_requests: "ScoreCorrectionRequest",
       tournaments: "Tournament",
       divisions: "Division",
@@ -253,6 +254,9 @@ module Audit
               description := format('%s changed %s status from %s to %s', actor_label, label,
                 replace(old_data->>'status', '_', ' '), replace(new_data->>'status', '_', ' '));
             END IF;
+          WHEN 'player_game_stats' THEN
+            audit_area := 'results';
+            label := format('%s (Game #%s)', record_data->>'player_name_snapshot', record_data->>'game_id');
           WHEN 'score_correction_requests' THEN
             audit_area := 'results';
             label := format('Correction request #%s (Game #%s)', record_data->>'id', record_data->>'game_id');
@@ -362,6 +366,10 @@ module Audit
           parent_type := 'Team';
           parent_id := (record_data->>'team_id')::bigint;
           SELECT tournament_id INTO season_id FROM teams WHERE id = parent_id;
+        ELSIF TG_TABLE_NAME = 'player_game_stats' THEN
+          parent_type := 'Game';
+          parent_id := (record_data->>'game_id')::bigint;
+          SELECT tournament_id INTO season_id FROM games WHERE id = parent_id;
         ELSIF TG_TABLE_NAME = 'prediction_votes' THEN
           parent_type := 'PredictionPoll';
           parent_id := (record_data->>'prediction_poll_id')::bigint;

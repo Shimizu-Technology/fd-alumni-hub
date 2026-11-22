@@ -1,3 +1,7 @@
+import { useState } from 'react'
+import { useAuthContext } from '../../contexts/AuthContext'
+import { mutationErrorMessage } from '../../lib/errors'
+import { PlayerStatsToggle } from './boxScore/PlayerStatsToggle'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
@@ -19,6 +23,7 @@ type TournamentDashboardData = {
 
 export function AdminTournamentDetailPage() {
   const { tournamentId } = useParams()
+  const { user } = useAuthContext()
   const { data, loading, error, reload } = useAsync(async () => {
     if (!tournamentId) throw new Error('Tournament id is missing')
 
@@ -47,10 +52,10 @@ export function AdminTournamentDetailPage() {
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (!data) return <EmptyState title="Tournament dashboard unavailable" />
 
-  return <TournamentDashboard data={data} />
+  return <TournamentDashboard data={data} canEdit={Boolean(user?.isAdmin)} />
 }
 
-function TournamentDashboard({ data }: { data: TournamentDashboardData }) {
+function TournamentDashboard({ data, canEdit }: { data: TournamentDashboardData; canEdit: boolean }) {
   const { tournament, teams, games, standings, articles, mediaAssets, sponsors } = data
   const mode = tournament.status === 'completed' || tournament.status === 'cancelled' ? 'archive' : 'operations'
   const metrics = tournamentMetrics(games, teams, standings, articles, mediaAssets, sponsors)
@@ -79,6 +84,8 @@ function TournamentDashboard({ data }: { data: TournamentDashboardData }) {
           <Link className="btn primary" to={mode === 'archive' ? `/history/${tournament.year}` : `/schedule?year=${tournament.year}`}>{mode === 'archive' ? 'View public archive' : 'View public schedule'}</Link>
         </div>
       </Panel>
+
+      {canEdit && <PlayerStatsSetting key={tournament.id} tournament={tournament} />}
 
       <div className="stats-grid four">
         <StatCard label="Teams" value={teams.length} tone="maroon" />
@@ -134,6 +141,35 @@ function TournamentDashboard({ data }: { data: TournamentDashboardData }) {
         </Panel>
       </div>
     </div>
+  )
+}
+
+function PlayerStatsSetting({ tournament }: { tournament: Tournament }) {
+  const [enabled, setEnabled] = useState(Boolean(tournament.enablePlayerStats))
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState<{ text: string; error?: boolean }>()
+
+  async function change(enablePlayerStats: boolean) {
+    setEnabled(enablePlayerStats)
+    setSaving(true)
+    setFeedback(undefined)
+    try {
+      const result = await api.adminUpdateTournament(tournament.id, { enablePlayerStats })
+      setEnabled(Boolean(result.tournament.enablePlayerStats))
+      setFeedback({ text: 'Player stats setting saved.' })
+    } catch (error) {
+      setEnabled(enabled)
+      setFeedback({ error: true, text: mutationErrorMessage(error, 'Could not save the player stats setting.') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Panel>
+      <PlayerStatsToggle checked={enabled} disabled={saving} onChange={(enabled) => void change(enabled)} />
+      {feedback && <p className={feedback.error ? 'form-error' : 'form-note'} role={feedback.error ? 'alert' : 'status'}>{feedback.text}</p>}
+    </Panel>
   )
 }
 

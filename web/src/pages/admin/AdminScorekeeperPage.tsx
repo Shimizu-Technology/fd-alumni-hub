@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -15,6 +15,7 @@ import {
   dismissQueueItem, enqueueScoreMutation, flushScoreQueue, readScoreQueue, rebaseScoreConflict,
   type QueuedScoreItem, type ScoreMutationPayload,
 } from '../../lib/scoreQueue'
+import { BoxScoreEditor } from './boxScore/BoxScoreEditor'
 import type { BracketAdvancement, CurrentUser, Game, GameOutcome, GameStatus, SavedResult, Tournament } from '../../lib/types'
 
 const gameDate = (startTime: string) => toLocalDateTimeInputValue(startTime).slice(0, 10)
@@ -115,6 +116,9 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
   const canRequest = hasCapability(user, 'scores_and_stats', 'request_correction', scope)
   const canEdit = hasCapability(user, 'scores_and_stats', 'edit', scope) &&
     (canCorrect || !tournament || ['live', 'upcoming'].includes(tournament.status))
+  const canViewStats = Boolean(tournament?.enablePlayerStats) && hasCapability(user, 'scores_and_stats', 'view', scope)
+  const canEditStats = hasCapability(user, 'scores_and_stats', 'edit', scope)
+  const canPublishStats = user.capabilities ? hasCapability(user, 'scores_and_stats', 'publish_stats', scope) : user.isStaff || user.isAdmin
   const canResolveBracket = hasCapability(user, 'brackets', 'resolve_exceptions', scope)
   const draftKey = `fd_result_drafts_v1:${userId}:${tournamentId}`
   const [drafts, setDrafts] = useState(() => readResultDrafts(draftKey, tournamentId))
@@ -400,6 +404,8 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
       <div className="scorekeeper-card-list">
         {games.map((game) => <ResultCard key={game.id} game={game} draft={drafts[game.id]} item={queued.get(game.id)}
           canEdit={canEdit} canCorrect={canCorrect} canRequest={canRequest} canResolveBracket={canResolveBracket}
+          boxScore={canViewStats && <BoxScoreEditor game={game} canEdit={canEditStats} canPublish={canPublishStats}
+            onSaved={(savedGame) => applySaved([{ game: savedGame }])} />}
           busy={busy} error={errors[game.id]} requestSent={pendingRequests[game.id]} bracket={brackets[game.id]}
           onChange={updateDraft} onSave={(draft) => saveResults([draft])}
           onRequest={(payload) => requestCorrection(game.id, payload)}
@@ -452,7 +458,7 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
   )
 }
 
-function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canResolveBracket, busy, error, requestSent, bracket,
+function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canResolveBracket, boxScore, busy, error, requestSent, bracket,
   onChange, onSave, onRequest, onUseServer, onRebase, onResolveBracket }: {
   game: Game
   draft?: ResultDraft
@@ -461,6 +467,7 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
   canCorrect: boolean
   canRequest: boolean
   canResolveBracket: boolean
+  boxScore?: ReactNode
   busy: boolean
   error?: string
   requestSent?: boolean
@@ -653,6 +660,10 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
           )}
         </fieldset>
       </form>
+      {isFinal && !currentGame.placeholder && boxScore}
+      {!isFinal && boxScore && currentGame.boxScoreStatus === 'needs_review' && (
+        <p className="form-note">Box score needs review. Save a final result to review the player stats.</p>
+      )}
       {!editing && currentGame.resultOutcome && <p className="form-note">{OUTCOME_LABELS[currentGame.resultOutcome]}{currentGame.statusNote ? ` · ${currentGame.statusNote}` : ''}</p>}
       {(error || requestError || item?.errorMessage) && !conflict && <p role="alert" className="form-error">{error || requestError || item?.errorMessage}</p>}
       {(error || requestError) && conflict && <p role="alert" className="form-error">{error || requestError}</p>}

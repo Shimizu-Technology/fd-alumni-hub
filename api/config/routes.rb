@@ -20,6 +20,8 @@ Rails.application.routes.draw do
         resources :teams, only: [ :index, :show ]
         get "site-mode", to: "site_mode#show"
         get :schedule, to: "schedule#index"
+        get "games/:id/box-score", to: "game_box_scores#show"
+        get "stat-leaders", to: "stat_leaders#index"
         get :standings, to: "standings#index"
         get :bracket, to: "bracket#show"
         get :alerts, to: "alerts#index"
@@ -111,6 +113,8 @@ Rails.application.routes.draw do
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ] do
           patch :score, on: :member
+          get "box-score", to: "game_box_scores#show", on: :member
+          put "box-score", to: "game_box_scores#update", on: :member
           post "batch-results", action: :batch_results, on: :collection
           patch "resolve-bracket-review", action: :resolve_bracket_review, on: :member
           post "correction-requests", to: "score_correction_requests#create", on: :member

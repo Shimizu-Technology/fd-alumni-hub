@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -309,8 +309,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
     t.bigint "official_winner_team_id"
     t.boolean "bracket_needs_review", default: false, null: false
     t.string "bracket_exception_note"
+    t.string "box_score_status", default: "none", null: false
+    t.string "box_score_coverage"
+    t.datetime "box_score_published_at"
+    t.bigint "box_score_updated_by_id"
     t.index "tournament_id, lower((game_number)::text)", name: "index_games_on_tournament_game_number_unique", unique: true, where: "(game_number IS NOT NULL)"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
+    t.index ["box_score_updated_by_id"], name: "index_games_on_box_score_updated_by_id"
     t.index ["division_id"], name: "index_games_on_division_id"
     t.index ["home_team_id"], name: "index_games_on_home_team_id"
     t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
@@ -325,6 +330,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
     t.index ["tournament_id", "placeholder"], name: "index_games_on_tournament_id_and_placeholder"
     t.index ["tournament_id", "start_time"], name: "index_games_on_tournament_id_and_start_time"
     t.index ["tournament_id"], name: "index_games_on_tournament_id"
+    t.check_constraint "box_score_coverage::text = ANY (ARRAY['selected_scorers'::character varying, 'full_box_score'::character varying]::text[])", name: "games_box_score_coverage"
+    t.check_constraint "box_score_status::text = ANY (ARRAY['none'::character varying, 'draft'::character varying, 'published'::character varying, 'needs_review'::character varying]::text[])", name: "games_box_score_status"
     t.check_constraint "bracket_round IS NULL OR (bracket_round::text = ANY (ARRAY['play_in'::character varying, 'round_of_16'::character varying, 'quarterfinal'::character varying, 'semifinal'::character varying, 'final'::character varying, 'third_place'::character varying]::text[]))", name: "chk_games_bracket_round"
     t.check_constraint "bracket_slot IS NULL OR bracket_slot > 0", name: "chk_games_bracket_slot_positive"
     t.check_constraint "next_game_id IS NULL OR (next_game_slot::text = ANY (ARRAY['home'::character varying, 'away'::character varying]::text[]))", name: "chk_games_next_game_slot_consistency"
@@ -498,6 +505,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
     t.index ["user_id"], name: "index_permission_grants_on_user_id"
     t.check_constraint "email::text = lower(email::text)", name: "permission_grants_lowercase_email"
     t.check_constraint "scope_type::text = 'site'::text AND scope_id IS NULL OR (scope_type::text = ANY (ARRAY['tournament'::character varying, 'campaign'::character varying]::text[])) AND scope_id IS NOT NULL", name: "permission_grants_valid_scope"
+  end
+
+  create_table "player_game_stats", force: :cascade do |t|
+    t.bigint "game_id", null: false
+    t.bigint "roster_entry_id", null: false
+    t.bigint "team_id", null: false
+    t.string "player_name_snapshot", null: false
+    t.string "jersey_number_snapshot"
+    t.integer "points"
+    t.integer "rebounds"
+    t.integer "assists"
+    t.integer "steals"
+    t.integer "blocks"
+    t.integer "three_pointers_made"
+    t.integer "fouls"
+    t.integer "minutes"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["game_id", "roster_entry_id"], name: "index_player_game_stats_on_game_id_and_roster_entry_id", unique: true
+    t.index ["roster_entry_id"], name: "index_player_game_stats_on_roster_entry_id"
+    t.index ["team_id", "game_id"], name: "index_player_game_stats_on_team_id_and_game_id"
   end
 
   create_table "pledges", force: :cascade do |t|
@@ -786,6 +815,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
     t.datetime "schedule_published_at"
     t.integer "schedule_revision", default: 0, null: false
     t.jsonb "info_guide_json", default: {}, null: false
+    t.boolean "enable_player_stats", default: false, null: false
     t.index ["legacy_id"], name: "index_tournaments_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["year", "name"], name: "index_tournaments_on_year_and_name", unique: true
     t.index ["year", "status"], name: "index_tournaments_on_year_and_status"
@@ -831,6 +861,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
   add_foreign_key "games", "teams", column: "home_team_id"
   add_foreign_key "games", "teams", column: "official_winner_team_id", on_delete: :nullify
   add_foreign_key "games", "tournaments", on_delete: :cascade
+  add_foreign_key "games", "users", column: "box_score_updated_by_id", on_delete: :nullify
   add_foreign_key "games", "users", column: "score_updated_by_id", on_delete: :nullify
   add_foreign_key "host_campaigns", "class_cohorts", on_delete: :restrict
   add_foreign_key "host_campaigns", "tournaments", on_delete: :restrict
@@ -849,6 +880,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
   add_foreign_key "pending_receipt_uploads", "users", column: "uploaded_by_id", on_delete: :restrict
   add_foreign_key "permission_grants", "users"
   add_foreign_key "permission_grants", "users", column: "granted_by_id"
+  add_foreign_key "player_game_stats", "games", on_delete: :cascade
+  add_foreign_key "player_game_stats", "roster_entries", on_delete: :restrict
+  add_foreign_key "player_game_stats", "teams", on_delete: :cascade
   add_foreign_key "pledges", "host_campaigns", on_delete: :restrict
   add_foreign_key "pledges", "sponsors", on_delete: :restrict
   add_foreign_key "pledges", "users", column: "recorded_by_id", on_delete: :restrict

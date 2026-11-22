@@ -198,6 +198,7 @@ module Games
       return invalid(*errors) if errors.any?
 
       @game.assign_attributes(values)
+      flag_box_score_for_review
       result_changed = (FIELDS & @game.changes.keys.map(&:to_sym)).any?
       recompute = (previously_pool || @game.pool_phase?) && (was_final || @game.status == "final" || @defer_recompute) && @game.changed?
       if result_changed
@@ -224,6 +225,14 @@ module Games
       Result.new(status: 200, body: {
         game: game_json, idempotentReplay: false, bracketAdvancement: advancement&.api_json
       }.compact, recompute_tournament: (@tournament if recompute))
+    end
+
+    def flag_box_score_for_review
+      return unless @game.box_score_status == "published"
+      return unless %w[home_score away_score status].any? { |field| @game.will_save_change_to_attribute?(field) }
+      return if @game.status == "final" && !BoxScores::Discrepancies.call(@game)[:hasDiscrepancy]
+
+      @game.box_score_status = "needs_review"
     end
 
     def advance_bracket_safely(previous_winner:, reopened:)

@@ -9,12 +9,15 @@ import { formatTournamentWindow } from '../../lib/games'
 import type { Tournament, TournamentStatus } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
+import { PlayerStatsToggle } from './boxScore/PlayerStatsToggle'
+
 type TournamentForm = {
   name: string
   year: string
   startDate: string
   endDate: string
   status: TournamentStatus
+  enablePlayerStats: boolean
 }
 
 type TournamentSortOption = 'yearDesc' | 'yearAsc' | 'status' | 'name'
@@ -98,6 +101,7 @@ function CreateTournamentPanel({ tournamentsCount, onSaved }: { tournamentsCount
     startDate: '',
     endDate: '',
     status: 'upcoming',
+    enablePlayerStats: false,
   })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -115,7 +119,7 @@ function CreateTournamentPanel({ tournamentsCount, onSaved }: { tournamentsCount
       await api.adminCreateTournament(payloadFromForm(form))
       setMessage('Tournament created. Open its dashboard to continue setup.')
       setOpen(false)
-      setForm((current) => ({ ...current, year: String(Number(current.year || defaultYear) + 1), startDate: '', endDate: '', status: 'upcoming' }))
+      setForm((current) => ({ ...current, year: String(Number(current.year || defaultYear) + 1), startDate: '', endDate: '', status: 'upcoming', enablePlayerStats: false }))
       await onSaved()
     } catch (err) {
       setMessage(mutationErrorMessage(err, 'Unable to create tournament'))
@@ -286,6 +290,7 @@ function TournamentFields({ form, setForm }: { form: TournamentForm; setForm: Di
       <Field label="Status"><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as TournamentStatus })}>{STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></Field>
       <Field label="Start date"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></Field>
       <Field label="End date"><input type="date" value={form.endDate} onChange={(event) => setForm({ ...form, endDate: event.target.value })} required /></Field>
+      <PlayerStatsToggle checked={form.enablePlayerStats} onChange={(enablePlayerStats) => setForm({ ...form, enablePlayerStats })} />
     </>
   )
 }
@@ -297,6 +302,7 @@ function tournamentFormState(tournament: Tournament): TournamentForm {
     startDate: tournament.startDate || '',
     endDate: tournament.endDate || '',
     status: tournament.status,
+    enablePlayerStats: Boolean(tournament.enablePlayerStats),
   }
 }
 
@@ -307,6 +313,7 @@ function payloadFromForm(form: TournamentForm) {
     startDate: form.startDate,
     endDate: form.endDate,
     status: form.status,
+    enablePlayerStats: form.enablePlayerStats,
   }
 }
 
