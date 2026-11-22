@@ -18,6 +18,7 @@ class HostCampaign < ApplicationRecord
   has_many :budget_lines, dependent: :restrict_with_error
   has_many :pledges, dependent: :restrict_with_error
   has_many :ledger_entries, dependent: :restrict_with_error
+  has_many :pending_receipt_uploads, dependent: :restrict_with_error
   has_many :finance_audit_events, dependent: :restrict_with_error
 
   before_validation :normalize_fields

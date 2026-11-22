@@ -6,5 +6,6 @@
 Rails.application.config.filter_parameters += [
   :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc,
   :contact_info, :contactInfo, :receipt_key, :receiptKey,
-  :reference_number, :referenceNumber, :reimbursement_reference, :reimbursementReference
+  :reference_number, :referenceNumber, :reimbursement_reference, :reimbursementReference,
+  :upload_token, :uploadToken, :receipt_upload_token, :receiptUploadToken
 ]

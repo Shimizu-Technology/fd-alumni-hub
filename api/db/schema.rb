@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -372,6 +372,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000005) do
     t.index ["tournament_id"], name: "index_media_assets_on_tournament_id"
   end
 
+  create_table "pending_receipt_uploads", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.bigint "uploaded_by_id", null: false
+    t.string "upload_token", null: false
+    t.string "s3_key", null: false
+    t.string "original_filename", null: false
+    t.string "expected_content_type", null: false
+    t.datetime "expires_at", null: false
+    t.datetime "attached_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["host_campaign_id", "attached_at", "expires_at"], name: "index_pending_receipt_uploads_on_campaign_state"
+    t.index ["host_campaign_id"], name: "index_pending_receipt_uploads_on_host_campaign_id"
+    t.index ["s3_key"], name: "index_pending_receipt_uploads_on_s3_key", unique: true
+    t.index ["upload_token"], name: "index_pending_receipt_uploads_on_upload_token", unique: true
+    t.index ["uploaded_by_id"], name: "index_pending_receipt_uploads_on_uploaded_by_id"
+  end
+
   create_table "pledges", force: :cascade do |t|
     t.bigint "host_campaign_id", null: false
     t.bigint "sponsor_id"
@@ -602,6 +620,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000005) do
   add_foreign_key "ledger_entries", "users", column: "voided_by_id", on_delete: :restrict
   add_foreign_key "media_assets", "games", on_delete: :nullify
   add_foreign_key "media_assets", "tournaments", on_delete: :cascade
+  add_foreign_key "pending_receipt_uploads", "host_campaigns", on_delete: :restrict
+  add_foreign_key "pending_receipt_uploads", "users", column: "uploaded_by_id", on_delete: :restrict
   add_foreign_key "pledges", "host_campaigns", on_delete: :restrict
   add_foreign_key "pledges", "sponsors", on_delete: :restrict
   add_foreign_key "pledges", "users", column: "recorded_by_id", on_delete: :restrict
