@@ -2023,3 +2023,26 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .night-preview {
   margin-top: 1.5rem;
 }
+
+.finance-quick-actions, .handoff-actions { flex-wrap: wrap; }
+.ledger-entry-dialog { width: min(42rem, 100%); max-height: 90dvh; }
+.ledger-entry-dialog .form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); margin-bottom: 0; }
+.entry-details summary { cursor: pointer; font-weight: 650; }
+.entry-details[open] summary { margin-bottom: .75rem; }
+.reimbursement-progress { display: flex; flex-wrap: wrap; gap: .25rem; list-style: none; padding: 0; margin: .6rem 0 .15rem; }
+.reimbursement-progress [aria-current] { font-weight: 750; text-decoration: underline; text-underline-offset: .18em; }
+.handoff-list { list-style: none; margin: 0; padding: 0; }
+.handoff-list > li { padding: .7rem 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.handoff-list > li > * { min-width: 0; }
+.handoff-list p { margin: .25rem 0 0; }
+.handoff-steps { display: flex; flex-wrap: wrap; gap: .4rem 2rem; margin: 0; padding-left: 1.25rem; }
+.handoff-steps [aria-current] { font-weight: 750; }
+.campaign-handoff .check-field, .ledger-entry-dialog .check-field { min-height: 2.75rem; padding-bottom: 0; }
+.campaign-handoff .check-field input, .ledger-entry-dialog .check-field input {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--fd-maroon);
+}

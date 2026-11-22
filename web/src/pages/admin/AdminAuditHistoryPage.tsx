@@ -1,5 +1,6 @@
 import { useAuthContext } from '../../contexts/AuthContext'
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { api } from '../../lib/api'
 import { auditFieldDiff, auditFieldLabel } from '../../lib/audit'
@@ -55,9 +56,15 @@ function AuditHistoryEntry({ event, showOperation }: { event: AuditEvent; showOp
 }
 
 export function AdminAuditHistoryPage() {
+  const [params] = useSearchParams()
+  const campaignId = params.get('hostCampaignId') || undefined
+  return <AuditHistory key={campaignId || 'all'} campaignId={campaignId} />
+}
+
+function AuditHistory({ campaignId }: { campaignId?: string }) {
   const { user } = useAuthContext()
   const canExport = user?.isSuperAdmin ?? user?.isAdmin
-  const [filters, setFilters] = useState<AdminAuditFilters>({})
+  const [filters, setFilters] = useState<AdminAuditFilters>(() => campaignId ? { host_campaign_id: campaignId } : {})
   const [search, setSearch] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)

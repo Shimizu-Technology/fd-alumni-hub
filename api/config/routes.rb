@@ -67,6 +67,7 @@ Rails.application.routes.draw do
         end
         resource :dashboard, only: :show, controller: "dashboard"
         resources :campaigns, only: [ :index, :show, :create, :update ] do
+          get :handoff_status, path: "handoff-status", on: :member
           get :closeout_check, path: "closeout-check", on: :member
           post :archive, on: :member
           post :clone, on: :member
@@ -82,6 +83,9 @@ Rails.application.routes.draw do
         patch "users/:id/access", to: "user_access#update"
         resources :whitelists, only: [ :index, :create, :update ]
         resources :tournaments, only: [ :index, :show, :create, :update ] do
+          resources :champions, controller: "tournament_champions", only: [ :index, :create, :update, :destroy ] do
+            get :team_options, path: "team-options", on: :collection
+          end
           post :setup, on: :collection
           post :recompute_standings, path: "recompute-standings", on: :member
           post "schedule-import/preview", to: "imports#schedule_preview", on: :member

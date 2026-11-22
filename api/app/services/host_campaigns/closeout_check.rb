@@ -34,9 +34,7 @@ module HostCampaigns
       end
 
       champions_recorded_count = if @tournament
-        TournamentChampion
-          .where(tournament_id: @tournament.id)
-          .or(TournamentChampion.where(tournament_id: nil, year: @tournament.year))
+        TournamentChampion.for_tournament(@tournament)
           .completed
           .distinct
           .count

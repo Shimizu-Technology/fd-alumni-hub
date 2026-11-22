@@ -2,7 +2,7 @@ import { AdminSiteModePage } from './pages/admin/AdminSiteModePage'
 import { NotFoundPage } from './pages/public/NotFoundPage'
 import { TeamsPage } from './pages/public/TeamsPage'
 import { ClerkProvider } from '@clerk/clerk-react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
@@ -82,6 +82,7 @@ export function App() {
           </Route>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminIndexRoute staffElement={<AdminOverviewPage />} />} />
+            <Route path="finance" element={<FinanceRedirect />} />
             <Route path="campaign/finance" element={<RequireCapabilityRoute><AdminCampaignFinancePage /></RequireCapabilityRoute>} />
             <Route path="campaign/host-year" element={<RequireCapabilityRoute><AdminCampaignHostYearPage /></RequireCapabilityRoute>} />
             <Route path="tournaments" element={<RequireCapabilityRoute><AdminTournamentsPage /></RequireCapabilityRoute>} />
@@ -121,4 +122,9 @@ export function App() {
       {content}
     </ClerkProvider>
   )
+}
+
+function FinanceRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/admin/campaign/finance${search}`} replace />
 }

@@ -36,7 +36,8 @@ module Api
         def show
           render json: {
             campaign: @campaign.admin_json,
-            roles: current_user.admin? ? %w[admin] : current_campaign_roles
+            roles: current_user.admin? ? %w[admin] : current_campaign_roles,
+            canManageDonationLinks: explicit_setting_access?("fundraisers_and_sponsors", "manage_donation_links")
           }
         end
 

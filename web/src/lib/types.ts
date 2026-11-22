@@ -837,6 +837,50 @@ export type CampaignCloseoutCheck = {
   ready: boolean
 }
 
+export type HandoffOfficer = {
+  role: 'chair' | 'treasurer'
+  invited: boolean
+  accepted: boolean
+  invitations: { email: string; status: 'pending' | 'accepted' }[]
+  pendingActions: Record<string, string[]>
+  members: { email: string; name: string; actions: Record<string, string[]> }[]
+}
+
+export type HandoffCampaignSummary = Pick<AdminHostCampaign, 'id' | 'slug' | 'title' | 'status' | 'tournamentId' |
+  'goalCents' | 'featured' | 'publicMeterEnabled' | 'donationUrl' | 'hafapassOrganizerSlug' |
+  'fdaaUpfrontCents' | 'fdaaTicketShareBps'> & { tournamentYear: number; hostClassYear: number }
+
+export type CampaignHandoffStatus = {
+  campaign: HandoffCampaignSummary
+  closeout: CampaignCloseoutCheck & {
+    boardReportReady: boolean
+    checklist: {
+      code: 'unfinalized_games' | 'pending_reimbursements' | 'missing_receipts' | 'open_cash_pledges' |
+        'champions_confirmed' | 'board_report_ready' | 'archive'
+      complete: boolean
+      severity: 'blocker' | 'warning' | 'step'
+      count: number | null
+    }[]
+  }
+  onboarding: {
+    fundingAssumptionsPresent: boolean
+    publicCopyConfigured: boolean
+    goalConfigured: boolean
+    ticketLinksSet: boolean
+    donationLinkSet: boolean
+    firstFundraiserCreated: boolean
+    firstFundraiserScheduled: boolean
+    published: boolean
+    featured: boolean
+    officers: HandoffOfficer[] | null
+  } | null
+  relatedNextCampaign: (Pick<HandoffCampaignSummary, 'id' | 'slug' | 'title' | 'status' | 'tournamentYear'> & { hasAccess: boolean }) | null
+  canPrepareNextYear: boolean
+}
+
+export type TournamentChampionPayload = Partial<Pick<TournamentChampion,
+  'bracket' | 'editionLabel' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'primary' | 'notes' | 'position' | 'source'>>
+
 export type CampaignFinalReport = {
   generatedAt: string
   campaign: AdminHostCampaign
@@ -892,6 +936,8 @@ export type CampaignCloneResponse = {
   divisions: Division[]
   budgetLinesCount: number
   campaignEventsCount: number
+  createdBudgetLines: number
+  createdEvents: number
 }
 
 export type ReceiptPresignResponse = {

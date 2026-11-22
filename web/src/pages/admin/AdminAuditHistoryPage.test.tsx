@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../lib/api'
@@ -52,7 +53,7 @@ afterEach(() => {
 
 describe('AdminAuditHistoryPage', () => {
   it('shows Guam time and provenance and filters from the details disclosure', async () => {
-    render(<AdminAuditHistoryPage />)
+    render(<MemoryRouter><AdminAuditHistoryPage /></MemoryRouter>)
     await screen.findByText('Ari Admin updated ledger entry #10')
     expect(screen.getByText('Finance ledger')).toBeTruthy()
     expect(screen.getByText(/Jul 1, 2027 · 6:00 PM/)).toBeTruthy()
@@ -72,7 +73,7 @@ describe('AdminAuditHistoryPage', () => {
   })
 
   it('applies search and area filters and appends the next page', async () => {
-    render(<AdminAuditHistoryPage />)
+    render(<MemoryRouter><AdminAuditHistoryPage /></MemoryRouter>)
     await screen.findByText('Finance ledger')
     fireEvent.change(screen.getByLabelText('Search history'), { target: { value: 'ledger' } })
     fireEvent.click(screen.getByRole('button', { name: 'Search' }))
@@ -101,7 +102,7 @@ describe('AdminAuditHistoryPage', () => {
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
-    render(<AdminAuditHistoryPage />)
+    render(<MemoryRouter><AdminAuditHistoryPage /></MemoryRouter>)
     await screen.findByText('Finance ledger')
     fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }))
 
@@ -109,4 +110,9 @@ describe('AdminAuditHistoryPage', () => {
     clickSpy.mockRestore()
     vi.unstubAllGlobals()
   })
+})
+
+it('opens with the campaign filter from a finance history link', async () => {
+  render(<MemoryRouter initialEntries={['/admin/audit?hostCampaignId=7']}><AdminAuditHistoryPage /></MemoryRouter>)
+  await waitFor(() => expect(api.adminAuditEvents).toHaveBeenCalledWith({ host_campaign_id: '7', cursor: null }, expect.any(AbortSignal)))
 })

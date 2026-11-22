@@ -13,9 +13,15 @@ class TournamentChampion < ApplicationRecord
   validates :year, numericality: { only_integer: true }
   validates :slug, uniqueness: true
   validates :status, inclusion: { in: STATUSES }
+  validates :primary, inclusion: { in: [ true, false ] }
+  validates :position, numericality: { only_integer: true }
+  validates :source, exclusion: { in: [ nil ] }
   validates :bracket, inclusion: { in: BRACKETS }
   validates :champion_label, presence: true, unless: :cancelled?
 
+  scope :for_tournament, ->(tournament) {
+    where(tournament_id: tournament.id).or(where(tournament_id: nil, year: tournament.year))
+  }
   scope :ordered, -> { order(year: :desc, position: :asc, id: :asc) }
   scope :completed, -> { where(status: "completed") }
   scope :primary_titles, -> { where(primary: true) }

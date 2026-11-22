@@ -2,7 +2,7 @@ module Api
   module V1
     module Admin
       class CampaignsController < BaseController
-        before_action :require_admin!, except: [ :index, :show ]
+        before_action :require_admin!, except: [ :index, :show, :handoff_status ]
 
         def index
           return render_forbidden if access_policy.capabilities.empty? || (!access_policy.super_admin? && access_policy.scope_ids("campaign").empty?)
@@ -99,6 +99,15 @@ module Api
           render json: { campaign: campaign.admin_json }
         end
 
+        def handoff_status
+          response.headers["Cache-Control"] = "no-store"
+          campaign = HostCampaign.includes(:tournament, :class_cohort).find(params[:id])
+          handoff = HostCampaigns::HandoffStatus.new(campaign, current_user, policy: access_policy)
+          return render_forbidden unless handoff.can_view?(campaign)
+
+          render json: handoff.call
+        end
+
         def closeout_check
           campaign = HostCampaign.includes(:tournament).find(params[:id])
           render json: HostCampaigns::CloseoutCheck.call(campaign)
@@ -116,6 +125,7 @@ module Api
 
           HostCampaign.transaction do
             campaign = HostCampaign.lock.find(params[:id])
+            Audit::Context.apply_to_transaction!(HostCampaign.lease_connection)
             if campaign.archived?
               render json: { error: "Campaign is already archived." }, status: :unprocessable_entity
               raise ActiveRecord::Rollback
@@ -193,6 +203,8 @@ module Api
               campaign: result.host_campaign.admin_json,
               tournament: result.tournament.api_json,
               divisions: result.divisions.map { |d| d.api_json(tournament: result.tournament) },
+              createdBudgetLines: result.budget_lines.length,
+              createdEvents: result.campaign_events.length,
               budgetLinesCount: result.budget_lines.length,
               campaignEventsCount: result.campaign_events.length
             }, status: :created

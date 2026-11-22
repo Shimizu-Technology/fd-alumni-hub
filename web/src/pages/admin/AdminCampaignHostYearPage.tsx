@@ -15,7 +15,10 @@ import type {
 } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
-type WorkspaceTab = 'settings' | 'events' | 'posts'
+import { CampaignHandoff } from './handoff/CampaignHandoff'
+
+const WORKSPACE_TABS = ['settings', 'events', 'posts', 'handoff'] as const
+type WorkspaceTab = typeof WORKSPACE_TABS[number]
 
 const EVENT_KINDS: Array<{ value: CampaignEventKind; label: string }> = [
   { value: 'fundraiser', label: 'Fundraiser' },
@@ -69,7 +72,12 @@ export function AdminCampaignHostYearPage() {
     entry.capability === 'fundraisers_and_sponsors' && (entry.allScopes || entry.scopeType === 'campaign'))
   const hasScopedLookup = isAdmin || Boolean(hasCampaignAccess)
   const [searchParams, setSearchParams] = useSearchParams()
-  const [tab, setTab] = useState<WorkspaceTab>('settings')
+  const requestedTab = searchParams.get('tab')
+  const tab = WORKSPACE_TABS.find((value) => value === requestedTab) ?? 'settings'
+
+  function setTab(next: WorkspaceTab, prepare = false) {
+    setSearchParams({ campaign: selectedSlug, tab: next, ...(prepare ? { action: 'prepare' } : {}) })
+  }
   const [includeArchived, setIncludeArchived] = useState(false)
 
   const adminCampaignsQuery = useAsync(
@@ -94,7 +102,7 @@ export function AdminCampaignHostYearPage() {
 
   const requestedSlug = searchParams.get('campaign')
   const selectedSlug = useMemo(() => {
-    if (requestedSlug && campaignOptions.some((c) => c.slug === requestedSlug)) return requestedSlug
+    if (requestedSlug) return campaignOptions.some((c) => c.slug === requestedSlug) ? requestedSlug : ''
     const preferred = campaignOptions.find((c) => c.status === 'active' || c.status === 'closing')
     return preferred?.slug || campaignOptions[0]?.slug || ''
   }, [requestedSlug, campaignOptions])
@@ -110,6 +118,7 @@ export function AdminCampaignHostYearPage() {
       return {
         campaign: settingsRes.campaign,
         roles: settingsRes.roles,
+        canManageDonationLinks: settingsRes.canManageDonationLinks,
         events: eventsRes.events,
         posts: postsRes.posts,
       }
@@ -144,6 +153,11 @@ export function AdminCampaignHostYearPage() {
     )
   }
 
+  if (requestedSlug && !selectedSlug) {
+    return <EmptyState title="Host Year access unavailable" description="You do not have access to the selected campaign."
+      action={<button className="btn secondary" onClick={() => setSearchParams({})}>Open my Host Year workspace</button>} />
+  }
+
   if (workspaceQuery.loading && (!workspaceQuery.data || workspaceQuery.data.campaign.slug !== selectedSlug)) {
     return <LoadingState label="Loading host year content" />
   }
@@ -161,6 +175,11 @@ export function AdminCampaignHostYearPage() {
 
   const isArchived = campaign.status === 'archived'
   const isDraft = campaign.status === 'draft'
+  const canRecordFinance = (auth.user?.capabilities
+    ? hasCapability(auth.user, 'finance_and_reimbursements', 'view', { type: 'campaign', id: campaign.id }) &&
+      hasCapability(auth.user, 'finance_and_reimbursements', 'record', { type: 'campaign', id: campaign.id })
+    : isAdmin || roles.includes('treasurer')) && !isArchived
+  const canManageDonationLinks = (isAdmin || workspaceQuery.data?.canManageDonationLinks === true) && !isArchived
   const canEditContent = (auth.user?.capabilities
     ? hasCapability(auth.user, 'fundraisers_and_sponsors', 'edit', { type: 'campaign', id: campaign.id })
     : isAdmin || roles.includes('chair')) && !isArchived
@@ -187,6 +206,11 @@ export function AdminCampaignHostYearPage() {
                 </select>
               </label>
             )}
+            {isAdmin && (campaign.status === 'active' || campaign.status === 'closing') && (
+              <button className="btn primary" type="button" onClick={() => setTab('handoff', true)}>
+                Prepare {campaign.hostClass ? `Class of ${campaign.hostClass.graduationYear + 1}` : 'next year'}
+              </button>
+            )}
             {isDraft ? (
               <span className="pill">Draft · Not public yet</span>
             ) : (
@@ -205,7 +229,7 @@ export function AdminCampaignHostYearPage() {
         </Panel>
       )}
 
-      {!isArchived && !canEditContent && (
+      {!isArchived && !canEditContent && !canManageDonationLinks && (
         <Panel>
           <p className="muted" style={{ margin: 0 }}>
             <strong>Read-only view:</strong> Your role ({roles.join(', ') || 'board'}) can view Host Year content. Chair or admin access is required to edit settings, events, or posts.
@@ -223,10 +247,13 @@ export function AdminCampaignHostYearPage() {
         <button type="button" role="tab" aria-selected={tab === 'posts'} className={`btn ${tab === 'posts' ? 'primary' : 'secondary'}`} onClick={() => setTab('posts')}>
           Class News ({posts.length})
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'handoff'} className={`btn ${tab === 'handoff' ? 'primary' : 'secondary'}`} onClick={() => setTab('handoff')}>
+          Closeout &amp; Handoff
+        </button>
       </div>
 
       {tab === 'settings' && (
-        <HostYearSettingsPanel key={campaign.slug} campaign={campaign} canEdit={canEditContent} onSaved={workspaceQuery.reload} />
+        <HostYearSettingsPanel key={campaign.slug} campaign={campaign} canEdit={canEditContent} canManageDonationLinks={canManageDonationLinks} onSaved={workspaceQuery.reload} />
       )}
 
       {tab === 'events' && (
@@ -234,11 +261,20 @@ export function AdminCampaignHostYearPage() {
           key={campaign.slug}
           campaign={campaign}
           events={events}
+          canRecordFinance={canRecordFinance}
           canEdit={canEditContent}
           includeArchived={includeArchived}
           onToggleArchived={setIncludeArchived}
           onSaved={workspaceQuery.reload}
         />
+      )}
+
+      {tab === 'handoff' && (
+        <CampaignHandoff key={campaign.slug} campaign={campaign} events={events}
+          preparing={searchParams.get('action') === 'prepare'}
+          onPrepare={() => setTab('handoff', true)}
+          onCloseWizard={() => setTab('handoff')}
+          onCampaignChange={async () => { await Promise.all([workspaceQuery.reload(), adminCampaignsQuery.reload()]) }} />
       )}
 
       {tab === 'posts' && (
@@ -257,10 +293,12 @@ export function AdminCampaignHostYearPage() {
 function HostYearSettingsPanel({
   campaign,
   canEdit,
+  canManageDonationLinks,
   onSaved,
 }: {
   campaign: AdminHostCampaign
   canEdit: boolean
+  canManageDonationLinks: boolean
   onSaved: () => Promise<void>
 }) {
   const [title, setTitle] = useState(campaign.title)
@@ -271,6 +309,7 @@ function HostYearSettingsPanel({
   const [countdownLabel, setCountdownLabel] = useState(campaign.countdownLabel || '')
   const [heroImageUrl, setHeroImageUrl] = useState(campaign.heroImageUrl || '')
   const [golfUrl, setGolfUrl] = useState(campaign.golfUrl || '')
+  const [donationUrl, setDonationUrl] = useState(campaign.donationUrl || '')
   const [hafapassOrganizerSlug, setHafapassOrganizerSlug] = useState(campaign.hafapassOrganizerSlug || '')
   const [hafapassTournamentOrganizerSlug, setHafapassTournamentOrganizerSlug] = useState(campaign.hafapassTournamentOrganizerSlug || '')
   const [hafapassDistributionCode, setHafapassDistributionCode] = useState(campaign.hafapassDistributionCode || '')
@@ -288,6 +327,7 @@ function HostYearSettingsPanel({
     setCountdownLabel(campaign.countdownLabel || '')
     setHeroImageUrl(campaign.heroImageUrl || '')
     setGolfUrl(campaign.golfUrl || '')
+    setDonationUrl(campaign.donationUrl || '')
     setHafapassOrganizerSlug(campaign.hafapassOrganizerSlug || '')
     setHafapassTournamentOrganizerSlug(campaign.hafapassTournamentOrganizerSlug || '')
     setHafapassDistributionCode(campaign.hafapassDistributionCode || '')
@@ -313,12 +353,12 @@ function HostYearSettingsPanel({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!canEdit) return
+    if (!canEdit && !canManageDonationLinks) return
     setSaving(true)
     setMessage('')
     setError('')
     try {
-      const payload: Record<string, unknown> = {
+      const payload: Record<string, unknown> = canEdit ? {
         title: title.trim(),
         tagline: tagline.trim() || null,
         description: description.trim() || null,
@@ -328,8 +368,9 @@ function HostYearSettingsPanel({
         hafapassOrganizerSlug: hafapassOrganizerSlug.trim().toLowerCase() || null,
         hafapassTournamentOrganizerSlug: hafapassTournamentOrganizerSlug.trim().toLowerCase() || null,
         hafapassDistributionCode: hafapassDistributionCode.trim().toLowerCase() || null,
-      }
-      if (countdownDirty) {
+      } : {}
+      if (canManageDonationLinks) payload.donationUrl = donationUrl.trim() || null
+      if (canEdit && countdownDirty) {
         payload.countdownTargetAt = fromDatetimeLocalValue(countdownTargetAt)
       }
       await api.campaignUpdateSettings(campaign.slug, payload)
@@ -373,6 +414,11 @@ function HostYearSettingsPanel({
           <Field label="Countdown label">
             <input value={countdownLabel} onChange={(e) => setCountdownLabel(e.target.value)} placeholder="Tentative tip-off · Jun 25, 2027" disabled={!canEdit} />
           </Field>
+          {canManageDonationLinks && (
+            <Field label="Donation URL (https://)">
+              <input type="url" value={donationUrl} onChange={(event) => setDonationUrl(event.target.value)} />
+            </Field>
+          )}
           <Field label="Golf site URL (https://)">
             <input type="url" value={golfUrl} onChange={(e) => setGolfUrl(e.target.value)} placeholder="https://fd-golf.shimizu-technology.com" disabled={!canEdit} />
           </Field>
@@ -394,12 +440,12 @@ function HostYearSettingsPanel({
           <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} />
         </Field>
 
-        {canEdit && (
+        {(canEdit || canManageDonationLinks) && (
           <div className="row-actions" style={{ marginTop: '0.75rem' }}>
-            <label className="btn secondary small" style={{ cursor: 'pointer' }}>
+            {canEdit && <label className="btn secondary small" style={{ cursor: 'pointer' }}>
               {uploading ? 'Uploading hero image…' : 'Upload hero image'}
               <input type="file" accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={handleHeroUpload} disabled={uploading} style={{ display: 'none' }} />
-            </label>
+            </label>}
             <button className="btn primary" type="submit" disabled={saving || uploading}>
               {saving ? 'Saving…' : 'Save settings'}
             </button>
@@ -416,6 +462,7 @@ function HostYearSettingsPanel({
 function HostYearEventsPanel({
   campaign,
   events,
+  canRecordFinance,
   canEdit,
   includeArchived,
   onToggleArchived,
@@ -423,6 +470,7 @@ function HostYearEventsPanel({
 }: {
   campaign: AdminHostCampaign
   events: AdminCampaignEvent[]
+  canRecordFinance: boolean
   canEdit: boolean
   includeArchived: boolean
   onToggleArchived: (value: boolean) => void
@@ -687,14 +735,17 @@ function HostYearEventsPanel({
                     </p>
                   )}
                 </div>
-                {canEdit && (
-                  <div className="row-actions">
-                    <button type="button" className="btn secondary small" onClick={() => startEdit(ev)}>Edit</button>
-                    {!ev.archivedAt && (
-                      <button type="button" className="btn secondary small" onClick={() => void handleArchive(ev)}>Archive</button>
-                    )}
-                  </div>
-                )}
+                <div className="row-actions handoff-actions">
+                  {canRecordFinance && !ev.archivedAt && (
+                    <Link className="btn secondary small" to={`/admin/finance?campaign=${encodeURIComponent(campaign.slug)}&action=income&eventId=${ev.id}`}>
+                      Record money from this event
+                    </Link>
+                  )}
+                  {canEdit && <button type="button" className="btn secondary small" onClick={() => startEdit(ev)}>Edit</button>}
+                  {canEdit && !ev.archivedAt && (
+                    <button type="button" className="btn secondary small" onClick={() => void handleArchive(ev)}>Archive</button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
