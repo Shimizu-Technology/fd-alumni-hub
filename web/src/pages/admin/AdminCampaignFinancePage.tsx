@@ -74,10 +74,28 @@ function formatUsd(cents: number) {
   }).format(cents / 100)
 }
 
-function dollarsToCents(raw: string) {
-  const parsed = Number(raw.trim().replace(/[$,\s]/g, ''))
-  if (!Number.isFinite(parsed) || parsed < 0) return 0
-  return Math.round(parsed * 100)
+function parseDollarsToCents(raw: string, { positive = false }: { positive?: boolean } = {}): { ok: true; value: number } | { ok: false; error: string } {
+  const trimmed = raw.trim().replace(/[$,\s]/g, '')
+  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid dollar amount (for example, 250 or 250.00).' }
+  }
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || (positive ? parsed <= 0 : parsed < 0)) {
+    return { ok: false, error: positive ? 'Amount must be greater than $0.' : 'Amount cannot be negative.' }
+  }
+  return { ok: true, value: Math.round(parsed * 100) }
+}
+
+function parsePercentToBps(raw: string): { ok: true; value: number } | { ok: false; error: string } {
+  const trimmed = raw.trim().replace(/[%\s]/g, '')
+  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return { ok: false, error: 'Enter a valid percentage between 0 and 100.' }
+  }
+  const parsed = Number(trimmed)
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+    return { ok: false, error: 'Percentage must be between 0 and 100.' }
+  }
+  return { ok: true, value: Math.round(parsed * 100) }
 }
 
 function centsToInput(cents: number) {
@@ -187,6 +205,10 @@ export function AdminCampaignFinancePage() {
     return <LoadingState label="Loading host campaigns" />
   }
 
+  if (isAdmin && adminCampaignsQuery.error) {
+    return <ErrorState message={adminCampaignsQuery.error} onRetry={adminCampaignsQuery.reload} />
+  }
+
   if (campaignOptions.length === 0) {
     return (
       <div className="page-stack admin-page">
@@ -204,7 +226,7 @@ export function AdminCampaignFinancePage() {
     )
   }
 
-  if (financeQuery.loading && !financeQuery.data) {
+  if (financeQuery.loading && (!financeQuery.data || financeQuery.data.campaign.slug !== selectedSlug)) {
     return <LoadingState label="Loading campaign finance data" />
   }
 
@@ -416,14 +438,29 @@ function FinanceSettingsPanel({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+    const goalParsed = parseDollarsToCents(goalDollars, { positive: true })
+    if (!goalParsed.ok) {
+      setError(`Fundraising goal: ${goalParsed.error}`)
+      return
+    }
+    const upfrontParsed = parseDollarsToCents(fdaaUpfrontDollars)
+    if (!upfrontParsed.ok) {
+      setError(`FDAA upfront allocation: ${upfrontParsed.error}`)
+      return
+    }
+    const shareParsed = parsePercentToBps(fdaaSharePercent)
+    if (!shareParsed.ok) {
+      setError(`FDAA ticket share: ${shareParsed.error}`)
+      return
+    }
     setSaving(true)
     setMessage('')
     setError('')
     try {
       await api.campaignUpdateSettings(campaign.slug, {
-        goalCents: dollarsToCents(goalDollars),
-        fdaaUpfrontCents: dollarsToCents(fdaaUpfrontDollars),
-        fdaaTicketShareBps: Math.round((Number(fdaaSharePercent) || 0) * 100),
+        goalCents: goalParsed.value,
+        fdaaUpfrontCents: upfrontParsed.value,
+        fdaaTicketShareBps: shareParsed.value,
         publicMeterEnabled,
         includeFdaaInPublicMeter,
       })
@@ -592,11 +629,12 @@ function LedgerTab({
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault()
     if (!canWrite) return
-    const amountCents = dollarsToCents(amountDollars)
-    if (amountCents <= 0) {
-      setError('Enter an amount greater than $0.')
+    const amountParsed = parseDollarsToCents(amountDollars, { positive: true })
+    if (!amountParsed.ok) {
+      setError(`Amount: ${amountParsed.error}`)
       return
     }
+    const amountCents = amountParsed.value
     setSaving(true)
     setMessage('')
     setError('')
@@ -899,13 +937,18 @@ function BudgetTab({
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault()
+    const budgetParsed = parseDollarsToCents(budgetDollars)
+    if (!budgetParsed.ok) {
+      setError(`Planned budget: ${budgetParsed.error}`)
+      return
+    }
     setSaving(true)
     setError('')
     try {
       await api.campaignCreateBudgetLine(campaign.slug, {
         kind,
         category: category.trim(),
-        budgetCents: dollarsToCents(budgetDollars),
+        budgetCents: budgetParsed.value,
         notes: notes.trim() || null,
       })
       setCategory('')
@@ -1018,6 +1061,11 @@ function PledgesTab({
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault()
+    const promisedParsed = parseDollarsToCents(promisedDollars, { positive: true })
+    if (!promisedParsed.ok) {
+      setError(`Promised amount: ${promisedParsed.error}`)
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -1027,7 +1075,7 @@ function PledgesTab({
         contactInfo: contactInfo.trim() || null,
         tier: tier || null,
         isInKind,
-        promisedCents: dollarsToCents(promisedDollars),
+        promisedCents: promisedParsed.value,
         dueOn: dueOn || null,
         notes: notes.trim() || null,
       })
