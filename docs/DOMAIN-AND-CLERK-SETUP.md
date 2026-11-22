@@ -64,3 +64,21 @@ Add `https://fd-alumni.shimizu-technology.com` to the S3 bucket's CORS `AllowedO
 1. Set the new domain as Netlify's primary domain and configure a 301 redirect from `fd-alumni.shimizu-technology.com`.
 2. Update Clerk's production domain and DNS records, then rotate `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_PUBLISHABLE_KEY`, `CLERK_ISSUER`, `CLERK_JWKS_URL`, and `CLERK_SECRET_KEY`.
 3. Update `VITE_SITE_URL`, `PUBLIC_SITE_URL`, `ALLOWED_ORIGINS`, `CLERK_AUTHORIZED_PARTIES`, and S3 CORS, then redeploy Render and Netlify.
+
+---
+
+## Leon & Board Manual Checklist (Non-Code Gates)
+
+These steps require Leon or the CO2017 board directly and are intentionally kept out of automated deployments:
+
+1. **Infrastructure activation (Leon):**
+   - Complete the Cloudflare DNS, Clerk production instance, Render Starter ($7/mo) unpause, Netlify env vars, and public + private S3 bucket setup (`docs/S3-UPLOAD-SETUP.md`, including `S3_PRIVATE_BUCKET` with Block Public Access enabled).
+2. **CO2017 campaign bootstrap & board onboarding (Leon + Board):**
+   - Sign in as `admin`, create the `2027-class-of-2017` campaign in `/admin/campaigns` (or via the Tournament Setup Wizard), and invite CO2017 chair, treasurer, and board emails in `/admin/people`.
+   - Confirm board decisions in writing: official site status, donation channel (Bank of Guam class account vs FDAA 501(c)(3) link), golf date/format, and FDAA payout note.
+3. **Enter Nov 20 Antigu fundraiser numbers (Treasurer / Leon):**
+   - In production `/admin/campaign/finance`, enter the Nov 20 "Two Pints, One Purpose" income/expenses (~$5K+ net), starting budget categories, and any cash/PayPal balances being transferred to the Bank of Guam class account.
+4. **Treasurer & Chair phone walkthrough (Leon + Treasurer + Chair):**
+   - Walk through logging an expense with a phone receipt photo, approving a reimbursement from a second officer's phone, and exporting the CSV on real phones before broad board rollout.
+5. **Pre-tournament June readiness (Leon + FDMSAA + Staff):**
+   - Import the official 2027 FDMSAA schedule PDF within 24 hours of release using `/admin/import`, verify divisions/rosters, run a 30-minute scorekeeper phone drill inside The Jungle (including offline retry check), and verify HåfaPass passes/nights on `/tickets`.
