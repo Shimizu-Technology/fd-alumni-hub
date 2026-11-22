@@ -973,7 +973,7 @@ export type AuditFilterOption = { id: string; label: string }
 export type AdminAuditResponse = {
   auditEvents: AuditEvent[]
   nextCursor: string | null
-  filterOptions: {
+  filterOptions?: {
     areas: string[]
     actors: AuditFilterOption[]
     tournaments: AuditFilterOption[]

@@ -1,4 +1,4 @@
-%w[db:schema:load db:prepare].each do |task|
+%w[db:schema:load db:prepare db:migrate].each do |task|
   Rake::Task[task].enhance { Audit::DatabaseTriggers.install! }
 end
 

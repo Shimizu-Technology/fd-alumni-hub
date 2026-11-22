@@ -53,12 +53,13 @@ describe('AdminAuditHistoryPage', () => {
     render(<AdminAuditHistoryPage />)
     await screen.findByText('Ari Admin updated ledger entry #10')
     expect(screen.getByText('Finance ledger')).toBeTruthy()
-    expect(screen.getByText(/6:00 PM/)).toBeTruthy()
+    expect(screen.getByText(/Jul 1, 2027 · 6:00 PM/)).toBeTruthy()
     expect(screen.getByText(/Corrected amount/)).toBeTruthy()
 
     const details = screen.getByText('Details')
     fireEvent.click(details)
     expect(details.closest('details')?.open).toBe(true)
+    expect(screen.getByRole('table', { name: 'Ari Admin updated ledger entry #10' })).toBeTruthy()
     expect(screen.getByRole('row', { name: 'Amount cents 100 200' })).toBeTruthy()
     expect(screen.getByText(/PATCH \/api/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Show related changes' }))
@@ -78,12 +79,12 @@ describe('AdminAuditHistoryPage', () => {
     await waitFor(() => expect(api.adminAuditEvents).toHaveBeenLastCalledWith({ q: 'ledger', area: 'finance', cursor: null }, expect.any(AbortSignal)))
 
     vi.mocked(api.adminAuditEvents).mockResolvedValueOnce({
-      ...firstPage,
       nextCursor: null,
       auditEvents: [{ ...firstPage.auditEvents[0], id: '2', summary: 'Ari Admin created a ledger entry' }],
     })
     fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
     await screen.findByText('Ari Admin created a ledger entry')
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect((screen.getByLabelText('Area') as HTMLSelectElement).options.length).toBe(2)
   })
 })

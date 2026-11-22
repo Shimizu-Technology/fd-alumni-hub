@@ -16,11 +16,13 @@ module Api
           has_more = events.length > limit
           events.pop if has_more
 
-          render json: {
+          payload = {
             auditEvents: events.map(&:api_json),
-            nextCursor: has_more ? encode_cursor(events.last) : nil,
-            filterOptions: filter_options
+            nextCursor: has_more ? encode_cursor(events.last) : nil
           }
+          payload[:filterOptions] = filter_options if params[:cursor].blank?
+
+          render json: payload
         rescue ArgumentError, RangeError
           render json: { error: "Invalid audit history filter or cursor." }, status: :bad_request
         end

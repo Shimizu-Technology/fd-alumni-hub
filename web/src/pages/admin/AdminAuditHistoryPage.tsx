@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { api } from '../../lib/api'
 import { auditFieldDiff, auditFieldLabel } from '../../lib/audit'
-import { formatGuamDateTime } from '../../lib/datetime'
+import { formatGuamDate, formatGuamTime } from '../../lib/datetime'
 import type { AdminAuditFilters, AdminAuditResponse, AuditEvent } from '../../lib/types'
 
 function displayValue(value: unknown): string {
@@ -15,21 +15,22 @@ function displayValue(value: unknown): string {
 function AuditHistoryEntry({ event, showOperation }: { event: AuditEvent; showOperation: (id: string) => void }) {
   const fields = auditFieldDiff(event)
   const actor = event.actorName || event.actorEmail || auditFieldLabel(event.actorType)
+  const headingId = `audit-event-${event.id}`
 
   return (
     <li className="audit-entry">
       <div className="audit-entry-meta">
         <span className="audit-area">{auditFieldLabel(event.area)}</span>
         {event.legacySource === 'finance_audit_events' && <span className="audit-provenance">Finance ledger</span>}
-        <time dateTime={event.occurredAt}>{formatGuamDateTime(event.occurredAt)} · {new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone: 'Pacific/Guam' }).format(new Date(event.occurredAt))}</time>
+        <time dateTime={event.occurredAt}>{formatGuamDate(event.occurredAt, { weekday: 'short' })} · {formatGuamTime(event.occurredAt)}</time>
       </div>
-      <h2>{event.summary}</h2>
+      <h2 id={headingId}>{event.summary}</h2>
       <p className="audit-actor">{actor}{event.actorRole && ` · ${event.actorRole.split(', ').map(auditFieldLabel).join(', ')}`}</p>
       {event.reason && <p className="audit-reason"><strong>Reason</strong> {event.reason}</p>}
       <details className="audit-details">
         <summary>Details</summary>
         {fields.length > 0 ? (
-          <table className="audit-diff">
+          <table className="audit-diff" aria-labelledby={headingId}>
             <thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
             <tbody>
               {fields.map(({ field, before, after }) => (
@@ -68,6 +69,7 @@ export function AdminAuditHistoryPage() {
         if (abort.signal.aborted) return
         setData((previous) => ({
           ...page,
+          filterOptions: page.filterOptions ?? previous?.filterOptions,
           auditEvents: cursor ? [...(previous?.auditEvents ?? []), ...page.auditEvents] : page.auditEvents,
         }))
       })

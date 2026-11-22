@@ -1,5 +1,8 @@
 module Audit
   module DatabaseTriggers
+    # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
+    TRIGGER_VERSION = 2
+
     RECORD_TYPES = {
       users: "User",
       admin_whitelists: "AdminWhitelist",
@@ -15,6 +18,8 @@ module Audit
       connection.transaction do
         connection.execute(REDACT_SQL)
         connection.execute(CAPTURE_SQL)
+        # Blocks accidental app-level UPDATE, DELETE, and TRUNCATE.
+        # Full tamper resistance against DBA-level DDL requires a non-owner runtime DB role.
         connection.execute(<<~SQL)
           CREATE OR REPLACE FUNCTION fd_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
           BEGIN
@@ -24,6 +29,9 @@ module Audit
           DROP TRIGGER IF EXISTS fd_audit_immutable ON audit_events;
           CREATE TRIGGER fd_audit_immutable BEFORE UPDATE OR DELETE ON audit_events
             FOR EACH ROW EXECUTE FUNCTION fd_audit_immutable();
+          DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON audit_events;
+          CREATE TRIGGER fd_audit_immutable_truncate BEFORE TRUNCATE ON audit_events
+            FOR EACH STATEMENT EXECUTE FUNCTION fd_audit_immutable();
         SQL
 
         RECORD_TYPES.each do |table, record_type|
@@ -42,6 +50,7 @@ module Audit
       end
       connection.execute(<<~SQL)
         DROP TRIGGER IF EXISTS fd_audit_immutable ON audit_events;
+        DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON audit_events;
         DROP FUNCTION IF EXISTS fd_audit_immutable();
         DROP FUNCTION IF EXISTS fd_audit_capture();
         DROP FUNCTION IF EXISTS fd_audit_redact(jsonb);
@@ -49,16 +58,23 @@ module Audit
     end
 
     # Both trigger capture and legacy imports use this function, including for
-    # nested objects and arrays in legacy ledger changes.
+    # nested objects and arrays in legacy ledger changes. Sensitive keys keep
+    # their key name with "[Redacted]" for non-null values so edits stay visible.
     REDACT_SQL = <<~'SQL'.freeze
       CREATE OR REPLACE FUNCTION fd_audit_redact(payload jsonb) RETURNS jsonb
       LANGUAGE sql IMMUTABLE AS $$
         SELECT CASE jsonb_typeof(payload)
           WHEN 'object' THEN (
-            SELECT coalesce(jsonb_object_agg(key, fd_audit_redact(value)), '{}')
+            SELECT coalesce(jsonb_object_agg(
+              key,
+              CASE
+                WHEN regexp_replace(lower(key), '[^a-z0-9]', '', 'g') ~
+                  '(token|secret|password|signedurl|receiptkey|clerkid|lastscoremutationdigest|authorization|apikey|distributioncode)'
+                THEN CASE WHEN value = 'null'::jsonb THEN 'null'::jsonb ELSE '"[Redacted]"'::jsonb END
+                ELSE fd_audit_redact(value)
+              END
+            ), '{}')
             FROM jsonb_each(payload)
-            WHERE regexp_replace(lower(key), '[^a-z0-9]', '', 'g') !~
-              '(token|secret|password|signedurl|receiptkey|clerkid|lastscoremutationdigest|authorization|apikey|distributioncode)'
           )
           WHEN 'array' THEN (
             SELECT coalesce(jsonb_agg(fd_audit_redact(value) ORDER BY ordinal), '[]')
@@ -93,15 +109,16 @@ module Audit
         verb text;
         description text;
       BEGIN
+        IF TG_OP = 'UPDATE' AND
+          to_jsonb(OLD) - ARRAY['updated_at', 'lock_version'] = to_jsonb(NEW) - ARRAY['updated_at', 'lock_version'] THEN
+          RETURN NULL;
+        END IF;
+
         IF TG_OP <> 'INSERT' THEN
           old_data := fd_audit_redact(to_jsonb(OLD));
         END IF;
         IF TG_OP <> 'DELETE' THEN
           new_data := fd_audit_redact(to_jsonb(NEW));
-        END IF;
-        IF TG_OP = 'UPDATE' AND
-          old_data - ARRAY['updated_at', 'lock_version'] = new_data - ARRAY['updated_at', 'lock_version'] THEN
-          RETURN NULL;
         END IF;
 
         record_data := CASE WHEN TG_OP = 'DELETE' THEN old_data ELSE new_data END;
@@ -153,7 +170,7 @@ module Audit
           area, action, record_type, record_id, record_label, tournament_id, host_campaign_id,
           summary, before_json, after_json, reason, request_id, http_method, route_path, ip_address
         ) VALUES (
-          coalesce(nullif(current_setting('app.audit_operation_id', true), ''), gen_random_uuid()::text),
+          coalesce(nullif(current_setting('app.audit_operation_id', true), ''), 'tx-' || pg_current_xact_id()::text),
           actor_type, nullif(current_setting('app.audit_actor_id', true), '')::bigint,
           actor_name, actor_email, nullif(current_setting('app.audit_actor_role', true), ''),
           audit_area, coalesce(nullif(current_setting('app.audit_action_override', true), ''), audit_action),

@@ -8,12 +8,16 @@ class AuditEventTest < ActiveSupport::TestCase
     @cohort = ClassCohort.create!(key: "17", graduation_year: 2017, display_name: "Class of 2017", short_label: "17")
   end
 
-  test "model and direct SQL cannot update or delete audit history" do
+  test "model and direct SQL cannot update delete or truncate audit history" do
     event = AuditEvent.last
     assert_raises(ActiveRecord::ReadOnlyRecord) { event.update!(summary: "Changed") }
     assert_raises(ActiveRecord::ReadOnlyRecord) { event.destroy! }
 
-    [ "UPDATE audit_events SET summary = 'Changed'", "DELETE FROM audit_events" ].each do |sql|
+    [
+      "UPDATE audit_events SET summary = 'Changed'",
+      "DELETE FROM audit_events",
+      "TRUNCATE audit_events"
+    ].each do |sql|
       error = assert_raises(ActiveRecord::StatementInvalid) do
         AuditEvent.transaction(requires_new: true) { AuditEvent.connection.execute(sql) }
       end
@@ -60,14 +64,15 @@ class AuditEventTest < ActiveSupport::TestCase
         assert_equal "Correcting records", update.reason
         assert_includes update.summary, "Ari Admin"
         assert_includes update.summary, label
-        refute_includes create.after_json, "clerk_id"
-        refute_includes create.after_json, "last_score_mutation_digest"
+        assert_equal "[Redacted]", create.after_json["clerk_id"] if record.is_a?(User)
+        refute_includes create.after_json.to_json, "clerk-private"
+        assert_nil create.after_json["last_score_mutation_digest"] if record.is_a?(Game)
         assert_match(/score from 58-54 to 60-54/, update.summary) if record.is_a?(Game)
       end
     end
   end
 
-  test "rollback removes captured events and no-op updates produce no history" do
+  test "rollback removes captured events and true no-ops produce no history while redacted field edits are audited" do
     game = create_game
     campaign = create_campaign
     assert_no_difference("AuditEvent.count") do
@@ -80,13 +85,21 @@ class AuditEventTest < ActiveSupport::TestCase
       end
 
       game.reload.touch
-      User.where(id: @actor.id).update_all(clerk_id: "private-value")
     end
     assert_equal 58, game.reload.home_score
     assert_equal "Host campaign", campaign.reload.title
+
+    assert_difference("AuditEvent.count", 1) do
+      User.where(id: @actor.id).update_all(clerk_id: "private-value")
+    end
+    event = AuditEvent.last
+    assert_nil event.before_json["clerk_id"]
+    assert_equal "[Redacted]", event.after_json["clerk_id"]
+    refute_includes event.after_json.to_json, "private-value"
   end
 
-  test "bulk SQL writes use system context and nested context restores after database error" do
+  test "bulk SQL writes group system updates per transaction and nested context restores after database error" do
+    other = User.create!(email: "other@example.test", first_name: "Sam", role: "viewer")
     Audit::Context.with(actor: @actor, operation_id: "outer") do
       assert_raises(ActiveRecord::StatementInvalid) do
         Audit::Context.with(operation_id: "inner") do
@@ -97,10 +110,13 @@ class AuditEventTest < ActiveSupport::TestCase
       assert_equal "outer", AuditEvent.last.operation_id
     end
 
-    User.where(id: @actor.id).update_all(first_name: "System update")
-    assert_equal "system", AuditEvent.last.actor_type
-    assert_nil AuditEvent.last.actor_id
-    refute_equal "outer", AuditEvent.last.operation_id
+    User.where(id: [ @actor.id, other.id ]).update_all(last_name: "SystemUpdate")
+    recent = AuditEvent.order(:id).last(2)
+    assert_equal %w[system system], recent.map(&:actor_type)
+    assert_equal [ nil, nil ], recent.map(&:actor_id)
+    assert_equal 1, recent.map(&:operation_id).uniq.size
+    assert_match(/\Atx-\d+\z/, recent.first.operation_id)
+    refute_equal "outer", recent.first.operation_id
   end
 
   test "finance sync redacts nested secrets and backfills without duplicates" do
@@ -111,7 +127,16 @@ class AuditEventTest < ActiveSupport::TestCase
     existing = AuditEvent.find_by!(legacy_finance_audit_event_id: event.id)
     assert_equal "finance", existing.area
     assert_equal "finance_audit_events", existing.metadata_json["legacySource"]
-    assert_equal({ "amount_cents" => [ 100, 150 ], "files" => [ { "link" => "[Redacted]" } ] }, existing.after_json["changes"])
+    assert_equal(
+      {
+        "amount_cents" => [ 100, 150 ],
+        "receiptKey" => "[Redacted]",
+        "files" => [ { "uploadToken" => "[Redacted]", "link" => "[Redacted]" } ]
+      },
+      existing.after_json["changes"]
+    )
+    refute_includes existing.after_json.to_json, "private/receipt"
+    refute_includes existing.after_json.to_json, "private-token"
     assert_equal changes, event.reload.changes_json
 
     unbridged = FinanceAuditEvent.insert_all!([ event.attributes.except("id") ]).first.fetch("id")

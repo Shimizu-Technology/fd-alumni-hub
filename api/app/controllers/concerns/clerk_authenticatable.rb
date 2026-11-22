@@ -131,6 +131,7 @@ module ClerkAuthenticatable
   def sync_existing_user(user, email, first_name, last_name, clerk_id: nil, role: nil)
     return nil unless user&.active?
 
+    Audit::Context.set_actor!(user)
     update_user_from_claims(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
     user
   rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
@@ -156,12 +157,14 @@ module ClerkAuthenticatable
   end
 
   def create_whitelisted_user(clerk_id:, email:, first_name:, last_name:, role:)
-    user = User.create_or_find_by!(clerk_id: clerk_id) do |record|
-      record.email = email
-      record.first_name = first_name
-      record.last_name = last_name
-      record.role = role
-      record.active = true
+    user = Audit::Context.with(actor_type: "system", reason: "First sign-in account provisioning") do
+      User.create_or_find_by!(clerk_id: clerk_id) do |record|
+        record.email = email
+        record.first_name = first_name
+        record.last_name = last_name
+        record.role = role
+        record.active = true
+      end
     end
 
     sync_whitelisted_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)

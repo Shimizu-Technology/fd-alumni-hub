@@ -61,6 +61,7 @@ class AdminAuditEventsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal expected.last(1), response.parsed_body["auditEvents"].pluck("id")
     assert_nil response.parsed_body["nextCursor"]
+    refute_includes response.parsed_body, "filterOptions"
 
     get PATH, headers: auth_headers(@admin), params: { cursor: "bad cursor" }
     assert_response :bad_request
@@ -97,7 +98,41 @@ class AdminAuditEventsControllerTest < ActionDispatch::IntegrationTest
     assert_nil AuditEvent.last.request_id
   end
 
+  test "clerk profile sync attributes updates to the existing user and ignores unchanged claims" do
+    claims = {
+      "sub" => @admin.clerk_id,
+      "email" => @admin.email,
+      "email_verified" => true,
+      "first_name" => "Aria"
+    }
+
+    with_stubbed_clerk_verify(claims) do
+      get PATH, headers: { "Authorization" => "Bearer clerk-sync-1", "X-Request-ID" => "clerk-sync-req-1" }
+      assert_response :success
+    end
+
+    event = AuditEvent.find_by!(request_id: "clerk-sync-req-1", record_type: "User", record_id: @admin.id.to_s)
+    assert_equal "user", event.actor_type
+    assert_equal @admin.id, event.actor_id
+    assert_equal "Aria", event.after_json["first_name"]
+
+    assert_no_difference("AuditEvent.count") do
+      with_stubbed_clerk_verify(claims) do
+        get PATH, headers: { "Authorization" => "Bearer clerk-sync-2", "X-Request-ID" => "clerk-sync-req-2" }
+        assert_response :success
+      end
+    end
+  end
+
   private
+
+  def with_stubbed_clerk_verify(claims)
+    original = ClerkAuth.method(:verify)
+    ClerkAuth.singleton_class.define_method(:verify) { |_token| claims }
+    yield
+  ensure
+    ClerkAuth.singleton_class.define_method(:verify, original)
+  end
 
   def auth_headers(user)
     { "Authorization" => "Bearer test_token_#{user.id}" }
