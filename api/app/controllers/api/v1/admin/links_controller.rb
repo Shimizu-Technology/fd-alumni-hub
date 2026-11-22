@@ -7,7 +7,7 @@ module Api
         def index
           tournament = admin_tournament
           games = tournament ? games_scope(tournament).limit(500) : Game.none
-          render json: { tournament: tournament&.api_json, games: games.map(&:api_json) }
+          render json: { tournament: tournament&.api_json, games: games.map { |g| g.api_json(include_score_audit: true) } }
         end
 
         def missing
@@ -67,8 +67,10 @@ module Api
               errors << { id: id, errors: e.record.errors.full_messages }
             rescue ActiveRecord::StaleObjectError
               current = Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record).find_by(id: id)
-              conflicts << { id: id, error: STALE_MESSAGE, currentGame: current&.api_json }
+              conflicts << { id: id, error: STALE_MESSAGE, currentGame: current&.api_json(include_score_audit: true) }
               errors << { id: id, errors: [ STALE_MESSAGE ] }
+            rescue ActiveRecord::RecordNotUnique
+              errors << { id: id, errors: [ "A conflicting game update already exists." ] }
             end
 
             raise ActiveRecord::Rollback if errors.any?
@@ -84,7 +86,7 @@ module Api
             render json: { errors: errors }, status: :unprocessable_entity
           else
             reloaded = Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record).where(id: changed.map(&:id)).index_by(&:id)
-            render json: { updated: changed.length, games: changed.map { |game| (reloaded[game.id] || game).api_json } }
+            render json: { updated: changed.length, games: changed.map { |game| (reloaded[game.id] || game).api_json(include_score_audit: true) } }
           end
         end
 

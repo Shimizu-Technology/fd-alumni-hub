@@ -28,7 +28,7 @@ class AddTournamentCoreFieldsToGamesAndStandings < ActiveRecord::Migration[8.1]
     used_numbers_by_tournament = Hash.new { |h, k| h[k] = {} }
     nulled_urls = []
 
-    MigrationGame.order(:tournament_id, :start_time, :id).find_each do |game|
+    MigrationGame.order(:tournament_id, :start_time, :id).to_a.each do |game|
       phase = infer_phase(game)
       code = game.bracket_code.to_s.strip.presence
       game_number = nil
@@ -80,7 +80,7 @@ class AddTournamentCoreFieldsToGamesAndStandings < ActiveRecord::Migration[8.1]
       "next_game_id IS NULL OR next_game_id <> id",
       name: "chk_games_next_game_not_self"
     add_check_constraint :games,
-      "(next_game_id IS NULL) = (next_game_slot IS NULL) AND (next_game_slot IS NULL OR next_game_slot IN ('home', 'away'))",
+      "next_game_id IS NULL OR next_game_slot IN ('home', 'away')",
       name: "chk_games_next_game_slot_consistency"
 
     add_index :games, [ :tournament_id, :phase, :start_time ], name: "index_games_on_tournament_phase_start"
@@ -102,6 +102,7 @@ class AddTournamentCoreFieldsToGamesAndStandings < ActiveRecord::Migration[8.1]
     code = game.bracket_code.to_s.strip
     return "fatherson" if notes.include?("phase=fatherson") || code.match?(/\AFS/i)
     return "playoff" if notes.include?("phase=playoff") || code.match?(PLAYOFF_CODE_REGEX)
+    return "exhibition" if notes.include?("phase=exhibition")
 
     "pool"
   end

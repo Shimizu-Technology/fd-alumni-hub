@@ -9,27 +9,29 @@ module Api
           games = games.where(division_id: params[:divisionId]) if params[:divisionId].present?
           games = games.where(phase: params[:phase]) if params[:phase].present?
 
-          render json: { games: games.limit(500).map(&:api_json) }
+          render json: { games: games.limit(500).map { |g| g.api_json(include_score_audit: true) } }
         end
 
         def show
           game = games_with_associations.find(params[:id])
-          render json: { game: game.api_json }
+          render json: { game: game.api_json(include_score_audit: true) }
         end
 
         def create
           game = Game.new(game_params.except(:lock_version))
 
           if game.save
-            render json: { game: games_with_associations.find(game.id).api_json }, status: :created
+            render json: { game: games_with_associations.find(game.id).api_json(include_score_audit: true) }, status: :created
           else
             render_errors(game)
           end
+        rescue ActiveRecord::RecordNotUnique
+          render json: { errors: [ "A game with that game number or bracket feeder slot already exists." ] }, status: :unprocessable_entity
         end
 
         def update
           game = Game.find(params[:id])
-          incoming = game_params
+          incoming = game_params.except(:tournament_id)
           lock_version_param = incoming.delete(:lock_version)
           if !lock_version_param.nil? && lock_version_param.to_s.strip != ""
             game.lock_version = lock_version_param.to_i
@@ -39,7 +41,7 @@ module Api
           if game.update(incoming)
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
             render json: {
-              game: games_with_associations.find(game.id).api_json,
+              game: games_with_associations.find(game.id).api_json(include_score_audit: true),
               recompute: recompute && { teams: recompute.teams, games: recompute.games }
             }.compact
           else
@@ -48,8 +50,10 @@ module Api
         rescue ActiveRecord::StaleObjectError
           render json: {
             error: "This game was updated by another user. Reload to review the latest values.",
-            currentGame: games_with_associations.find(game.id).api_json
+            currentGame: games_with_associations.find(game.id).api_json(include_score_audit: true)
           }, status: :conflict
+        rescue ActiveRecord::RecordNotUnique
+          render json: { errors: [ "A game with that game number or bracket feeder slot already exists." ] }, status: :unprocessable_entity
         end
 
         private

@@ -48,9 +48,9 @@ Add `https://fd-alumni.shimizu-technology.com` to the S3 bucket's CORS `AllowedO
    - Resume the Render Starter ($7/mo) service (free tier sleeps and causes cold-start failures).
    - Set the Render env vars from the table above and redeploy.
    - Run reviewed data tasks once migrations complete:
-     - `bin/rails db:migrate` (aligns default divisions to Maroon/Gold/Platinum/Special)
+     - `bin/rails db:migrate` (scopes divisions per tournament, adds core game fields & optimistic locking, normalizes legacy game URLs)
      - `bin/rails fd:history:seed_champions` (updates 2021/2022/2024 runners-up and adds 2026 champions)
-     - `DRY_RUN=1 bin/rails fd:standings:recompute_all` → inspect excluded team/game names → `CONFIRM=1 bin/rails fd:standings:recompute_all` (or `YEAR=2026 bin/rails fd:standings:recompute_all`)
+     - `DRY_RUN=1 bin/rails fd:standings:recompute_all` → inspect every excluded team (`no_division`, `non_standings_division`, etc.) and assign divisions to any active tournament teams missing one in `/admin/divisions` (or explicitly confirm hiding unassigned teams) before running `CONFIRM=1 bin/rails fd:standings:recompute_all` (or `YEAR=2026 bin/rails fd:standings:recompute_all`)
 5. **Netlify redeploy:**
    - Set `VITE_SITE_URL=https://fd-alumni.shimizu-technology.com` and `VITE_CLERK_PUBLISHABLE_KEY=pk_live_...` in Netlify UI and trigger a fresh production build (`VITE_*` values are baked at build time).
 6. **Post-cutover verification:**

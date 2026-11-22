@@ -25,9 +25,10 @@ class StandingsRecomputeConcurrencyTest < ActiveSupport::TestCase
     @tournament&.destroy
   end
 
-  test "concurrent recomputes inside tournament lock preserve both court results without unique conflicts" do
+  test "concurrent recomputes inside tournament lock preserve both court results without unique conflicts or lost updates" do
     errors = []
-    barrier = Queue.new
+    ready = Queue.new
+    go = Queue.new
 
     threads = [
       [ @g1.id, 70, 60 ],
@@ -36,19 +37,23 @@ class StandingsRecomputeConcurrencyTest < ActiveSupport::TestCase
       Thread.new do
         ActiveRecord::Base.connection_pool.with_connection do
           Game.find(game_id).update!(status: "final", home_score: home_score, away_score: away_score)
-          barrier << true
-          Standings::Recompute.call(@tournament)
+          ready << true
+          go.pop
+          Standings::Recompute.call(Tournament.find(@tournament.id))
         end
       rescue => e
         errors << e
       end
     end
 
+    # Wait until both court updates have committed, then release both recomputes simultaneously
+    2.times { ready.pop }
+    2.times { go << true }
     threads.each(&:join)
+
     assert_empty errors
 
-    # Final state must contain all 4 teams with exact unique ranks 1..4 and both games counted
-    Standings::Recompute.call(@tournament)
+    # Assert directly without any follow-up recompute so a lost update or unique conflict would fail here
     standings = @tournament.standings.ranked.to_a
     assert_equal 4, standings.length
     assert_equal [ 1, 2, 3, 4 ], standings.map(&:division_rank)

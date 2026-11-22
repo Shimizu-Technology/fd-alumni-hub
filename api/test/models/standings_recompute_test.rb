@@ -157,7 +157,7 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     tournament.games.create!(home_team: team_a, away_team: team_b, division_record: maroon, start_time: Time.zone.local(2027, 7, 2, 18, 0), status: "final", home_score: 70, away_score: 65)
     tournament.games.create!(home_team: team_b, away_team: team_c, division_record: maroon, start_time: Time.zone.local(2027, 7, 3, 18, 0), status: "final", home_score: 65, away_score: 50)
     tournament.games.create!(home_team: team_c, away_team: team_a, division_record: maroon, start_time: Time.zone.local(2027, 7, 4, 18, 0), status: "final", home_score: 60, away_score: 50)
-    # E loses to A? Wait that would change A's record. Let's make D beat E so D is 1-0 (#1), B/C/A are 1-1 (#2, #3, #4), E is 0-1 (#5), and add F at 0-0 (#5 before E -> F #5, E #6)!
+    # Delta beats Echo so Delta is 1-0 (#1), Bravo/Charlie/Alpha are 1-1 (#2..#4), Foxtrot is 0-0 (#5), Echo is 0-1 (#6).
     team_f = tournament.teams.create!(class_year_label: "2020", display_name: "Foxtrot", division_record: maroon)
     tournament.games.create!(home_team: team_d, away_team: team_e, division_record: maroon, start_time: Time.zone.local(2027, 7, 5, 18, 0), status: "final", home_score: 55, away_score: 50)
 
@@ -167,8 +167,8 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     assert_equal [
       [ 1, "Delta" ],   # 1-0 (100% win pct)
       [ 2, "Bravo" ],   # 1-1 (+10 diff)
-      [ 3, "Charlie" ], # 1-1 (0 diff, beat Alpha H2H)
-      [ 4, "Alpha" ],   # 1-1 (0 diff, lost to Charlie H2H)
+      [ 3, "Charlie" ], # 1-1 (-5 diff, beat Alpha H2H despite lower PF)
+      [ 4, "Alpha" ],   # 1-1 (-5 diff, lost to Charlie H2H)
       [ 5, "Foxtrot" ], # 0-0 (ranks above 0-1)
       [ 6, "Echo" ]     # 0-1
     ], ordered
@@ -186,10 +186,10 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     team_a = tournament.teams.create!(class_year_label: "2010", display_name: "Team A", division_record: gold)
     team_b = tournament.teams.create!(class_year_label: "2011", display_name: "Team B", division_record: gold)
     team_c = tournament.teams.create!(class_year_label: "2012", display_name: "Team C", division_record: gold)
-
-    # A beats B 51-50 (+1); B crushes C 90-40 (+50); C beats A 60-59 (+1)... wait no, let's make C 0-2 so only A and B are 1-1!
-    # Wait: if A beats B (1-0 vs 0-1), then B beats C (1-1), then A loses to D (1-1) while D is 2-0!
     team_d = tournament.teams.create!(class_year_label: "2013", display_name: "Team D", division_record: gold)
+
+    # Team D finishes 2-0 (#1), Team C finishes 0-2 (#4), and Teams A & B tie at 1-1.
+    # Team A beat Team B 51-50 head-to-head, so Team A ranks #2 despite Team B's larger point differential.
     tournament.games.create!(home_team: team_a, away_team: team_b, division_record: gold, start_time: Time.zone.local(2028, 7, 1, 18, 0), status: "final", home_score: 51, away_score: 50)
     tournament.games.create!(home_team: team_b, away_team: team_c, division_record: gold, start_time: Time.zone.local(2028, 7, 2, 18, 0), status: "final", home_score: 90, away_score: 40)
     tournament.games.create!(home_team: team_d, away_team: team_a, division_record: gold, start_time: Time.zone.local(2028, 7, 3, 18, 0), status: "final", home_score: 70, away_score: 50)

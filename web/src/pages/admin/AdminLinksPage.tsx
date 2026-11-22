@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
@@ -20,6 +20,7 @@ export function AdminLinksPage() {
   const [drafts, setDrafts] = useState<Record<string, LinkDraft>>({})
   const [commonTicketUrl, setCommonTicketUrl] = useState('')
   const [message, setMessage] = useState('')
+  const [conflict, setConflict] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<LinkFilter>('all')
   const [sort, setSort] = useState<LinkSort>('startAsc')
@@ -106,11 +107,13 @@ export function AdminLinksPage() {
       updates.push({ id: game.id, ticketUrl: ticket.url, streamUrl: stream.url, lockVersion: game.lockVersion })
     }
 
+    setConflict(false)
     try {
       const response = await api.adminBulkLinks(updates)
       setMessage(`Saved ${response.updated} link updates`)
       await reload()
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setConflict(true)
       setMessage(err instanceof Error ? err.message : 'Unable to save links')
     }
   }
@@ -125,7 +128,27 @@ export function AdminLinksPage() {
       <PageHeader eyebrow="Admin" title="Ticket and stream links" description="Paste GuamTime ticket links and Clutch or partner stream links for each scheduled game." actions={<button className="btn primary" onClick={save}>Save changes</button>} />
       <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <TicketBulkPanel value={commonTicketUrl} gamesCount={data?.games.length || 0} onChange={setCommonTicketUrl} onApply={applyCommonTicketUrl} />
-      {message && <Panel className="notice-panel">{message}</Panel>}
+      {message && (
+        <Panel className="notice-panel">
+          <span>{message}</span>
+          {conflict && (
+            <>
+              {' '}
+              <button
+                type="button"
+                className="btn secondary small"
+                onClick={() => {
+                  setConflict(false)
+                  setMessage('')
+                  void reload()
+                }}
+              >
+                Reload latest
+              </button>
+            </>
+          )}
+        </Panel>
+      )}
       <Panel>
         <div className="section-heading">
           <div>

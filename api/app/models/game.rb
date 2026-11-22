@@ -15,7 +15,7 @@ class Game < ApplicationRecord
   belongs_to :next_game, class_name: "Game", optional: true
   belongs_to :score_updated_by, class_name: "User", optional: true
 
-  has_many :feeder_games, class_name: "Game", foreign_key: :next_game_id, dependent: :nullify
+  has_many :feeder_games, class_name: "Game", foreign_key: :next_game_id
   has_many :article_links, dependent: :nullify
   has_many :media_assets, dependent: :nullify
   has_many :prediction_polls, dependent: :destroy
@@ -23,6 +23,7 @@ class Game < ApplicationRecord
   before_validation :infer_phase_from_legacy_metadata, on: :create
   before_validation :normalize_fields
   before_validation :copy_division_name_from_record
+  before_destroy :clear_feeder_game_links
 
   validates :start_time, presence: true
   validates :phase, inclusion: { in: PHASES }
@@ -40,6 +41,12 @@ class Game < ApplicationRecord
   validate :teams_are_distinct
   validate :teams_belong_to_tournament
   validate :next_game_is_valid
+  validate :tournament_id_immutable, on: :update
+
+  def phase=(value)
+    @explicit_phase_assigned = true
+    super
+  end
 
   scope :ordered, -> { order(:start_time, :id) }
   scope :scored, -> { where.not(home_score: nil).where.not(away_score: nil) }
@@ -123,7 +130,7 @@ class Game < ApplicationRecord
     }
   end
 
-  def api_json(include_teams: true, include_rosters: false)
+  def api_json(include_teams: true, include_rosters: false, include_score_audit: false)
     payload = {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
@@ -150,10 +157,11 @@ class Game < ApplicationRecord
       placeholder: placeholder,
       lockVersion: lock_version,
       scoreUpdatedAt: score_updated_at&.iso8601,
-      scoreUpdatedByName: score_updated_by&.full_name,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
+
+    payload[:scoreUpdatedByName] = score_updated_by&.full_name if include_score_audit
 
     if include_teams
       payload[:homeTeam] = team_summary(home_team, include_roster: include_rosters)
@@ -166,7 +174,7 @@ class Game < ApplicationRecord
   private
 
   def infer_phase_from_legacy_metadata
-    return if phase_changed? && phase.present? && phase != "pool"
+    return if @explicit_phase_assigned
 
     notes_str = notes.to_s
     code = bracket_code.to_s.strip
@@ -185,10 +193,14 @@ class Game < ApplicationRecord
     self.game_number = game_number.to_s.strip.presence
     self.bracket_code = bracket_code.to_s.strip.presence
     self.bracket_round = bracket_round.to_s.strip.downcase.presence
-    self.next_game_slot = next_game_slot.to_s.strip.downcase.presence
+    self.next_game_slot = next_game_id.present? ? next_game_slot.to_s.strip.downcase.presence : nil
     self.status_note = status_note.to_s.strip.presence
     self.stream_url = stream_url.to_s.strip.presence
     self.ticket_url = ticket_url.to_s.strip.presence
+  end
+
+  def clear_feeder_game_links
+    feeder_games.update_all(next_game_id: nil, next_game_slot: nil)
   end
 
   def external_url(value)
@@ -224,13 +236,18 @@ class Game < ApplicationRecord
 
   def division_record_belongs_to_tournament
     return unless division_record && tournament_id.present?
-    return if division_record.tournament_id == tournament_id && division_record.active?
 
     if division_record.tournament_id != tournament_id
       errors.add(:division_id, "must belong to the same tournament")
-    else
+    elsif (new_record? || will_save_change_to_division_id?) && !division_record.active?
       errors.add(:division_id, "is not active for this tournament")
     end
+  end
+
+  def tournament_id_immutable
+    return unless will_save_change_to_tournament_id?
+
+    errors.add(:tournament_id, "cannot be changed once created")
   end
 
   def teams_are_distinct

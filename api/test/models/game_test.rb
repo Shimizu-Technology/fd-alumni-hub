@@ -213,4 +213,73 @@ class GameTest < ActiveSupport::TestCase
     game.last_score_mutation_id = "mut_12345678-abcd"
     assert game.valid?
   end
+
+  test "destroying a bracket target game or its tournament cleanly clears feeder links without check violations" do
+    semifinal = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_b,
+      division_record: @maroon,
+      phase: "playoff",
+      bracket_round: "semifinal",
+      bracket_slot: 1,
+      start_time: Time.zone.local(2026, 7, 20, 18, 0)
+    )
+    final_game = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_c,
+      division_record: @maroon,
+      phase: "playoff",
+      bracket_round: "final",
+      bracket_slot: 1,
+      start_time: Time.zone.local(2026, 7, 24, 19, 0)
+    )
+    semifinal.update!(next_game: final_game, next_game_slot: "home")
+
+    assert_nothing_raised { final_game.destroy! }
+    semifinal.reload
+    assert_nil semifinal.next_game_id
+    assert_nil semifinal.next_game_slot
+
+    # Also verify DB-level ON DELETE SET NULL on next_game_id satisfies the check constraint
+    final_game_2 = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_c,
+      division_record: @maroon,
+      phase: "playoff",
+      bracket_round: "final",
+      bracket_slot: 1,
+      start_time: Time.zone.local(2026, 7, 24, 19, 0)
+    )
+    semifinal.update!(next_game: final_game_2, next_game_slot: "away")
+    assert_nothing_raised { Game.where(id: final_game_2.id).delete_all }
+    assert_nil semifinal.reload.next_game_id
+  end
+
+  test "explicit phase pool is not overridden by bracket code and scoreUpdatedByName is admin-only" do
+    staff = User.create!(email: "staff-audit@example.com", clerk_id: "clerk_staff_audit", first_name: "Pat", last_name: "Cruz", role: "staff")
+    game = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_b,
+      division_record: @maroon,
+      phase: "pool",
+      bracket_code: "F1",
+      start_time: Time.zone.local(2026, 7, 4, 18, 0),
+      score_updated_by: staff
+    )
+    assert_equal "pool", game.phase
+    assert_not game.api_json.key?(:scoreUpdatedByName)
+    assert_equal "Pat Cruz", game.api_json(include_score_audit: true)[:scoreUpdatedByName]
+  end
+
+  test "deactivating a division does not block score updates on existing games" do
+    game = @tournament.games.create!(
+      home_team: @team_a,
+      away_team: @team_b,
+      division_record: @maroon,
+      start_time: Time.zone.local(2026, 7, 5, 18, 0),
+      status: "scheduled"
+    )
+    @maroon.update!(active: false)
+    assert game.reload.update(status: "final", home_score: 65, away_score: 60)
+  end
 end

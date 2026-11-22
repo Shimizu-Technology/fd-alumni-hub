@@ -59,7 +59,7 @@ module Api
           flag = raw[:seed_default_divisions] if flag.nil?
           flag = params[:seedDefaultDivisions] if flag.nil?
           flag = params[:seed_default_divisions] if flag.nil?
-          return false if flag.nil?
+          return true if flag.nil?
 
           ActiveModel::Type::Boolean.new.cast(flag)
         end

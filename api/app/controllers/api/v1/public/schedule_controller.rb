@@ -6,7 +6,7 @@ module Api
           tournament = current_tournament
           return render json: { tournament: nil, games: [], teams: [], divisions: [], phases: [] } unless tournament
 
-          games = tournament.games.includes(:division_record, :score_updated_by, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] }).ordered.to_a
+          games = tournament.games.includes(:division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] }).ordered.to_a
           teams = tournament.teams.includes(:division_record, team_class_memberships: :class_cohort).order(:display_name, :id).to_a
           divisions = ordered_division_names(tournament, games)
           phases = collect_phases(games)

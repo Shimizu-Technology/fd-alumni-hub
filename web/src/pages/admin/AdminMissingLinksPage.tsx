@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { selectedTournament, tournamentScopedPath, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
@@ -97,6 +97,7 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
   const [awayScore, setAwayScore] = useState(scoreDraft(game.awayScore))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [conflict, setConflict] = useState(false)
   const linksPath = tournamentScopedPath('/admin/links', tournamentId, { gameId: game.id })
   const gamesPath = tournamentScopedPath('/admin/games', tournamentId)
 
@@ -151,10 +152,13 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
 
     setSaving(true)
     setMessage('')
+    setConflict(false)
+    let linksSaved = false
     try {
       let nextLockVersion = game.lockVersion
       if (hasLinkUpdate) {
         const linkRes = await api.adminBulkLinks([linkUpdate])
+        linksSaved = true
         const updatedGame = linkRes.games.find((item) => item.id === game.id)
         if (updatedGame?.lockVersion !== undefined) nextLockVersion = updatedGame.lockVersion
       }
@@ -168,7 +172,16 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
       }
       await onSaved()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Unable to save updates')
+      const isConflict = err instanceof ApiError && err.status === 409
+      const errorText = err instanceof Error ? err.message : 'Unable to save updates'
+      if (linksSaved) {
+        await onSaved()
+        setConflict(isConflict)
+        setMessage(`Links saved, but score update failed: ${errorText}`)
+      } else {
+        setConflict(isConflict)
+        setMessage(errorText)
+      }
     } finally {
       setSaving(false)
     }
@@ -202,7 +215,17 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
           {(gap.missingTicket || gap.missingStream) && <Link className="btn secondary small" to={linksPath}>Open in Links</Link>}
           {gap.missingScore && <Link className="btn secondary small" to={gamesPath}>Open Games</Link>}
         </div>
-        {message && <p className="form-error" role="alert">{message}</p>}
+        {message && (
+          <p className="form-error" role="alert">
+            {message}
+            {conflict && (
+              <>
+                {' '}
+                <button type="button" className="btn secondary small" onClick={() => void onSaved()}>Reload latest</button>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </article>
   )

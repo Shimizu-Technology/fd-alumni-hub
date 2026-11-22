@@ -60,4 +60,17 @@ class PublicStandingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, body["standings"].length
     assert_equal 1, body.dig("scoreCoverage", "totalPoolGames")
   end
+
+  test "returns empty 200 payload when no tournament matches the requested year" do
+    get "/api/v1/public/standings", params: { year: 1999 }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_nil body["tournament"]
+    assert_equal [], body["standings"]
+    assert_equal [], body["divisions"]
+    assert_equal [], body["divisionStandings"]
+    assert_equal 0, body.dig("scoreCoverage", "scoredPoolGames")
+    assert_equal 0, body.dig("scoreCoverage", "totalPoolGames")
+  end
 end

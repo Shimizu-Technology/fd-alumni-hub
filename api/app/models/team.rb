@@ -139,11 +139,10 @@ class Team < ApplicationRecord
 
   def division_record_belongs_to_tournament
     return unless division_record && tournament_id.present?
-    return if division_record.tournament_id == tournament_id && division_record.active?
 
     if division_record.tournament_id != tournament_id
       errors.add(:division_id, "must belong to the same tournament")
-    else
+    elsif (new_record? || will_save_change_to_division_id?) && !division_record.active?
       errors.add(:division_id, "is not active for this tournament")
     end
   end

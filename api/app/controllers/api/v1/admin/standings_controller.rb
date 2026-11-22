@@ -5,12 +5,13 @@ module Api
         def index
           tournament = admin_tournament
           standings = tournament ? standings_scope(tournament) : Standing.none
+          coverage_bundle = Standings::Coverage.by_division(tournament)
 
           render json: {
             tournament: tournament&.api_json,
             standings: standings.map(&:api_json),
-            divisionStandings: division_standings_payload(tournament),
-            scoreCoverage: Standings::Coverage.for(tournament)
+            divisionStandings: division_standings_payload(tournament, coverage_bundle),
+            scoreCoverage: coverage_bundle[:overall]
           }
         end
 
@@ -20,13 +21,14 @@ module Api
 
           result = Standings::Recompute.call(tournament)
           tournament.standings.reset
+          coverage_bundle = Standings::Coverage.by_division(tournament)
 
           render json: {
             tournament: tournament.api_json,
             recompute: { teams: result.teams, games: result.games },
             standings: standings_scope(tournament).map(&:api_json),
-            divisionStandings: division_standings_payload(tournament),
-            scoreCoverage: Standings::Coverage.for(tournament)
+            divisionStandings: division_standings_payload(tournament, coverage_bundle),
+            scoreCoverage: coverage_bundle[:overall]
           }
         end
 
@@ -44,7 +46,7 @@ module Api
           scope
         end
 
-        def division_standings_payload(tournament)
+        def division_standings_payload(tournament, coverage_bundle)
           return [] unless tournament
 
           divisions = tournament.divisions.standings_eligible.ordered.to_a
@@ -54,7 +56,7 @@ module Api
             {
               division: division.api_json(tournament: tournament),
               standings: (standings_by_division[division.id] || []).map(&:api_json),
-              scoreCoverage: Standings::Coverage.for(tournament, division_id: division.id)
+              scoreCoverage: coverage_bundle[:by_division][division.id] || Standings::Coverage.empty_payload
             }
           end
         end

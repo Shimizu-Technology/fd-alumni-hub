@@ -10,7 +10,7 @@ module Api
               standings: [],
               divisions: [],
               divisionStandings: [],
-              scoreCoverage: Standings::Coverage.empty
+              scoreCoverage: Standings::Coverage.empty_payload
             }
           end
 
@@ -25,12 +25,13 @@ module Api
 
           all_standings = tournament.standings.ranked.to_a
           standings_by_division = all_standings.group_by { |standing| standing.team.division_id }
+          coverage_bundle = Standings::Coverage.by_division(tournament)
 
           division_standings = filtered_divisions.map do |division|
             {
               division: division.api_json(tournament: tournament),
               standings: (standings_by_division[division.id] || []).map(&:api_json),
-              scoreCoverage: Standings::Coverage.for(tournament, division_id: division.id)
+              scoreCoverage: coverage_bundle[:by_division][division.id] || Standings::Coverage.empty_payload
             }
           end
 
@@ -41,7 +42,11 @@ module Api
             eligible_ids.flat_map { |div_id| standings_by_division[div_id] || [] }
           end
 
-          coverage = selected_division ? Standings::Coverage.for(tournament, division_id: selected_division.id) : Standings::Coverage.for(tournament)
+          coverage = if selected_division
+            coverage_bundle[:by_division][selected_division.id] || Standings::Coverage.empty_payload
+          else
+            coverage_bundle[:overall]
+          end
 
           render json: {
             tournament: tournament.api_json,
