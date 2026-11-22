@@ -42,19 +42,21 @@ module Api
 
           exported = []
           total_bytes = 0
+          byte_capped = false
           events.each_slice(EXPORT_BATCH_SIZE) do |slice|
             redacted_slice = Audit::Redactor.call(slice.map(&:api_json))
             redacted_slice.each do |entry|
               entry_bytes = entry.to_json.bytesize
               if exported.any? && (total_bytes + entry_bytes) > MAX_EXPORT_BYTES
-                truncated = true
+                byte_capped = true
                 break
               end
               exported << entry
               total_bytes += entry_bytes
             end
-            break if truncated
+            break if byte_capped
           end
+          truncated ||= byte_capped
 
           Audit::EventRecorder.record!(
             area: "access",

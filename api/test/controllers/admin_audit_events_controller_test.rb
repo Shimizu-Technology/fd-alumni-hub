@@ -51,6 +51,21 @@ class AdminAuditEventsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 2, response.parsed_body.dig("checkpointSummary", "uncheckpointedEventCount")
   end
 
+  test "export continues across multiple batches when row limit exceeds batch size" do
+    rows = 55.times.map do |i|
+      {
+        area: "content", action: "update", record_type: "Game", record_id: (i + 100).to_s,
+        operation_id: "batch-export-op", summary: "Batch event #{i}", occurred_at: Time.current
+      }
+    end
+    AuditEvent.insert_all!(rows)
+
+    get "#{PATH}/export", headers: auth_headers(@admin), params: { operation_id: "batch-export-op", limit: 52 }
+    assert_response :success
+    assert_equal 52, response.parsed_body.fetch("auditEvents").size
+    assert_equal true, response.parsed_body.fetch("truncated")
+  end
+
   test "supports combined filters and treats search punctuation literally" do
     get PATH, headers: auth_headers(@admin), params: {
       area: "campaigns", q: "gOLD drive 100%", actor_id: @admin.id, operation_id: "campaign-audit",
