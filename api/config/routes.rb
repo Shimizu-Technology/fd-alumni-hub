@@ -38,6 +38,7 @@ Rails.application.routes.draw do
           resources :posts, only: [ :index, :create, :update, :destroy ]
 
           get "finance/summary", to: "finance#summary"
+          get "finance/final-report", to: "finance#final_report"
           get "finance/audit-events", to: "finance#audit_events"
           resources :budget_lines, path: "budget-lines", only: [ :index, :create, :update ] do
             post :archive, on: :member
@@ -57,6 +58,9 @@ Rails.application.routes.draw do
       namespace :admin do
         resource :dashboard, only: :show, controller: "dashboard"
         resources :campaigns, only: [ :index, :show, :create, :update ] do
+          get :closeout_check, path: "closeout-check", on: :member
+          post :archive, on: :member
+          post :clone, on: :member
           resources :memberships, controller: "campaign_memberships", only: [ :index, :create, :update ]
           resources :invitations, controller: "campaign_invitations", only: [ :index, :create ] do
             post :revoke, on: :member

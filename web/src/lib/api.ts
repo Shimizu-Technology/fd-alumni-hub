@@ -6,6 +6,10 @@ import type {
   AdminWhitelistRecord,
   Article,
   BudgetLineRecord,
+  CampaignClonePayload,
+  CampaignCloneResponse,
+  CampaignCloseoutCheck,
+  CampaignFinalReport,
   CampaignInvitationRecord,
   CampaignMembershipRecord,
   CampaignRole,
@@ -364,6 +368,15 @@ export const api = {
       `/admin/campaigns/${id}`,
       json('PATCH', breakGlassReason ? { campaign: payload, breakGlassReason } : { campaign: payload }),
     ),
+  adminCampaignCloseoutCheck: (id: string) =>
+    request<CampaignCloseoutCheck>(`/admin/campaigns/${id}/closeout-check`),
+  adminArchiveCampaign: (id: string, payload: { forceReason?: string | null; completeTournament?: boolean } = {}) =>
+    request<{ campaign: AdminHostCampaign; tournament: Tournament | null; closeoutCheck: CampaignCloseoutCheck }>(
+      `/admin/campaigns/${id}/archive`,
+      json('POST', payload),
+    ),
+  adminCloneCampaign: (id: string, payload: CampaignClonePayload) =>
+    request<CampaignCloneResponse>(`/admin/campaigns/${id}/clone`, json('POST', payload)),
   adminCampaignMemberships: (campaignId: string) =>
     request<{ memberships: CampaignMembershipRecord[]; users: AdminUserSummary[] }>(`/admin/campaigns/${campaignId}/memberships`),
   adminCreateCampaignMembership: (campaignId: string, payload: { userId: string; role: CampaignRole }) =>
@@ -384,6 +397,8 @@ export const api = {
 
   campaignFinanceSummary: (campaignSlug: string) =>
     request<{ campaign: AdminHostCampaign; roles: string[]; summary: FinanceSummary }>(`/campaign/${encodeURIComponent(campaignSlug)}/finance/summary`),
+  campaignFinalReport: (campaignSlug: string) =>
+    request<CampaignFinalReport>(`/campaign/${encodeURIComponent(campaignSlug)}/finance/final-report`),
   campaignFinanceAuditEvents: (campaignSlug: string, limit = 100) =>
     request<{ auditEvents: FinanceAuditEvent[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/finance/audit-events?limit=${limit}`),
   campaignBudgetLines: (campaignSlug: string, params: { includeArchived?: boolean } = {}) =>

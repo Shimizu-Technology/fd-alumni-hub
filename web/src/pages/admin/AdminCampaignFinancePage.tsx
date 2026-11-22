@@ -29,7 +29,7 @@ import {
   StatusBadge,
 } from '../../components/ui'
 
-type FinanceTab = 'ledger' | 'budget' | 'pledges' | 'reimbursements' | 'audit'
+type FinanceTab = 'ledger' | 'budget' | 'pledges' | 'reimbursements' | 'audit' | 'report'
 
 const MAX_DOLLARS = 1_000_000_000 // $1B cap matching backend MAX_CENTS
 const DOLLAR_REGEX = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/
@@ -383,112 +383,114 @@ export function AdminCampaignFinancePage() {
 
   return (
     <div className="page-stack admin-page finance-page">
-      <PageHeader
-        eyebrow="Board Finance · Confidential"
-        title={`${campaign.title} — Finance`}
-        description="Real-time fundraising ledger, budget vs actuals, sponsor pledges, private receipts, and two-officer reimbursement approvals."
-        actions={(
-          <div className="row-actions">
-            {campaignOptions.length > 1 && (
-              <select
-                aria-label="Select host campaign"
-                value={selectedSlug}
-                onChange={(e) => setSearchParams({ campaign: e.target.value })}
+      <div className={tab === 'report' ? 'page-stack no-print' : 'page-stack'}>
+        <PageHeader
+          eyebrow="Board Finance · Confidential"
+          title={`${campaign.title} — Finance`}
+          description="Real-time fundraising ledger, budget vs actuals, sponsor pledges, private receipts, and two-officer reimbursement approvals."
+          actions={(
+            <div className="row-actions">
+              {campaignOptions.length > 1 && (
+                <select
+                  aria-label="Select host campaign"
+                  value={selectedSlug}
+                  onChange={(e) => setSearchParams({ campaign: e.target.value })}
+                >
+                  {campaignOptions.map((opt) => (
+                    <option key={opt.slug} value={opt.slug}>{opt.title} ({opt.status})</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                className="btn secondary"
+                title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
+                onClick={() => void handleDownloadCsv()}
+                disabled={exportingCsv}
               >
-                {campaignOptions.map((opt) => (
-                  <option key={opt.slug} value={opt.slug}>{opt.title} ({opt.status})</option>
-                ))}
-              </select>
-            )}
-            <button
-              type="button"
-              className="btn secondary"
-              title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
-              onClick={() => void handleDownloadCsv()}
-              disabled={exportingCsv}
-            >
-              {exportingCsv ? 'Exporting…' : 'Export CSV'}
-            </button>
-          </div>
+                {exportingCsv ? 'Exporting…' : 'Export CSV'}
+              </button>
+            </div>
+          )}
+        />
+
+        {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
+        {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
+        {overviewQuery.error && (
+          <Panel>
+            <div className="section-heading" style={{ marginBottom: 0 }}>
+              <p className="form-error" role="alert" style={{ margin: 0 }}>
+                Totals may be out of date: {overviewQuery.error}
+              </p>
+              <button type="button" className="btn secondary small" onClick={() => void overviewQuery.reload()}>
+                Retry
+              </button>
+            </div>
+          </Panel>
         )}
-      />
 
-      {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
-      {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
-      {overviewQuery.error && (
-        <Panel>
-          <div className="section-heading" style={{ marginBottom: 0 }}>
-            <p className="form-error" role="alert" style={{ margin: 0 }}>
-              Totals may be out of date: {overviewQuery.error}
+        {isArchived && (
+          <Panel className="state-card">
+            <strong>Archived campaign (read-only)</strong>
+            <p>This host campaign ledger is closed and preserved read-only for board handoff and audit review.</p>
+          </Panel>
+        )}
+
+        {!isArchived && !canWriteFinance && (
+          <Panel>
+            <p className="muted" style={{ margin: 0 }}>
+              <strong>Read-only finance access:</strong> Your role ({roles.join(', ') || 'board'}) can view all totals, receipts, audit logs, and CSV exports.
+              {canApproveReimbursements ? ' You can also approve out-of-pocket reimbursements.' : ''}
             </p>
-            <button type="button" className="btn secondary small" onClick={() => void overviewQuery.reload()}>
-              Retry
-            </button>
-          </div>
-        </Panel>
-      )}
+          </Panel>
+        )}
 
-      {isArchived && (
-        <Panel className="state-card">
-          <strong>Archived campaign (read-only)</strong>
-          <p>This host campaign ledger is closed and preserved read-only for board handoff and audit review.</p>
-        </Panel>
-      )}
+        {summary.mixedNetEventIds.length > 0 && (
+          <Panel>
+            <p className="form-error" role="status" style={{ margin: 0 }}>
+              <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
+            </p>
+          </Panel>
+        )}
 
-      {!isArchived && !canWriteFinance && (
-        <Panel>
-          <p className="muted" style={{ margin: 0 }}>
-            <strong>Read-only finance access:</strong> Your role ({roles.join(', ') || 'board'}) can view all totals, receipts, audit logs, and CSV exports.
-            {canApproveReimbursements ? ' You can also approve out-of-pocket reimbursements.' : ''}
-          </p>
-        </Panel>
-      )}
+        <div className="stats-grid four">
+          <StatCard label="Goal" value={formatUsd(summary.goalCents)} detail={summary.publicMeterEnabled ? 'Public meter ON' : 'Public meter hidden'} tone="maroon" />
+          <StatCard
+            label="Raised (Gross)"
+            value={formatUsd(summary.raisedCents)}
+            detail={`Excl. FDAA: ${formatUsd(summary.raisedExcludingFdaaCents)}`}
+            tone="gold"
+          />
+          <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Net: ${formatUsd(summary.netCents)}`} />
+          <StatCard
+            label="Still Needed"
+            value={formatUsd(summary.stillNeededCents)}
+            detail={`Pending reimb: ${formatUsd(summary.pendingReimbursementsCents)} (${summary.pendingReimbursementsCount})`}
+          />
+        </div>
 
-      {summary.mixedNetEventIds.length > 0 && (
-        <Panel>
-          <p className="form-error" role="status" style={{ margin: 0 }}>
-            <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
-          </p>
-        </Panel>
-      )}
+        <div className="stats-grid three">
+          <StatCard
+            label="Cash Pledges Outstanding"
+            value={formatUsd(summary.outstandingPledgesCents)}
+            detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
+          />
+          <StatCard
+            label="In-Kind Pledges"
+            value={summary.inKindPledgesCount}
+            detail="Tracked separately from cash raised"
+          />
+          <StatCard
+            label="Public Meter Numerator"
+            value={formatUsd(summary.publicMeterRaisedCents)}
+            detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation/share' : 'Excludes FDAA allocation/share'}
+          />
+        </div>
 
-      <div className="stats-grid four">
-        <StatCard label="Goal" value={formatUsd(summary.goalCents)} detail={summary.publicMeterEnabled ? 'Public meter ON' : 'Public meter hidden'} tone="maroon" />
-        <StatCard
-          label="Raised (Gross)"
-          value={formatUsd(summary.raisedCents)}
-          detail={`Excl. FDAA: ${formatUsd(summary.raisedExcludingFdaaCents)}`}
-          tone="gold"
-        />
-        <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Net: ${formatUsd(summary.netCents)}`} />
-        <StatCard
-          label="Still Needed"
-          value={formatUsd(summary.stillNeededCents)}
-          detail={`Pending reimb: ${formatUsd(summary.pendingReimbursementsCents)} (${summary.pendingReimbursementsCount})`}
-        />
+        {canWriteFinance && (
+          <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
+        )}
       </div>
-
-      <div className="stats-grid three">
-        <StatCard
-          label="Cash Pledges Outstanding"
-          value={formatUsd(summary.outstandingPledgesCents)}
-          detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
-        />
-        <StatCard
-          label="In-Kind Pledges"
-          value={summary.inKindPledgesCount}
-          detail="Tracked separately from cash raised"
-        />
-        <StatCard
-          label="Public Meter Numerator"
-          value={formatUsd(summary.publicMeterRaisedCents)}
-          detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation/share' : 'Excludes FDAA allocation/share'}
-        />
-      </div>
-
-      {canWriteFinance && (
-        <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
-      )}
 
       <nav className="finance-tabs" aria-label="Finance tracker sections">
         <button type="button" aria-current={tab === 'ledger' ? 'page' : undefined} className={`btn small ${tab === 'ledger' ? 'primary' : 'secondary'}`} onClick={() => setTab('ledger')}>
@@ -505,6 +507,9 @@ export function AdminCampaignFinancePage() {
         </button>
         <button type="button" aria-current={tab === 'audit' ? 'page' : undefined} className={`btn small ${tab === 'audit' ? 'primary' : 'secondary'}`} onClick={() => setTab('audit')}>
           Audit Log ({auditEvents.length})
+        </button>
+        <button type="button" aria-current={tab === 'report' ? 'page' : undefined} className={`btn small ${tab === 'report' ? 'primary' : 'secondary'}`} onClick={() => setTab('report')}>
+          Final Report
         </button>
       </nav>
 
@@ -585,6 +590,10 @@ export function AdminCampaignFinancePage() {
         )
       )}
 
+      {tab === 'report' && (
+        <FinalReportTab key={campaign.slug} campaignSlug={campaign.slug} />
+      )}
+
       {receiptPreview && (
         <ReceiptPreviewModal
           receipt={receiptPreview.signed}
@@ -595,6 +604,200 @@ export function AdminCampaignFinancePage() {
           onClose={handleCloseReceipt}
         />
       )}
+    </div>
+  )
+}
+
+function FinalReportTab({ campaignSlug }: { campaignSlug: string }) {
+  const { data, loading, error, reload } = useAsync(
+    () => api.campaignFinalReport(campaignSlug),
+    [campaignSlug],
+  )
+
+  if (loading && !data) return <LoadingState label="Generating board final report" />
+  if (error && !data) return <ErrorState message={error} onRetry={reload} />
+  if (!data) return null
+
+  const { campaign, tournamentOutcomes, finance, compliance } = data
+
+  const downloadJson = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${campaign.slug}-final-report-${todayIsoDate()}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+  }
+
+  const downloadSummaryCsv = () => {
+    const escapeCell = (val: string | number) => {
+      const text = String(val)
+      const isPlainNumber = /^-?\d+(\.\d+)?$/.test(text)
+      const safe = !isPlainNumber && /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
+      return `"${safe.replace(/"/g, '""')}"`
+    }
+    const rows: Array<[string, string, string | number]> = [
+      ['Campaign', 'Title', campaign.title],
+      ['Campaign', 'Slug', campaign.slug],
+      ['Campaign', 'Status', campaign.status],
+      ['Tournament', 'Year', tournamentOutcomes.tournament?.year ?? ''],
+      ['Tournament', 'Teams', tournamentOutcomes.teamsCount],
+      ['Tournament', 'Divisions', tournamentOutcomes.divisionsCount],
+      ['Tournament', 'Pool Games', tournamentOutcomes.poolGamesCount],
+      ['Tournament', 'Playoff Games', tournamentOutcomes.playoffGamesCount],
+      ['Tournament', 'Pool Score Coverage %', tournamentOutcomes.scoreCoverage.percent],
+      ['Finance', 'Goal (USD)', (finance.goalCents / 100).toFixed(2)],
+      ['Finance', 'Total Raised (USD)', (finance.raisedCents / 100).toFixed(2)],
+      ['Finance', 'Total Spent (USD)', (finance.spentCents / 100).toFixed(2)],
+      ['Finance', 'Net Balance (USD)', (finance.netCents / 100).toFixed(2)],
+      ['Finance', 'Outstanding Cash Pledges (USD)', (finance.outstandingPledgesCents / 100).toFixed(2)],
+      ['Finance', 'Pending Reimbursements (USD)', (finance.pendingReimbursementsCents / 100).toFixed(2)],
+      ['Compliance', 'Live Expenses', compliance.liveExpensesCount],
+      ['Compliance', 'Expenses Missing Receipt', compliance.expensesMissingReceiptCount],
+      ['Compliance', 'Pending Reimbursements', compliance.pendingReimbursementsCount],
+      ['Compliance', 'Open Cash Pledges', compliance.openCashPledgesCount],
+      ['Compliance', 'Voided Entries', compliance.voidedEntriesCount],
+      ['Compliance', 'Unfinalized Games', compliance.unfinalizedGamesCount],
+      ['Compliance', 'Ready to Archive', compliance.readyToArchive ? 'Yes' : 'No'],
+    ]
+    const csv = ['Section,Metric,Value', ...rows.map((r) => r.map(escapeCell).join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${campaign.slug}-final-report-summary-${todayIsoDate()}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+  }
+
+  return (
+    <div className="page-stack final-report-sheet">
+      <Panel>
+        <div className="section-heading">
+          <div>
+            <h2>Board Final Report — {campaign.title}</h2>
+            <p className="muted">Generated {new Date(data.generatedAt).toLocaleString()} · Status: {campaign.status}</p>
+          </div>
+          <div className="row-actions no-print">
+            <button type="button" className="btn primary small" onClick={() => window.print()}>Print / Save PDF</button>
+            <button type="button" className="btn secondary small" onClick={downloadSummaryCsv}>Summary CSV</button>
+            <button type="button" className="btn secondary small" onClick={downloadJson}>JSON</button>
+          </div>
+        </div>
+
+        <div className="stats-grid four">
+          <StatCard label="Total Raised" value={formatUsd(finance.raisedCents)} detail={`Goal ${formatUsd(finance.goalCents)}`} tone="maroon" />
+          <StatCard label="Total Spent" value={formatUsd(finance.spentCents)} detail={`${compliance.liveExpensesCount} live expenses`} />
+          <StatCard label="Net Balance" value={formatUsd(finance.netCents)} detail={`FDAA upfront ${formatUsd(finance.fdaaUpfrontCents)}`} tone="gold" />
+          <StatCard
+            label="Archive Readiness"
+            value={compliance.readyToArchive ? 'Ready' : `${compliance.blockers.length} blocker${compliance.blockers.length === 1 ? '' : 's'}`}
+            detail={`${compliance.warnings.length} warning${compliance.warnings.length === 1 ? '' : 's'}`}
+          />
+        </div>
+      </Panel>
+
+      <Panel>
+        <h3>Tournament Outcomes</h3>
+        <div className="stats-grid four">
+          <StatCard label="Teams" value={tournamentOutcomes.teamsCount} detail={`${tournamentOutcomes.divisionsCount} active divisions`} />
+          <StatCard label="Pool Games" value={tournamentOutcomes.poolGamesCount} detail={`${tournamentOutcomes.scoreCoverage.percent}% pool score coverage`} />
+          <StatCard label="Playoff Games" value={tournamentOutcomes.playoffGamesCount} detail={`${tournamentOutcomes.otherGamesCount} special/other`} />
+          <StatCard label="Champions Recorded" value={tournamentOutcomes.champions.length} detail={tournamentOutcomes.tournament?.status || '—'} />
+        </div>
+        {tournamentOutcomes.champions.length > 0 && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <strong>Recorded Champions</strong>
+            <ul>
+              {tournamentOutcomes.champions.map((champ) => (
+                <li key={champ.id}>
+                  <strong>{champ.label}:</strong> {champ.championLabel || 'TBD'}
+                  {champ.runnerUpLabel ? ` over ${champ.runnerUpLabel}` : ''}
+                  {champ.score ? ` (${champ.score})` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Panel>
+
+      <Panel>
+        <h3>Financial Breakdown</h3>
+        {finance.bySource.length > 0 && (
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr><th>Type</th><th>Source</th><th>Total</th></tr>
+              </thead>
+              <tbody>
+                {finance.bySource.map((row) => (
+                  <tr key={`${row.entryType}-${row.source}`}>
+                    <td>{row.entryType}</td>
+                    <td>{row.source.replace(/_/g, ' ')}</td>
+                    <td>{formatUsd(row.amountCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {finance.budgetVsActual.length > 0 && (
+          <div className="table-scroll" style={{ marginTop: '1rem' }}>
+            <table className="data-table">
+              <thead>
+                <tr><th>Category</th><th>Kind</th><th>Budget</th><th>Actual</th><th>Variance</th></tr>
+              </thead>
+              <tbody>
+                {finance.budgetVsActual.map((line) => (
+                  <tr key={line.id}>
+                    <td>{line.category}</td>
+                    <td>{line.kind}</td>
+                    <td>{formatUsd(line.budgetCents)}</td>
+                    <td>{formatUsd(line.actualCents)}</td>
+                    <td>{formatUsd(line.varianceCents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      <Panel>
+        <h3>Close-Out Compliance Checklist</h3>
+        <ul>
+          <li>Live expenses: <strong>{compliance.liveExpensesCount}</strong> ({compliance.expensesMissingReceiptCount} missing receipt)</li>
+          <li>Pending reimbursements: <strong>{compliance.pendingReimbursementsCount}</strong></li>
+          <li>Open cash pledges: <strong>{compliance.openCashPledgesCount}</strong></li>
+          <li>Unfinalized non-placeholder games: <strong>{compliance.unfinalizedGamesCount}</strong></li>
+          <li>Voided ledger entries: <strong>{compliance.voidedEntriesCount}</strong> · Audit events logged: <strong>{compliance.auditEventsCount}</strong></li>
+        </ul>
+
+        {compliance.blockers.length > 0 && (
+          <div className="scorekeeper-error-box" style={{ marginTop: '0.75rem' }}>
+            <strong>Close-out blockers</strong>
+            <ul>
+              {compliance.blockers.map((b) => <li key={b.code}>{b.message}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {compliance.warnings.length > 0 && (
+          <div className="panel tickets-stale-banner" style={{ marginTop: '0.75rem' }}>
+            <div>
+              <strong>Warnings to review before archiving</strong>
+              <ul>
+                {compliance.warnings.map((w) => <li key={w.code}>{w.message}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
+      </Panel>
     </div>
   )
 }

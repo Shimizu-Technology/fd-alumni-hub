@@ -1845,3 +1845,34 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ── Close-out Final Report & Print Styles (C.1) ──────────────────────────── */
+
+.closeout-action-panel {
+  border-color: var(--fd-maroon);
+}
+
+@media print {
+  .no-print,
+  .admin-sidebar,
+  .admin-mobile-topbar,
+  .admin-topbar,
+  .finance-tabs,
+  .toolbar-panel,
+  .page-header .page-actions {
+    display: none !important;
+  }
+
+  .admin-content,
+  .admin-content.sidebar-collapsed {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  .final-report-sheet .panel {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}
