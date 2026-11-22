@@ -28,6 +28,7 @@ class AddGymResultsAndCorrections < ActiveRecord::Migration[8.1]
       t.string :proposed_result_outcome
       t.references :proposed_official_winner_team, foreign_key: { to_table: :teams, on_delete: :nullify }
       t.string :proposed_status_note
+      t.integer :base_lock_version
       t.text :reason, null: false
       t.text :resolution_note
       t.datetime :resolved_at

@@ -1,15 +1,16 @@
 module Imports
   class SchedulePreview
-    def self.call(tournament:, rows: nil, content: nil, format: "auto", default_venue: "The Jungle")
-      new(tournament: tournament, rows: rows, content: content, format: format, default_venue: default_venue).call
+    def self.call(tournament:, rows: nil, content: nil, format: "auto", default_venue: "The Jungle", overwrite_scores: false)
+      new(tournament: tournament, rows: rows, content: content, format: format, default_venue: default_venue, overwrite_scores: overwrite_scores).call
     end
 
-    def initialize(tournament:, rows: nil, content: nil, format: "auto", default_venue: "The Jungle")
+    def initialize(tournament:, rows: nil, content: nil, format: "auto", default_venue: "The Jungle", overwrite_scores: false)
       @tournament = tournament
       @raw_rows = rows
       @content = content
       @format = format
       @default_venue = default_venue.to_s.strip.presence || "The Jungle"
+      @overwrite_scores = overwrite_scores == true
     end
 
     # Strictly read-only: NEVER writes to teams, games, class_cohorts, or divisions.
@@ -219,6 +220,11 @@ module Imports
         end
       end
 
+      if errors.empty?
+        validate_result_row(errors, row: row, existing_game: existing_game, home_team: home_team, away_team: away_team,
+          home_canonical: home_canonical, away_canonical: away_canonical, phase: phase)
+      end
+
       action = if errors.any?
         "error"
       elsif existing_game
@@ -255,6 +261,26 @@ module Imports
         errors: errors,
         warnings: warnings
       }
+    end
+
+    def validate_result_row(errors, row:, existing_game:, home_team:, away_team:, home_canonical:, away_canonical:, phase:)
+      is_new = existing_game.nil?
+      attrs = {}
+      attrs[:status] = row[:status] if (is_new || @overwrite_scores) && row[:status].present?
+      if @overwrite_scores || (is_new && (row[:homeScore].present? || row[:awayScore].present?))
+        attrs[:home_score] = row[:homeScore] unless row[:homeScore].nil?
+        attrs[:away_score] = row[:awayScore] unless row[:awayScore].nil?
+      end
+      return if attrs.empty?
+
+      candidate = existing_game || @tournament.games.build(
+        home_team: home_team || Team.new(display_name: home_canonical, class_year_label: home_canonical),
+        away_team: away_team || Team.new(display_name: away_canonical, class_year_label: away_canonical),
+        phase: phase,
+        status: "scheduled"
+      )
+      checker = Games::RecordResult.new(candidate, attrs)
+      errors.concat(checker.validation_errors(candidate, checker.proposed_attributes(candidate)))
     end
 
     def match_existing_game(row:, games_by_number:, existing_games:, home_team:, away_team:)

@@ -20,4 +20,39 @@ class RecordResultTest < ActiveSupport::TestCase
     assert_equal tournament.id, saved.recompute_tournament.id
     assert_equal [ "New gym", 0, 11 ], game.reload.attributes.values_at("venue", "home_score", "away_score")
   end
+
+  test "schedule preview surfaces result validation errors before commit" do
+    tournament = Tournament.create!(name: "Preview validation", year: 2003, status: "upcoming",
+      start_date: Date.new(2003, 7, 1), end_date: Date.new(2003, 7, 14))
+    division = tournament.divisions.create!(name: "Maroon")
+    preview = Imports::SchedulePreview.call(
+      tournament: tournament,
+      rows: [
+        {
+          rowIndex: 1,
+          startTime: "2003-07-03T18:00:00+10:00",
+          phase: "playoff",
+          awayTeam: "Class of 2001",
+          homeTeam: "Class of 2002",
+          division: division.name,
+          status: "final",
+          homeScore: 40,
+          awayScore: 40
+        },
+        {
+          rowIndex: 2,
+          startTime: "2003-07-03T19:00:00+10:00",
+          phase: "pool",
+          awayTeam: "Class of 2001",
+          homeTeam: "Class of 2002",
+          division: division.name,
+          status: "final",
+          homeScore: 50
+        }
+      ]
+    )
+    assert_equal 2, preview.dig(:summary, :errorCount)
+    assert_match(/official winner/i, preview[:rows][0][:errors].join)
+    assert_match(/Both home and away scores/, preview[:rows][1][:errors].join)
+  end
 end

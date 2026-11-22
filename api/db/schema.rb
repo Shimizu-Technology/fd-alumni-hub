@@ -579,6 +579,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000006) do
     t.string "proposed_result_outcome"
     t.bigint "proposed_official_winner_team_id"
     t.string "proposed_status_note"
+    t.integer "base_lock_version"
     t.text "reason", null: false
     t.text "resolution_note"
     t.datetime "resolved_at"

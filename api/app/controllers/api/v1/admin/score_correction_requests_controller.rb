@@ -37,6 +37,7 @@ module Api
               return render json: { errors: errors }, status: :unprocessable_entity
             end
             request = ScoreCorrectionRequest.new(game: game, tournament: game.tournament, requested_by: current_user,
+              base_lock_version: game.lock_version,
               reason: (attrs[:reason].strip if attrs[:reason].is_a?(String)), **values.transform_keys { |key| "proposed_#{key}" })
             Audit::Context.with(reason: request.reason) { request.save! }
           end
@@ -47,8 +48,19 @@ module Api
 
         def approve
           resolve("approved") do |request|
+            game = Game.lock.find(request.game_id)
+            if request.base_lock_version && game.lock_version != request.base_lock_version
+              next Games::RecordResult::Result.new(
+                status: 409,
+                body: {
+                  error: "This game was updated after the correction request was submitted. Review the latest score or reject this stale request.",
+                  currentGame: game.api_json(include_score_audit: true)
+                }
+              )
+            end
+
             reason = "Approved correction request ##{request.id}: #{request.reason}"
-            Games::RecordResult.call(request.game, request.proposed_result.merge(reason: reason),
+            Games::RecordResult.call(game, request.proposed_result.merge(reason: reason),
               actor: current_user, policy: access_policy, interactive: false, defer_recompute: true,
               require_reason_on_final_correction: false)
           end

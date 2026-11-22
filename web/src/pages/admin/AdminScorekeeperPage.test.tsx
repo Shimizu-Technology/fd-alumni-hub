@@ -198,3 +198,20 @@ it('lets a volunteer request a correction and staff approve it or enter their ow
   fireEvent.click(screen.getByRole('button', { name: 'Save result' }))
   await waitFor(() => expect(send).toHaveBeenCalledWith('42', expect.objectContaining({ homeScore: 25, lockVersion: 3, reason: 'Check final scorebook' })))
 })
+
+it('omits stale official winner after correcting a tied playoff draft to unequal scores', async () => {
+  const playoff: Game = { ...game, phase: 'playoff' }
+  vi.mocked(api.adminGames).mockResolvedValue(fixtures([playoff]))
+  const send = vi.spyOn(api, 'adminScoreGame').mockResolvedValue({ game: { ...playoff, status: 'final', homeScore: 42, awayScore: 40, lockVersion: 2 } })
+  open()
+  const card = await screen.findByRole('article')
+  enter(card, '40', '40')
+  const winnerSelect = within(card).getByLabelText('Official winner')
+  fireEvent.change(winnerSelect, { target: { value: '11' } })
+  fireEvent.change(within(card).getByRole('textbox', { name: /^Home score/ }), { target: { value: '42' } })
+  expect(within(card).queryByLabelText('Official winner')).not.toBeInTheDocument()
+  fireEvent.click(within(card).getByRole('button', { name: 'Save result' }))
+  await waitFor(() => expect(send).toHaveBeenCalledWith('42', expect.objectContaining({
+    homeScore: 42, awayScore: 40, status: 'final', officialWinnerTeamId: null,
+  })))
+})

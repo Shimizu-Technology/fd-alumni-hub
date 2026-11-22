@@ -169,6 +169,73 @@ class AdminGymResultsControllerTest < ActionDispatch::IntegrationTest
     assert target.reload.bracket_needs_review?
   end
 
+  test "official winner cannot contradict unequal scores, clears on non-tie correction, and guards father-son bracket ties" do
+    opponent = @tournament.teams.create!(display_name: "Other alumni", class_year_label: "Alumni C", division_record: @division)
+    placeholder = @tournament.teams.create!(display_name: "Winner FS1", class_year_label: "Winner FS1", division_record: @division)
+    target = create_game(home_team: placeholder, away_team: opponent, phase: "fatherson",
+      start_time: Time.zone.local(2031, 7, 10, 19), placeholder: true)
+    @game.update!(phase: "fatherson", next_game: target, next_game_slot: "home")
+
+    # Father-son feeder tie requires an official winner
+    score(@game, homeScore: 40, awayScore: 40, status: "final")
+    assert_response :unprocessable_entity
+
+    # Contradicting shootout winner on unequal scores is rejected
+    score(@game, homeScore: 42, awayScore: 40, status: "final", resultOutcome: "shootout", officialWinnerTeamId: @away.id)
+    assert_response :unprocessable_entity
+    assert_match(/Official winner must match the higher score/, body.fetch("errors").join)
+
+    # Save tied final with Away as official winner, then correct to 42-40 without passing officialWinnerTeamId
+    score(@game, homeScore: 40, awayScore: 40, status: "final", resultOutcome: "shootout", officialWinnerTeamId: @away.id)
+    assert_response :success
+    assert_equal @away.id, target.reload.home_team_id
+
+    score(@game, user: @staff, homeScore: 42, awayScore: 40, status: "final", reason: "Fixed scorebook typo")
+    assert_response :success
+    assert_nil @game.reload.official_winner_team_id
+    assert_equal @home.id, @game.winner_team_id
+    assert_equal @home.id, target.reload.home_team_id
+  end
+
+  test "approving a stale correction request returns conflict when the game changed meanwhile" do
+    @game.update!(status: "final", home_score: 40, away_score: 21)
+    post "/api/v1/admin/games/#{@game.id}/correction-requests",
+      params: { homeScore: 45, awayScore: 21, status: "final", reason: "Table correction" },
+      headers: headers(@keeper), as: :json
+    assert_response :created
+    req_id = body.dig("correctionRequest", "id")
+
+    score(@game, user: @staff, homeScore: 42, awayScore: 21, reason: "Official book check")
+    assert_response :success
+
+    post "/api/v1/admin/score-correction-requests/#{req_id}/approve", headers: headers(@staff), as: :json
+    assert_response :conflict
+    assert_equal 42, @game.reload.home_score
+    assert_equal "pending", ScoreCorrectionRequest.find(req_id).status
+  end
+
+  test "bracket advancement failure keeps the score committed and flags feeder for review" do
+    opponent = @tournament.teams.create!(display_name: "Other alumni", class_year_label: "Alumni C", division_record: @division)
+    placeholder = @tournament.teams.create!(display_name: "Winner Q2", class_year_label: "Winner Q2", division_record: @division)
+    target = create_game(home_team: placeholder, away_team: opponent, phase: "playoff", bracket_round: "final",
+      start_time: Time.zone.local(2031, 7, 10, 19), placeholder: true)
+    @game.update!(phase: "playoff", bracket_round: "semifinal", next_game: target, next_game_slot: "home")
+
+    original = Games::AdvanceBracketWinner.method(:call)
+    Games::AdvanceBracketWinner.define_singleton_method(:call) { |*, **| raise ActiveRecord::RecordInvalid.new(target) }
+    begin
+      score(@game, homeScore: 55, awayScore: 48, status: "final")
+      assert_response :success
+      assert_equal 55, @game.reload.home_score
+      assert_equal "final", @game.status
+      assert @game.bracket_needs_review?
+      assert_equal "advancement_failed", body.dig("bracketAdvancement", "reason")
+      assert_equal true, body.dig("bracketAdvancement", "needsReview")
+    ensure
+      Games::AdvanceBracketWinner.define_singleton_method(:call, original)
+    end
+  end
+
   test "volunteers see their own correction requests and staff can approve and reject" do
     @game.update!(status: "final", home_score: 40, away_score: 21)
     path = "/api/v1/admin/games/#{@game.id}/correction-requests"

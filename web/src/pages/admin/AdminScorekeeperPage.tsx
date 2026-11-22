@@ -8,7 +8,7 @@ import { formatGuamDate, formatGuamTime, toLocalDateTimeInputValue } from '../..
 import { gameMatchupLabel } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
 import {
-  ACTIVE_GAME_STATUSES, OUTCOME_LABELS, draftFromGame, draftPayload, readResultDrafts, writeResultDrafts,
+  ACTIVE_GAME_STATUSES, OUTCOME_LABELS, draftFromGame, draftPayload, needsOfficialWinnerPicker, readResultDrafts, writeResultDrafts,
   type ResultDraft, type ResultDrafts,
 } from '../../lib/resultDrafts'
 import {
@@ -452,7 +452,8 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
       game.scoreUpdatedAt || !ACTIVE_GAME_STATUSES.includes(game.status) ? 'Saved and published' : null
   const editing = (!isFinal && canEdit) || (editorOpen && (canCorrect || canPropose))
   const stopped = draftValue.outcome === 'postponed' || draftValue.outcome === 'cancelled'
-  const tiedPlayoff = game.phase === 'playoff' && draftValue.homeScore !== '' && Number(draftValue.homeScore) === Number(draftValue.awayScore)
+  const parseDraftInt = (value: string) => value.trim() !== '' && /^\d+$/.test(value.trim()) ? Number(value) : null
+  const showWinnerPicker = !stopped && needsOfficialWinnerPicker(game, draftValue.outcome, parseDraftInt(draftValue.homeScore), parseDraftInt(draftValue.awayScore))
   const targetId = bracket?.nextGameId ?? game.id
   const nextGame = bracket?.affectedNextGame
 
@@ -592,7 +593,7 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
                   </select>
                 </Field>
               </div>
-              {!stopped && (draftValue.outcome === 'forfeit' || draftValue.outcome === 'shootout' || tiedPlayoff) && (
+              {showWinnerPicker && (
                 <Field label="Official winner">
                   <select value={draftValue.winner} onChange={(event) => change({ winner: event.target.value })}>
                     <option value="">Select winner</option>

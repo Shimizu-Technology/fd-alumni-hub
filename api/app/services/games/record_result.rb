@@ -67,8 +67,13 @@ module Games
     rescue ActiveRecord::StaleObjectError
       @game.reload
       replay || conflict
-    rescue ActiveRecord::RecordNotUnique
-      invalid("A game with that game number or bracket feeder slot already exists.")
+    rescue ActiveRecord::RecordNotUnique => e
+      if e.message.include?("index_score_mutations_on_actor_game_and_client_id")
+        @game.reload
+        replay || conflict("Mutation ID was already submitted.")
+      else
+        invalid("A game with that game number or bracket feeder slot already exists.")
+      end
     end
 
     # Normalize the submitted fields alone so a partial payload can replay after later edits.
@@ -91,6 +96,12 @@ module Games
         values.merge!(result_outcome: nil, official_winner_team_id: nil)
       elsif %w[postponed cancelled].include?(values[:result_outcome]) && !submitted_fields.key?(:result_outcome)
         values[:result_outcome] = nil
+      end
+      if values[:result_outcome] != "forfeit" && !submitted_fields.key?(:official_winner_team_id)
+        scores_submitted = submitted_fields.key?(:home_score) || submitted_fields.key?(:away_score)
+        unequal_scores = values[:home_score].is_a?(Integer) && values[:away_score].is_a?(Integer) &&
+          values[:home_score] != values[:away_score]
+        values[:official_winner_team_id] = nil if scores_submitted || unequal_scores
       end
       values
     end
@@ -129,8 +140,13 @@ module Games
         errors << "Enter both official scores or leave both blank." if home.nil? != away.nil?
       elsif home.nil? || away.nil?
         errors << "Both home and away scores are required to finalize a game."
-      elsif game.playoff_phase? && home == away && winner.nil?
+      elsif (game.playoff_phase? || game.next_game_id.present?) && home == away && winner.nil?
         errors << "Choose an official winner for a tied playoff game."
+      elsif winner.present? && home.is_a?(Integer) && away.is_a?(Integer) && home != away
+        expected_winner = home > away ? game.home_team_id : game.away_team_id
+        if winner != expected_winner
+          errors << "Official winner must match the higher score unless recorded as a forfeit."
+        end
       end
       errors
     end
@@ -138,7 +154,7 @@ module Games
     private
 
     def record
-      if @interactive && !%w[view edit correct_final].any? { |action| allowed?(action) }
+      if @interactive && !%w[edit correct_final].any? { |action| allowed?(action) }
         return forbidden("This action is outside your workspace access.")
       end
 
@@ -198,7 +214,7 @@ module Games
       Audit::Context.with(actor: (@actor unless Audit::Context.values&.dig(:actor_id)), reason: reason, action_override: action) { @game.save! }
 
       advancement = if @game.next_game_id && (previous_winner || @game.status == "final" || was_final)
-        Games::AdvanceBracketWinner.call(@game, previous_winner_id: previous_winner, reopened: was_final && @game.status != "final")
+        advance_bracket_safely(previous_winner: previous_winner, reopened: was_final && @game.status != "final")
       end
       game_json = serialize_game
       if @mutation_id
@@ -208,6 +224,25 @@ module Games
       Result.new(status: 200, body: {
         game: game_json, idempotentReplay: false, bracketAdvancement: advancement&.api_json
       }.compact, recompute_tournament: (@tournament if recompute))
+    end
+
+    def advance_bracket_safely(previous_winner:, reopened:)
+      Game.transaction(requires_new: true) do
+        Games::AdvanceBracketWinner.call(@game, previous_winner_id: previous_winner, reopened: reopened)
+      end
+    rescue StandardError => e
+      Rails.logger.error("Games::AdvanceBracketWinner failed for game #{@game.id}: #{e.class}: #{e.message}")
+      note = "Automatic bracket advancement failed — review downstream matchup."
+      Audit::Context.with(actor: (@actor unless Audit::Context.values&.dig(:actor_id))) do
+        @game.update!(bracket_needs_review: true, bracket_exception_note: note)
+      end
+      Games::AdvanceBracketWinner::Result.new(
+        advanced: false,
+        reason: "advancement_failed",
+        needs_review: true,
+        next_game_id: @game.next_game_id,
+        slot: @game.next_game_slot
+      )
     end
 
     def replay

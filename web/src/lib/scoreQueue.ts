@@ -270,11 +270,14 @@ export async function flushScoreQueue(
   for (const item of candidates) {
     if (pausedForAuth) break
 
-    // Re-check latest storage right before sending in case item was dismissed or superseded.
-    const latestBeforeSend = readScoreQueue(userId, storage).find((entry) => entry.gameId === item.gameId)
-    if (!latestBeforeSend || latestBeforeSend.clientMutationId !== item.clientMutationId) {
-      if (latestBeforeSend?.state === 'pending') hasNewerPending = true
-      continue
+    // In single-request mode, re-check latest storage right before sending in case item was dismissed or superseded.
+    // In batch mode the request was already sent, so still process its result and rebase any newer edit's lockVersion.
+    if (!batchRows && !batchError) {
+      const latestBeforeSend = readScoreQueue(userId, storage).find((entry) => entry.gameId === item.gameId)
+      if (!latestBeforeSend || latestBeforeSend.clientMutationId !== item.clientMutationId) {
+        if (latestBeforeSend?.state === 'pending') hasNewerPending = true
+        continue
+      }
     }
 
     try {

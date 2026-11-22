@@ -81,6 +81,19 @@ function validDraft(id: string, entry: unknown, tournamentId: string) {
     [draft.homeScore, draft.awayScore, draft.winner, draft.note, draft.start, draft.reason].every((value) => typeof value === 'string')
 }
 
+export function needsOfficialWinnerPicker(
+  game: Game,
+  outcome: GameOutcome,
+  homeScore: number | null,
+  awayScore: number | null,
+): boolean {
+  if (outcome === 'postponed' || outcome === 'cancelled') return false
+  if (outcome === 'forfeit') return true
+  const tied = homeScore !== null && awayScore !== null && homeScore === awayScore
+  if (outcome === 'shootout') return homeScore === null || awayScore === null || tied
+  return tied && (game.phase === 'playoff' || Boolean(game.nextGameId))
+}
+
 export function draftPayload(draft: ResultDraft, needsReason: boolean):
   { payload: ScoreMutationPayload; error?: never } | { payload?: never; error: string } {
   const stopped = draft.outcome === 'postponed' || draft.outcome === 'cancelled'
@@ -94,13 +107,14 @@ export function draftPayload(draft: ResultDraft, needsReason: boolean):
   const reason = draft.reason.trim()
   if (needsReason && reason.length < 3) return { error: 'Enter a correction reason of at least 3 characters.' }
   const isForfeit = draft.outcome === 'forfeit'
-  const officialWinnerTeamId = !stopped && draft.status === 'final' ? draft.winner || null : null
+  const showWinner = needsOfficialWinnerPicker(draft.game, draft.outcome, homeScore, awayScore)
+  const officialWinnerTeamId = !stopped && draft.status === 'final' && showWinner ? draft.winner || null : null
   if (!stopped && draft.status === 'final') {
     if (isForfeit && !officialWinnerTeamId) return { error: 'Choose the official winner.' }
     if ((!isForfeit && (homeScore === null || awayScore === null)) || (isForfeit && (homeScore === null) !== (awayScore === null))) {
       return { error: isForfeit ? 'Enter both official scores or leave both blank.' : 'Enter both scores to finalize this game.' }
     }
-    if (draft.game.phase === 'playoff' && homeScore === awayScore && !officialWinnerTeamId) {
+    if ((draft.game.phase === 'playoff' || Boolean(draft.game.nextGameId)) && homeScore === awayScore && !officialWinnerTeamId) {
       return { error: 'Choose the official winner for a tied playoff game.' }
     }
   }

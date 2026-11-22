@@ -38,7 +38,8 @@ module Imports
         preview = Imports::SchedulePreview.call(
           tournament: @tournament,
           rows: @rows,
-          default_venue: @default_venue
+          default_venue: @default_venue,
+          overwrite_scores: @overwrite_scores
         )
 
         if preview.dig(:summary, :errorCount).to_i.positive?
