@@ -13,7 +13,9 @@ function ScoreDigit({ score, motionOk }: { score: number | null; motionOk: boole
   return (
     <strong className="broadcast-score">
       <span key={score} className={motionOk && previous.tick ? 'broadcast-score-tick' : undefined}
-        onAnimationEnd={() => setPrevious((current) => current.score === score ? { score, tick: false } : current)}>{score ?? '—'}</span>
+        onAnimationEnd={() => setPrevious((current) => current.score === score ? { score, tick: false } : current)}>
+        {score ?? <><span aria-hidden="true">—</span><span className="sr-only">No score yet</span></>}
+      </span>
     </strong>
   )
 }
@@ -39,7 +41,7 @@ export function LiveScoreboardStrip({ games }: { games: Game[] }) {
           <Link to="/schedule">Schedule</Link>
         </nav>
       </div>
-      <ul className="broadcast-games" tabIndex={games.length > 1 ? 0 : undefined}>
+      <ul className="broadcast-games" aria-label="Tonight's games" tabIndex={games.length > 1 ? 0 : undefined}>
         {games.map((game) => (
           <li key={game.id} className="broadcast-game">
             <span className={`broadcast-status broadcast-status--${game.status}`}>{gameLabel(game)}</span>

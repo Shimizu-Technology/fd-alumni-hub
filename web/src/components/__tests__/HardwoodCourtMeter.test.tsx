@@ -38,3 +38,13 @@ it('clamps an over-goal fill and keeps the actual total visible', () => {
   expect(screen.getByText('100%')).toBeInTheDocument()
   expect(screen.getByText('Goal reached')).toBeInTheDocument()
 })
+
+it('guards NaN percent and avoids showing 100% before goal is reached', () => {
+  const { rerender } = render(<HardwoodCourtMeter meter={{ ...meter, percent: Number.NaN }} />)
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+  expect(screen.getByText('0%')).toBeInTheDocument()
+
+  rerender(<HardwoodCourtMeter meter={{ ...meter, raisedCents: 998_000, percent: 99.8, goalReached: false }} />)
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '99')
+  expect(screen.getByText('99%')).toBeInTheDocument()
+})

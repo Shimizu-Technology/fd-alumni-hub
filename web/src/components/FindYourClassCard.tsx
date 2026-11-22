@@ -11,9 +11,9 @@ const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => fir
 
 const archive = staticChampionRecords()
 
-function editionKey(record: TournamentChampion) {
+function slotKey(record: TournamentChampion) {
   const bracket = record.bracket === 'unknown' ? 'overall' : record.bracket
-  return [record.year, record.editionLabel?.trim().toLowerCase(), bracket].join('/')
+  return `${record.year}/${bracket}`
 }
 
 function formatTitle(record: TournamentChampion) {
@@ -107,17 +107,18 @@ export function FindYourClassCard({ championRecords, hostClassYear }: {
   const decade = Math.floor(year / 10) * 10
   const key = String(year).slice(-2)
   const records = useMemo(() => {
-    // Home only supplies recap records for the featured tournament.
-    const editions = new Map(archive.map((record) => [editionKey(record), record]))
-    for (const record of championRecords ?? []) editions.set(editionKey(record), record)
-    return [...editions.values()].sort((a, b) => b.year - a.year || a.position - b.position)
+    // Home only supplies recap records for the featured tournament; live records replace matching year/bracket slots.
+    const live = championRecords ?? []
+    const liveSlots = new Set(live.map(slotKey))
+    const merged = [...archive.filter((record) => !liveSlots.has(slotKey(record))), ...live]
+    return merged.sort((a, b) => b.year - a.year || a.position - b.position)
   }, [championRecords])
 
   const wins = records.filter((record) => record.status === 'completed' && record.championComponents.includes(key))
   const primaryCount = wins.filter((record) => record.primary).length
   const titleYears = [...new Set(wins.map((record) => record.year))]
   const titlesLabel = primaryCount ? `${primaryCount}× Champions`
-    : wins.length ? `${wins.length}× Bracket ${wins.length === 1 ? 'Title' : 'Titles'}` : 'Brotherhood Competitor'
+    : wins.length ? `${wins.length}× Bracket ${wins.length === 1 ? 'Title' : 'Titles'}` : 'FD Alumni Class'
   const classPath = `/classes/${classRouteKey(key)}`
   const shareMessage = `FD Class of ${year} at The Jungle · ${titlesLabel}. Explore our class legacy: ${new URL(classPath, window.location.origin)}`
 
@@ -129,7 +130,7 @@ export function FindYourClassCard({ championRecords, hostClassYear }: {
   function saveCard() {
     try {
       if (saveLegacyImage(year, titlesLabel, titleYears)) {
-        setStatus('Card download started.')
+        setStatus('Card image ready — check your downloads.')
         return
       }
     } catch {

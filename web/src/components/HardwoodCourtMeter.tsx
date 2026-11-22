@@ -11,7 +11,9 @@ const dollars = new Intl.NumberFormat('en-US', {
 
 export function HardwoodCourtMeter({ meter }: { meter: Extract<HostCampaignMeter, { enabled: true }> }) {
   const motionOk = useMotionOk()
-  const percent = Math.min(100, Math.max(0, meter.percent))
+  const rawPercent = Number.isFinite(meter.percent) ? meter.percent : 0
+  const percent = Math.min(100, Math.max(0, rawPercent))
+  const displayPercent = meter.goalReached ? Math.round(percent) : Math.min(99, Math.round(percent))
   const raised = dollars.format(meter.raisedCents / 100)
   const goal = dollars.format(meter.goalCents / 100)
   const remaining = dollars.format(Math.max(meter.goalCents - meter.raisedCents, 0) / 100)
@@ -24,7 +26,7 @@ export function HardwoodCourtMeter({ meter }: { meter: Extract<HostCampaignMeter
           <h2>Raised {raised} of {goal}</h2>
         </div>
         <div className="host-meter-meta">
-          <strong className="host-meter-percent">{Math.round(percent)}%</strong>
+          <strong className="host-meter-percent">{displayPercent}%</strong>
           {meter.goalReached && <span className="status-badge completed">Goal reached</span>}
         </div>
       </div>
@@ -41,7 +43,7 @@ export function HardwoodCourtMeter({ meter }: { meter: Extract<HostCampaignMeter
       </svg>
 
       <div className="host-meter-track" role="progressbar" aria-label="Fundraising goal progress"
-        aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={displayPercent}
         aria-valuetext={`Raised ${raised} of ${goal}`}>
         <div className="host-meter-fill" style={{ transform: `scaleX(${percent / 100})` }} />
       </div>

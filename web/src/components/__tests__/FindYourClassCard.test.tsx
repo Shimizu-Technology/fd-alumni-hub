@@ -39,7 +39,15 @@ it('finds dynasties and division titles from the bundled archive with partial li
   expect(screen.getByText('2026 Gold Champs')).toBeInTheDocument()
   expect(screen.getAllByText('2026 Gold Champs')).toHaveLength(1)
   fireEvent.change(year, { target: { value: '2026' } })
-  expect(screen.getByText('Brotherhood Competitor')).toBeInTheDocument()
+  expect(screen.getByText('FD Alumni Class')).toBeInTheDocument()
+})
+
+it('does not double-count titles when live API records normalize editionLabel differently', () => {
+  const live2024 = staticChampionRecords()
+    .filter(({ year, bracket }) => year === 2024 && bracket === 'maroon')
+    .map((record) => ({ ...record, id: 'api-2024-maroon', editionLabel: 'Maroon' }))
+  render(<MemoryRouter><FindYourClassCard championRecords={live2024} hostClassYear={2017} /></MemoryRouter>)
+  expect(screen.getByText('1× Champions')).toBeInTheDocument()
 })
 
 it('links to a safely encoded WhatsApp share with the selected class URL', () => {

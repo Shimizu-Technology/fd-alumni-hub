@@ -872,7 +872,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 }
 
 .reveal-block--settle {
-  animation: fdHeroReveal 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: fdHeroReveal 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @media (prefers-reduced-motion: reduce), (max-height: 540px) {
@@ -2555,6 +2555,17 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   to { transform: translateY(0); opacity: 1; }
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .admin-shell .btn.small { min-height: 36px; }
+  .partner-strip a:hover { border-color: rgba(111,29,53,.32); }
+  .title-leaderboard-card:hover { border-color: rgba(111,29,53,.35); }
+  .timeline-link-row:hover { border-color: rgba(200,155,60,.55); box-shadow: 0 16px 38px rgba(23,20,26,.14); }
+  .class-team-list a:hover { border-color: rgba(111,29,53,.35); }
+  .title-history-row:hover { border-color: rgba(111,29,53,.35); }
+  .workboard-card:hover { border-color: rgba(111,29,53,.34); box-shadow: 0 18px 42px rgba(66,16,31,.1); }
+  .ticket-card--pass:hover { box-shadow: 0 16px 38px rgba(66,16,31,.11); border-color: rgba(111,29,53,.35); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .broadcast-score-tick { animation: scoreTick 200ms cubic-bezier(.23, 1, .32, 1); }
   .rafters-banner-turn { transition: transform 360ms cubic-bezier(.22, 1, .36, 1); }
@@ -2567,16 +2578,16 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
   @media (hover: hover) and (pointer: fine) {
     .btn:hover { transform: translateY(-1px); }
-    .partner-strip a:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.32); }
+    .partner-strip a:hover { transform: translateY(-1px); }
     .time-chip:hover { transform: translateY(-1px); }
-    .title-leaderboard-card:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
-    .timeline-link-row:hover { transform: translateY(-1px); border-color: rgba(200,155,60,.55); box-shadow: 0 16px 38px rgba(23,20,26,.14); }
-    .class-team-list a:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
-    .title-history-row:hover { transform: translateY(-1px); border-color: rgba(111,29,53,.35); }
+    .title-leaderboard-card:hover { transform: translateY(-1px); }
+    .timeline-link-row:hover { transform: translateY(-1px); }
+    .class-team-list a:hover { transform: translateY(-1px); }
+    .title-history-row:hover { transform: translateY(-1px); }
     .class-coverage-metrics button:hover { transform: translateY(-1px); }
-    .workboard-card:hover { transform: translateY(-2px); border-color: rgba(111,29,53,.34); box-shadow: 0 18px 42px rgba(66,16,31,.1); }
+    .workboard-card:hover { transform: translateY(-2px); }
     .tournament-media-preview a:hover img { transform: scale(1.035); }
-    .ticket-card--pass:hover { transform: translateY(-2px); box-shadow: 0 16px 38px rgba(66,16,31,.11); border-color: rgba(111,29,53,.35); }
+    .ticket-card--pass:hover { transform: translateY(-2px); }
     .rafters-banner:hover { transform: translateY(-3px); }
   }
 
