@@ -29,6 +29,16 @@ class CampaignPost < ApplicationRecord
     }
   end
 
+  def admin_json
+    public_json.merge(
+      hostCampaignId: host_campaign_id.to_s,
+      authorId: author_id&.to_s,
+      published: published?,
+      createdAt: created_at&.iso8601,
+      updatedAt: updated_at&.iso8601
+    )
+  end
+
   private
 
   def normalize_fields

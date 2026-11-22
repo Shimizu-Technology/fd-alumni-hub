@@ -49,6 +49,30 @@ class ClerkAuth
       nil
     end
 
+    def fetch_verified_user_email(clerk_user_id)
+      secret_key = ENV.fetch("CLERK_SECRET_KEY", nil)
+      return nil if secret_key.blank? || clerk_user_id.blank?
+
+      response = HTTParty.get(
+        "https://api.clerk.com/v1/users/#{clerk_user_id}",
+        headers: { "Authorization" => "Bearer #{secret_key}" },
+        timeout: 5
+      )
+
+      return nil unless response.success?
+
+      data = response.parsed_response
+      primary_id = data["primary_email_address_id"]
+      addresses = Array(data["email_addresses"]).select do |address|
+        address.is_a?(Hash) && address.dig("verification", "status") == "verified"
+      end
+      primary = addresses.find { |address| address["id"] == primary_id } || addresses.first
+      primary&.dig("email_address")
+    rescue HTTParty::Error, Timeout::Error => e
+      Rails.logger.warn("Clerk API verified email fetch failed for #{clerk_user_id}: #{e.message}")
+      nil
+    end
+
     def expected_issuer
       configured_issuer || issuer_from_jwks_url || issuer_from_publishable_key
     end
@@ -213,6 +237,18 @@ class ClerkAuth
     end
 
     def handle_test_token(token)
+      if token.start_with?("test_token_clerk_")
+        parts = token.delete_prefix("test_token_clerk_").split(":", 3)
+        clerk_id, email, verification = parts
+        return nil if clerk_id.blank? || email.blank?
+
+        return {
+          "sub" => clerk_id,
+          "email" => email,
+          "email_verified" => verification == "verified"
+        }
+      end
+
       user_id = token.delete_prefix("test_token_")
       user = User.find_by(id: user_id)
       return nil unless user
@@ -220,6 +256,7 @@ class ClerkAuth
       {
         "sub" => user.clerk_id.presence || "test_clerk_#{user.id}",
         "email" => user.email,
+        "email_verified" => true,
         "first_name" => user.first_name,
         "last_name" => user.last_name
       }

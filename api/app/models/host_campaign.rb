@@ -13,6 +13,8 @@ class HostCampaign < ApplicationRecord
 
   has_many :campaign_events, dependent: :restrict_with_error
   has_many :campaign_posts, dependent: :restrict_with_error
+  has_many :campaign_memberships, dependent: :restrict_with_error
+  has_many :campaign_invitations, dependent: :restrict_with_error
   has_many :finance_audit_events, dependent: :restrict_with_error
 
   before_validation :normalize_fields
@@ -120,6 +122,23 @@ class HostCampaign < ApplicationRecord
       golfUrl: golf_url,
       meter: public_meter_json(raised_cents: meter_raised_cents, updated_at: meter_updated_at)
     }
+  end
+
+  def admin_json
+    public_json.merge(
+      tournamentId: tournament_id.to_s,
+      classCohortId: class_cohort_id.to_s,
+      goalCents: goal_cents,
+      hafapassOrganizerSlug: hafapass_organizer_slug,
+      hafapassTournamentOrganizerSlug: hafapass_tournament_organizer_slug,
+      hafapassDistributionCode: hafapass_distribution_code,
+      fdaaUpfrontCents: fdaa_upfront_cents,
+      fdaaTicketShareBps: fdaa_ticket_share_bps,
+      publicMeterEnabled: public_meter_enabled,
+      includeFdaaInPublicMeter: include_fdaa_in_public_meter,
+      createdAt: created_at&.iso8601,
+      updatedAt: updated_at&.iso8601
+    )
   end
 
   def home_summary_json(meter_raised_cents: 0, meter_updated_at: updated_at)

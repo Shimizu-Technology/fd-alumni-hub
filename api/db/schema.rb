@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -72,6 +72,40 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000002) do
     t.check_constraint "goal_cents IS NULL OR goal_cents >= 0", name: "chk_campaign_events_goal_cents_non_negative"
     t.check_constraint "kind::text = ANY (ARRAY['fundraiser'::character varying, 'host_night'::character varying, 'golf'::character varying, 'merch_drop'::character varying, 'meeting'::character varying, 'other'::character varying]::text[])", name: "chk_campaign_events_kind"
     t.check_constraint "status::text = ANY (ARRAY['planned'::character varying, 'open'::character varying, 'sold_out'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[])", name: "chk_campaign_events_status"
+  end
+
+  create_table "campaign_invitations", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.string "email", null: false
+    t.string "role", null: false
+    t.bigint "invited_by_id", null: false
+    t.datetime "accepted_at"
+    t.bigint "accepted_by_user_id"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "host_campaign_id, lower((email)::text), role", name: "index_campaign_invitations_on_pending_unique", unique: true, where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
+    t.index "lower((email)::text)", name: "index_campaign_invitations_on_pending_email", where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
+    t.index ["accepted_by_user_id"], name: "index_campaign_invitations_on_accepted_by_user_id"
+    t.index ["host_campaign_id"], name: "index_campaign_invitations_on_host_campaign_id"
+    t.index ["invited_by_id"], name: "index_campaign_invitations_on_invited_by_id"
+    t.check_constraint "role::text = ANY (ARRAY['chair'::character varying, 'treasurer'::character varying, 'board'::character varying]::text[])", name: "chk_campaign_invitations_role"
+  end
+
+  create_table "campaign_memberships", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.bigint "user_id", null: false
+    t.string "role", null: false
+    t.boolean "active", default: true, null: false
+    t.bigint "invited_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["host_campaign_id", "user_id", "role"], name: "index_campaign_memberships_on_campaign_user_role", unique: true
+    t.index ["host_campaign_id"], name: "index_campaign_memberships_on_host_campaign_id"
+    t.index ["invited_by_id"], name: "index_campaign_memberships_on_invited_by_id"
+    t.index ["user_id", "active"], name: "index_campaign_memberships_on_user_active"
+    t.index ["user_id"], name: "index_campaign_memberships_on_user_id"
+    t.check_constraint "role::text = ANY (ARRAY['chair'::character varying, 'treasurer'::character varying, 'board'::character varying]::text[])", name: "chk_campaign_memberships_role"
   end
 
   create_table "campaign_posts", force: :cascade do |t|
@@ -430,6 +464,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000002) do
   add_foreign_key "article_links", "games", on_delete: :nullify
   add_foreign_key "article_links", "tournaments", on_delete: :cascade
   add_foreign_key "campaign_events", "host_campaigns", on_delete: :restrict
+  add_foreign_key "campaign_invitations", "host_campaigns", on_delete: :restrict
+  add_foreign_key "campaign_invitations", "users", column: "accepted_by_user_id", on_delete: :restrict
+  add_foreign_key "campaign_invitations", "users", column: "invited_by_id", on_delete: :restrict
+  add_foreign_key "campaign_memberships", "host_campaigns", on_delete: :restrict
+  add_foreign_key "campaign_memberships", "users", column: "invited_by_id", on_delete: :restrict
+  add_foreign_key "campaign_memberships", "users", on_delete: :restrict
   add_foreign_key "campaign_posts", "host_campaigns", on_delete: :restrict
   add_foreign_key "campaign_posts", "users", column: "author_id", on_delete: :restrict
   add_foreign_key "content_ingest_items", "tournaments", on_delete: :cascade
