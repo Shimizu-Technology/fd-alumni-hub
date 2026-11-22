@@ -33,8 +33,8 @@ module Api
           return render_forbidden unless tournament && access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: tournament.id)
 
           division = Division.find(params[:id])
-          return render_forbidden unless division.tournament_id == tournament.id &&
-            access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: division.tournament_id)
+          return render_forbidden unless access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: division.tournament_id)
+          return render json: { error: "Record not found" }, status: :not_found if division.tournament_id != tournament.id
 
           if division.update(division_params)
             render json: { division: division.api_json(tournament: tournament) }
