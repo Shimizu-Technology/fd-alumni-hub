@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-  ROLES = %w[admin staff viewer].freeze
+  ROLES = %w[admin staff scorekeeper viewer].freeze
 
   has_many :campaign_memberships, dependent: :restrict_with_error
 
@@ -19,6 +19,14 @@ class User < ApplicationRecord
     admin? || role == "staff"
   end
 
+  def scorekeeper?
+    role == "scorekeeper"
+  end
+
+  def can_score_games?
+    staff? || scorekeeper?
+  end
+
   def viewer?
     role == "viewer"
   end
@@ -29,6 +37,10 @@ class User < ApplicationRecord
 
   def is_staff
     staff?
+  end
+
+  def is_scorekeeper
+    scorekeeper?
   end
 
   def full_name
@@ -68,6 +80,8 @@ class User < ApplicationRecord
       active: active,
       isAdmin: is_admin,
       isStaff: is_staff,
+      isScorekeeper: is_scorekeeper,
+      canScoreGames: can_score_games?,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }

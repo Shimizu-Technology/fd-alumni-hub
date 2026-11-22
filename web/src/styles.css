@@ -1702,3 +1702,146 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
     display: none;
   }
 }
+
+
+/* ── Mobile-first Scorekeeper Console (B2.2) ──────────────────────────────── */
+
+.scorekeeper-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.scorekeeper-status-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+.scorekeeper-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.scorekeeper-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.scorekeeper-card-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.scorekeeper-card {
+  display: grid;
+  gap: .9rem;
+}
+
+.scorekeeper-card--queued {
+  border-color: rgba(200, 155, 60, .7);
+}
+
+.scorekeeper-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.scorekeeper-card-head small {
+  display: block;
+  margin-top: .2rem;
+}
+
+.scorekeeper-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+}
+
+.scorekeeper-team-col {
+  display: grid;
+  gap: .55rem;
+  padding: .85rem;
+  border-radius: 1rem;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+}
+
+.scorekeeper-team-label {
+  font-weight: 800;
+  color: var(--fd-maroon);
+  overflow-wrap: anywhere;
+}
+
+.scorekeeper-score-input {
+  width: 100%;
+  min-height: 3.25rem;
+  font-size: 2rem;
+  font-weight: 900;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.scorekeeper-tap-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .4rem;
+}
+
+.scorekeeper-tap-btn {
+  min-height: 2.75rem;
+  padding: .4rem .25rem;
+  font-weight: 900;
+  justify-content: center;
+}
+
+.scorekeeper-controls {
+  display: grid;
+  gap: .65rem;
+}
+
+.scorekeeper-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem;
+}
+
+.scorekeeper-action-row .btn {
+  min-height: 2.75rem;
+}
+
+.scorekeeper-conflict-box,
+.scorekeeper-error-box {
+  padding: .85rem 1rem;
+  border-radius: .9rem;
+  border: 1px solid #fca5a5;
+  background: #fef2f2;
+  color: #7f1d1d;
+  display: grid;
+  gap: .5rem;
+}
+
+.scorekeeper-conflict-box p,
+.scorekeeper-error-box p {
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .scorekeeper-scoreboard {
+    grid-template-columns: 1fr;
+  }
+
+  .scorekeeper-action-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

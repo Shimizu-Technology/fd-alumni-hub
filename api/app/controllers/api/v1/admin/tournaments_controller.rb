@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class TournamentsController < BaseController
+        skip_before_action :require_staff!, only: [ :index, :show ]
+        before_action :require_scorekeeper_or_staff!, only: [ :index, :show ]
         before_action :require_admin!, only: [ :create, :update, :setup ]
 
         def index

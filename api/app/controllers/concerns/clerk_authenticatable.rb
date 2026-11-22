@@ -79,6 +79,13 @@ module ClerkAuthenticatable
     render_forbidden("Staff access required") unless @current_user&.staff?
   end
 
+  def require_scorekeeper_or_staff!
+    authenticate_user! unless @current_user
+    return if performed?
+
+    render_forbidden("Scorekeeper or staff access required") unless @current_user&.can_score_games?
+  end
+
   def find_or_create_user(clerk_id:, email:, verified_email: nil, first_name:, last_name:)
     return nil if clerk_id.blank?
 
