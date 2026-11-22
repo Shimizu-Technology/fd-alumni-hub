@@ -34,6 +34,14 @@ jobs:
       - name: E2E smoke tests (Playwright)
         run: npm run test:e2e
 
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: web/test-results/
+          retention-days: 7
+
   rails_api:
     name: Rails API
     runs-on: ubuntu-latest

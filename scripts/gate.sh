@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Local quality gate mirroring CI (Playwright E2E runs in CI and locally via `npm run test:e2e`).
+# Note: `bin/bundler-audit` requires network access to refresh the advisory database.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$ROOT_DIR"
