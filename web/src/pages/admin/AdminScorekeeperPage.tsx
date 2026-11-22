@@ -28,15 +28,18 @@ export function AdminScorekeeperPage() {
   const { user } = useAuthContext()
   const [params, setParams] = useSearchParams()
   const requestedTournament = params.get('tournamentId')
-  const date = params.get('date') || gameDate(new Date().toISOString())
+  const requestedDate = params.get('date')
   const [view, setView] = useState<'night' | 'missing' | 'all'>('night')
   const tournaments = useAsync(() => api.adminTournaments('scores_and_stats'), [])
   const focusedGameId = params.get('gameId')
-  const deepLink = useAsync(() => !requestedTournament && focusedGameId
-    ? api.adminGame(focusedGameId) : Promise.resolve(null), [requestedTournament, focusedGameId])
+  const needsLinkedGame = Boolean(focusedGameId && (!requestedTournament || !requestedDate))
+  const deepLink = useAsync(() => needsLinkedGame && focusedGameId
+    ? api.adminGame(focusedGameId) : Promise.resolve(null), [needsLinkedGame, focusedGameId])
+  const linkedGame = deepLink.data?.game
+  const date = requestedDate || (linkedGame ? gameDate(linkedGame.startTime) : gameDate(new Date().toISOString()))
   const rows = tournaments.data?.tournaments ?? []
-  const linkedTournament = requestedTournament ?? deepLink.data?.game.tournamentId
-  const choosingLinkedGame = !requestedTournament && focusedGameId && deepLink.loading
+  const linkedTournament = requestedTournament ?? linkedGame?.tournamentId
+  const choosingLinkedGame = needsLinkedGame && deepLink.loading
   const tournament = rows.find((row) => row.id === linkedTournament) ?? (!linkedTournament && !choosingLinkedGame
     ? rows.find((row) => row.status === 'live') ?? rows.find((row) => row.status === 'upcoming') ?? rows[0]
     : undefined)
@@ -52,14 +55,15 @@ export function AdminScorekeeperPage() {
   }
 
   useEffect(() => {
-    if (!requestedTournament && tournamentId) {
+    if ((!requestedTournament && tournamentId) || (!requestedDate && linkedGame)) {
       setParams((current) => {
         const next = new URLSearchParams(current)
-        next.set('tournamentId', tournamentId)
+        if (!requestedTournament && tournamentId) next.set('tournamentId', tournamentId)
+        if (!requestedDate && linkedGame) next.set('date', gameDate(linkedGame.startTime))
         return next
       }, { replace: true })
     }
-  }, [requestedTournament, tournamentId, setParams])
+  }, [requestedTournament, requestedDate, tournamentId, linkedGame, setParams])
 
   return (
     <>
@@ -83,10 +87,10 @@ export function AdminScorekeeperPage() {
           </Field>
         </div>
       </Panel>
-      {(tournaments.loading || choosingLinkedGame) && !tournamentId && <LoadingState />}
+      {(tournaments.loading || choosingLinkedGame) && (!tournamentId || choosingLinkedGame) && <LoadingState />}
       {tournaments.error && !tournamentId && <ErrorState message={tournaments.error} onRetry={tournaments.reload} />}
       {!tournaments.loading && !tournaments.error && !tournamentId && <EmptyState title="No tournaments available" />}
-      {user && tournamentId && (
+      {user && tournamentId && !choosingLinkedGame && (
         <ResultWorkspace key={`${user.id}:${tournamentId}`} user={user} tournament={tournament}
           tournamentId={tournamentId} date={date} focusedGameId={focusedGameId} view={view}
           onViewChange={setView} onDateChange={(next) => select({ date: next })} />
@@ -126,6 +130,12 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
   const [busy, setBusy] = useState(false)
   const [online, setOnline] = useState(() => navigator.onLine)
   const sending = useRef(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const nights = useAsync(async () => {
     const result = await api.adminGames(tournamentId, { date: view === 'night' ? date : undefined, unscoredOnly: view === 'missing' || undefined })
@@ -182,11 +192,28 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
         tournamentId,
         sendBatch: options.batch ? (rows) => api.adminBatchResults(rows, options.ids ? tournamentId : undefined) : undefined,
       })
-      const next = { ...draftsRef.current }
+      const syncedIds = new Set(result.syncedGames.map((game) => game.id))
+      const liveStorageDrafts = readResultDrafts(draftKey, tournamentId)
+      const next = mountedRef.current ? { ...draftsRef.current } : { ...liveStorageDrafts }
+      let changedDrafts = false
       result.syncedGames.forEach((game) => {
-        if (next[game.id] === snapshot[game.id] && !result.remaining.some((item) => item.gameId === game.id)) delete next[game.id]
+        if (!syncedIds.has(game.id)) return
+        if (result.remaining.some((item) => item.gameId === game.id)) return
+        const currentEntry = next[game.id]
+        const submittedEntry = snapshot[game.id]
+        if (currentEntry && submittedEntry && (currentEntry === submittedEntry || JSON.stringify(currentEntry) === JSON.stringify(submittedEntry))) {
+          delete next[game.id]
+          changedDrafts = true
+        }
       })
-      storeDrafts(next)
+      if (mountedRef.current) {
+        if (changedDrafts) storeDrafts(next)
+      } else if (changedDrafts) {
+        writeResultDrafts(draftKey, next)
+        return
+      } else {
+        return
+      }
       setQueue(result.remaining)
       applySaved(result.savedResults)
       if (result.pausedForAuth) setMessage('Sign in again to sync results saved on this device.')
@@ -245,10 +272,14 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
     const override = overrides[game.id]
     return (override?.lockVersion ?? -1) >= (game.lockVersion ?? 0) ? override : game
   }).sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const resolvedGamesById = new Map(games.map((game) => [game.id, game]))
   const queued = new Map(queue.map((item) => [item.gameId, item]))
   const waiting = (id: string) => ['pending', 'paused_auth'].includes(queued.get(id)?.state ?? '')
-  const batchDrafts = Object.values(drafts).filter(({ game }) => !game.placeholder && !waiting(game.id) &&
-    queued.get(game.id)?.state !== 'conflict' && (game.status === 'final' ? canCorrect : canEdit))
+  const batchDrafts = Object.values(drafts).filter(({ game }) => {
+    const latest = resolvedGamesById.get(game.id) ?? game
+    return !latest.placeholder && !waiting(game.id) &&
+      queued.get(game.id)?.state !== 'conflict' && (latest.status === 'final' ? canCorrect : canEdit)
+  })
   const quickDates = (data?.availableDates ?? []).filter((day) => day !== date)
   const nextIndex = quickDates.findIndex((day) => day > date)
   const quickStart = Math.max(0, (nextIndex < 0 ? quickDates.length - 4 : nextIndex) - 2)
@@ -295,14 +326,21 @@ function ResultWorkspace({ user, tournament, tournamentId, date, focusedGameId, 
   }
 
   async function requestCorrection(gameId: string, payload: ScoreMutationPayload) {
+    const submittedDraft = draftsRef.current[gameId]
+    const submittedMutationId = readScoreQueue(userId).find((entry) => entry.gameId === gameId)?.clientMutationId
     try {
       await api.adminRequestScoreCorrection(gameId, payload)
-      discardDraft(gameId)
-      setQueue(dismissQueueItem(userId, gameId))
+      if (!mountedRef.current) return
+      if (submittedDraft && draftsRef.current[gameId] === submittedDraft) discardDraft(gameId)
+      const latestQueueEntry = readScoreQueue(userId).find((entry) => entry.gameId === gameId)
+      if (latestQueueEntry && (!submittedMutationId || latestQueueEntry.clientMutationId === submittedMutationId)) {
+        setQueue(dismissQueueItem(userId, gameId))
+      }
       setPendingRequests((current) => ({ ...current, [gameId]: true }))
       setMessage('Correction request sent to tournament staff.')
       void corrections.reload()
     } catch (error) {
+      if (!mountedRef.current) return
       setErrors((current) => ({ ...current, [gameId]: error instanceof Error ? error.message : 'Could not send correction request.' }))
     }
   }
@@ -464,7 +502,7 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
 
   function changeOutcome(outcome: GameOutcome) {
     const status = outcome === 'postponed' || outcome === 'cancelled' ? outcome :
-      outcome === 'forfeit' || stopped ? 'final' : draftValue.status
+      outcome === 'forfeit' || outcome === 'overtime' || outcome === 'shootout' || stopped ? 'final' : draftValue.status
     change({ status, outcome, winner: '', start: '' })
   }
 
@@ -556,6 +594,7 @@ function ResultCard({ game, draft, item, canEdit, canCorrect, canRequest, canRes
 
       <form className="scorekeeper-controls" onSubmit={submit}>
         <fieldset disabled={!editing || waiting || game.placeholder || busy || requesting || Boolean(conflict && !canPropose)} className="scorekeeper-fields">
+          <legend className="sr-only">Game result</legend>
           <div className="scorekeeper-scoreboard">
             <label className="scorekeeper-team-col">
               <span className="scorekeeper-team-label">Home · {game.homeTeam?.displayName || 'Home team'}</span>

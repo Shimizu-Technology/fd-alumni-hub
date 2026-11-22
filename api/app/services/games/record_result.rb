@@ -265,7 +265,11 @@ module Games
       end
       return conflict("Mutation ID reused with different score payload.") unless matches
 
-      Result.new(status: 200, body: { game: serialize_game, idempotentReplay: true })
+      Result.new(
+        status: 200,
+        body: { game: serialize_game, idempotentReplay: true },
+        recompute_tournament: (@tournament if @game.pool_phase? && @game.status == "final")
+      )
     end
 
     def payload_digest

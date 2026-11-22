@@ -322,7 +322,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 
       <GameDetailsSummary game={game} />
 
-      {gameResultLabel(game) && <p className="form-note">{gameResultLabel(game)}</p>}
+      {game.status === 'final' && gameResultLabel(game) && <p className="form-note">{gameResultLabel(game)}</p>}
       <div className="row-actions">
         <Link className="btn primary" to={scorekeeperPath(game)}>Enter result</Link>
         <button className="btn secondary" type="button" onClick={() => setEditingDetails((value) => !value)} aria-expanded={editingDetails}>{editingDetails ? 'Hide game details' : 'Edit game details'}</button>

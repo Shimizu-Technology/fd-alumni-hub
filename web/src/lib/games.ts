@@ -52,6 +52,9 @@ export function gameResultLabel(game?: GameResult | null) {
   if (game.resultOutcome === 'forfeit') return officialWinner ? `${officialWinner.displayName} wins by forfeit` : 'Forfeit'
   if (game.resultOutcome === 'shootout' && officialWinner) return `${officialWinner.displayName} wins the shootout`
   if (officialWinner) return `Winner: ${officialWinner.displayName}`
+  if (game.officialWinnerTeamId) {
+    return game.resultOutcome === 'shootout' ? 'Shootout winner recorded' : 'Official winner recorded'
+  }
   if (game.homeScore === null || game.awayScore === null) return null
   if (game.homeScore === game.awayScore) return 'Tie score'
 

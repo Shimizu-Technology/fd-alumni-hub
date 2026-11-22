@@ -30,7 +30,8 @@ module Api
           attrs = result_params(params, params[:result])
           proposal = Games::RecordResult.new(game, { status: "final" }.merge(attrs.except(:start_time)))
           request = nil
-          game.with_lock do
+          game.tournament.with_lock do
+            game.lock!
             values = proposal.proposed_attributes
             errors = proposal.validation_errors(game, values)
             if errors.any?

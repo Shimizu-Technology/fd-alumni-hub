@@ -50,11 +50,13 @@ module Api
         def create
           attrs = game_params.except(:lock_version)
           return unless authorize_tournament!("schedule_and_teams", "edit", attrs[:tournament_id])
-          return unless authorize_bracket_changes(attrs, attrs[:tournament_id])
 
           result = result_params(params, params[:game]).except(:start_time)
           game = Game.new(attrs)
-          if result.keys.intersect?(%i[home_score away_score result_outcome official_winner_team_id]) || %w[final postponed cancelled].include?(result[:status])
+          return unless authorize_bracket_changes(game, attrs, attrs[:tournament_id])
+
+          normalized_status = result[:status].to_s.strip.downcase
+          if result.keys.intersect?(%i[home_score away_score result_outcome official_winner_team_id]) || %w[final postponed cancelled].include?(normalized_status)
             game = Game.new(attrs.except(*result.keys))
             response = record_result(game, result)
             render json: response.body, status: response.ok? ? :created : response.status
@@ -76,7 +78,7 @@ module Api
           end
           result_write = changed_results || result[:client_mutation_id].present?
           schedule = incoming.except(*Games::RecordResult::FIELDS.excluding(:start_time), *Games::RecordResult::CONTROL_FIELDS)
-          return unless authorize_bracket_changes(schedule, game.tournament_id)
+          return unless authorize_bracket_changes(game, schedule, game.tournament_id)
           if (schedule.keys - BRACKET_FIELDS).any? || (!result_write && schedule.empty?)
             return unless authorize_tournament!("schedule_and_teams", "edit", game.tournament_id)
           end
@@ -178,8 +180,12 @@ module Api
           Games::RecordResult.call(game, attrs, actor: current_user, policy: access_policy, **options)
         end
 
-        def authorize_bracket_changes(attrs, tournament_id)
-          (attrs.keys & BRACKET_FIELDS).empty? || authorize_tournament!("brackets", "edit", tournament_id)
+        def authorize_bracket_changes(game, attrs, tournament_id)
+          baseline = game.new_record? ? Game.new : game
+          effective_bracket_change = (attrs.keys & BRACKET_FIELDS).any? do |key|
+            Game.type_for_attribute(key.to_s).cast(attrs[key]) != baseline.public_send(key)
+          end
+          !effective_bracket_change || authorize_tournament!("brackets", "edit", tournament_id)
         end
 
         def with_bracket_lock_if_needed(tournament, attrs)

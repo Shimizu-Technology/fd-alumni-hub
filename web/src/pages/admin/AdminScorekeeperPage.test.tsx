@@ -215,3 +215,12 @@ it('omits stale official winner after correcting a tied playoff draft to unequal
     homeScore: 42, awayScore: 40, status: 'final', officialWinnerTeamId: null,
   })))
 })
+
+it('resolves a deep-linked gameId without date param to that game’s Guam date', async () => {
+  const futureGame: Game = { ...game, id: '99', startTime: `${nextDate}T19:00:00+10:00` }
+  vi.spyOn(api, 'adminGame').mockResolvedValue({ game: futureGame })
+  const query = vi.mocked(api.adminGames).mockResolvedValue(fixtures([futureGame], nextDate))
+  open('?gameId=99')
+  expect(await screen.findByRole('article', { name: 'Gold Alumni at Red Alumni' })).toBeVisible()
+  expect(query).toHaveBeenCalledWith('5', { date: nextDate, unscoredOnly: undefined })
+})

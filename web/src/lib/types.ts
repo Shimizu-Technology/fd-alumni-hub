@@ -1007,7 +1007,8 @@ export type ScheduleImportCommitResult = {
   createdGames: number
   updatedGames: number
   unchangedGames: number
-  recompute: { teams: number; games: number }
+  standingsStatus?: 'updated' | 'skipped' | 'failed'
+  recompute?: { teams: number; games: number } | null
 }
 
 export type RosterImportRow = {
