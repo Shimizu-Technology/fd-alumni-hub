@@ -32,8 +32,10 @@ export function AdminSiteModePage() {
       Object.assign(initial, { mode: 'tournament_recap', tournamentId: tournament.id, recapHeadline: '', recapSummary: '', sectionOverrides: {} })
     }
   }
-  if (params.get('mode') === 'fundraising' && hostCampaign) {
-    Object.assign(initial, { mode: 'fundraising', hostCampaignId: hostCampaign.id, sectionOverrides: {} })
+  if (data.current?.mode !== 'fundraising' || data.current.hostCampaignId !== hostCampaign?.id) {
+    if (params.get('mode') === 'fundraising' && hostCampaign) {
+      Object.assign(initial, { mode: 'fundraising', hostCampaignId: hostCampaign.id, sectionOverrides: {} })
+    }
   }
   return <SiteModeEditor key={`${data.current?.id || 'initial'}:${params.toString()}`} initial={initial} configuration={data} reload={reload} />
 }

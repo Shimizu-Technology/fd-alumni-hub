@@ -49,15 +49,15 @@ export function TournamentChampionsPanel({ tournamentId, canView, canConfirm, ca
     if (!editing) return
     const data = new FormData(event.currentTarget)
     const value = (key: string) => String(data.get(key) ?? '').trim()
+    const candidate = editing
     const payload = {
       bracket: value('bracket') as TournamentChampion['bracket'],
       championLabel: value('championLabel'),
       runnerUpLabel: value('runnerUpLabel') || null,
       score: value('score') || null,
       notes: value('notes') || null,
-      status: 'completed' as const,
+      ...(candidate === 'new' ? { status: 'completed' as const } : {}),
     }
-    const candidate = editing
     void mutate(() => candidate === 'new'
       ? api.adminCreateTournamentChampion(tournamentId, payload)
       : api.adminUpdateTournamentChampion(tournamentId, candidate.id, payload), 'Champion confirmed.')

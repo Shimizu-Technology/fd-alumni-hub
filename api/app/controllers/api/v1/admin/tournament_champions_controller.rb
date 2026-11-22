@@ -11,7 +11,11 @@ module Api
         around_action :with_champion_audit, only: [ :create, :update, :destroy ]
 
         rescue_from ActiveRecord::RecordInvalid do |error|
-          render_errors(error.record)
+          if error.record.errors.added?(:slug, :taken)
+            render json: { errors: [ "A champion record already exists for that bracket and edition." ] }, status: :unprocessable_entity
+          else
+            render_errors(error.record)
+          end
         end
 
         rescue_from ActiveRecord::RecordNotUnique do
@@ -28,8 +32,8 @@ module Api
         end
 
         def create
-          record = champions.new({ source: "admin_confirmed" }.merge(champion_params).merge(year: @tournament.year))
-          record.slug = [ @tournament.year, @tournament.id, record.bracket.presence || "overall", record.edition_label.presence ].compact.join("-").parameterize
+          record = champions.new(champion_params.merge(source: "admin_confirmed", year: @tournament.year))
+          record.slug = champion_slug(record)
           record.save!
           render_record(record, key: :champion, status: :created)
         end
@@ -39,6 +43,9 @@ module Api
           record.assign_attributes(champion_params)
           record.champion_key = nil if record.will_save_change_to_champion_label?
           record.runner_up_key = nil if record.will_save_change_to_runner_up_label?
+          if record.will_save_change_to_bracket? || record.will_save_change_to_edition_label?
+            record.slug = champion_slug(record)
+          end
           record.save!
           render_record(record.reload, key: :champion)
         end
@@ -64,13 +71,17 @@ module Api
           TournamentChampion.where(tournament_id: @tournament.id)
         end
 
+        def champion_slug(record)
+          [ @tournament.year, @tournament.id, record.bracket.presence || "overall", record.edition_label.presence ].compact.join("-").parameterize
+        end
+
         def champion_params
           raw = params.fetch(:champion) { request.request_parameters }
           raise ActionController::BadRequest, "Invalid champion payload" unless raw.is_a?(ActionController::Parameters) || raw.is_a?(Hash)
 
           raw = ActionController::Parameters.new(raw) if raw.is_a?(Hash)
           raw.permit(:bracket, :editionLabel, :edition_label, :championLabel, :champion_label,
-            :runnerUpLabel, :runner_up_label, :score, :status, :primary, :notes, :position, :source)
+            :runnerUpLabel, :runner_up_label, :score, :status, :primary, :notes, :position)
             .to_h.transform_keys(&:underscore).symbolize_keys
         end
       end
