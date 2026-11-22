@@ -76,18 +76,42 @@ export function PublicLayout() {
         // Non-blocking: default mobile bottom nav slot remains Schedule.
       })
 
-    api.publicAlerts()
-      .then((res) => {
-        if (active) setAlerts(res.alerts || [])
-      })
-      .catch(() => {
-        // Non-blocking: fail silently when offline or unreachable.
-      })
-
     return () => {
       active = false
     }
   }, [backend.status])
+
+  useEffect(() => {
+    if (backend.status !== 'available') return
+
+    let active = true
+    const loadAlerts = () => {
+      api.publicAlerts()
+        .then((res) => {
+          if (active) setAlerts(res.alerts || [])
+        })
+        .catch(() => {
+          // Non-blocking: fail silently when offline or unreachable.
+        })
+    }
+
+    loadAlerts()
+    const intervalId = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      loadAlerts()
+    }, 45_000)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadAlerts()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [backend.status, location.pathname])
 
   const bottomNavItems = useMemo(() => [
     { to: '/', label: 'Home', end: true, icon: IconHome },

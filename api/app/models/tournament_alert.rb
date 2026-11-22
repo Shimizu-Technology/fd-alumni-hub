@@ -11,6 +11,7 @@ class TournamentAlert < ApplicationRecord
   validates :severity, presence: true, inclusion: { in: SEVERITIES }
   validates :title, presence: true, length: { maximum: 140 }
   validates :message, presence: true, length: { maximum: 1000 }
+  validate :tournament_exists
   validate :expires_after_starts
 
   scope :active_now, lambda { |at = Time.current|
@@ -50,6 +51,13 @@ class TournamentAlert < ApplicationRecord
     self.severity = severity.to_s.strip.downcase.presence || "warning"
     self.title = title.to_s.strip if title.present?
     self.message = message.to_s.strip if message.present?
+  end
+
+  def tournament_exists
+    return if tournament_id.blank?
+    return if Tournament.exists?(id: tournament_id)
+
+    errors.add(:tournament_id, "does not exist")
   end
 
   def expires_after_starts

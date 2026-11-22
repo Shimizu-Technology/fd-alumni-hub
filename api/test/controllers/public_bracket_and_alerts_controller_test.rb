@@ -133,6 +133,15 @@ class PublicBracketAndAlertsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
 
     post "/api/v1/admin/alerts",
+      params: { alert: { tournamentId: 999_999, severity: "warning", title: "Bad FK", message: "Should 422" } },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :unprocessable_entity
+
+    get "/api/v1/admin/alerts", params: { tournamentId: "not-an-id" }, headers: headers_for(@staff)
+    assert_response :unprocessable_entity
+
+    post "/api/v1/admin/alerts",
       params: { alert: { tournamentId: @tournament.id, severity: "urgent", title: "Power outage", message: "Generator warming up" } },
       headers: headers_for(@staff),
       as: :json

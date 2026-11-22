@@ -5,10 +5,13 @@ module Api
         def index
           alerts = TournamentAlert.ordered_for_display
           if params[:tournamentId].present?
+            tid = Integer(params[:tournamentId].to_s.strip, 10, exception: false)
+            return render json: { errors: [ "tournamentId must be a valid integer" ] }, status: :unprocessable_entity unless tid&.positive?
+
             if params[:scope] == "tournament_only"
-              alerts = alerts.where(tournament_id: params[:tournamentId])
+              alerts = alerts.where(tournament_id: tid)
             else
-              alerts = alerts.where(tournament_id: [ nil, params[:tournamentId] ])
+              alerts = alerts.where(tournament_id: [ nil, tid ])
             end
           end
 

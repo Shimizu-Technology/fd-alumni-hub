@@ -16,7 +16,10 @@ module Api
           polls = relevant_polls(tournament, games).to_a
           voter_hash = voter_token_hash
           alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10).to_a
-          campaign = HostCampaign.where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES).first
+          campaign = HostCampaign
+            .where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES)
+            .order(featured: :desc, updated_at: :desc, id: :desc)
+            .first
           fallback_ticket_url = Hafapass::EventsClient.all_tickets_url_for(campaign)
           last_updated_at = latest_updated_at(note, games, polls, alerts)
 

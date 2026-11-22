@@ -26,30 +26,40 @@ module Games
 
     def call
       return skip("no_next_game") if @game.next_game_id.blank?
-      return skip("invalid_slot") unless Game::NEXT_GAME_SLOTS.include?(@game.next_game_slot)
-      return skip("not_final") unless @game.status == "final"
-      return skip("placeholder_feeder") if @game.placeholder?
-      return skip("missing_scores") if @game.home_score.nil? || @game.away_score.nil?
-      return skip("tied_score") if @game.home_score == @game.away_score
-
-      winner_id, loser_id =
-        if @game.home_score > @game.away_score
-          [ @game.home_team_id, @game.away_team_id ]
-        else
-          [ @game.away_team_id, @game.home_team_id ]
-        end
-
-      return skip("invalid_teams") if winner_id.blank? || loser_id.blank? || winner_id == loser_id
 
       ActiveRecord::Base.transaction do
-        next_game = Game.lock.includes(:home_team, :away_team).find_by(id: @game.next_game_id)
+        # Lock feeder and target in deterministic primary-key order to prevent deadlocks
+        # and ensure winner computation uses committed state rather than stale memory.
+        locked_ids = [ @game.id, @game.next_game_id ].compact.uniq.sort
+        locked_by_id = Game.where(id: locked_ids).order(:id).lock.index_by(&:id)
+
+        feeder = locked_by_id[@game.id]
+        return skip("feeder_not_found") unless feeder
+        return skip("no_next_game") if feeder.next_game_id.blank?
+        return skip("invalid_slot") unless Game::NEXT_GAME_SLOTS.include?(feeder.next_game_slot)
+        return skip("not_final") unless feeder.status == "final"
+        return skip("placeholder_feeder") if feeder.placeholder?
+        return skip("missing_scores") if feeder.home_score.nil? || feeder.away_score.nil?
+        return skip("tied_score") if feeder.home_score == feeder.away_score
+
+        winner_id, loser_id =
+          if feeder.home_score > feeder.away_score
+            [ feeder.home_team_id, feeder.away_team_id ]
+          else
+            [ feeder.away_team_id, feeder.home_team_id ]
+          end
+
+        return skip("invalid_teams") if winner_id.blank? || loser_id.blank? || winner_id == loser_id
+
+        next_game = locked_by_id[feeder.next_game_id] || Game.lock.find_by(id: feeder.next_game_id)
         return skip("next_game_not_found") unless next_game
-        return skip("tournament_mismatch") unless next_game.tournament_id == @game.tournament_id
+        return skip("tournament_mismatch") unless next_game.tournament_id == feeder.tournament_id
         return skip("next_game_not_scheduled") unless next_game.status == "scheduled"
 
-        slot = @game.next_game_slot
-        target_team = slot == "home" ? next_game.home_team : next_game.away_team
+        slot = feeder.next_game_slot
+        target_team_id = slot == "home" ? next_game.home_team_id : next_game.away_team_id
         opposite_team_id = slot == "home" ? next_game.away_team_id : next_game.home_team_id
+        target_team = target_team_id ? Team.find_by(id: target_team_id) : nil
 
         return skip("winner_already_in_opposite_slot") if opposite_team_id == winner_id
 

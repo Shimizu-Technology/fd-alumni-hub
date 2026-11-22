@@ -443,9 +443,12 @@ test.describe('FD Alumni Hub smoke suite', () => {
 
     await page.goto('/bracket', { waitUntil: 'domcontentloaded' })
     await expect(page.getByRole('alert')).toContainText('Typhoon Delay')
-    await expect(page.locator('main')).toContainText('Class of 2017')
-    await page.getByRole('tab', { name: /Semifinals/i }).click()
-    await expect(page.locator('main')).toContainText('Winner MQF2')
+    const mobileRound = page.locator('.bracket-mobile-round')
+    await expect(mobileRound).toBeVisible()
+    await expect(mobileRound).toContainText('Class of 2017')
+    await expect(mobileRound).not.toContainText('Winner MQF2')
+    await page.getByRole('button', { name: /Semifinals/i }).click()
+    await expect(mobileRound).toContainText('Winner MQF2')
     const bracketOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(bracketOverflow).toBeLessThanOrEqual(1)
 

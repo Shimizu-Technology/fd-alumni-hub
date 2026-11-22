@@ -72,15 +72,14 @@ export function BracketPage() {
         <>
           {divisions.length > 1 && (
             <Panel className="bracket-tabs-panel">
-              <div className="bracket-division-tabs" role="tablist" aria-label="Playoff divisions">
+              <div className="bracket-division-tabs" role="group" aria-label="Playoff divisions">
                 {divisions.map((group) => {
                   const isActive = group.division.id === activeDivision?.division.id
                   return (
                     <button
                       key={group.division.id}
                       type="button"
-                      role="tab"
-                      aria-selected={isActive}
+                      aria-pressed={isActive}
                       className={`bracket-tab-btn${isActive ? ' active' : ''}`}
                       onClick={() => {
                         setSelectedDivisionId(group.division.id)
@@ -97,15 +96,14 @@ export function BracketPage() {
 
           {activeDivision && (
             <section className="bracket-section" aria-label={`${activeDivision.division.name} playoff bracket`}>
-              <div className="bracket-round-pills" role="tablist" aria-label="Playoff rounds">
+              <div className="bracket-round-pills" role="group" aria-label="Playoff rounds">
                 {rounds.map((roundGroup) => {
                   const isActive = roundGroup.round === activeRoundKey
                   return (
                     <button
                       key={roundGroup.round}
                       type="button"
-                      role="tab"
-                      aria-selected={isActive}
+                      aria-pressed={isActive}
                       className={`bracket-pill-btn${isActive ? ' active' : ''}`}
                       onClick={() => setSelectedRound(roundGroup.round)}
                     >
