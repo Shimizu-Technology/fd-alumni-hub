@@ -119,7 +119,11 @@ class AdminScorekeeperAndScoreEndpointTest < ActionDispatch::IntegrationTest
       [ :post, "/api/v1/admin/standings/recompute" ],
       [ :get, "/api/v1/admin/campaigns" ],
       [ :get, "/api/v1/admin/whitelists" ],
-      [ :get, "/api/v1/admin/content-ingest-items" ]
+      [ :get, "/api/v1/admin/content-ingest-items" ],
+      [ :post, "/api/v1/admin/content-ingest-items" ],
+      [ :post, "/api/v1/admin/uploads/presign" ],
+      [ :post, "/api/v1/admin/roster-entries" ],
+      [ :post, "/api/v1/admin/roster-entries/bulk" ]
     ]
 
     denied_requests.each do |verb, path|
@@ -136,6 +140,19 @@ class AdminScorekeeperAndScoreEndpointTest < ActionDispatch::IntegrationTest
   end
 
   test "score endpoint enforces live-only recompute skip, final recompute, digest idempotency, conflict detection, and scorekeeper guardrails" do
+    # 0. Missing lockVersion without forceOverwrite returns 422, and blank status returns 422
+    patch "/api/v1/admin/games/#{@pool_game.id}/score",
+      params: { homeScore: 10, awayScore: 8, status: "live", clientMutationId: "mut_nolock_0000" },
+      headers: headers_for(@scorekeeper),
+      as: :json
+    assert_response :unprocessable_entity
+
+    patch "/api/v1/admin/games/#{@pool_game.id}/score",
+      params: { homeScore: 10, awayScore: 8, status: "", lockVersion: @pool_game.lock_version, clientMutationId: "mut_nostatus_0000" },
+      headers: headers_for(@scorekeeper),
+      as: :json
+    assert_response :unprocessable_entity
+
     # 1. Live score update: succeeds, records score_updated_by, does NOT recompute standings
     live_mutation = "mut_live_0001"
     patch "/api/v1/admin/games/#{@pool_game.id}/score",
@@ -300,13 +317,15 @@ class AdminScorekeeperAndScoreEndpointTest < ActionDispatch::IntegrationTest
     mutation_id = "mut_race_0008"
     digest = Digest::SHA256.hexdigest({ awayScore: 15, homeScore: 18, status: "live", statusNote: nil }.to_json)
 
-    # Simulate a concurrent commit that already saved the exact same mutation right before save!
+    # Simulate a concurrent commit by the same scorekeeper right before save
     original_save = Game.instance_method(:save)
+    keeper_id = @scorekeeper.id
     Game.define_method(:save) do |*args, **kwargs|
       Game.where(id: id).update_all(
         home_score: 18,
         away_score: 15,
         status: "live",
+        score_updated_by_id: keeper_id,
         last_score_mutation_id: mutation_id,
         last_score_mutation_digest: digest,
         lock_version: lock_version + 1

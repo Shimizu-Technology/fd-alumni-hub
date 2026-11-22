@@ -93,6 +93,7 @@ describe('scoreQueue', () => {
     expect(send401).toHaveBeenCalledTimes(1)
     expect(res1.remaining).toHaveLength(2)
     expect(res1.remaining[0].state).toBe('paused_auth')
+    expect(res1.remaining[1].state).toBe('paused_auth')
 
     const sendOk = vi.fn().mockImplementation(async (gameId) => ({ game: makeGame({ id: gameId }) }))
     const res2 = await flushScoreQueue('user-1', sendOk, { storage, now: 2_000, force: true })
@@ -175,5 +176,60 @@ describe('scoreQueue', () => {
     // Stays capped at 30s
     const r4 = await flushScoreQueue('user-1', sendFail, { storage, now: 60_000 })
     expect(r4.remaining[0].nextRetryAt).toBe(60_000 + SCORE_QUEUE_BACKOFF_MS[2])
+  })
+
+  it('preserves and rebases newer taps enqueued during an in-flight flush (success & failure paths)', async () => {
+    const storage = createMemoryStorage()
+    let counter = 0
+    const nextId = () => `mut-race-000${++counter}`
+
+    // Tap A: 2-0 at lockVersion 1
+    enqueueScoreMutation('user-1', '42', { homeScore: 2, awayScore: 0, status: 'live', statusNote: null, lockVersion: 1 }, { storage, idGenerator: nextId })
+
+    let resolveSend!: (val: { game: Game }) => void
+    const sendA = vi.fn().mockImplementation(
+      () => new Promise<{ game: Game }>((resolve) => { resolveSend = resolve }),
+    )
+
+    const flushPromise = flushScoreQueue('user-1', sendA, { storage, now: 1_000 })
+
+    // While A is in flight, user taps +2 again (Tap B: 4-0) AND taps game 99!
+    enqueueScoreMutation('user-1', '42', { homeScore: 4, awayScore: 0, status: 'live', statusNote: null, lockVersion: 1 }, { storage, idGenerator: nextId })
+    enqueueScoreMutation('user-1', '99', { homeScore: 1, awayScore: 0, status: 'live', statusNote: null, lockVersion: 5 }, { storage, idGenerator: nextId })
+
+    // Tap A succeeds and server advances lockVersion to 2
+    resolveSend({ game: makeGame({ id: '42', homeScore: 2, awayScore: 0, lockVersion: 2 }) })
+    const resSuccess = await flushPromise
+
+    expect(resSuccess.hasNewerPending).toBe(true)
+    const afterSuccess = readScoreQueue('user-1', storage)
+    expect(afterSuccess.map((i) => i.gameId).sort()).toEqual(['42', '99'])
+    const item42 = afterSuccess.find((i) => i.gameId === '42')!
+    expect(item42.payload.homeScore).toBe(4)
+    expect(item42.payload.lockVersion).toBe(2) // rebased to server lockVersion!
+    expect(item42.clientMutationId).toBe('mut-race-0002')
+
+    // Now test failure path: Tap B (4-0) fails while Tap C (6-0) arrives mid-flight -> C MUST NOT be rolled back to B!
+    let rejectSend!: (err: Error) => void
+    const sendB = vi.fn().mockImplementation(
+      (gameId: string) => {
+        if (gameId === '42') {
+          return new Promise<{ game: Game }>((_resolve, reject) => { rejectSend = reject })
+        }
+        return Promise.resolve({ game: makeGame({ id: gameId, homeScore: 1, awayScore: 0, lockVersion: 6 }) })
+      },
+    )
+
+    const failFlushPromise = flushScoreQueue('user-1', sendB, { storage, now: 2_000 })
+    enqueueScoreMutation('user-1', '42', { homeScore: 6, awayScore: 0, status: 'live', statusNote: null, lockVersion: 2 }, { storage, idGenerator: nextId })
+    rejectSend(new TypeError('Failed to fetch'))
+    const resFail = await failFlushPromise
+
+    expect(resFail.hasNewerPending).toBe(true)
+    const afterFail = readScoreQueue('user-1', storage)
+    const surviving42 = afterFail.find((i) => i.gameId === '42')!
+    expect(surviving42.payload.homeScore).toBe(6)
+    expect(surviving42.attempts).toBe(0)
+    expect(surviving42.clientMutationId).toBe('mut-race-0004')
   })
 })

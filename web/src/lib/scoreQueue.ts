@@ -41,6 +41,7 @@ export type FlushScoreQueueResult = {
   syncedGames: Game[]
   remaining: QueuedScoreItem[]
   pausedForAuth: boolean
+  hasNewerPending: boolean
 }
 
 export function scoreQueueStorageKey(userId: string) {
@@ -212,30 +213,23 @@ export async function flushScoreQueue(
     force?: boolean
   } = {},
 ): Promise<FlushScoreQueueResult> {
-  const items = readScoreQueue(userId, storage)
+  const candidates = readScoreQueue(userId, storage).filter((item) => {
+    const eligible = item.state === 'pending' || (force && item.state === 'paused_auth')
+    if (!eligible) return false
+    return force || item.nextRetryAt <= now
+  })
+
   const syncedGames: Game[] = []
-  const remaining: QueuedScoreItem[] = []
   let pausedForAuth = false
+  let hasNewerPending = false
 
-  for (let i = 0; i < items.length; i += 1) {
-    const item = items[i]
+  for (const item of candidates) {
+    if (pausedForAuth) break
 
-    if (pausedForAuth) {
-      remaining.push(item)
-      continue
-    }
-
-    const eligible =
-      item.state === 'pending' ||
-      (force && item.state === 'paused_auth')
-
-    if (!eligible) {
-      remaining.push(item)
-      continue
-    }
-
-    if (!force && item.nextRetryAt > now) {
-      remaining.push(item)
+    // Re-check latest storage right before sending in case item was dismissed or superseded.
+    const latestBeforeSend = readScoreQueue(userId, storage).find((entry) => entry.gameId === item.gameId)
+    if (!latestBeforeSend || latestBeforeSend.clientMutationId !== item.clientMutationId) {
+      if (latestBeforeSend?.state === 'pending') hasNewerPending = true
       continue
     }
 
@@ -245,63 +239,112 @@ export async function flushScoreQueue(
         clientMutationId: item.clientMutationId,
       })
       syncedGames.push(response.game)
+
+      // Re-read storage after await: only remove if clientMutationId still matches.
+      // If a newer tap replaced this item while in flight, keep it and rebase its lockVersion (B1 + H1).
+      const liveQueue = readScoreQueue(userId, storage)
+      const nextQueue: QueuedScoreItem[] = []
+      for (const entry of liveQueue) {
+        if (entry.gameId !== item.gameId) {
+          nextQueue.push(entry)
+          continue
+        }
+        if (entry.clientMutationId === item.clientMutationId) {
+          // Exact mutation we just synced: remove from queue.
+          continue
+        }
+        // Newer tap arrived during in-flight send: preserve it and rebase its base lockVersion!
+        hasNewerPending = true
+        const rebasedLockVersion =
+          response.game.lockVersion !== undefined &&
+          (entry.payload.lockVersion === undefined || entry.payload.lockVersion === item.payload.lockVersion)
+            ? response.game.lockVersion
+            : entry.payload.lockVersion
+        nextQueue.push({
+          ...entry,
+          payload: {
+            ...entry.payload,
+            lockVersion: rebasedLockVersion,
+          },
+        })
+      }
+      writeScoreQueue(userId, nextQueue, storage)
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 401) {
-          pausedForAuth = true
-          remaining.push({
-            ...item,
-            state: 'paused_auth',
-            errorMessage: 'Session expired — sign in again to sync pending scores.',
-          })
-          continue
-        }
+      const liveQueue = readScoreQueue(userId, storage)
 
-        if (err.status === 403) {
-          remaining.push({
-            ...item,
-            state: 'forbidden',
-            errorMessage: err.message || 'You do not have permission to update this game score.',
-          })
-          continue
-        }
-
-        if (err.status === 422) {
-          remaining.push({
-            ...item,
-            state: 'validation_error',
-            errorMessage: err.message || 'Invalid score payload. Check the score and status values.',
-          })
-          continue
-        }
-
-        if (err.status === 409) {
-          const payload = err.payload as { currentGame?: Game } | null
-          remaining.push({
-            ...item,
-            state: 'conflict',
-            errorMessage: err.message || 'Score was updated by another user.',
-            serverGame: payload?.currentGame ?? null,
-          })
-          continue
-        }
+      if (err instanceof ApiError && err.status === 401) {
+        pausedForAuth = true
+        // Pause ALL pending items on 401 so auto-retry stops completely until re-authenticated (M2).
+        const nextQueue = liveQueue.map((entry) => {
+          if (entry.state === 'pending' || (entry.gameId === item.gameId && entry.clientMutationId === item.clientMutationId)) {
+            return {
+              ...entry,
+              state: 'paused_auth' as const,
+              errorMessage: 'Session expired — sign in again to sync pending scores.',
+            }
+          }
+          return entry
+        })
+        writeScoreQueue(userId, nextQueue, storage)
+        break
       }
 
-      // Network error, timeout, or 5xx: retain in pending state with bounded exponential backoff.
-      const backoffIndex = Math.min(item.attempts, SCORE_QUEUE_BACKOFF_MS.length - 1)
-      const delayMs = SCORE_QUEUE_BACKOFF_MS[backoffIndex]
-      remaining.push({
-        ...item,
-        state: 'pending',
-        attempts: item.attempts + 1,
-        nextRetryAt: now + delayMs,
-        errorMessage: err instanceof Error ? err.message : 'Network unavailable — will retry automatically.',
+      // Only mutate the entry if it still matches (gameId, clientMutationId).
+      // If a newer tap superseded it during the failed request, preserve the newer tap untouched (B1).
+      let supersededByNewer = false
+      const nextQueue = liveQueue.map((entry) => {
+        if (entry.gameId !== item.gameId) return entry
+        if (entry.clientMutationId !== item.clientMutationId) {
+          supersededByNewer = true
+          return entry
+        }
+
+        if (err instanceof ApiError) {
+          if (err.status === 403) {
+            return {
+              ...entry,
+              state: 'forbidden' as const,
+              errorMessage: err.message || 'You do not have permission to update this game score.',
+            }
+          }
+
+          if (err.status === 422) {
+            return {
+              ...entry,
+              state: 'validation_error' as const,
+              errorMessage: err.message || 'Invalid score payload. Check the score and status values.',
+            }
+          }
+
+          if (err.status === 409) {
+            const payload = err.payload as { currentGame?: Game } | null
+            return {
+              ...entry,
+              state: 'conflict' as const,
+              errorMessage: err.message || 'Score was updated by another user.',
+              serverGame: payload?.currentGame ?? null,
+            }
+          }
+        }
+
+        const backoffIndex = Math.min(entry.attempts, SCORE_QUEUE_BACKOFF_MS.length - 1)
+        const delayMs = SCORE_QUEUE_BACKOFF_MS[backoffIndex]
+        return {
+          ...entry,
+          state: 'pending' as const,
+          attempts: entry.attempts + 1,
+          nextRetryAt: now + delayMs,
+          errorMessage: err instanceof Error ? err.message : 'Network unavailable — will retry automatically.',
+        }
       })
+
+      if (supersededByNewer) hasNewerPending = true
+      writeScoreQueue(userId, nextQueue, storage)
     }
   }
 
-  writeScoreQueue(userId, remaining, storage)
-  return { syncedGames, remaining, pausedForAuth }
+  const remaining = readScoreQueue(userId, storage)
+  return { syncedGames, remaining, pausedForAuth, hasNewerPending }
 }
 
 function defaultStorage(): Storage | null {

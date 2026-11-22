@@ -28,9 +28,12 @@ export function AdminScorekeeperPage() {
   const [filter, setFilter] = useState<ScoreFilter>('today')
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
   const [queue, setQueue] = useState<QueuedScoreItem[]>(() => readScoreQueue(userId))
+  const [gameOverrides, setGameOverrides] = useState<Record<string, Game>>({})
   const [syncing, setSyncing] = useState(false)
   const [syncBanner, setSyncBanner] = useState('')
   const syncingRef = useRef(false)
+  const flushAgainRef = useRef(false)
+  const flushForceRef = useRef(false)
 
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournamentsRes, gamesRes] = await Promise.all([
@@ -58,7 +61,11 @@ export function AdminScorekeeperPage() {
   }, [data?.tournaments, tournamentId, setTournamentId])
 
   const runFlush = useCallback(async (force = false) => {
-    if (syncingRef.current) return
+    if (syncingRef.current) {
+      flushAgainRef.current = true
+      if (force) flushForceRef.current = true
+      return
+    }
     const current = readScoreQueue(userId)
     if (current.length === 0) {
       setQueue([])
@@ -67,15 +74,41 @@ export function AdminScorekeeperPage() {
 
     syncingRef.current = true
     setSyncing(true)
+    let nextForce = force
+    let totalSynced = 0
     try {
-      const result = await flushScoreQueue(
-        userId,
-        (gameId, body) => api.adminScoreGame(gameId, body),
-        { force },
-      )
-      setQueue(result.remaining)
-      if (result.syncedGames.length > 0) {
-        setSyncBanner(`Synced ${result.syncedGames.length} score ${result.syncedGames.length === 1 ? 'update' : 'updates'}.`)
+      while (true) {
+        flushAgainRef.current = false
+        flushForceRef.current = false
+
+        const result = await flushScoreQueue(
+          userId,
+          (gameId, body) => api.adminScoreGame(gameId, body),
+          { force: nextForce },
+        )
+        setQueue(result.remaining)
+
+        if (result.syncedGames.length > 0) {
+          totalSynced += result.syncedGames.length
+          setGameOverrides((prev) => {
+            const next = { ...prev }
+            for (const synced of result.syncedGames) {
+              next[synced.id] = synced
+            }
+            return next
+          })
+        }
+
+        if (result.pausedForAuth) break
+        if (flushAgainRef.current || result.hasNewerPending) {
+          nextForce = flushForceRef.current || result.hasNewerPending
+          continue
+        }
+        break
+      }
+
+      if (totalSynced > 0) {
+        setSyncBanner(`Synced ${totalSynced} score ${totalSynced === 1 ? 'update' : 'updates'}.`)
         await reload()
       }
     } finally {
@@ -99,16 +132,18 @@ export function AdminScorekeeperPage() {
     }
   }, [runFlush])
 
+  const authPaused = queue.some((item) => item.state === 'paused_auth')
+
   useEffect(() => {
     const hasPending = queue.some((item) => item.state === 'pending')
-    if (!hasPending || !isOnline) return undefined
+    if (!hasPending || !isOnline || authPaused) return undefined
 
     const timer = window.setInterval(() => {
       void runFlush(false)
     }, 5_000)
 
     return () => window.clearInterval(timer)
-  }, [queue, isOnline, runFlush])
+  }, [queue, isOnline, authPaused, runFlush])
 
   const tournaments = data?.tournaments || []
   const visibleTournaments = useMemo(() => {
@@ -118,9 +153,15 @@ export function AdminScorekeeperPage() {
 
   const currentTournament = selectedTournament(tournaments, tournamentId)
   const queueByGameId = useMemo(() => new Map(queue.map((item) => [item.gameId, item])), [queue])
-  const todayGuamKey = useMemo(() => toLocalDateTimeInputValue(new Date().toISOString()).slice(0, 10), [])
+  const todayGuamKey = toLocalDateTimeInputValue(new Date().toISOString()).slice(0, 10)
 
-  const games = data?.games || []
+  const games = useMemo(() => {
+    return (data?.games || []).map((g) => {
+      const override = gameOverrides[g.id]
+      if (!override) return g
+      return (override.lockVersion ?? 0) >= (g.lockVersion ?? 0) ? override : g
+    })
+  }, [data?.games, gameOverrides])
   const filteredGames = useMemo(() => {
     if (filter === 'live') {
       return games.filter((g) => g.status === 'live' || g.status === 'delayed')
@@ -136,8 +177,10 @@ export function AdminScorekeeperPage() {
     setSyncBanner('')
     const updated = enqueueScoreMutation(userId, gameId, payload)
     setQueue(updated)
-    if (isOnline) {
-      await runFlush(true)
+    if (authPaused) {
+      setSyncBanner('Session expired — score queued locally. Sign in and tap Sync now.')
+    } else if (isOnline) {
+      await runFlush(false)
     } else {
       setSyncBanner('Saved offline — will sync automatically when connection returns.')
     }
@@ -277,7 +320,9 @@ function ScorekeeperGameCard({
   const [statusNote, setStatusNote] = useState<string>(() => queuedItem?.payload.statusNote ?? game.statusNote ?? '')
 
   useEffect(() => {
-    if (queuedItem) return
+    if (queuedItem && (queuedItem.state === 'pending' || queuedItem.state === 'paused_auth' || queuedItem.state === 'conflict')) {
+      return
+    }
     setAwayScore(game.awayScore ?? 0)
     setHomeScore(game.homeScore ?? 0)
     setStatus(game.status)
@@ -286,7 +331,8 @@ function ScorekeeperGameCard({
 
   const tournamentLocked = !isStaff && tournamentStatus !== 'live' && tournamentStatus !== 'upcoming'
   const finalLocked = !isStaff && game.status === 'final'
-  const readOnly = tournamentLocked || finalLocked
+  const conflictLocked = queuedItem?.state === 'conflict'
+  const readOnly = tournamentLocked || finalLocked || conflictLocked
 
   const clamp = (n: number) => Math.max(0, Math.min(300, Math.round(n)))
 
@@ -341,7 +387,7 @@ function ScorekeeperGameCard({
         <StatusBadge status={status} />
       </div>
 
-      {readOnly && (
+      {(tournamentLocked || finalLocked) && (
         <p className="muted" role="note">
           {tournamentLocked
             ? 'Read-only: scorekeepers can only score live or upcoming tournaments.'
@@ -354,6 +400,7 @@ function ScorekeeperGameCard({
           <span className="scorekeeper-team-label">{game.awayTeam?.displayName || 'Away'}</span>
           <input
             type="number"
+            inputMode="numeric"
             min={0}
             max={300}
             aria-label={`${game.awayTeam?.displayName || 'Away'} score`}
@@ -381,6 +428,7 @@ function ScorekeeperGameCard({
           <span className="scorekeeper-team-label">{game.homeTeam?.displayName || 'Home'}</span>
           <input
             type="number"
+            inputMode="numeric"
             min={0}
             max={300}
             aria-label={`${game.homeTeam?.displayName || 'Home'} score`}

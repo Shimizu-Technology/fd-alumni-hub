@@ -90,6 +90,10 @@ module Api
             return render json: { errors: [ "Scores must be whole numbers between 0 and 300" ] }, status: :unprocessable_entity
           end
 
+          if incoming.key?(:status) && incoming[:status].to_s.strip.blank?
+            return render json: { errors: [ "Status cannot be blank" ] }, status: :unprocessable_entity
+          end
+
           next_status = incoming.key?(:status) ? incoming[:status].to_s.strip.downcase : game.status
           next_status_note = incoming.key?(:status_note) ? incoming[:status_note].to_s.strip.presence : game.status_note
           payload_digest = compute_score_digest(
@@ -101,7 +105,7 @@ module Api
 
           # Check idempotent replay BEFORE scorekeeper final-game guardrails so a dropped
           # response after finalizing safely replays as 200 OK instead of 403 Forbidden.
-          if client_mutation_id.present? && game.last_score_mutation_id == client_mutation_id
+          if client_mutation_id.present? && game.last_score_mutation_id == client_mutation_id && replay_authorized?(game)
             return render_mutation_id_match(game, payload_digest)
           end
 
@@ -119,9 +123,12 @@ module Api
             return render json: { errors: [ "Both home and away scores are required to finalize a game." ] }, status: :unprocessable_entity
           end
 
-          lock_version_present = incoming.key?(:lock_version)
           lock_version_param = incoming[:lock_version]
-          if !force_overwrite && lock_version_present && !lock_version_param.nil? && lock_version_param.to_s.strip != ""
+          unless force_overwrite
+            if lock_version_param.nil? || lock_version_param.to_s.strip == ""
+              return render json: { errors: [ "lockVersion is required unless forceOverwrite is true" ] }, status: :unprocessable_entity
+            end
+
             parsed_version = parse_lock_version(lock_version_param)
             return render json: { errors: [ "lockVersion must be a non-negative integer" ] }, status: :unprocessable_entity unless parsed_version
 
@@ -156,7 +163,7 @@ module Api
           end
         rescue ActiveRecord::StaleObjectError
           fresh = Game.find(game.id)
-          if client_mutation_id.present? && fresh.last_score_mutation_id == client_mutation_id
+          if client_mutation_id.present? && fresh.last_score_mutation_id == client_mutation_id && replay_authorized?(fresh)
             return render_mutation_id_match(fresh, payload_digest)
           end
 
@@ -167,6 +174,10 @@ module Api
         end
 
         private
+
+        def replay_authorized?(game)
+          current_user.staff? || game.score_updated_by_id == current_user.id
+        end
 
         def render_mutation_id_match(game, payload_digest)
           serialized = games_with_associations.find(game.id).api_json(include_score_audit: true)
