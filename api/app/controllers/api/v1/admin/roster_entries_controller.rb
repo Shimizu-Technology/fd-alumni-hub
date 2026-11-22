@@ -3,8 +3,10 @@ module Api
     module Admin
       class RosterEntriesController < BaseController
         def create
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
           attrs = roster_entry_params
-          team = admin_tournament.teams.find(attrs.delete(:team_id))
+          team = Team.find(attrs.delete(:team_id))
+          return unless authorize_record_season!("schedule_and_teams", "edit", team.tournament_id, admin_tournament("schedule_and_teams"))
           roster_entry = team.roster_entries.build(attrs)
 
           if roster_entry.save
@@ -15,8 +17,14 @@ module Api
         end
 
         def bulk
+          return unless authorize_tournament!("schedule_and_teams", "import", admin_tournament("schedule_and_teams")&.id)
           entries_payload = bulk_roster_entry_params
           return render json: { errors: [ "rosterEntries must be an array" ] }, status: :bad_request unless entries_payload
+
+          team_ids = entries_payload.filter_map { |payload| roster_entry_attrs(payload)[:team_id] }
+          Team.where(id: team_ids).distinct.pluck(:tournament_id).each do |id|
+            return unless authorize_tournament!("schedule_and_teams", "import", id)
+          end
 
           created = []
           errors = []
@@ -26,7 +34,7 @@ module Api
               entries_payload.each_with_index do |payload, index|
                 attrs = roster_entry_attrs(payload)
                 team_id = attrs.delete(:team_id)
-                team = team_id.present? ? admin_tournament.teams.find_by(id: team_id) : nil
+                team = team_id.present? ? admin_tournament("schedule_and_teams").teams.find_by(id: team_id) : nil
 
                 if team.nil?
                   errors << { index: index, errors: [ "Team not found" ] }
@@ -65,7 +73,9 @@ module Api
         end
 
         def update
-          roster_entry = roster_entry_scope.find(params[:id])
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
+          roster_entry = RosterEntry.includes(:team).find(params[:id])
+          return unless authorize_record_season!("schedule_and_teams", "edit", roster_entry.team.tournament_id, admin_tournament("schedule_and_teams"))
 
           if roster_entry.update(roster_entry_params.except(:team_id))
             render json: { rosterEntry: roster_entry.api_json }
@@ -75,15 +85,15 @@ module Api
         end
 
         def destroy
-          roster_entry_scope.find(params[:id]).destroy!
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
+          roster_entry = RosterEntry.includes(:team).find(params[:id])
+          return unless authorize_record_season!("schedule_and_teams", "edit", roster_entry.team.tournament_id, admin_tournament("schedule_and_teams"))
+
+          roster_entry.destroy!
           head :no_content
         end
 
         private
-
-        def roster_entry_scope
-          RosterEntry.joins(:team).where(teams: { tournament_id: admin_tournament.id })
-        end
 
         def roster_entry_params
           raw = params.fetch(:rosterEntry, params.fetch(:roster_entry, params))

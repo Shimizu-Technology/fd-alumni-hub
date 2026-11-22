@@ -1,3 +1,4 @@
+import { hasCapability } from '../../lib/adminModules'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../lib/api'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -23,8 +24,12 @@ type ScoreFilter = 'today' | 'live' | 'all'
 export function AdminScorekeeperPage() {
   const auth = useAuthContext()
   const userId = auth.user?.id || 'anonymous'
-  const isStaff = Boolean(auth.user?.isStaff)
   const [tournamentId, setTournamentId] = useTournamentSelection()
+  const scope = tournamentId ? { type: 'tournament', id: tournamentId } : undefined
+  const isStaff = auth.user?.capabilities
+    ? hasCapability(auth.user, 'scores_and_stats', 'correct_final', scope)
+    : Boolean(auth.user?.isStaff)
+  const canEdit = hasCapability(auth.user, 'scores_and_stats', 'edit', scope)
   const [filter, setFilter] = useState<ScoreFilter>('today')
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
   const [queue, setQueue] = useState<QueuedScoreItem[]>(() => readScoreQueue(userId))
@@ -37,7 +42,7 @@ export function AdminScorekeeperPage() {
 
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournamentsRes, gamesRes] = await Promise.all([
-      api.adminTournaments(),
+      api.adminTournaments("scores_and_stats"),
       api.adminGames(tournamentId || null),
     ])
     return {
@@ -282,6 +287,7 @@ export function AdminScorekeeperPage() {
               game={game}
               tournamentStatus={currentTournament?.status || 'live'}
               isStaff={isStaff}
+              canEdit={canEdit}
               queuedItem={queueByGameId.get(game.id)}
               onSubmit={handleQueueAndFlush}
               onUseServer={handleUseServer}
@@ -299,6 +305,7 @@ function ScorekeeperGameCard({
   game,
   tournamentStatus,
   isStaff,
+  canEdit,
   queuedItem,
   onSubmit,
   onUseServer,
@@ -308,6 +315,7 @@ function ScorekeeperGameCard({
   game: Game
   tournamentStatus: string
   isStaff: boolean
+  canEdit: boolean
   queuedItem?: QueuedScoreItem
   onSubmit: (gameId: string, payload: ScoreMutationPayload) => Promise<void>
   onUseServer: (gameId: string) => Promise<void>
@@ -332,7 +340,7 @@ function ScorekeeperGameCard({
   const tournamentLocked = !isStaff && tournamentStatus !== 'live' && tournamentStatus !== 'upcoming'
   const finalLocked = !isStaff && game.status === 'final'
   const conflictLocked = queuedItem?.state === 'conflict'
-  const readOnly = tournamentLocked || finalLocked || conflictLocked
+  const readOnly = !canEdit || tournamentLocked || finalLocked || conflictLocked
 
   const clamp = (n: number) => Math.max(0, Math.min(300, Math.round(n)))
 

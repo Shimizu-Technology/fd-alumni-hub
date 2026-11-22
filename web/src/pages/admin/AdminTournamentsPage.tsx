@@ -28,7 +28,7 @@ export function AdminTournamentsPage() {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sort, setSort] = useState<TournamentSortOption>('yearDesc')
-  const { data, loading, error, reload } = useAsync(() => api.adminTournaments(), [])
+  const { data, loading, error, reload } = useAsync(() => api.adminTournaments("schedule_and_teams"), [])
 
   if (loading && !data) return <LoadingState label="Loading tournaments" />
   if (error) return <ErrorState message={error} onRetry={reload} />

@@ -1,3 +1,5 @@
+import { useAuthContext } from '../../contexts/AuthContext'
+import { hasCapability } from '../../lib/adminModules'
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
@@ -12,11 +14,12 @@ import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Pane
 const gameDayRefreshIntervalMs = 10_000
 
 export function AdminGameDayPage() {
+  const { user } = useAuthContext()
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [date, setDate] = useState('')
   const setup = useAsync(async () => {
     const [tournaments, games] = await Promise.all([
-      api.adminTournaments(),
+      api.adminTournaments("tonights_menu_and_news"),
       api.adminGames(tournamentId || null),
     ])
     return { tournaments: tournaments.tournaments, allGames: games.games }
@@ -53,6 +56,9 @@ export function AdminGameDayPage() {
 
   const tournaments = setup.data?.tournaments || []
   const tournament = selectedTournament(tournaments, tournamentId) || gameDayState.data?.tournament || null
+  const scope = tournament ? { type: 'tournament', id: tournament.id } : undefined
+  const canPublish = Boolean(tournament && hasCapability(user, 'tonights_menu_and_news', 'publish', scope))
+  const canAlertSiteWide = hasCapability(user, 'tonights_menu_and_news', 'alert_site_wide', { type: 'site', id: '' })
   const gameDay = gameDayState.data
   const selectedDate = date || gameDay?.date || gameDayQueryDate || ''
   const gameDayNote = gameDay?.date === selectedDate ? gameDay?.gameDayNote || null : null
@@ -76,9 +82,12 @@ export function AdminGameDayPage() {
         )}
       </Panel>
 
-      <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={gameDayState.reload} />
-      <TournamentAlertsAdminPanel tournament={tournament} />
-      <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />
+      {canPublish ? <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={gameDayState.reload} />
+        : <Panel><h2>Tonight’s notes</h2>{gameDayNote
+          ? <><p>{gameDayNote.foodMenu}</p><p>{gameDayNote.announcement}</p></>
+          : <p>No notes for this date.</p>}</Panel>}
+      <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
+      {canPublish && <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />}
     </div>
   )
 }
@@ -207,7 +216,11 @@ function PredictionPollControls({ poll, onUpdate }: { poll: PredictionPoll; onUp
   )
 }
 
-function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | null }) {
+function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }: {
+  tournament: Tournament | null
+  canPublish: boolean
+  canAlertSiteWide: boolean
+}) {
   const { data, loading, error, reload } = useAsync(
     () => api.adminAlerts(tournament?.id || null),
     [tournament?.id],
@@ -229,7 +242,7 @@ function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | n
     setFormError('')
     try {
       await api.adminCreateAlert({
-        tournamentId: scope === 'sitewide' ? null : (tournament?.id || null),
+        tournamentId: (!canPublish || canAlertSiteWide && scope === 'sitewide') ? null : (tournament?.id || null),
         severity,
         title: title.trim(),
         message: message.trim(),
@@ -283,7 +296,7 @@ function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | n
       </div>
       <p className="muted">Active alerts display immediately at the top of every public page for typhoon delays, power outages, or schedule changes.</p>
 
-      <form onSubmit={createAlert} className="stacked-form">
+      {(canPublish || canAlertSiteWide) && <form onSubmit={createAlert} className="stacked-form">
         <FormGrid>
           <Field label="Severity">
             <select value={severity} onChange={(event) => setSeverity(event.target.value as AlertSeverity)}>
@@ -293,9 +306,9 @@ function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | n
             </select>
           </Field>
           <Field label="Scope">
-            <select value={scope} onChange={(event) => setScope(event.target.value as 'tournament' | 'sitewide')}>
-              <option value="tournament">{tournament ? `${tournament.year} tournament` : 'Current tournament'}</option>
-              <option value="sitewide">Site-wide (all pages)</option>
+            <select value={canPublish ? scope : 'sitewide'} onChange={(event) => setScope(event.target.value as 'tournament' | 'sitewide')}>
+              {canPublish && <option value="tournament">{tournament?.year} tournament</option>}
+              {canAlertSiteWide && <option value="sitewide">Site-wide (all pages)</option>}
             </select>
           </Field>
           <Field label="Title">
@@ -310,7 +323,7 @@ function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | n
         </FormGrid>
         {formError && <p className="form-error" role="alert">{formError}</p>}
         <button className="btn primary" type="submit" disabled={saving}>{saving ? 'Publishing…' : 'Publish alert'}</button>
-      </form>
+      </form>}
 
       {loading && !data ? (
         <LoadingState label="Loading alerts" />
@@ -332,14 +345,14 @@ function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | n
                 <p className="muted">{alert.message}</p>
                 {alert.expiresAt && <small className="muted">Expires {formatGuamDateTime(alert.expiresAt)}</small>}
               </div>
-              <div className="row-actions">
+              {(alert.tournamentId ? canPublish : canAlertSiteWide) && <div className="row-actions">
                 <button type="button" className="btn secondary small" onClick={() => void toggleAlert(alert)}>
                   {alert.active ? 'Hide' : 'Activate'}
                 </button>
                 <button type="button" className="btn danger small" onClick={() => void removeAlert(alert)}>
                   Delete
                 </button>
-              </div>
+              </div>}
             </article>
           ))}
         </div>

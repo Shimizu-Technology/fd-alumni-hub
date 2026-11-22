@@ -24,7 +24,7 @@ export function AdminNewsPage() {
   const [articleSort, setArticleSort] = useState<ArticleSort>('publishedDesc')
   const [page, setPage] = useState(1)
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, articles, games] = await Promise.all([api.adminTournaments(), api.adminArticles(tournamentId || null), api.adminGames(tournamentId || null)])
+    const [tournaments, articles, games] = await Promise.all([api.adminTournaments("history_and_media"), api.adminArticles(tournamentId || null), api.adminGames(tournamentId || null)])
     return { tournaments: tournaments.tournaments, articles: articles.articles, games: games.games }
   }, [tournamentId])
 

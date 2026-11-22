@@ -27,7 +27,7 @@ export function AdminLinksPage() {
   const [page, setPage] = useState(1)
   const focusGameId = searchParams.get('gameId') || ''
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, links] = await Promise.all([api.adminTournaments(), api.adminLinks(tournamentId || null)])
+    const [tournaments, links] = await Promise.all([api.adminTournaments("schedule_and_teams"), api.adminLinks(tournamentId || null)])
     return { tournaments: tournaments.tournaments, games: links.games, tournament: links.tournament }
   }, [tournamentId])
 

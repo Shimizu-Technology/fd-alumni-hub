@@ -291,14 +291,14 @@ class CampaignRbacAndContentTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
     assert_nil unlinked.reload.clerk_id
 
-    # M4: revoking whitelist entry syncs matching existing User
+    # Disabling an allowlist entry preserves the existing account.
     existing_staff = User.create!(email: "new-staff@example.com", clerk_id: "clerk_new_staff_1", role: "staff")
     patch "/api/v1/admin/whitelists/#{wl_id}",
       params: { whitelist: { active: false } },
       headers: headers_for(@admin),
       as: :json
     assert_response :success
-    assert_equal false, existing_staff.reload.active?
+    assert existing_staff.reload.active?
 
     # L1: unexpected fields like featured/status return explicit 403 for chair
     patch "/api/v1/campaign/#{@campaign.slug}/settings",

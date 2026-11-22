@@ -1,3 +1,4 @@
+import type { AccessDirectory, GrantScope, GrantSelection } from './access'
 import type {
   AdminAuditExportResponse,
   AdminAuditFilters,
@@ -164,6 +165,12 @@ export const api = {
   adminAuditEvents: (params: AdminAuditFilters = {}, signal?: AbortSignal) =>
     request<AdminAuditResponse>(`/admin/audit_events${query(params)}`, { signal }),
 
+  adminPermissionGrants: () => request<AccessDirectory>('/admin/permission_grants'),
+  assignPermissionGrants: (payload: GrantScope & { presetKey?: string; grants: GrantSelection[] }) =>
+    request('/admin/permission_grants/assign', json('POST', payload)),
+  revokePermissionScope: (payload: GrantScope) => request('/admin/permission_grants/revoke_scope', json('POST', payload)),
+  updateUserAccess: (id: string, payload: { superAdmin?: boolean; active?: boolean }) =>
+    request(`/admin/users/${id}/access`, json('PATCH', payload)),
   getCurrentUser: () => request<{ user: CurrentUser }>('/me'),
 
   publicHome: (voterToken?: string | null) => request<{
@@ -222,7 +229,7 @@ export const api = {
     missing: { scores: number; streams: number; tickets: number }
     recentArticles: Article[]
   }>('/admin/dashboard'),
-  adminTournaments: () => request<{ tournaments: Tournament[] }>('/admin/tournaments'),
+  adminTournaments: (capability?: string) => request<{ tournaments: Tournament[] }>(`/admin/tournaments${query({ capability })}`),
   adminTournament: (id: string) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`),
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminSetupTournament: (payload: {
@@ -368,6 +375,8 @@ export const api = {
     request<void>(`/campaign/${encodeURIComponent(campaignSlug)}/posts/${postId}`, { method: 'DELETE' }),
 
   adminCampaigns: () => request<{ campaigns: AdminHostCampaign[] }>('/admin/campaigns'),
+  adminCampaignWorkspace: (capability: string) =>
+    request<{ campaigns: Pick<AdminHostCampaign, 'id' | 'slug' | 'title' | 'status'>[] }>(`/admin/campaigns${query({ capability })}`),
   adminCampaign: (id: string) => request<{ campaign: AdminHostCampaign }>(`/admin/campaigns/${id}`),
   adminCreateCampaign: (payload: Record<string, unknown>) =>
     request<{ campaign: AdminHostCampaign }>('/admin/campaigns', json('POST', { campaign: payload })),

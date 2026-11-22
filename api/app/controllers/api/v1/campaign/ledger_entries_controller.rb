@@ -32,9 +32,14 @@ module Api
 
         CSV_FORMULA_REGEX = /\A[\t\r\n]|^\s*[=+\-@]/
 
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index, :export, :receipt_url ]
-        before_action -> { require_campaign_role!("treasurer") }, only: [ :create, :update, :void, :mark_reimbursed ]
-        before_action -> { require_campaign_role!("chair", "treasurer") }, only: [ :approve_reimbursement ]
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view", "board", "chair", "treasurer") }, only: :index
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "export", "board", "chair", "treasurer") }, only: :export
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view_receipts", "board", "chair", "treasurer") }, only: :receipt_url
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :create
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :update
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :void
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "payout", "treasurer") }, only: :mark_reimbursed
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "approve", "chair", "treasurer") }, only: :approve_reimbursement
         before_action :require_campaign_writable!, only: [ :create, :update, :void, :approve_reimbursement, :mark_reimbursed ]
 
         def index
@@ -392,10 +397,8 @@ module Api
             end
 
             if entry.recorded_by_id == current_user.id
-              unless current_user.admin? && override_reason.present?
-                render_forbidden("A second officer must approve a reimbursement you recorded.")
-                raise ActiveRecord::Rollback
-              end
+              render_forbidden("A second officer must approve a reimbursement you recorded.")
+              raise ActiveRecord::Rollback
             end
 
             unless entry.update(reimbursement_status: "approved", reimbursement_approved_by: current_user)

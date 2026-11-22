@@ -1,9 +1,31 @@
 import { Link } from 'react-router-dom'
+import { useAuthContext } from '../../contexts/AuthContext'
+import { hasCapability, visibleAdminModules } from '../../lib/adminModules'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
 
 export function AdminOverviewPage() {
+  const { user } = useAuthContext()
+  const modules = visibleAdminModules(user).filter((module) => module.key !== 'work')
+  return (
+    <div className="page-stack admin-page">
+      <PageHeader title="My work" />
+      <div className="split-grid">
+        {modules.map(({ key, path, label, icon: Icon }) => (
+          <Panel key={key}>
+            <Link className="flex items-center gap-3 font-semibold" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
+              <Icon size={20} /> {label}
+            </Link>
+          </Panel>
+        ))}
+      </div>
+      {Boolean((user?.isSuperAdmin ?? user?.isAdmin) || (user?.isStaff && !user.capabilities)) && <TournamentOverview />}
+    </div>
+  )
+}
+
+function TournamentOverview() {
   const { data, loading, error, reload } = useAsync(() => api.adminDashboard(), [])
 
   if (loading) return <LoadingState label="Loading admin dashboard" />

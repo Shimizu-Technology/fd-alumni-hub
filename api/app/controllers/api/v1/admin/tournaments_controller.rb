@@ -2,16 +2,18 @@ module Api
   module V1
     module Admin
       class TournamentsController < BaseController
-        skip_before_action :require_staff!, only: [ :index, :show ]
-        before_action :require_scorekeeper_or_staff!, only: [ :index, :show ]
         before_action :require_admin!, only: [ :create, :update, :setup ]
 
         def index
-          tournaments = Tournament.order(year: :desc, start_date: :desc)
+          return render_forbidden if access_policy.capabilities.empty?
+          capability = params[:capability].presence
+          scope = capability ? Tournament.where(id: access_policy.scope_ids("tournament", capability: capability, action: "view")) : workspace_tournaments
+          tournaments = scope.order(year: :desc, start_date: :desc)
           render json: { tournaments: tournaments.map(&:api_json) }
         end
 
         def show
+          return render_forbidden unless access_policy.super_admin? || workspace_tournaments.exists?(id: params[:id])
           tournament = Tournament.find(params[:id])
           render json: { tournament: tournament.api_json }
         end
@@ -66,6 +68,7 @@ module Api
         end
 
         def recompute_standings
+          return unless authorize_tournament!("scores_and_stats", "publish_stats", params[:id])
           tournament = Tournament.find(params[:id])
           result = Standings::Recompute.call(tournament)
           tournament.standings.reset

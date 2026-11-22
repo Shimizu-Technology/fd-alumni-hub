@@ -2,7 +2,9 @@ module Api
   module V1
     module Campaign
       class FinanceController < BaseController
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view", "board", "chair", "treasurer") }, only: :summary
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view", "board", "chair", "treasurer") }, only: :final_report
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view", "board", "chair", "treasurer") }, only: :audit_events
 
         def summary
           render json: {

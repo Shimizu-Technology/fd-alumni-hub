@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -466,6 +466,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000002) do
     t.index ["uploaded_by_id"], name: "index_pending_receipt_uploads_on_uploaded_by_id"
   end
 
+  create_table "permission_grants", force: :cascade do |t|
+    t.bigint "user_id"
+    t.string "email", null: false
+    t.string "scope_type", null: false
+    t.bigint "scope_id"
+    t.string "capability", null: false
+    t.jsonb "actions", default: [], null: false
+    t.string "preset_key"
+    t.bigint "granted_by_id"
+    t.datetime "accepted_at"
+    t.datetime "revoked_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "revoked_at"], name: "index_permission_grants_on_email_and_revoked_at"
+    t.index ["email"], name: "index_permission_grants_on_email"
+    t.index ["granted_by_id"], name: "index_permission_grants_on_granted_by_id"
+    t.index ["scope_type", "scope_id", "capability"], name: "idx_on_scope_type_scope_id_capability_156cbc0b1d"
+    t.index ["user_id", "revoked_at"], name: "index_permission_grants_on_user_id_and_revoked_at"
+    t.index ["user_id"], name: "index_permission_grants_on_user_id"
+    t.check_constraint "email::text = lower(email::text)", name: "permission_grants_lowercase_email"
+    t.check_constraint "scope_type::text = 'site'::text AND scope_id IS NULL OR (scope_type::text = ANY (ARRAY['tournament'::character varying, 'campaign'::character varying]::text[])) AND scope_id IS NOT NULL", name: "permission_grants_valid_scope"
+  end
+
   create_table "pledges", force: :cascade do |t|
     t.bigint "host_campaign_id", null: false
     t.bigint "sponsor_id"
@@ -684,9 +707,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000002) do
     t.string "legacy_id"
     t.string "role", default: "staff", null: false
     t.datetime "updated_at", null: false
+    t.boolean "super_admin", default: false, null: false
     t.index "lower((email)::text)", name: "index_users_on_lower_email", unique: true
     t.index ["clerk_id"], name: "index_users_on_clerk_id", unique: true, where: "(clerk_id IS NOT NULL)"
     t.index ["legacy_id"], name: "index_users_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
+    t.index ["super_admin"], name: "index_users_on_super_admin"
   end
 
   add_foreign_key "article_links", "games", on_delete: :nullify
@@ -727,6 +752,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000002) do
   add_foreign_key "media_assets", "tournaments", on_delete: :cascade
   add_foreign_key "pending_receipt_uploads", "host_campaigns", on_delete: :restrict
   add_foreign_key "pending_receipt_uploads", "users", column: "uploaded_by_id", on_delete: :restrict
+  add_foreign_key "permission_grants", "users"
+  add_foreign_key "permission_grants", "users", column: "granted_by_id"
   add_foreign_key "pledges", "host_campaigns", on_delete: :restrict
   add_foreign_key "pledges", "sponsors", on_delete: :restrict
   add_foreign_key "pledges", "users", column: "recorded_by_id", on_delete: :restrict

@@ -6,17 +6,22 @@ module Api
 
         def index
           items = ContentIngestItem.includes(:tournament).order(created_at: :desc)
-          items = items.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
+          items = authorize_collection_scope(items, "history_and_media")
+          return if performed?
           items = items.where(status: params[:status]) if params[:status].present?
           render json: { ingestItems: items.limit(300).map(&:api_json) }
         end
 
         def show
-          render_record ContentIngestItem.find(params[:id]), key: :ingestItem
+          item = ContentIngestItem.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "view", item.tournament_id)
+
+          render_record item, key: :ingestItem
         end
 
         def create
           item = ContentIngestItem.new(ingest_item_params)
+          return unless authorize_tournament!("history_and_media", "edit", item.tournament_id)
 
           if item.save
             render_record item, key: :ingestItem, status: :created
@@ -27,8 +32,12 @@ module Api
 
         def update
           item = ContentIngestItem.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", item.tournament_id)
 
-          if item.update(ingest_item_params)
+          attrs = ingest_item_params
+          return if attrs.key?(:tournament_id) && !authorize_tournament!("history_and_media", "edit", attrs[:tournament_id])
+
+          if item.update(attrs)
             render_record item, key: :ingestItem
           else
             render_errors item
@@ -36,7 +45,10 @@ module Api
         end
 
         def destroy
-          ContentIngestItem.find(params[:id]).destroy!
+          item = ContentIngestItem.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", item.tournament_id)
+
+          item.destroy!
           head :no_content
         end
 

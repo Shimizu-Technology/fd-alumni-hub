@@ -2,8 +2,10 @@ module Api
   module V1
     module Campaign
       class EventsController < BaseController
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index ]
-        before_action -> { require_campaign_role!("chair") }, only: [ :create, :update, :archive ]
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "view", "board", "chair", "treasurer") }, only: :index
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :create
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :update
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :archive
         before_action :require_campaign_writable!, only: [ :create, :update, :archive ]
 
         def index

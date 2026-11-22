@@ -3,6 +3,7 @@ module Api
     module Admin
       class ImportsController < BaseController
         def schedule_preview
+          return unless authorize_tournament!("schedule_and_teams", "import", params[:id])
           tournament = Tournament.find(params[:id])
           rows = permitted_schedule_rows
 
@@ -20,6 +21,7 @@ module Api
         end
 
         def schedule_commit
+          return unless authorize_tournament!("schedule_and_teams", "import", params[:id])
           tournament = Tournament.find(params[:id])
           overwrite_scores = ActiveModel::Type::Boolean.new.cast(params[:overwriteScores] || params[:overwrite_scores])
 
@@ -49,6 +51,7 @@ module Api
         end
 
         def roster_preview
+          return unless authorize_tournament!("schedule_and_teams", "import", params[:id])
           tournament = Tournament.find(params[:id])
           rows = permitted_roster_rows
 
@@ -65,6 +68,7 @@ module Api
         end
 
         def roster_commit
+          return unless authorize_tournament!("schedule_and_teams", "import", params[:id])
           tournament = Tournament.find(params[:id])
           rows = permitted_roster_rows
 

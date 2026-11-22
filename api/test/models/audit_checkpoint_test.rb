@@ -82,7 +82,7 @@ class AuditCheckpointTest < ActiveSupport::TestCase
     migration.migrate(:up)
     assert connection.table_exists?(:audit_checkpoints)
     expected = connection.tables - %w[audit_events audit_checkpoints finance_audit_events schema_migrations ar_internal_metadata]
-    assert_equal 30, expected.size
+    assert_equal 31, expected.size
     assert_equal expected.sort, captured_tables(connection)
   end
 

@@ -30,6 +30,16 @@ module Api
           (current_campaign_roles & allowed).any?
         end
 
+        def require_campaign_access!(capability, action, *legacy_roles)
+          policy = Access::Policy.new(current_user)
+          return if policy.explicitly_allows?(capability, action, scope_type: "campaign", scope_id: @campaign.id)
+          # Preserve existing per-action membership permissions while that duty is managed through memberships.
+          explicit = current_user.permission_grants.where(scope_type: "campaign", scope_id: @campaign.id, capability: capability)
+          return if !explicit.exists? && campaign_role?(*legacy_roles)
+
+          render_forbidden("Campaign access required.")
+        end
+
         def require_campaign_role!(*allowed_roles)
           return if campaign_role?(*allowed_roles)
 

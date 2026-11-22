@@ -6,16 +6,21 @@ module Api
 
         def index
           media_assets = MediaAsset.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
-          media_assets = media_assets.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
+          media_assets = authorize_collection_scope(media_assets, "history_and_media")
+          return if performed?
           render json: { mediaAssets: media_assets.limit(300).map(&:api_json) }
         end
 
         def show
-          render_record MediaAsset.find(params[:id]), key: :mediaAsset
+          media_asset = MediaAsset.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "view", media_asset.tournament_id)
+
+          render_record media_asset, key: :mediaAsset
         end
 
         def create
           media_asset = MediaAsset.new(media_asset_params)
+          return unless authorize_tournament!("history_and_media", "edit", media_asset.tournament_id)
 
           if media_asset.save
             render_record media_asset, key: :mediaAsset, status: :created
@@ -26,8 +31,12 @@ module Api
 
         def update
           media_asset = MediaAsset.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", media_asset.tournament_id)
 
-          if media_asset.update(media_asset_params)
+          attrs = media_asset_params
+          return if attrs.key?(:tournament_id) && !authorize_tournament!("history_and_media", "edit", attrs[:tournament_id])
+
+          if media_asset.update(attrs)
             render_record media_asset, key: :mediaAsset
           else
             render_errors media_asset
@@ -35,7 +44,10 @@ module Api
         end
 
         def destroy
-          MediaAsset.find(params[:id]).destroy!
+          media_asset = MediaAsset.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", media_asset.tournament_id)
+
+          media_asset.destroy!
           head :no_content
         end
 

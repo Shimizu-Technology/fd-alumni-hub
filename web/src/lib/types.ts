@@ -805,7 +805,19 @@ export type SignedReceiptUrlResponse = {
   byteSize: number | null
 }
 
+export type EffectiveCapability = {
+  capability: string
+  actions: string[]
+  scopeType: string
+  scopeIds: string[]
+  allScopes: boolean
+}
+
 export type CurrentUser = {
+  isSuperAdmin?: boolean
+  capabilities?: EffectiveCapability[]
+  allowedModules?: string[]
+  defaultWorkspacePath?: string
   id: string
   clerkId: string | null
   email: string

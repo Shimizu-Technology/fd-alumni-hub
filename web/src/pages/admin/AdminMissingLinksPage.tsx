@@ -20,7 +20,7 @@ export function AdminMissingLinksPage() {
   const [category, setCategory] = useState<MissingCategory>('all')
   const [sort, setSort] = useState<MissingSort>('startAsc')
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, missing] = await Promise.all([api.adminTournaments(), api.adminMissingLinks(tournamentId || null)])
+    const [tournaments, missing] = await Promise.all([api.adminTournaments("schedule_and_teams"), api.adminMissingLinks(tournamentId || null)])
     return { tournaments: tournaments.tournaments, ...missing }
   }, [tournamentId])
 

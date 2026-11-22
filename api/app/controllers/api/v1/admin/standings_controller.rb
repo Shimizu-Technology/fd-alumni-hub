@@ -3,6 +3,10 @@ module Api
     module Admin
       class StandingsController < BaseController
         def index
+          tournament_id = admin_tournament&.id
+          allowed = access_policy.explicitly_allows?("scores_and_stats", "view", scope_type: "tournament", scope_id: tournament_id) ||
+            access_policy.allows?("brackets", "view", scope_type: "tournament", scope_id: tournament_id)
+          return render_forbidden unless allowed
           tournament = admin_tournament
           standings = tournament ? standings_scope(tournament) : Standing.none
           coverage_bundle = Standings::Coverage.by_division(tournament)
@@ -16,6 +20,7 @@ module Api
         end
 
         def recompute
+          return unless authorize_tournament!("scores_and_stats", "publish_stats", admin_tournament&.id)
           tournament = admin_tournament
           return render json: { error: "No tournament found" }, status: :not_found unless tournament
 

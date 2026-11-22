@@ -4,7 +4,7 @@ module Api
       class ReceiptsController < BaseController
         PRESIGN_LIMIT_PER_MINUTE = 30
 
-        before_action -> { require_campaign_role!("treasurer") }
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :presign
         before_action :require_campaign_writable!
 
         def presign

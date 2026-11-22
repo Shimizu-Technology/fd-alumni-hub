@@ -5,6 +5,7 @@ module Api
         before_action :require_admin!, only: [ :destroy ]
 
         def index
+          return unless authorize_tournament!("schedule_and_teams", "view", admin_tournament("schedule_and_teams")&.id)
           teams = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).order(:tournament_id, :division, :display_name)
           teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
 
@@ -12,9 +13,10 @@ module Api
         end
 
         def create
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
           attrs = team_params
           class_cohort_keys = attrs.delete(:class_cohort_keys)
-          team = admin_tournament.teams.build(attrs.except(:tournament_id))
+          team = admin_tournament("schedule_and_teams").teams.build(attrs.except(:tournament_id))
 
           Team.transaction do
             unless team.save
@@ -33,7 +35,9 @@ module Api
         end
 
         def update
-          team = admin_tournament.teams.find(params[:id])
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
+          team = Team.find(params[:id])
+          return unless authorize_record_season!("schedule_and_teams", "edit", team.tournament_id, admin_tournament("schedule_and_teams"))
 
           attrs = team_params
           class_cohort_keys = attrs.delete(:class_cohort_keys)
@@ -61,7 +65,9 @@ module Api
         end
 
         def destroy
-          team = admin_tournament.teams.find(params[:id])
+          return unless authorize_tournament!("schedule_and_teams", "edit", admin_tournament("schedule_and_teams")&.id)
+          team = Team.find(params[:id])
+          return unless authorize_record_season!("schedule_and_teams", "edit", team.tournament_id, admin_tournament("schedule_and_teams"))
 
           if team.destroy
             head :no_content

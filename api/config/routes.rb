@@ -69,6 +69,11 @@ Rails.application.routes.draw do
             post :revoke, on: :member
           end
         end
+        resources :permission_grants, only: :index do
+          post :assign, on: :collection
+          post :revoke_scope, on: :collection
+        end
+        patch "users/:id/access", to: "user_access#update"
         resources :whitelists, only: [ :index, :create, :update ]
         resources :tournaments, only: [ :index, :show, :create, :update ] do
           post :setup, on: :collection

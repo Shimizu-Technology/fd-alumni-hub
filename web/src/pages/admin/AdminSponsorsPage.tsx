@@ -26,7 +26,7 @@ export function AdminSponsorsPage() {
   const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, sponsors] = await Promise.all([api.adminTournaments(), api.adminSponsors(tournamentId || null)])
+    const [tournaments, sponsors] = await Promise.all([api.adminTournaments("fundraisers_and_sponsors"), api.adminSponsors(tournamentId || null)])
     return { tournaments: tournaments.tournaments, sponsors: sponsors.sponsors }
   }, [tournamentId])
 

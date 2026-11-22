@@ -55,8 +55,12 @@ module Api
           return if user.id == current_user.id
 
           updates = {}
-          updates[:role] = entry.role if entry.active? && user.role != entry.role
-          updates[:active] = entry.active? if user.active? != entry.active?
+          if entry.active? && user.role != entry.role
+            updates[:role] = entry.role
+          elsif !entry.active? && %w[staff scorekeeper].include?(user.role)
+            updates[:role] = "viewer"
+          end
+          updates[:super_admin] = true if entry.active? && entry.role == "admin" && entry.saved_change_to_role?
           user.update!(updates) if updates.any?
         end
 

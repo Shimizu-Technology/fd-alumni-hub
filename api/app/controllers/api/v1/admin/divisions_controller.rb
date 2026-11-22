@@ -5,6 +5,7 @@ module Api
         before_action :require_admin!, only: [ :create, :update ]
 
         def index
+          return unless authorize_tournament!("schedule_and_teams", "view", resolved_tournament&.id)
           tournament = resolved_tournament
           divisions = tournament ? tournament.divisions.active.ordered : Division.none
           all_divisions = tournament ? tournament.divisions.ordered : Division.none
@@ -17,6 +18,7 @@ module Api
         end
 
         def create
+          return unless authorize_tournament!("schedule_and_teams", "edit", resolved_tournament&.id)
           tournament = resolved_tournament
           return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
 
@@ -30,10 +32,12 @@ module Api
         end
 
         def update
+          return unless authorize_tournament!("schedule_and_teams", "edit", resolved_tournament&.id)
           tournament = resolved_tournament
           return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
 
-          division = tournament.divisions.find(params[:id])
+          division = Division.find(params[:id])
+          return unless authorize_record_season!("schedule_and_teams", "edit", division.tournament_id, tournament)
 
           if division.update(division_params)
             render json: { division: division.api_json(tournament: tournament) }
@@ -52,7 +56,7 @@ module Api
           if explicit_id.present?
             Tournament.find(explicit_id)
           else
-            admin_tournament
+            admin_tournament("schedule_and_teams")
           end
         end
 

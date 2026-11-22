@@ -30,8 +30,7 @@ module Api
 
         IGNORED_RAW_KEYS = %w[campaign_slug controller action format breakGlassReason break_glass_reason campaign].freeze
 
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :show ]
-        before_action -> { require_campaign_role!("chair", "treasurer") }, only: [ :update ]
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "view", "board", "chair", "treasurer") }, only: :show
         before_action :require_campaign_writable!, only: [ :update ]
 
         def show
@@ -42,6 +41,11 @@ module Api
         end
 
         def update
+          allowed = campaign_role?("chair", "treasurer") ||
+            %w[edit manage_donation_links].any? { |action| explicit_setting_access?("fundraisers_and_sponsors", action) } ||
+            explicit_setting_access?("finance_and_reimbursements", "record")
+          return render_forbidden unless allowed
+
           unknown_raw_keys = unexpected_raw_keys
           if unknown_raw_keys.any?
             return render_forbidden("Not permitted to update fields: #{unknown_raw_keys.join(', ')}")
@@ -82,15 +86,23 @@ module Api
 
           keys.select do |key|
             if DONATION_KEYS.include?(key)
-              true
+              !explicit_setting_access?("fundraisers_and_sponsors", "manage_donation_links")
             elsif FINANCE_KEYS.include?(key)
-              !campaign_role?("treasurer")
+              !legacy_setting_access?("finance_and_reimbursements", "treasurer") && !explicit_setting_access?("finance_and_reimbursements", "record")
             elsif CONTENT_KEYS.include?(key)
-              !campaign_role?("chair")
+              !legacy_setting_access?("fundraisers_and_sponsors", "chair") && !explicit_setting_access?("fundraisers_and_sponsors", "edit")
             else
               true
             end
           end
+        end
+
+        def explicit_setting_access?(capability, action)
+          Access::Policy.new(current_user).explicitly_allows?(capability, action, scope_type: "campaign", scope_id: @campaign.id)
+        end
+
+        def legacy_setting_access?(capability, role)
+          campaign_role?(role) && !current_user.permission_grants.exists?(scope_type: "campaign", scope_id: @campaign.id, capability: capability)
         end
 
         def extract_settings_attrs

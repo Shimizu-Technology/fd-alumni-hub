@@ -1,3 +1,4 @@
+import { useAuthContext } from '../../contexts/AuthContext'
 import { useEffect, useState } from 'react'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, Panel } from '../../components/ui'
 import { api } from '../../lib/api'
@@ -54,6 +55,8 @@ function AuditHistoryEntry({ event, showOperation }: { event: AuditEvent; showOp
 }
 
 export function AdminAuditHistoryPage() {
+  const { user } = useAuthContext()
+  const canExport = user?.isSuperAdmin ?? user?.isAdmin
   const [filters, setFilters] = useState<AdminAuditFilters>({})
   const [search, setSearch] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
@@ -133,9 +136,9 @@ export function AdminAuditHistoryPage() {
               : 'No checkpoint yet'}
             {' · '}{checkpoint.uncheckpointedEventCount.toLocaleString()} awaiting checkpoint
           </span>}
-          <button type="button" className="btn secondary small" disabled={exporting} onClick={exportHistory}>
+          {canExport && <button type="button" className="btn secondary small" disabled={exporting} onClick={exportHistory}>
             {exporting ? 'Exporting…' : 'Export JSON'}
-          </button>
+          </button>}
         </div>
         {exportError && <p role="alert">{exportError}</p>}
         {exportNotice && <p role="status">{exportNotice}</p>}

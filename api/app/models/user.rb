@@ -3,7 +3,12 @@ class User < ApplicationRecord
 
   has_many :campaign_memberships, dependent: :restrict_with_error
 
+  has_many :permission_grants, dependent: :restrict_with_error
+
+  after_initialize :default_super_admin, if: :new_record?
   before_validation :normalize_email
+  before_update :protect_last_super_admin
+  before_destroy { protect_last_super_admin(destroying: true) }
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :clerk_id, uniqueness: true, allow_blank: true
@@ -12,7 +17,7 @@ class User < ApplicationRecord
   scope :active, -> { where(active: true) }
 
   def admin?
-    role == "admin"
+    active? && super_admin?
   end
 
   def staff?
@@ -90,6 +95,22 @@ class User < ApplicationRecord
   end
 
   private
+
+  def default_super_admin
+    self.super_admin = true if role == "admin" && !attribute_came_from_user?("super_admin")
+  end
+
+  def protect_last_super_admin(destroying: false)
+    return unless super_admin_in_database && active_in_database
+    return if !destroying && active? && super_admin?
+
+    # Serialize removal of administrator access across accounts.
+    self.class.connection.execute("SELECT pg_advisory_xact_lock(617204031)")
+    return if self.class.active.where(super_admin: true).where.not(id: id).exists?
+
+    errors.add(:base, "The last active Super Admin must retain account access.")
+    throw :abort
+  end
 
   def normalize_email
     self.email = email.to_s.strip.downcase if email.present?

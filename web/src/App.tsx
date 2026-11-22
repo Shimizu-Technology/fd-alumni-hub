@@ -5,11 +5,8 @@ import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
 import {
   AdminIndexRoute,
+  RequireCapabilityRoute,
   AdminLayout,
-  RequireAdminRoute,
-  RequireCampaignRoute,
-  RequireScorekeeperRoute,
-  RequireStaffRoute,
 } from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
 import { HostYearPage } from './pages/public/HostYearPage'
@@ -80,26 +77,26 @@ export function App() {
           </Route>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminIndexRoute staffElement={<AdminOverviewPage />} />} />
-            <Route path="campaign/finance" element={<RequireCampaignRoute><AdminCampaignFinancePage /></RequireCampaignRoute>} />
-            <Route path="campaign/host-year" element={<RequireCampaignRoute><AdminCampaignHostYearPage /></RequireCampaignRoute>} />
-            <Route path="tournaments" element={<RequireStaffRoute><AdminTournamentsPage /></RequireStaffRoute>} />
-            <Route path="tournaments/setup" element={<RequireAdminRoute><AdminTournamentWizardPage /></RequireAdminRoute>} />
-            <Route path="tournaments/:tournamentId" element={<RequireStaffRoute><AdminTournamentDetailPage /></RequireStaffRoute>} />
-            <Route path="import" element={<RequireStaffRoute><AdminScheduleImportPage /></RequireStaffRoute>} />
-            <Route path="scorekeeper" element={<RequireScorekeeperRoute><AdminScorekeeperPage /></RequireScorekeeperRoute>} />
-            <Route path="games" element={<RequireStaffRoute><AdminGamesPage /></RequireStaffRoute>} />
-            <Route path="game-day" element={<RequireStaffRoute><AdminGameDayPage /></RequireStaffRoute>} />
-            <Route path="standings" element={<RequireStaffRoute><AdminStandingsPage /></RequireStaffRoute>} />
-            <Route path="divisions" element={<RequireStaffRoute><AdminDivisionsPage /></RequireStaffRoute>} />
-            <Route path="links" element={<RequireStaffRoute><AdminLinksPage /></RequireStaffRoute>} />
-            <Route path="missing-links" element={<RequireStaffRoute><AdminMissingLinksPage /></RequireStaffRoute>} />
-            <Route path="news" element={<RequireStaffRoute><AdminNewsPage /></RequireStaffRoute>} />
-            <Route path="media" element={<RequireStaffRoute><AdminMediaPage /></RequireStaffRoute>} />
-            <Route path="sponsors" element={<RequireStaffRoute><AdminSponsorsPage /></RequireStaffRoute>} />
-            <Route path="campaigns" element={<RequireAdminRoute><AdminCampaignsPage /></RequireAdminRoute>} />
-            <Route path="audit" element={<RequireAdminRoute><AdminAuditHistoryPage /></RequireAdminRoute>} />
-            <Route path="people" element={<RequireAdminRoute><AdminPeoplePage /></RequireAdminRoute>} />
-            <Route path="ingest" element={<RequireAdminRoute><AdminIngestPage /></RequireAdminRoute>} />
+            <Route path="campaign/finance" element={<RequireCapabilityRoute><AdminCampaignFinancePage /></RequireCapabilityRoute>} />
+            <Route path="campaign/host-year" element={<RequireCapabilityRoute><AdminCampaignHostYearPage /></RequireCapabilityRoute>} />
+            <Route path="tournaments" element={<RequireCapabilityRoute><AdminTournamentsPage /></RequireCapabilityRoute>} />
+            <Route path="tournaments/setup" element={<RequireCapabilityRoute><AdminTournamentWizardPage /></RequireCapabilityRoute>} />
+            <Route path="tournaments/:tournamentId" element={<RequireCapabilityRoute><AdminTournamentDetailPage /></RequireCapabilityRoute>} />
+            <Route path="import" element={<RequireCapabilityRoute><AdminScheduleImportPage /></RequireCapabilityRoute>} />
+            <Route path="scorekeeper" element={<RequireCapabilityRoute><AdminScorekeeperPage /></RequireCapabilityRoute>} />
+            <Route path="games" element={<RequireCapabilityRoute><AdminGamesPage /></RequireCapabilityRoute>} />
+            <Route path="game-day" element={<RequireCapabilityRoute><AdminGameDayPage /></RequireCapabilityRoute>} />
+            <Route path="standings" element={<RequireCapabilityRoute><AdminStandingsPage /></RequireCapabilityRoute>} />
+            <Route path="divisions" element={<RequireCapabilityRoute><AdminDivisionsPage /></RequireCapabilityRoute>} />
+            <Route path="links" element={<RequireCapabilityRoute><AdminLinksPage /></RequireCapabilityRoute>} />
+            <Route path="missing-links" element={<RequireCapabilityRoute><AdminMissingLinksPage /></RequireCapabilityRoute>} />
+            <Route path="news" element={<RequireCapabilityRoute><AdminNewsPage /></RequireCapabilityRoute>} />
+            <Route path="media" element={<RequireCapabilityRoute><AdminMediaPage /></RequireCapabilityRoute>} />
+            <Route path="sponsors" element={<RequireCapabilityRoute><AdminSponsorsPage /></RequireCapabilityRoute>} />
+            <Route path="campaigns" element={<RequireCapabilityRoute><AdminCampaignsPage /></RequireCapabilityRoute>} />
+            <Route path="audit" element={<RequireCapabilityRoute><AdminAuditHistoryPage /></RequireCapabilityRoute>} />
+            <Route path="people" element={<RequireCapabilityRoute><AdminPeoplePage /></RequireCapabilityRoute>} />
+            <Route path="ingest" element={<RequireCapabilityRoute><AdminIngestPage /></RequireCapabilityRoute>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

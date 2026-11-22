@@ -5,17 +5,27 @@ module Api
         before_action :require_admin!, only: [ :destroy ]
 
         def index
+          ids = access_policy.scope_ids("tournament", capability: "fundraisers_and_sponsors", action: "view")
+          site_access = access_policy.allows?("fundraisers_and_sponsors", "view")
+          return render_forbidden unless site_access || ids.any?
+          return render_forbidden if !site_access && params[:tournamentId].present? && !ids.include?(params[:tournamentId].to_i)
+
           sponsors = Sponsor.includes(:tournament).ordered_by_tier
+          sponsors = sponsors.where(tournament_id: ids) unless site_access
           sponsors = sponsors.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           render json: { sponsors: sponsors.limit(300).map(&:api_json) }
         end
 
         def show
-          render_record Sponsor.find(params[:id]), key: :sponsor
+          sponsor = Sponsor.find(params[:id])
+          return unless authorize_tournament!("fundraisers_and_sponsors", "view", sponsor.tournament_id)
+
+          render_record sponsor, key: :sponsor
         end
 
         def create
           sponsor = Sponsor.new(sponsor_params)
+          return unless authorize_tournament!("fundraisers_and_sponsors", "edit", sponsor.tournament_id)
 
           if sponsor.save
             render_record sponsor, key: :sponsor, status: :created
@@ -26,6 +36,10 @@ module Api
 
         def update
           sponsor = Sponsor.find(params[:id])
+          return unless authorize_tournament!("fundraisers_and_sponsors", "edit", sponsor.tournament_id)
+          target = sponsor_params
+          return if target.key?(:tournament_id) && !authorize_tournament!("fundraisers_and_sponsors", "edit", target[:tournament_id])
+
 
           if sponsor.update(sponsor_params)
             render_record sponsor, key: :sponsor
@@ -35,7 +49,10 @@ module Api
         end
 
         def destroy
-          Sponsor.find(params[:id]).destroy!
+          sponsor = Sponsor.find(params[:id])
+          return unless authorize_tournament!("fundraisers_and_sponsors", "edit", sponsor.tournament_id)
+
+          sponsor.destroy!
           head :no_content
         end
 

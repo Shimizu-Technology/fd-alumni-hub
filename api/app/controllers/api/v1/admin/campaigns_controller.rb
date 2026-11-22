@@ -2,16 +2,30 @@ module Api
   module V1
     module Admin
       class CampaignsController < BaseController
-        before_action :require_admin!
+        before_action :require_admin!, except: [ :index, :show ]
 
         def index
-          campaigns = HostCampaign.includes(:tournament, :class_cohort).order(featured: :desc, created_at: :desc)
-          render json: { campaigns: campaigns.map(&:admin_json) }
+          return render_forbidden if access_policy.capabilities.empty? || (!access_policy.super_admin? && access_policy.scope_ids("campaign").empty?)
+          capability = params[:capability].presence
+          ids = access_policy.scope_ids("campaign", capability: capability, action: capability && "view")
+          campaigns = HostCampaign.where(id: ids).includes(:tournament, :class_cohort).order(featured: :desc, created_at: :desc)
+          payload = if access_policy.super_admin? && !capability
+            campaigns.map(&:admin_json)
+          else
+            campaigns.map { |campaign| campaign.slice(:id, :slug, :title, :status).merge("id" => campaign.id.to_s) }
+          end
+          render json: { campaigns: payload }
         end
 
         def show
+          return render_forbidden unless access_policy.super_admin? || access_policy.scope_ids("campaign").include?(params[:id].to_i)
           campaign = HostCampaign.includes(:tournament, :class_cohort).find(params[:id])
-          render json: { campaign: campaign.admin_json }
+          payload = if access_policy.super_admin?
+            campaign.admin_json
+          else
+            campaign.slice(:slug, :title, :status).merge("id" => campaign.id.to_s)
+          end
+          render json: { campaign: payload }
         end
 
         def create
