@@ -148,7 +148,7 @@ export function TonightGuide({ data, onJump, onVote, voteError }: {
         {!events.length && !linked.length && <p>No special events posted.</p>}
       </Panel>
 
-      {(Object.values(spotlight || {}).some(Boolean) || note?.hostClass) && <Panel>
+      {(Boolean(spotlight?.hostClassLabel || spotlight?.headline || spotlight?.body || safePhoto || note?.hostClass)) && <Panel>
         <h2>Host Class Spotlight</h2>
         {safePhoto && <img className="night-spotlight-photo" src={safePhoto} alt="" loading="lazy" />}
         <p>{spotlight?.hostClassLabel || note?.hostClass}</p>

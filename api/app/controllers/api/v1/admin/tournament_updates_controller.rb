@@ -56,7 +56,7 @@ module Api
         end
 
         def update_params
-          raw = params.fetch(:update, params)
+          raw = params[:update].is_a?(ActionController::Parameters) ? params[:update] : params
           permitted = raw.permit(:title, :body, :status, :pinned, :targetDate, :expiresAt)
           attrs = permitted.slice(:title, :body, :status, :pinned).to_h.symbolize_keys
           if permitted.key?(:targetDate)

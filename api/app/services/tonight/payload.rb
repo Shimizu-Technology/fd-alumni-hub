@@ -11,14 +11,19 @@ module Tonight
 
     def build(alerts, campaign, preview, voter_hash)
       schedule = @tournament.publicly_visible_schedule? || preview
-      games = schedule ? nightly_games : []
+      include_rosters = !preview
+      games = schedule ? nightly_games(include_rosters: include_rosters) : []
       next_date = if schedule && games.empty?
         @tournament.games.where(start_time: @day.next_day.beginning_of_day..).minimum(:start_time)&.in_time_zone&.to_date
       end
       notes = @tournament.game_day_notes
-      note = (preview ? notes : notes.active.where(status: "published")).find_by(date: @day)
-      updates = @tournament.tournament_updates.for_night(@day).unexpired.ordered
-      updates = updates.where(status: "published") unless preview
+      note = schedule ? (preview ? notes : notes.active.where(status: "published")).find_by(date: @day) : nil
+      updates = if schedule
+        scope = @tournament.tournament_updates.for_night(@day).unexpired.ordered
+        preview ? scope : scope.where(status: "published")
+      else
+        TournamentUpdate.none
+      end
       events = nightly_events(campaign)
       polls = schedule ? relevant_polls(@tournament, games).to_a : []
 
@@ -30,7 +35,7 @@ module Tonight
         nextScheduledDate: next_date&.iso8601,
         isRestDay: schedule && games.empty?,
         alerts: alerts.map(&:api_json),
-        games: games.map { |game| game.api_json(include_rosters: true) },
+        games: games.map { |game| game.api_json(include_rosters: include_rosters) },
         gameDayNote: note&.api_json,
         linkedCampaignEvents: events.map(&:public_json),
         updates: updates.map(&:api_json),
@@ -63,9 +68,11 @@ module Tonight
         .ordered.to_a
     end
 
-    def nightly_games
+    def nightly_games(include_rosters: true)
+      team_includes = [ :division_record, { team_class_memberships: :class_cohort } ]
+      team_includes << :roster_entries if include_rosters
       @tournament.games
-        .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
+        .includes(:division_record, home_team: team_includes, away_team: team_includes)
         .where(start_time: @day.all_day).ordered.to_a
     end
 

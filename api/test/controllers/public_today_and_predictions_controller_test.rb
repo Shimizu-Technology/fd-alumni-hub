@@ -47,6 +47,7 @@ class PublicTodayAndPredictionsControllerTest < ActionDispatch::IntegrationTest
     assert body["isRestDay"]
     assert_empty body["games"]
 
+    @tournament.tournament_updates.create!(title: "Doors open", body: "Come early", target_date: Date.new(2026, 7, 3), status: "published")
     @tournament.update!(schedule_published_at: nil)
     get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-02" }
     assert_response :success
@@ -54,6 +55,8 @@ class PublicTodayAndPredictionsControllerTest < ActionDispatch::IntegrationTest
     get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-03" }
     assert_empty response.parsed_body["games"]
     assert_empty response.parsed_body["predictionPolls"]
+    assert_nil response.parsed_body["gameDayNote"]
+    assert_empty response.parsed_body["updates"]
   end
 
   test "linked campaign events use the requested Guam date and expose public fields only" do

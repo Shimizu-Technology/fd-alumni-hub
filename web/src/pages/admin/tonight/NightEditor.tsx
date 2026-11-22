@@ -37,6 +37,27 @@ const spotlightFields: [keyof Omit<HostSpotlight, 'hostCampaignId'>, string, num
   ['body', 'Spotlight blurb', 2000], ['photoUrl', 'Spotlight photo URL', 2048],
 ]
 
+function parseCachedDraft(raw: string): Draft | null {
+  const parsed: unknown = JSON.parse(raw)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const record = parsed as Record<string, unknown>
+  const menuItems = Array.isArray(record.menuItems) ? (record.menuItems as MenuItem[]) : []
+  const specialEvents = Array.isArray(record.specialEvents) ? (record.specialEvents as SpecialEvent[]) : []
+  const hostSpotlight = record.hostSpotlight && typeof record.hostSpotlight === 'object' && !Array.isArray(record.hostSpotlight)
+    ? (record.hostSpotlight as HostSpotlight)
+    : {}
+  return {
+    menuItems,
+    specialEvents,
+    hostSpotlight,
+    foodMenu: typeof record.foodMenu === 'string' ? record.foodMenu : '',
+    hostClass: typeof record.hostClass === 'string' ? record.hostClass : '',
+    announcement: typeof record.announcement === 'string' ? record.announcement : '',
+    sponsorShoutout: typeof record.sponsorShoutout === 'string' ? record.sponsorShoutout : '',
+    lockVersion: typeof record.lockVersion === 'number' ? record.lockVersion : undefined,
+  }
+}
+
 export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
   tournamentId: string; date: string; note: GameDayNote | null; canEdit: boolean; canPublish: boolean
 }) {
@@ -45,9 +66,12 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
   const [form, setForm] = useState<Draft>(() => {
     try {
       const cached = localStorage.getItem(storageKey)
-      if (cached) return JSON.parse(cached) as Draft
+      if (cached) {
+        const parsed = parseCachedDraft(cached)
+        if (parsed) return parsed
+      }
     } catch {
-      // The editor still works when storage is unavailable.
+      // The editor still works when storage is unavailable or corrupted.
     }
     return fromNote(note)
   })

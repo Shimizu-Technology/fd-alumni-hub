@@ -30,6 +30,11 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
     get TODAY, params: @params
     assert_nil response.parsed_body["gameDayNote"]
 
+    home = @season.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
+    away = @season.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
+    home.roster_entries.create!(name: "Draft Player", jersey_number: "7")
+    @season.games.create!(home_team: home, away_team: away, start_time: Time.zone.local(2032, 7, 3, 18, 30), status: "scheduled", division: "Maroon")
+
     assert_no_changes -> { AuditEvent.where(record_type: "GameDayNote").count } do
       get "#{NOTES}/preview", params: @params, headers: headers(@editor)
     end
@@ -37,6 +42,7 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
     assert_equal "no-store", response.headers["Cache-Control"]
     assert_equal NIGHT, response.parsed_body["resolvedDate"]
     assert_equal draft, response.parsed_body["gameDayNote"]
+    assert_nil response.parsed_body.dig("games", 0, "homeTeam", "rosterEntries")
 
     post NOTES, params: @params.merge(gameDayNote: { date: NIGHT, status: "published" }), headers: headers(@editor), as: :json
     assert_response :forbidden
@@ -103,6 +109,9 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "organizer update CRUD, public date and expiry filters, and audit scope" do
+    post UPDATES, params: @params.merge(update: "not-a-hash"), headers: headers(@editor), as: :json
+    assert_response :unprocessable_entity
+
     post UPDATES, params: @params.merge(update: { title: "Doors open early", body: "Use the west entrance.", targetDate: NIGHT, pinned: true }), headers: headers(@editor), as: :json
     assert_response :created
     draft = response.parsed_body.fetch("update")
