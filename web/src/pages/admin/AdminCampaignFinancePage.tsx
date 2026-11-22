@@ -383,112 +383,114 @@ export function AdminCampaignFinancePage() {
 
   return (
     <div className="page-stack admin-page finance-page">
-      <PageHeader
-        eyebrow="Board Finance · Confidential"
-        title={`${campaign.title} — Finance`}
-        description="Real-time fundraising ledger, budget vs actuals, sponsor pledges, private receipts, and two-officer reimbursement approvals."
-        actions={(
-          <div className="row-actions">
-            {campaignOptions.length > 1 && (
-              <select
-                aria-label="Select host campaign"
-                value={selectedSlug}
-                onChange={(e) => setSearchParams({ campaign: e.target.value })}
+      <div className={tab === 'report' ? 'page-stack no-print' : 'page-stack'}>
+        <PageHeader
+          eyebrow="Board Finance · Confidential"
+          title={`${campaign.title} — Finance`}
+          description="Real-time fundraising ledger, budget vs actuals, sponsor pledges, private receipts, and two-officer reimbursement approvals."
+          actions={(
+            <div className="row-actions">
+              {campaignOptions.length > 1 && (
+                <select
+                  aria-label="Select host campaign"
+                  value={selectedSlug}
+                  onChange={(e) => setSearchParams({ campaign: e.target.value })}
+                >
+                  {campaignOptions.map((opt) => (
+                    <option key={opt.slug} value={opt.slug}>{opt.title} ({opt.status})</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                className="btn secondary"
+                title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
+                onClick={() => void handleDownloadCsv()}
+                disabled={exportingCsv}
               >
-                {campaignOptions.map((opt) => (
-                  <option key={opt.slug} value={opt.slug}>{opt.title} ({opt.status})</option>
-                ))}
-              </select>
-            )}
-            <button
-              type="button"
-              className="btn secondary"
-              title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
-              onClick={() => void handleDownloadCsv()}
-              disabled={exportingCsv}
-            >
-              {exportingCsv ? 'Exporting…' : 'Export CSV'}
-            </button>
-          </div>
+                {exportingCsv ? 'Exporting…' : 'Export CSV'}
+              </button>
+            </div>
+          )}
+        />
+
+        {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
+        {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
+        {overviewQuery.error && (
+          <Panel>
+            <div className="section-heading" style={{ marginBottom: 0 }}>
+              <p className="form-error" role="alert" style={{ margin: 0 }}>
+                Totals may be out of date: {overviewQuery.error}
+              </p>
+              <button type="button" className="btn secondary small" onClick={() => void overviewQuery.reload()}>
+                Retry
+              </button>
+            </div>
+          </Panel>
         )}
-      />
 
-      {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
-      {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
-      {overviewQuery.error && (
-        <Panel>
-          <div className="section-heading" style={{ marginBottom: 0 }}>
-            <p className="form-error" role="alert" style={{ margin: 0 }}>
-              Totals may be out of date: {overviewQuery.error}
+        {isArchived && (
+          <Panel className="state-card">
+            <strong>Archived campaign (read-only)</strong>
+            <p>This host campaign ledger is closed and preserved read-only for board handoff and audit review.</p>
+          </Panel>
+        )}
+
+        {!isArchived && !canWriteFinance && (
+          <Panel>
+            <p className="muted" style={{ margin: 0 }}>
+              <strong>Read-only finance access:</strong> Your role ({roles.join(', ') || 'board'}) can view all totals, receipts, audit logs, and CSV exports.
+              {canApproveReimbursements ? ' You can also approve out-of-pocket reimbursements.' : ''}
             </p>
-            <button type="button" className="btn secondary small" onClick={() => void overviewQuery.reload()}>
-              Retry
-            </button>
-          </div>
-        </Panel>
-      )}
+          </Panel>
+        )}
 
-      {isArchived && (
-        <Panel className="state-card">
-          <strong>Archived campaign (read-only)</strong>
-          <p>This host campaign ledger is closed and preserved read-only for board handoff and audit review.</p>
-        </Panel>
-      )}
+        {summary.mixedNetEventIds.length > 0 && (
+          <Panel>
+            <p className="form-error" role="status" style={{ margin: 0 }}>
+              <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
+            </p>
+          </Panel>
+        )}
 
-      {!isArchived && !canWriteFinance && (
-        <Panel>
-          <p className="muted" style={{ margin: 0 }}>
-            <strong>Read-only finance access:</strong> Your role ({roles.join(', ') || 'board'}) can view all totals, receipts, audit logs, and CSV exports.
-            {canApproveReimbursements ? ' You can also approve out-of-pocket reimbursements.' : ''}
-          </p>
-        </Panel>
-      )}
+        <div className="stats-grid four">
+          <StatCard label="Goal" value={formatUsd(summary.goalCents)} detail={summary.publicMeterEnabled ? 'Public meter ON' : 'Public meter hidden'} tone="maroon" />
+          <StatCard
+            label="Raised (Gross)"
+            value={formatUsd(summary.raisedCents)}
+            detail={`Excl. FDAA: ${formatUsd(summary.raisedExcludingFdaaCents)}`}
+            tone="gold"
+          />
+          <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Net: ${formatUsd(summary.netCents)}`} />
+          <StatCard
+            label="Still Needed"
+            value={formatUsd(summary.stillNeededCents)}
+            detail={`Pending reimb: ${formatUsd(summary.pendingReimbursementsCents)} (${summary.pendingReimbursementsCount})`}
+          />
+        </div>
 
-      {summary.mixedNetEventIds.length > 0 && (
-        <Panel>
-          <p className="form-error" role="status" style={{ margin: 0 }}>
-            <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
-          </p>
-        </Panel>
-      )}
+        <div className="stats-grid three">
+          <StatCard
+            label="Cash Pledges Outstanding"
+            value={formatUsd(summary.outstandingPledgesCents)}
+            detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
+          />
+          <StatCard
+            label="In-Kind Pledges"
+            value={summary.inKindPledgesCount}
+            detail="Tracked separately from cash raised"
+          />
+          <StatCard
+            label="Public Meter Numerator"
+            value={formatUsd(summary.publicMeterRaisedCents)}
+            detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation/share' : 'Excludes FDAA allocation/share'}
+          />
+        </div>
 
-      <div className="stats-grid four">
-        <StatCard label="Goal" value={formatUsd(summary.goalCents)} detail={summary.publicMeterEnabled ? 'Public meter ON' : 'Public meter hidden'} tone="maroon" />
-        <StatCard
-          label="Raised (Gross)"
-          value={formatUsd(summary.raisedCents)}
-          detail={`Excl. FDAA: ${formatUsd(summary.raisedExcludingFdaaCents)}`}
-          tone="gold"
-        />
-        <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Net: ${formatUsd(summary.netCents)}`} />
-        <StatCard
-          label="Still Needed"
-          value={formatUsd(summary.stillNeededCents)}
-          detail={`Pending reimb: ${formatUsd(summary.pendingReimbursementsCents)} (${summary.pendingReimbursementsCount})`}
-        />
+        {canWriteFinance && (
+          <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
+        )}
       </div>
-
-      <div className="stats-grid three">
-        <StatCard
-          label="Cash Pledges Outstanding"
-          value={formatUsd(summary.outstandingPledgesCents)}
-          detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
-        />
-        <StatCard
-          label="In-Kind Pledges"
-          value={summary.inKindPledgesCount}
-          detail="Tracked separately from cash raised"
-        />
-        <StatCard
-          label="Public Meter Numerator"
-          value={formatUsd(summary.publicMeterRaisedCents)}
-          detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation/share' : 'Excludes FDAA allocation/share'}
-        />
-      </div>
-
-      {canWriteFinance && (
-        <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
-      )}
 
       <nav className="finance-tabs" aria-label="Finance tracker sections">
         <button type="button" aria-current={tab === 'ledger' ? 'page' : undefined} className={`btn small ${tab === 'ledger' ? 'primary' : 'secondary'}`} onClick={() => setTab('ledger')}>
@@ -633,7 +635,8 @@ function FinalReportTab({ campaignSlug }: { campaignSlug: string }) {
   const downloadSummaryCsv = () => {
     const escapeCell = (val: string | number) => {
       const text = String(val)
-      const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
+      const isPlainNumber = /^-?\d+(\.\d+)?$/.test(text)
+      const safe = !isPlainNumber && /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
       return `"${safe.replace(/"/g, '""')}"`
     }
     const rows: Array<[string, string, string | number]> = [

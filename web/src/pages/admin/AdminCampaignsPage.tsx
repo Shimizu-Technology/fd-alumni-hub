@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
@@ -102,8 +102,10 @@ export function AdminCampaignsPage() {
   const [copyEventTemplates, setCopyEventTemplates] = useState(true)
   const [cloneBusy, setCloneBusy] = useState(false)
   const [cloneError, setCloneError] = useState('')
+  const closeoutReqIdRef = useRef(0)
 
   const openArchivePanel = async (c: AdminHostCampaign) => {
+    const reqId = ++closeoutReqIdRef.current
     setArchiveTarget(c)
     setCloseoutCheck(null)
     setArchiveForceReason('')
@@ -112,21 +114,24 @@ export function AdminCampaignsPage() {
     setCloseoutLoading(true)
     try {
       const check = await api.adminCampaignCloseoutCheck(c.id)
+      if (closeoutReqIdRef.current !== reqId) return
       setCloseoutCheck(check)
     } catch (err) {
+      if (closeoutReqIdRef.current !== reqId) return
       setArchiveError(mutationErrorMessage(err, 'Unable to load close-out checklist'))
     } finally {
-      setCloseoutLoading(false)
+      if (closeoutReqIdRef.current === reqId) setCloseoutLoading(false)
     }
   }
 
   const submitArchive = async (event: FormEvent) => {
     event.preventDefault()
     if (!archiveTarget) return
+    const targetId = archiveTarget.id
     setArchiveBusy(true)
     setArchiveError('')
     try {
-      await api.adminArchiveCampaign(archiveTarget.id, {
+      await api.adminArchiveCampaign(targetId, {
         forceReason: archiveForceReason.trim() || null,
         completeTournament: archiveCompleteTournament,
       })
@@ -136,6 +141,12 @@ export function AdminCampaignsPage() {
       await query.reload()
     } catch (err) {
       setArchiveError(mutationErrorMessage(err, 'Unable to archive campaign'))
+      try {
+        const freshCheck = await api.adminCampaignCloseoutCheck(targetId)
+        setCloseoutCheck(freshCheck)
+      } catch {
+        // Keep the existing checklist if refresh fails.
+      }
     } finally {
       setArchiveBusy(false)
     }
@@ -144,9 +155,15 @@ export function AdminCampaignsPage() {
   const openClonePanel = (c: AdminHostCampaign) => {
     const nextYear = (c.tournament?.year || new Date().getFullYear()) + 1
     const nextHostYear = (c.hostClass?.graduationYear || (nextYear - 10)) + 1
+    const occupiedTournamentIds = new Set((query.data?.campaigns || []).map((cm) => cm.tournamentId))
+    const availableTournaments = (query.data?.tournaments || []).filter(
+      (t) => t.id !== c.tournamentId && !occupiedTournamentIds.has(t.id),
+    )
+    const existingNextYear = availableTournaments.find((t) => t.year === nextYear)
+
     setCloneSource(c)
-    setCloneUseExistingTournament(false)
-    setCloneTargetTournamentId('')
+    setCloneUseExistingTournament(Boolean(existingNextYear))
+    setCloneTargetTournamentId(existingNextYear?.id || '')
     setCloneNewYear(String(nextYear))
     setCloneNewName(`FD Alumni Basketball Tournament ${nextYear}`)
     setCloneStartDate(`${nextYear}-06-25`)
@@ -565,10 +582,12 @@ export function AdminCampaignsPage() {
               {cloneUseExistingTournament ? (
                 <Field label="Target tournament">
                   <select value={cloneTargetTournamentId} onChange={(e) => setCloneTargetTournamentId(e.target.value)} required>
-                    <option value="">Select tournament…</option>
-                    {tournaments.filter((t) => t.id !== cloneSource.tournamentId).map((t) => (
-                      <option key={t.id} value={t.id}>{t.year} — {t.name}</option>
-                    ))}
+                    <option value="">Select unoccupied tournament…</option>
+                    {tournaments
+                      .filter((t) => t.id !== cloneSource.tournamentId && !campaigns.some((cm) => cm.tournamentId === t.id))
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>{t.year} — {t.name} ({t.status})</option>
+                      ))}
                   </select>
                 </Field>
               ) : (

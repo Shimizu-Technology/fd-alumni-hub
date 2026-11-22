@@ -126,6 +126,17 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
   end
 
   test "final report enforces campaign board/admin RBAC, Cache-Control no-store, and computes outcomes + compliance" do
+    # M1: non-completed champion records and other tournaments' champions in the same year must NOT leak or mismatch counts
+    other_tournament = Tournament.create!(
+      name: "Other 2027 Event",
+      year: 2027,
+      start_date: Date.new(2027, 8, 1),
+      end_date: Date.new(2027, 8, 5),
+      status: "completed"
+    )
+    TournamentChampion.create!(year: 2027, slug: "2027-maroon-pending", tournament: @tournament, bracket: "maroon", status: "research_pending", champion_label: "Pending")
+    TournamentChampion.create!(year: 2027, slug: "2027-other-event-gold", tournament: other_tournament, bracket: "gold", status: "completed", champion_label: "Other Event Champ")
+
     get "/api/v1/campaign/#{@campaign.slug}/finance/final-report", headers: headers_for(@outsider)
     assert_response :forbidden
 
@@ -137,6 +148,8 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     assert_equal @campaign.slug, body.dig("campaign", "slug")
     assert_equal 2, body.dig("tournamentOutcomes", "teamsCount")
     assert_equal 2, body.dig("tournamentOutcomes", "divisionsCount")
+    assert_equal 0, body.dig("tournamentOutcomes", "champions").length
+    assert_equal 0, body.dig("compliance", "championsRecordedCount")
     assert_equal 1, body.dig("compliance", "unfinalizedGamesCount") # excludes cancelled and placeholder games!
     assert_equal 1, body.dig("compliance", "pendingReimbursementsCount")
     assert_equal 1, body.dig("compliance", "expensesMissingReceiptCount")
@@ -144,7 +157,24 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     assert_equal false, body.dig("compliance", "readyToArchive")
   end
 
-  test "PATCH /admin/campaigns/:id blocks direct archival; closeout-check and POST /archive enforce blockers, override audit, and already-archived guard" do
+  test "POST /admin/campaigns rejects creating an already-archived campaign; PATCH blocks archival; closeout-check and POST /archive enforce blockers, override audit, and cancelled-tournament guard" do
+    # L1: Cannot create a campaign directly as archived
+    post "/api/v1/admin/campaigns",
+      params: {
+        campaign: {
+          tournamentId: @tournament.id,
+          classCohortId: @cohort_18.id,
+          slug: "2027-born-archived",
+          title: "Born Archived",
+          status: "archived",
+          goalCents: 1_000_000
+        }
+      },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["error"], "/archive"
+
     # Staff forbidden on closeout/archive
     get "/api/v1/admin/campaigns/#{@campaign.id}/closeout-check", headers: headers_for(@staff)
     assert_response :forbidden
@@ -166,13 +196,19 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     assert_equal 1, check["unfinalizedGamesCount"]
     assert_equal 1, check["pendingReimbursementsCount"]
 
-    # Archive without forceReason fails 422 while blockers exist
+    # Archive without forceReason or with too-short forceReason fails 422 while blockers exist
     post "/api/v1/admin/campaigns/#{@campaign.id}/archive",
       headers: headers_for(@admin),
       as: :json
     assert_response :unprocessable_entity
 
-    # Archive with forceReason + completeTournament succeeds and records audit event with prior status
+    post "/api/v1/admin/campaigns/#{@campaign.id}/archive",
+      params: { forceReason: "ok" },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :unprocessable_entity
+
+    # Archive with forceReason + completeTournament succeeds and records audit event with prior status + warnings
     post "/api/v1/admin/campaigns/#{@campaign.id}/archive",
       params: { forceReason: "Board approved early close-out", completeTournament: true },
       headers: headers_for(@admin),
@@ -187,6 +223,7 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     assert_not_nil audit
     assert_equal [ "closing", "archived" ], audit.changes_json["status"]
     assert_equal true, audit.changes_json["tournament_completed"]
+    assert_includes audit.changes_json["warnings_at_archive"], "missing_receipts"
     assert_equal "Board approved early close-out", audit.reason
 
     # Archiving an already-archived campaign returns 422
@@ -195,9 +232,32 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
       headers: headers_for(@admin),
       as: :json
     assert_response :unprocessable_entity
+
+    # L3: Archiving with completeTournament must NOT flip a cancelled tournament to completed
+    cancelled_tournament = Tournament.create!(
+      name: "Cancelled 2029",
+      year: 2029,
+      start_date: Date.new(2029, 6, 20),
+      end_date: Date.new(2029, 7, 10),
+      status: "cancelled"
+    )
+    cancelled_campaign = HostCampaign.create!(
+      tournament: cancelled_tournament,
+      class_cohort: @cohort_18,
+      slug: "2029-cancelled",
+      title: "Cancelled 2029 Host Year",
+      status: "closing",
+      goal_cents: 1_000_000
+    )
+    post "/api/v1/admin/campaigns/#{cancelled_campaign.id}/archive",
+      params: { completeTournament: true },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :success
+    assert_equal "cancelled", cancelled_tournament.reload.status
   end
 
-  test "POST /admin/campaigns/:id/clone uses strict copy allowlist, isolates prior year data, and rejects occupied target tournaments" do
+  test "POST /admin/campaigns/:id/clone uses strict copy allowlist, isolates prior year data, rejects duplicate year & occupied targets, and forces upcoming status" do
     # Reject cloning onto source tournament
     post "/api/v1/admin/campaigns/#{@campaign.id}/clone",
       params: { targetTournamentId: @tournament.id, hostClassYear: 2018 },
@@ -205,7 +265,7 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
       as: :json
     assert_response :unprocessable_entity
 
-    # Clone into brand-new 2028 tournament for Class of 2018
+    # Clone into brand-new 2028 tournament for Class of 2018 (even if caller tries status: "live", forced to "upcoming")
     post "/api/v1/admin/campaigns/#{@campaign.id}/clone",
       params: {
         tournament: {
@@ -213,7 +273,7 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
           year: 2028,
           startDate: "2028-06-23",
           endDate: "2028-07-14",
-          status: "upcoming"
+          status: "live"
         },
         hostClassYear: 2018,
         copyDivisions: true,
@@ -227,6 +287,7 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
 
     cloned = HostCampaign.find(body.dig("campaign", "id"))
+    assert_equal "upcoming", cloned.tournament.status
     assert_equal "draft", cloned.status
     assert_equal false, cloned.featured
     assert_equal false, cloned.public_meter_enabled
@@ -282,6 +343,22 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
       headers: headers_for(@admin),
       as: :json
     assert_response :unprocessable_entity
+
+    # M2: Reject creating a duplicate tournament for a year (2028) that already has a tournament
+    post "/api/v1/admin/campaigns/#{@campaign.id}/clone",
+      params: {
+        tournament: {
+          name: "Duplicate 2028 Tournament",
+          year: 2028,
+          startDate: "2028-06-23",
+          endDate: "2028-07-14"
+        },
+        hostClassYear: 2019
+      },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"].first, "already exists"
   end
 
   private

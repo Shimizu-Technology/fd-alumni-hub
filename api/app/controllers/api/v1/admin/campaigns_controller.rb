@@ -15,7 +15,14 @@ module Api
         end
 
         def create
-          campaign = HostCampaign.new(campaign_params)
+          incoming = campaign_params
+          if incoming[:status].to_s.strip.downcase == "archived"
+            return render json: {
+              error: "New campaigns cannot be created as archived; use POST /api/v1/admin/campaigns/:id/archive after close-out checks."
+            }, status: :unprocessable_entity
+          end
+
+          campaign = HostCampaign.new(incoming)
 
           HostCampaign.transaction do
             unless campaign.save
@@ -101,9 +108,9 @@ module Api
             end
 
             check = HostCampaigns::CloseoutCheck.call(campaign)
-            if check[:blockers].any? && force_reason.blank?
+            if check[:blockers].any? && force_reason.to_s.length < 5
               render json: {
-                error: "Close-out blockers remain; resolve them or supply forceReason for an audited override.",
+                error: "Close-out blockers remain; resolve them or supply a forceReason (at least 5 characters) for an audited override.",
                 closeoutCheck: check
               }, status: :unprocessable_entity
               raise ActiveRecord::Rollback
@@ -114,7 +121,7 @@ module Api
             campaign.update!(status: "archived", featured: false)
 
             tournament_completed = false
-            if complete_tournament && campaign.tournament && campaign.tournament.status != "completed"
+            if complete_tournament && campaign.tournament && campaign.tournament.status.in?(%w[upcoming live])
               campaign.tournament.update!(status: "completed")
               tournament_completed = true
             end
@@ -128,7 +135,8 @@ module Api
                 "status" => [ previous_status, "archived" ],
                 "featured" => [ previous_featured, false ],
                 "tournament_completed" => tournament_completed,
-                "blockers_overridden" => check[:blockers].map { |b| b[:code] }
+                "blockers_overridden" => check[:blockers].map { |b| b[:code] },
+                "warnings_at_archive" => check[:warnings].map { |w| w[:code] }
               },
               reason: force_reason,
               ip_address: request.remote_ip
@@ -142,6 +150,8 @@ module Api
             tournament: archived_campaign.tournament&.api_json,
             closeoutCheck: check
           }
+        rescue ActiveRecord::RecordInvalid => e
+          render_errors(e.record)
         end
 
         def clone
@@ -196,14 +206,16 @@ module Api
           t = raw[:tournament]
           return nil unless t.is_a?(ActionController::Parameters)
 
-          permitted = t.permit(:name, :year, :status, :start_date, :end_date, :startDate, :endDate)
+          permitted = t.permit(:name, :year, :start_date, :end_date, :startDate, :endDate)
           attrs = {}
           assign_param(attrs, permitted, :name, :name)
           assign_param(attrs, permitted, :year, :year)
-          assign_param(attrs, permitted, :status, :status)
           assign_param(attrs, permitted, :start_date, :start_date, :startDate)
           assign_param(attrs, permitted, :end_date, :end_date, :endDate)
-          attrs.presence
+          return nil if attrs.empty?
+
+          attrs[:status] = "upcoming"
+          attrs
         end
 
         def break_glass_reason

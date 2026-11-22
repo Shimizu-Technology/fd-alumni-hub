@@ -40,6 +40,7 @@ module HostCampaigns
 
     def call
       target_tournament = resolve_existing_target_tournament!
+      validate_new_tournament_year! unless target_tournament
 
       divisions_spec = if @copy_divisions && @source.tournament
         @source.tournament.divisions.active.ordered.map do |division|
@@ -145,6 +146,16 @@ module HostCampaigns
       end
 
       target
+    end
+
+    def validate_new_tournament_year!
+      return unless @tournament_attrs.is_a?(Hash) && @tournament_attrs.present?
+
+      raw_year = @tournament_attrs[:year] || @tournament_attrs["year"]
+      year_val = Integer(raw_year.to_s.strip, 10, exception: false)
+      return unless year_val && Tournament.exists?(year: year_val)
+
+      raise Error, "A tournament for year #{year_val} already exists; pass targetTournamentId to attach to it instead"
     end
   end
 end

@@ -95,7 +95,7 @@ All host-class finances live in **Host Year → Finance** (`/admin/campaign/fina
 
 ## 6. August Close-Out & Archival Checklist
 
-1. **Finalize all scores & champions:** Verify every played game is `final` (or `cancelled` if rained out and not rescheduled) and record division champions in tournament history.
+1. **Finalize all scores & champions:** Verify every played game is `final` (or `cancelled` if rained out and not rescheduled). Ask an admin/developer to import the year's completed division champions into tournament history (`bin/rails fd_history:import` or direct record) so they appear on the Hall of Champions and clear the close-out warning.
 2. **Settle reimbursements & receipts:** Open **Host Year → Finance → Final Report** (`/admin/campaign/finance`) and review the **Close-Out Compliance Checklist**:
    - Pay out all pending reimbursements.
    - Attach missing expense receipts.
