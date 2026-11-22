@@ -33,6 +33,20 @@ export async function uploadAdminImage({ file, tournamentId, purpose }: { file: 
   return presign.publicUrl
 }
 
+export async function uploadCampaignImage({ file, campaignSlug }: { file: File; campaignSlug: string }) {
+  const contentType = imageContentType(file)
+  validateImageFile(file, contentType)
+
+  const presign = await api.campaignPresignImageUpload(campaignSlug, {
+    filename: file.name,
+    contentType,
+    byteSize: file.size,
+  })
+
+  await uploadToS3(presign, file)
+  return presign.publicUrl
+}
+
 export function imageContentType(file: File) {
   const declared = file.type.split(';')[0]?.trim().toLowerCase()
   if (declared) return declared

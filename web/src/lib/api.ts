@@ -1,5 +1,13 @@
 import type {
+  AdminCampaignEvent,
+  AdminCampaignPost,
+  AdminHostCampaign,
+  AdminUserSummary,
+  AdminWhitelistRecord,
   Article,
+  CampaignInvitationRecord,
+  CampaignMembershipRecord,
+  CampaignRole,
   ClassCohort,
   ClassProfile,
   CurrentUser,
@@ -247,6 +255,56 @@ export const api = {
   }>(`/admin/missing-links${query({ tournamentId })}`),
   adminBulkLinks: (updates: Array<{ id: string; ticketUrl?: string | null; streamUrl?: string | null }>) =>
     request<{ updated: number; games: Game[] }>('/admin/links/bulk', json('PATCH', { updates })),
+
+  campaignSettings: (campaignSlug: string) =>
+    request<{ campaign: AdminHostCampaign; roles: string[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/settings`),
+  campaignUpdateSettings: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ campaign: AdminHostCampaign }>(`/campaign/${encodeURIComponent(campaignSlug)}/settings`, json('PATCH', { campaign: payload })),
+  campaignPresignImageUpload: (campaignSlug: string, payload: { filename: string; contentType: string; byteSize: number }) =>
+    request<AdminImageUploadPresign>(`/campaign/${encodeURIComponent(campaignSlug)}/uploads/presign`, json('POST', { upload: payload })),
+  campaignEvents: (campaignSlug: string, params: { includeArchived?: boolean } = {}) =>
+    request<{ events: AdminCampaignEvent[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/events${params.includeArchived ? '?includeArchived=true' : ''}`),
+  campaignCreateEvent: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ event: AdminCampaignEvent }>(`/campaign/${encodeURIComponent(campaignSlug)}/events`, json('POST', { event: payload })),
+  campaignUpdateEvent: (campaignSlug: string, eventId: string, payload: Record<string, unknown>) =>
+    request<{ event: AdminCampaignEvent }>(`/campaign/${encodeURIComponent(campaignSlug)}/events/${eventId}`, json('PATCH', { event: payload })),
+  campaignArchiveEvent: (campaignSlug: string, eventId: string) =>
+    request<{ event: AdminCampaignEvent }>(`/campaign/${encodeURIComponent(campaignSlug)}/events/${eventId}/archive`, json('POST')),
+  campaignPosts: (campaignSlug: string) =>
+    request<{ posts: AdminCampaignPost[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/posts`),
+  campaignCreatePost: (campaignSlug: string, payload: Record<string, unknown>) =>
+    request<{ post: AdminCampaignPost }>(`/campaign/${encodeURIComponent(campaignSlug)}/posts`, json('POST', { post: payload })),
+  campaignUpdatePost: (campaignSlug: string, postId: string, payload: Record<string, unknown>) =>
+    request<{ post: AdminCampaignPost }>(`/campaign/${encodeURIComponent(campaignSlug)}/posts/${postId}`, json('PATCH', { post: payload })),
+  campaignDeletePost: (campaignSlug: string, postId: string) =>
+    request<void>(`/campaign/${encodeURIComponent(campaignSlug)}/posts/${postId}`, { method: 'DELETE' }),
+
+  adminCampaigns: () => request<{ campaigns: AdminHostCampaign[] }>('/admin/campaigns'),
+  adminCampaign: (id: string) => request<{ campaign: AdminHostCampaign }>(`/admin/campaigns/${id}`),
+  adminCreateCampaign: (payload: Record<string, unknown>) =>
+    request<{ campaign: AdminHostCampaign }>('/admin/campaigns', json('POST', { campaign: payload })),
+  adminUpdateCampaign: (id: string, payload: Record<string, unknown>, breakGlassReason?: string | null) =>
+    request<{ campaign: AdminHostCampaign }>(
+      `/admin/campaigns/${id}`,
+      json('PATCH', breakGlassReason ? { campaign: payload, breakGlassReason } : { campaign: payload }),
+    ),
+  adminCampaignMemberships: (campaignId: string) =>
+    request<{ memberships: CampaignMembershipRecord[]; users: AdminUserSummary[] }>(`/admin/campaigns/${campaignId}/memberships`),
+  adminCreateCampaignMembership: (campaignId: string, payload: { userId: string; role: CampaignRole }) =>
+    request<{ membership: CampaignMembershipRecord }>(`/admin/campaigns/${campaignId}/memberships`, json('POST', { membership: payload })),
+  adminUpdateCampaignMembership: (campaignId: string, id: string, payload: { active: boolean }) =>
+    request<{ membership: CampaignMembershipRecord }>(`/admin/campaigns/${campaignId}/memberships/${id}`, json('PATCH', { membership: payload })),
+  adminCampaignInvitations: (campaignId: string) =>
+    request<{ invitations: CampaignInvitationRecord[] }>(`/admin/campaigns/${campaignId}/invitations`),
+  adminCreateCampaignInvitation: (campaignId: string, payload: { email: string; role: CampaignRole }) =>
+    request<{ invitation: CampaignInvitationRecord }>(`/admin/campaigns/${campaignId}/invitations`, json('POST', { invitation: payload })),
+  adminRevokeCampaignInvitation: (campaignId: string, id: string) =>
+    request<{ invitation: CampaignInvitationRecord }>(`/admin/campaigns/${campaignId}/invitations/${id}/revoke`, json('POST')),
+  adminWhitelists: () => request<{ whitelists: AdminWhitelistRecord[] }>('/admin/whitelists'),
+  adminCreateWhitelist: (payload: { email: string; role: 'admin' | 'staff'; notes?: string | null; active?: boolean }) =>
+    request<{ whitelist: AdminWhitelistRecord }>('/admin/whitelists', json('POST', { whitelist: payload })),
+  adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff'; active?: boolean; notes?: string | null }) =>
+    request<{ whitelist: AdminWhitelistRecord }>(`/admin/whitelists/${id}`, json('PATCH', { whitelist: payload })),
 }
 
 function json(method: string, body?: unknown): RequestInit {
