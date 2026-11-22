@@ -41,7 +41,7 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
       status: "upcoming"
     )
 
-    claims = { "sub" => "clerk_host", "email" => "host@example.com", "first_name" => "Host" }
+    claims = { "sub" => "clerk_host", "email" => "host@example.com", "email_verified" => true, "first_name" => "Host" }
     with_clerk_claims(claims) do
       get "/api/v1/admin/tournaments", headers: { "Authorization" => "Bearer clerk_test" }
     end
@@ -52,11 +52,23 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "staff", user.role
   end
 
+  test "rejects allowlisted sign in when Clerk email is unverified" do
+    AdminWhitelist.create!(email: "host@example.com", role: "staff")
+
+    claims = { "sub" => "clerk_unverified", "email" => "host@example.com", "first_name" => "Host" }
+    with_clerk_claims(claims) do
+      get "/api/v1/admin/tournaments", headers: { "Authorization" => "Bearer clerk_test" }
+    end
+
+    assert_response :unauthorized
+    assert_nil User.find_by(clerk_id: "clerk_unverified")
+  end
+
   test "rejects allowlisted sign in when the email belongs to an inactive user" do
     User.create!(email: "host@example.com", clerk_id: "old_clerk_host", role: "staff", active: false)
     AdminWhitelist.create!(email: "host@example.com", role: "staff")
 
-    claims = { "sub" => "new_clerk_host", "email" => "host@example.com", "first_name" => "Host" }
+    claims = { "sub" => "new_clerk_host", "email" => "host@example.com", "email_verified" => true, "first_name" => "Host" }
     with_clerk_claims(claims) do
       get "/api/v1/admin/tournaments", headers: { "Authorization" => "Bearer clerk_test" }
     end
@@ -67,7 +79,7 @@ class AdminAuthControllerTest < ActionDispatch::IntegrationTest
 
   test "recovers when concurrent sign in already stamped clerk id on email matched user" do
     user = User.create!(email: "host@example.com", role: "staff")
-    claims = { "sub" => "clerk_host", "email" => "host@example.com", "first_name" => "Host" }
+    claims = { "sub" => "clerk_host", "email" => "host@example.com", "email_verified" => true, "first_name" => "Host" }
 
     with_update_race_for(user, "clerk_host") do
       with_clerk_claims(claims) do
