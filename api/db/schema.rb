@@ -70,42 +70,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
     t.index ["host_campaign_id", "archived_at", "public_visible", "starts_at", "position"], name: "index_campaign_events_on_public_listing"
     t.index ["host_campaign_id"], name: "index_campaign_events_on_host_campaign_id"
     t.check_constraint "goal_cents IS NULL OR goal_cents >= 0", name: "chk_campaign_events_goal_cents_non_negative"
-    t.check_constraint "kind::text = ANY (ARRAY['fundraiser'::character varying::text, 'host_night'::character varying::text, 'golf'::character varying::text, 'merch_drop'::character varying::text, 'meeting'::character varying::text, 'other'::character varying::text])", name: "chk_campaign_events_kind"
-    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying::text, 'open'::character varying::text, 'sold_out'::character varying::text, 'completed'::character varying::text, 'cancelled'::character varying::text])", name: "chk_campaign_events_status"
-  end
-
-  create_table "campaign_invitations", force: :cascade do |t|
-    t.bigint "host_campaign_id", null: false
-    t.string "email", null: false
-    t.string "role", null: false
-    t.bigint "invited_by_id", null: false
-    t.datetime "accepted_at"
-    t.bigint "accepted_by_user_id"
-    t.datetime "revoked_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index "host_campaign_id, lower((email)::text), role", name: "index_campaign_invitations_on_pending_unique", unique: true, where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
-    t.index "lower((email)::text)", name: "index_campaign_invitations_on_pending_email", where: "((accepted_at IS NULL) AND (revoked_at IS NULL))"
-    t.index ["accepted_by_user_id"], name: "index_campaign_invitations_on_accepted_by_user_id"
-    t.index ["host_campaign_id"], name: "index_campaign_invitations_on_host_campaign_id"
-    t.index ["invited_by_id"], name: "index_campaign_invitations_on_invited_by_id"
-    t.check_constraint "role::text = ANY (ARRAY['chair'::character varying::text, 'treasurer'::character varying::text, 'board'::character varying::text])", name: "chk_campaign_invitations_role"
-  end
-
-  create_table "campaign_memberships", force: :cascade do |t|
-    t.bigint "host_campaign_id", null: false
-    t.bigint "user_id", null: false
-    t.string "role", null: false
-    t.boolean "active", default: true, null: false
-    t.bigint "invited_by_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["host_campaign_id", "user_id", "role"], name: "index_campaign_memberships_on_campaign_user_role", unique: true
-    t.index ["host_campaign_id"], name: "index_campaign_memberships_on_host_campaign_id"
-    t.index ["invited_by_id"], name: "index_campaign_memberships_on_invited_by_id"
-    t.index ["user_id", "active"], name: "index_campaign_memberships_on_user_active"
-    t.index ["user_id"], name: "index_campaign_memberships_on_user_id"
-    t.check_constraint "role::text = ANY (ARRAY['chair'::character varying::text, 'treasurer'::character varying::text, 'board'::character varying::text])", name: "chk_campaign_memberships_role"
+    t.check_constraint "kind::text = ANY (ARRAY['fundraiser'::character varying, 'host_night'::character varying, 'golf'::character varying, 'merch_drop'::character varying, 'meeting'::character varying, 'other'::character varying]::text[])", name: "chk_campaign_events_kind"
+    t.check_constraint "status::text = ANY (ARRAY['planned'::character varying, 'open'::character varying, 'sold_out'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[])", name: "chk_campaign_events_status"
   end
 
   create_table "campaign_posts", force: :cascade do |t|
@@ -271,11 +237,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
     t.index ["slug"], name: "index_host_campaigns_on_slug", unique: true
     t.index ["status", "created_at"], name: "index_host_campaigns_on_status_and_created_at"
     t.index ["tournament_id"], name: "index_host_campaigns_on_tournament_id", unique: true
-    t.check_constraint "NOT featured OR (status::text = ANY (ARRAY['active'::character varying::text, 'closing'::character varying::text]))", name: "chk_host_campaigns_featured_status"
+    t.check_constraint "NOT featured OR (status::text = ANY (ARRAY['active'::character varying, 'closing'::character varying]::text[]))", name: "chk_host_campaigns_featured_status"
     t.check_constraint "fdaa_ticket_share_bps >= 0 AND fdaa_ticket_share_bps <= 10000", name: "chk_host_campaigns_fdaa_ticket_share_bps_range"
     t.check_constraint "fdaa_upfront_cents >= 0", name: "chk_host_campaigns_fdaa_upfront_non_negative"
     t.check_constraint "goal_cents > 0", name: "chk_host_campaigns_goal_cents_positive"
-    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'active'::character varying::text, 'closing'::character varying::text, 'archived'::character varying::text])", name: "chk_host_campaigns_status"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying, 'active'::character varying, 'closing'::character varying, 'archived'::character varying]::text[])", name: "chk_host_campaigns_status"
   end
 
   create_table "media_assets", force: :cascade do |t|

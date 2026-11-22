@@ -11,6 +11,11 @@ class HafapassEventSnapshot < ApplicationRecord
     fetched_at.present? && payload_json.is_a?(Array)
   end
 
+  def in_error_backoff?(backoff_seconds)
+    seconds = backoff_seconds.to_i
+    seconds.positive? && last_error_at.present? && last_error_at >= seconds.seconds.ago
+  end
+
   def acquire_refresh_lease!(lease_seconds: 60)
     now = Time.current
     updated = self.class.where(id: id)
