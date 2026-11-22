@@ -33,6 +33,19 @@ Rails.application.routes.draw do
             post :archive, on: :member
           end
           resources :posts, only: [ :index, :create, :update, :destroy ]
+
+          get "finance/summary", to: "finance#summary"
+          get "finance/audit-events", to: "finance#audit_events"
+          resources :budget_lines, path: "budget-lines", only: [ :index, :create, :update ] do
+            post :archive, on: :member
+          end
+          resources :pledges, only: [ :index, :create, :update ]
+          get "ledger-entries/export", to: "ledger_entries#export", defaults: { format: :csv }
+          resources :ledger_entries, path: "ledger-entries", only: [ :index, :create, :update ] do
+            post :void, on: :member
+            post :approve_reimbursement, path: "approve-reimbursement", on: :member
+            post :mark_reimbursed, path: "mark-reimbursed", on: :member
+          end
         end
       end
 
