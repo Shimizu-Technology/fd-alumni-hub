@@ -149,7 +149,7 @@ module Api
 
         def tournament_params
           raw = params.fetch(:tournament, params)
-          permitted = raw.permit(:name, :year, :status, :start_date, :end_date, :startDate, :endDate)
+          permitted = raw.permit(:name, :year, :status, :start_date, :end_date, :startDate, :endDate, :enable_player_stats, :enablePlayerStats)
 
           attrs = {}
           assign_param(attrs, permitted, :name, :name)
@@ -157,6 +157,7 @@ module Api
           assign_param(attrs, permitted, :status, :status)
           assign_param(attrs, permitted, :start_date, :start_date, :startDate)
           assign_param(attrs, permitted, :end_date, :end_date, :endDate)
+          assign_param(attrs, permitted, :enable_player_stats, :enable_player_stats, :enablePlayerStats)
           attrs
         end
       end

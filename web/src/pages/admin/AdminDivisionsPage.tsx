@@ -753,8 +753,8 @@ function RosterEntryModal({ team, entry, nextSortOrder, onClose, onSaved }: { te
     setSaving(true)
     setError('')
     try {
-      await api.adminDeleteRosterEntry(entry.id, team.tournamentId)
-      await onSaved('Roster player removed')
+      const result = await api.adminDeleteRosterEntry(entry.id, team.tournamentId)
+      await onSaved(result?.message ?? 'Roster player removed')
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to remove roster player'))
       setSaving(false)

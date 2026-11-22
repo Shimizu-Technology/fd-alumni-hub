@@ -96,6 +96,11 @@ module Api
             end
             game.lock_version = version.to_i
           end
+          team_changed = (schedule.key?(:home_team_id) && schedule[:home_team_id].to_i != game.home_team_id) ||
+            (schedule.key?(:away_team_id) && schedule[:away_team_id].to_i != game.away_team_id)
+          if team_changed && game.box_score_status == "published"
+            schedule = schedule.merge(box_score_status: "needs_review")
+          end
           if with_bracket_lock_if_needed(game.tournament, schedule) { game.update(schedule) }
             advancement = Games::AdvanceBracketWinner.call(game) if game.next_game_id && game.status == "final"
             standings = Games::RecordResult.refresh_standings([ game.tournament ]) if standings_sensitive_change?(schedule)
@@ -201,7 +206,7 @@ module Api
         end
 
         def games_with_associations
-          Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
+          Game.includes(:tournament, :division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
         end
 
         def game_params

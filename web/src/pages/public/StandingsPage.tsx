@@ -1,3 +1,4 @@
+import { StatLeaders } from './StatLeaders'
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { api } from '../../lib/api'
@@ -108,6 +109,9 @@ export function StandingsPage() {
             <Panel className="standings-panel">
               <StandingsList standings={filteredStandings} showDivisionColumn tableLabel="Division standings" />
             </Panel>
+          )}
+          {data?.tournament?.enablePlayerStats && (
+            <StatLeaders key={`${data.tournament.id}:${division}`} tournamentId={data.tournament.id} division={division} />
           )}
         </>
       )}

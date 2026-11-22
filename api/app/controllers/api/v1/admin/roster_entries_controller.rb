@@ -89,8 +89,24 @@ module Api
           roster_entry = RosterEntry.includes(:team).find(params[:id])
           return unless authorize_record_season!("schedule_and_teams", "edit", roster_entry.team.tournament_id, admin_tournament("schedule_and_teams"))
 
-          roster_entry.destroy!
-          head :no_content
+          deactivated = roster_entry.with_lock do
+            if roster_entry.player_game_stats.exists?
+              roster_entry.update!(active: false)
+              true
+            else
+              roster_entry.destroy!
+              false
+            end
+          end
+
+          if deactivated
+            render json: {
+              rosterEntry: roster_entry.api_json, deactivated: true,
+              message: "Player has recorded box score stats and was deactivated to preserve history."
+            }
+          else
+            head :no_content
+          end
         end
 
         private

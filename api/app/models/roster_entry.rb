@@ -1,5 +1,6 @@
 class RosterEntry < ApplicationRecord
   belongs_to :team
+  has_many :player_game_stats
 
   before_validation :normalize_fields
 

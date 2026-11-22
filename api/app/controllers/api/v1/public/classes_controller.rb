@@ -104,7 +104,7 @@ module Api
           team_ids = teams.map(&:id)
           return Game.none if team_ids.empty?
 
-          Game.includes(:division_record, { home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] })
+          Game.includes(:tournament, :division_record, { home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ] })
             .where("home_team_id IN (:team_ids) OR away_team_id IN (:team_ids)", team_ids: team_ids)
             .order(start_time: :desc, id: :desc)
         end

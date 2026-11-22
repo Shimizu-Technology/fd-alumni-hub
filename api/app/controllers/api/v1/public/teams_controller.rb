@@ -42,7 +42,7 @@ module Api
 
         def team_games(team)
           Game
-            .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
+            .includes(:tournament, :division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
             .where(tournament_id: team.tournament_id)
             .where("home_team_id = :team_id OR away_team_id = :team_id", team_id: team.id)
             .ordered

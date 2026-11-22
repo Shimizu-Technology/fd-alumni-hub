@@ -1,3 +1,5 @@
+import type { BoxScoreCoverage, BoxScoreStatus } from './boxScores'
+
 export type TournamentStatus = 'upcoming' | 'live' | 'completed' | 'cancelled'
 export type GameStatus = 'scheduled' | 'live' | 'final' | 'delayed' | 'postponed' | 'cancelled'
 export type GameOutcome = 'regulation' | 'overtime' | 'shootout' | 'forfeit' | 'postponed' | 'cancelled'
@@ -27,6 +29,7 @@ export type Tournament = {
   startDate: string
   endDate: string
   status: TournamentStatus
+  enablePlayerStats?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -177,6 +180,10 @@ export type Game = {
   lockVersion?: number
   scoreUpdatedAt?: string | null
   scoreUpdatedByName?: string | null
+  boxScoreStatus?: BoxScoreStatus
+  boxScoreCoverage?: BoxScoreCoverage | null
+  hasPublishedBoxScore?: boolean
+  boxScoreUnderReview?: boolean
   bracketNeedsReview?: boolean
   bracketExceptionNote?: string | null
   placeholder?: boolean
