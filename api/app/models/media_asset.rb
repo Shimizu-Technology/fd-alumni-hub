@@ -6,6 +6,7 @@ class MediaAsset < ApplicationRecord
   belongs_to :tournament
   belongs_to :game, optional: true
 
+  before_validation :normalize_media_fields
   before_validation :set_youtube_thumbnail
 
   validates :source, :title, presence: true
@@ -63,8 +64,15 @@ class MediaAsset < ApplicationRecord
     video? && youtube? && YOUTUBE_ID_REGEX.match?(external_video_id)
   end
 
+  def normalize_media_fields
+    self.external_video_id = external_video_id.to_s.strip.presence
+    self.video_provider = video_provider.to_s.strip.presence
+    self.video_url = video_url.to_s.strip.presence
+    self.image_url = image_url.to_s.strip.presence
+  end
+
   def set_youtube_thumbnail
-    self.image_url ||= "https://i.ytimg.com/vi/#{external_video_id}/hqdefault.jpg" if youtube_video?
+    self.image_url = "https://i.ytimg.com/vi/#{external_video_id}/hqdefault.jpg" if image_url.blank? && youtube_video?
   end
 
   def game_belongs_to_tournament

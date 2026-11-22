@@ -44,7 +44,7 @@ class FdEnrichedArchiveImportTest < ActiveSupport::TestCase
     videos = MediaAsset.where(media_type: "video")
     assert_equal 33, videos.count
     expected = JSON.parse(DataImport::FdEnrichedArchiveImport::DEFAULT_PATH.read).fetch("seasons").flat_map { |season| season.fetch("videos", []) }
-    assert_equal expected.pluck("externalVideoId").sort, videos.order(:external_video_id).pluck(:external_video_id)
+    assert_equal expected.pluck("externalVideoId").sort, videos.pluck(:external_video_id).sort
     videos.find_each do |video|
       assert video.valid?
       assert_equal "https://www.youtube-nocookie.com/embed/#{video.external_video_id}", video.api_json[:embedUrl]

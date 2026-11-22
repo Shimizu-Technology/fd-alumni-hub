@@ -12,6 +12,7 @@ test:
   <<: *default
   database: fd_alumni_hub_api_test
   url: <%= ENV["TEST_DATABASE_URL"] %>
+  prepared_statements: false
 
 production:
   primary: &primary_production

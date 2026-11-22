@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MediaAsset } from '../lib/types'
 import { safeHttpsHref } from '../lib/urls'
 import { IconExternal, IconPlay } from './Icons'
@@ -17,7 +17,12 @@ export function VideoEmbedCard({ asset }: { asset: MediaAsset }) {
     ? externalVideoId
     : null
   const [playingId, setPlayingId] = useState<string | null>(null)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
   const playing = Boolean(youtubeId && playingId === youtubeId)
+
+  useEffect(() => {
+    if (playing) iframeRef.current?.focus()
+  }, [playing])
   const thumbnail = safeHttpsHref(asset.imageUrl) || (youtubeId ? `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg` : null)
   const watchHref = safeHttpsHref(youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : asset.videoUrl)
   const duration = typeof durationSeconds === 'number' && Number.isInteger(durationSeconds) && durationSeconds >= 0 ? formatDuration(durationSeconds) : null
@@ -33,7 +38,7 @@ export function VideoEmbedCard({ asset }: { asset: MediaAsset }) {
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
             tabIndex={0}
-            ref={(frame) => { frame?.focus() }}
+            ref={iframeRef}
           />
         ) : (
           <>
