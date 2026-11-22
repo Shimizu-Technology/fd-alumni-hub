@@ -13,7 +13,8 @@ export function RevealOnScroll({ children, className = '', delayMs = 0 }: Reveal
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (!motionOk || typeof IntersectionObserver === 'undefined') {
+    if (!motionOk) return
+    if (typeof IntersectionObserver === 'undefined') {
       setVisible(true)
       return
     }

@@ -19,8 +19,9 @@ export function safeHttpsHref(value?: string | null) {
   if (!url) return null
   try {
     const parsed = new URL(url)
+    if (parsed.username || parsed.password) return null
     if (parsed.protocol === 'https:') return parsed.toString()
-    if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+    if (import.meta.env.DEV && parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
       return parsed.toString()
     }
     return null

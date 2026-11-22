@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 
+function readMotionPreference(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function useMotionOk(): boolean {
-  const [motionOk, setMotionOk] = useState(false)
+  const [motionOk, setMotionOk] = useState<boolean>(readMotionPreference)
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return

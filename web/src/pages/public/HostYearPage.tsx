@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
-import { numericSearchParam, safeHttpsHref } from '../../lib/urls'
+import { safeHttpsHref } from '../../lib/urls'
 import { useMotionOk } from '../../hooks/useMotionOk'
 import { RevealOnScroll } from '../../components/RevealOnScroll'
 import { EmptyState, LoadingState, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
@@ -106,12 +106,20 @@ function FundraisingMeter({ meter }: { meter: Extract<HostCampaignMeter, { enabl
       return
     }
 
-    setFillWidth(0)
-    const rafId = window.requestAnimationFrame(() => {
-      setFillWidth(clampedPercent)
+    let raf2 = 0
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setFillWidth(clampedPercent)
+      })
     })
-    return () => window.cancelAnimationFrame(rafId)
+    return () => {
+      window.cancelAnimationFrame(raf1)
+      if (raf2) window.cancelAnimationFrame(raf2)
+    }
   }, [clampedPercent, motionOk])
+
+  const raisedLabel = formatDollarsWhole(meter.raisedCents)
+  const goalLabel = formatDollarsWhole(meter.goalCents)
 
   return (
     <Panel className="host-meter-panel">
@@ -119,7 +127,7 @@ function FundraisingMeter({ meter }: { meter: Extract<HostCampaignMeter, { enabl
         <div>
           <p className="eyebrow">Host-year fundraising goal</p>
           <h2>
-            Raised {formatDollarsWhole(meter.raisedCents)} of {formatDollarsWhole(meter.goalCents)}
+            Raised {raisedLabel} of {goalLabel}
           </h2>
         </div>
         <div className="host-meter-meta">
@@ -135,6 +143,7 @@ function FundraisingMeter({ meter }: { meter: Extract<HostCampaignMeter, { enabl
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(clampedPercent)}
+        aria-valuetext={`Raised ${raisedLabel} of ${goalLabel}`}
       >
         <div
           className={`host-meter-fill ${motionOk ? 'host-meter-fill--animated' : ''}`}
@@ -158,7 +167,7 @@ function CampaignEventCard({ event, stale }: { event: PublicCampaignEvent; stale
   const hp = event.hafapass || null
   const primaryHref = safeHttpsHref(hp?.buyUrl || event.externalUrl)
   const imageHref = safeHttpsHref(event.imageUrl)
-  const effectiveState = hp ? hp.ticketState : null
+  const effectiveState = hp && (!stale || hp.ticketState === 'cancelled') ? hp.ticketState : null
   const priceLabel = !stale && hp ? formatTicketPrice(hp.minAllInPriceCents) : null
   const ctaText = event.ctaLabel
     || (event.kind === 'golf'
@@ -171,7 +180,7 @@ function CampaignEventCard({ event, stale }: { event: PublicCampaignEvent; stale
     <article className={`host-event-card panel ${event.kind === 'golf' ? 'host-event-card--golf' : ''}`}>
       {imageHref && (
         <div className="host-event-media">
-          <img src={imageHref} alt={event.title} loading="lazy" />
+          <img src={imageHref} alt="" loading="lazy" />
         </div>
       )}
       <div className="host-event-body">
@@ -195,7 +204,9 @@ function CampaignEventCard({ event, stale }: { event: PublicCampaignEvent; stale
         </p>
 
         {event.description && <p className="host-event-description">{event.description}</p>}
-        {stale && hp?.availabilityLabel && <p className="muted-note">{hp.availabilityLabel}</p>}
+        {stale && hp && (
+          <p className="muted-note">{hp.availabilityLabel || 'Check availability on HåfaPass'}</p>
+        )}
 
         {primaryHref && (
           <div className="host-event-actions">
@@ -212,15 +223,18 @@ function CampaignEventCard({ event, stale }: { event: PublicCampaignEvent; stale
 function UnmatchedHafapassCard({ event, stale }: { event: HafapassEventSummary; stale: boolean }) {
   const buyHref = safeHttpsHref(event.buyUrl)
   const priceLabel = !stale ? formatTicketPrice(event.minAllInPriceCents) : null
+  const visibleState = !stale || event.ticketState === 'cancelled' ? event.ticketState : null
 
   return (
     <article className="host-event-card panel">
       <div className="host-event-body">
         <div className="host-event-badges">
           <span className="division-pill">{event.isPass ? 'Tournament pass' : 'HåfaPass event'}</span>
-          <span className={`status-badge ${event.ticketState === 'on_sale' ? 'live' : event.ticketState === 'cancelled' || event.ticketState === 'sold_out' ? 'cancelled' : 'upcoming'}`}>
-            {ticketStateLabel(event.ticketState)}
-          </span>
+          {visibleState && (
+            <span className={`status-badge ${visibleState === 'on_sale' ? 'live' : visibleState === 'cancelled' || visibleState === 'sold_out' ? 'cancelled' : 'upcoming'}`}>
+              {ticketStateLabel(visibleState)}
+            </span>
+          )}
           {priceLabel && <span className="host-price-pill">{priceLabel}</span>}
         </div>
         <h3>{event.title}</h3>
@@ -230,11 +244,11 @@ function UnmatchedHafapassCard({ event, stale }: { event: HafapassEventSummary; 
           {event.venueName && <span> · {event.venueName}</span>}
         </p>
         {event.shortDescription && <p className="host-event-description">{event.shortDescription}</p>}
-        {stale && event.availabilityLabel && <p className="muted-note">{event.availabilityLabel}</p>}
+        {stale && <p className="muted-note">{event.availabilityLabel || 'Check availability on HåfaPass'}</p>}
         {buyHref && (
           <div className="host-event-actions">
             <a className="btn secondary small" href={buyHref} target="_blank" rel="noreferrer">
-              {event.ticketState === 'sold_out' ? 'View on HåfaPass' : 'Buy on HåfaPass'} <IconExternal size={14} />
+              {visibleState === 'sold_out' ? 'View on HåfaPass' : 'Buy on HåfaPass'} <IconExternal size={14} />
             </a>
           </div>
         )}
@@ -245,25 +259,48 @@ function UnmatchedHafapassCard({ event, stale }: { event: HafapassEventSummary; 
 
 export function HostYearPage() {
   const { slug } = useParams()
-  const [yearParam] = useState(() => numericSearchParam('year'))
+  const [searchParams] = useSearchParams()
+  const rawYear = searchParams.get('year')
+  const yearParam = !slug && rawYear && /^\d{4}$/.test(rawYear) ? Number(rawYear) : undefined
+  const queryKey = JSON.stringify({ slug: slug || '', year: yearParam ?? '' })
   const motionOk = useMotionOk()
 
-  const { data, loading, error, errorStatus, reload } = useAsync(
-    () => api.publicHostYear({ slug: slug || undefined, year: slug ? undefined : yearParam }),
-    [slug, yearParam],
+  const { data: rawData, loading, error, errorStatus, reload } = useAsync(
+    async () => ({
+      queryKey,
+      payload: await api.publicHostYear({ slug: slug || undefined, year: yearParam }),
+    }),
+    [queryKey],
   )
 
+  const data = rawData?.queryKey === queryKey ? rawData.payload : null
   const countdownTarget = data?.campaign.countdownTargetAt || null
   const [countdown, setCountdown] = useState<CountdownParts | null>(() => computeCountdown(countdownTarget))
 
   useEffect(() => {
-    setCountdown(computeCountdown(countdownTarget))
-    if (!countdownTarget) return undefined
+    const initial = computeCountdown(countdownTarget)
+    setCountdown(initial)
+    if (!countdownTarget || !initial || initial.reached) return undefined
 
-    const intervalId = window.setInterval(() => {
-      setCountdown(computeCountdown(countdownTarget))
-    }, 60_000)
-    return () => window.clearInterval(intervalId)
+    let timeoutId = 0
+    const scheduleNext = () => {
+      const targetMs = Date.parse(countdownTarget)
+      if (!Number.isFinite(targetMs)) return
+      const remainingMs = targetMs - Date.now()
+      if (remainingMs <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, reached: true })
+        return
+      }
+      const msToNextMinute = (remainingMs % 60_000) || 60_000
+      timeoutId = window.setTimeout(() => {
+        const next = computeCountdown(countdownTarget)
+        setCountdown(next)
+        if (next && !next.reached) scheduleNext()
+      }, msToNextMinute + 50)
+    }
+
+    scheduleNext()
+    return () => window.clearTimeout(timeoutId)
   }, [countdownTarget])
 
   const { upcomingEvents, pastEvents } = useMemo(() => {
@@ -348,7 +385,7 @@ export function HostYearPage() {
               </a>
             )}
             {allTicketsHref && (
-              <a className="btn primary" href={allTicketsHref} target="_blank" rel="noreferrer">
+              <a className={`btn ${donateHref ? 'secondary' : 'primary'}`} href={allTicketsHref} target="_blank" rel="noreferrer">
                 Tickets on HåfaPass <IconExternal size={15} />
               </a>
             )}
@@ -365,14 +402,18 @@ export function HostYearPage() {
 
         <div className="hero-panel host-countdown-panel">
           {heroImageHref && (
-            <img className="host-hero-thumb" src={heroImageHref} alt={campaign.title} />
+            <img className="host-hero-thumb" src={heroImageHref} alt="" />
           )}
           <span>{campaign.countdownLabel || 'Countdown to tip-off'}</span>
           {countdown ? (
             countdown.reached ? (
               <strong>Tournament time!</strong>
             ) : (
-              <div className="host-countdown-grid" aria-label="Countdown to tournament tip-off">
+              <div
+                className="host-countdown-grid"
+                role="group"
+                aria-label={`Countdown: ${countdown.days} days, ${countdown.hours} hours, ${countdown.minutes} minutes`}
+              >
                 <div><strong>{countdown.days}</strong><small>Days</small></div>
                 <div><strong>{countdown.hours}</strong><small>Hours</small></div>
                 <div><strong>{countdown.minutes}</strong><small>Min</small></div>
@@ -382,11 +423,15 @@ export function HostYearPage() {
             <strong>Dates TBA</strong>
           )}
           <div className="hero-panel-rule" aria-hidden="true" />
-          <small>Tickets sell on HåfaPass; golf registration runs on HafaGolf. Everything routes from one front door.</small>
+          <small>
+            {golfHref
+              ? 'Tickets sell on HåfaPass; golf registration runs on the Golf Platform. Everything routes from one front door.'
+              : 'Tickets sell on HåfaPass. Fundraisers, sponsors, and tournament updates route from one front door.'}
+          </small>
         </div>
       </section>
 
-      {campaign.meter.enabled && <FundraisingMeter meter={campaign.meter} />}
+      {campaign.meter.enabled && <FundraisingMeter key={campaign.id} meter={campaign.meter} />}
 
       {campaign.donationInstructions && (
         <Panel className="host-donate-panel">
@@ -432,7 +477,7 @@ export function HostYearPage() {
         <section className="host-section">
           <div className="section-heading">
             <h2>More tickets on HåfaPass</h2>
-            {hafapass.stale && <span className="muted-note">Availability updates on HåfaPass</span>}
+            {hafapass.stale && <span className="muted-note">Check availability on HåfaPass</span>}
           </div>
           <div className="host-events-grid">
             {hafapass.events.map((event) => (
@@ -466,7 +511,7 @@ export function HostYearPage() {
                     </div>
                     {postImageHref && (
                       <div className="host-post-media">
-                        <img src={postImageHref} alt={post.title} loading="lazy" />
+                        <img src={postImageHref} alt="" loading="lazy" />
                       </div>
                     )}
                     <div className="host-post-body">

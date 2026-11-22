@@ -299,7 +299,7 @@ export type HafapassEventSummary = {
   organizerSlug: string | null
   isPass: boolean
   seriesSlug: string | null
-  ticketState: HafapassTicketState
+  ticketState: HafapassTicketState | null
   minAllInPriceCents: number | null
   ticketTypes: HafapassTicketType[]
   availabilityLabel: string | null
