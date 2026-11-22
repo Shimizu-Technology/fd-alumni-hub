@@ -1,5 +1,6 @@
 class LedgerEntry < ApplicationRecord
   ENTRY_TYPES = %w[income expense].freeze
+  MAX_CENTS = 100_000_000_000 # $1,000,000,000 cap (well within bigint)
   INCOME_SOURCES = %w[
     fundraiser_gross
     fundraiser_net
@@ -59,7 +60,7 @@ class LedgerEntry < ApplicationRecord
   before_destroy :prevent_destroy
 
   validates :entry_type, presence: true, inclusion: { in: ENTRY_TYPES }
-  validates :amount_cents, presence: true, numericality: { only_integer: true, greater_than: 0 }
+  validates :amount_cents, presence: true, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_CENTS }
   validates :entry_date, presence: true
   validates :source, presence: true
   validates :payment_method, presence: true, inclusion: { in: PAYMENT_METHODS }
@@ -204,11 +205,17 @@ class LedgerEntry < ApplicationRecord
         errors.add(:budget_line_id, "must belong to this campaign")
       elsif budget_line.kind != entry_type
         errors.add(:budget_line_id, "kind must match entry_type (#{entry_type})")
+      elsif (new_record? || will_save_change_to_budget_line_id?) && budget_line.archived?
+        errors.add(:budget_line_id, "cannot link to an archived budget line")
       end
     end
 
-    if campaign_event_id.present? && (campaign_event.nil? || campaign_event.host_campaign_id != host_campaign_id)
-      errors.add(:campaign_event_id, "must belong to this campaign")
+    if campaign_event_id.present?
+      if campaign_event.nil? || campaign_event.host_campaign_id != host_campaign_id
+        errors.add(:campaign_event_id, "must belong to this campaign")
+      elsif (new_record? || will_save_change_to_campaign_event_id?) && campaign_event.archived?
+        errors.add(:campaign_event_id, "cannot link to an archived campaign event")
+      end
     end
 
     if pledge_id.present? && (pledge.nil? || pledge.host_campaign_id != host_campaign_id)
@@ -217,6 +224,13 @@ class LedgerEntry < ApplicationRecord
 
     if sponsor_id.present? && (sponsor.nil? || sponsor.tournament_id != host_campaign.tournament_id)
       errors.add(:sponsor_id, "must belong to this campaign's tournament")
+    end
+
+    if paid_by_user_id.present? && (new_record? || will_save_change_to_paid_by_user_id?)
+      payer = User.active.find_by(id: paid_by_user_id)
+      unless payer && (payer.admin? || host_campaign.campaign_memberships.active.where(user_id: payer.id).exists?)
+        errors.add(:paid_by_user_id, "must be an active campaign member or administrator")
+      end
     end
   end
 

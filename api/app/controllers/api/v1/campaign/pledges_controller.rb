@@ -22,7 +22,14 @@ module Api
         end
 
         def create
-          pledge = @campaign.pledges.build(pledge_params.merge(recorded_by: current_user))
+          attrs = pledge_params
+          return if performed?
+
+          pledge = @campaign.pledges.build(attrs.merge(recorded_by: current_user))
+          if !pledge.is_in_kind? && !%w[promised cancelled].include?(pledge.status.to_s.strip.downcase.presence || "promised")
+            return render json: { error: "New cash pledges must start as 'promised' or 'cancelled'; fulfillment updates automatically from income entries." },
+              status: :unprocessable_entity
+          end
 
           Pledge.transaction do
             unless pledge.save
@@ -47,19 +54,30 @@ module Api
         end
 
         def update
+          attrs = pledge_params
+          return if performed?
+
           pledge = @campaign.pledges.find(params[:id])
 
           Pledge.transaction do
             pledge.lock!
-            pledge.assign_attributes(pledge_params)
-            changes = pledge.changes
+            before_snapshot = pledge.attributes.slice("sponsor_id", "donor_name", "tier", "is_in_kind", "promised_cents", "due_on", "status", "notes")
+            pledge.assign_attributes(attrs)
             unless pledge.save
               render_errors(pledge)
               raise ActiveRecord::Rollback
             end
 
-            pledge.sync_fulfillment_status! unless pledge.cancelled?
-            record_audit!(record: pledge, action: "update", changes: changes) if changes.any?
+            pledge.sync_fulfillment_status! unless pledge.cancelled? || pledge.is_in_kind?
+
+            after_snapshot = pledge.attributes.slice("sponsor_id", "donor_name", "tier", "is_in_kind", "promised_cents", "due_on", "status", "notes")
+            real_changes = {}
+            before_snapshot.each do |k, old_val|
+              new_val = after_snapshot[k]
+              real_changes[k] = [ old_val, new_val ] if old_val != new_val
+            end
+
+            record_audit!(record: pledge, action: "update", changes: real_changes) if real_changes.any?
           end
           return if performed?
 
@@ -69,7 +87,9 @@ module Api
         private
 
         def pledge_params
-          raw = params.fetch(:pledge, params)
+          raw = extract_object_params(:pledge)
+          return {} unless raw
+
           permitted = raw.permit(
             :sponsor_id, :sponsorId,
             :donor_name, :donorName,
@@ -89,7 +109,15 @@ module Api
           assign_param(attrs, permitted, :tier, :tier)
           assign_param(attrs, permitted, :is_in_kind, :is_in_kind, :isInKind)
           assign_param(attrs, permitted, :promised_cents, :promised_cents, :promisedCents)
-          assign_param(attrs, permitted, :due_on, :due_on, :dueOn)
+          if permitted.key?(:due_on) || permitted.key?(:dueOn)
+            raw_due = permitted.key?(:due_on) ? permitted[:due_on] : permitted[:dueOn]
+            ok, parsed_or_error = parse_strict_iso_date(raw_due, field_label: "dueOn")
+            unless ok
+              render json: { error: parsed_or_error }, status: :unprocessable_entity
+              return {}
+            end
+            attrs[:due_on] = parsed_or_error
+          end
           assign_param(attrs, permitted, :status, :status)
           assign_param(attrs, permitted, :notes, :notes)
           attrs

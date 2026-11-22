@@ -2,6 +2,8 @@ module Api
   module V1
     module Campaign
       class BaseController < Api::V1::BaseController
+        wrap_parameters false
+
         before_action :set_no_store_headers
         before_action :authenticate_user!
         before_action :load_campaign
@@ -79,6 +81,37 @@ module Api
             attrs[target_key] = permitted[source_key]
             return
           end
+        end
+
+        def extract_object_params(*wrapper_keys)
+          wrapper_keys.each do |key|
+            next unless params.key?(key)
+
+            candidate = params[key]
+            return candidate if candidate.is_a?(ActionController::Parameters)
+
+            render json: { error: "Invalid #{key} payload format." }, status: :unprocessable_entity
+            return nil
+          end
+
+          params
+        end
+
+        def parse_strict_iso_date(raw_value, field_label:)
+          return [ true, nil ] if raw_value.nil? || (raw_value.is_a?(String) && raw_value.strip.empty?)
+          return [ true, raw_value ] if raw_value.is_a?(Date)
+          unless raw_value.is_a?(String)
+            return [ false, "#{field_label} must be an ISO date (YYYY-MM-DD)" ]
+          end
+
+          trimmed = raw_value.strip
+          unless trimmed.match?(/\A\d{4}-\d{2}-\d{2}\z/)
+            return [ false, "#{field_label} must be an ISO date (YYYY-MM-DD)" ]
+          end
+
+          [ true, Date.iso8601(trimmed) ]
+        rescue Date::Error, ArgumentError
+          [ false, "#{field_label} is not a valid calendar date" ]
         end
       end
     end

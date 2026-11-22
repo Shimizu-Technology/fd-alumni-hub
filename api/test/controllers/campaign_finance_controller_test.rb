@@ -500,6 +500,100 @@ class CampaignFinanceControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "closes H1/M1-M6/L1-L5 edge cases: payer membership, recorder always blocked, in-kind fulfillment, budget kind lock, flat camelCase JSON, strict dates" do
+    outsider = User.create!(email: "outsider@example.com", clerk_id: "clerk_outsider", role: "viewer", first_name: "Outsider", last_name: "Leak")
+
+    # H1 / M1: nonexistent or non-member paidByUserId rejected (422, not 500, no user name leak)
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { ledgerEntry: { entryType: "expense", amountCents: 10_000, source: "event_expense", paymentMethod: "card", counterparty: "Store", paidByUserId: 999_999, reimbursementStatus: "requested" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { ledgerEntry: { entryType: "expense", amountCents: 10_000, source: "event_expense", paymentMethod: "card", counterparty: "Store", paidByUserId: outsider.id, reimbursementStatus: "requested" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    # H1: treasurer recording reimbursement for ANOTHER member STILL cannot approve their own recorded entry
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { ledgerEntry: { entryType: "expense", amountCents: 10_000, source: "event_expense", paymentMethod: "card", counterparty: "Store", paidByUserId: @board.id, reimbursementStatus: "requested" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :created
+    other_payer_reimb_id = JSON.parse(response.body).dig("ledgerEntry", "id")
+
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{other_payer_reimb_id}/approve-reimbursement",
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :forbidden
+
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries/#{other_payer_reimb_id}/approve-reimbursement",
+      headers: auth_headers(@chair), as: :json
+    assert_response :success
+
+    # M2, M3, M4: new cash pledge cannot start fulfilled; in-kind pledge CAN be marked fulfilled; isInKind immutable
+    post "/api/v1/campaign/#{@campaign.slug}/pledges",
+      params: { pledge: { donorName: "Fake Fulfilled", promisedCents: 50_000, status: "fulfilled" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    post "/api/v1/campaign/#{@campaign.slug}/pledges",
+      params: { pledge: { donorName: "Trophy Donor", promisedCents: 75_000, isInKind: true } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :created
+    in_kind_id = JSON.parse(response.body).dig("pledge", "id")
+
+    patch "/api/v1/campaign/#{@campaign.slug}/pledges/#{in_kind_id}",
+      params: { pledge: { status: "fulfilled" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :success
+    assert_equal "fulfilled", JSON.parse(response.body).dig("pledge", "status")
+
+    patch "/api/v1/campaign/#{@campaign.slug}/pledges/#{in_kind_id}",
+      params: { pledge: { isInKind: false } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    # M5 & M6 & L3: flat camelCase JSON works without dropping budgetCents; kind locked after link; scalar wrapper returns 422
+    post "/api/v1/campaign/#{@campaign.slug}/budget-lines",
+      params: { kind: "expense", category: "Supplies", budgetCents: 12_345 },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :created
+    line_id = JSON.parse(response.body).dig("budgetLine", "id")
+    assert_equal 12_345, JSON.parse(response.body).dig("budgetLine", "budgetCents")
+
+    post "/api/v1/campaign/#{@campaign.slug}/budget-lines",
+      params: { budgetLine: "oops" },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { entryType: "expense", amountCents: 5_000, source: "event_expense", paymentMethod: "cash", counterparty: "Shop", budgetLineId: line_id },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :created
+
+    patch "/api/v1/campaign/#{@campaign.slug}/budget-lines/#{line_id}",
+      params: { budgetLine: { kind: "income" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    # L1: invalid dates return 422 instead of silently coercing
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { ledgerEntry: { entryType: "income", amountCents: 5_000, entryDate: "not-a-date", source: "donation", paymentMethod: "cash", counterparty: "Donor" } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+
+    # L4: BudgetLine and Pledge refuse hard delete
+    assert_not BudgetLine.find(line_id).destroy
+    assert_not Pledge.find(in_kind_id).destroy
+
+    # L5: archived budget line cannot be linked to new entry
+    post "/api/v1/campaign/#{@campaign.slug}/budget-lines/#{line_id}/archive", headers: auth_headers(@treasurer)
+    assert_response :success
+    post "/api/v1/campaign/#{@campaign.slug}/ledger-entries",
+      params: { ledgerEntry: { entryType: "expense", amountCents: 2_000, source: "event_expense", paymentMethod: "cash", counterparty: "Shop 2", budgetLineId: line_id } },
+      headers: auth_headers(@treasurer), as: :json
+    assert_response :unprocessable_entity
+  end
+
   private
 
   def auth_headers(user)

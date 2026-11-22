@@ -31,7 +31,7 @@ module Api
           void_reason voidReason
         ].freeze
 
-        CSV_FORMULA_PREFIXES = %w[= + - @].freeze
+        CSV_FORMULA_REGEX = /\A[\t\r\n]|^\s*[=+\-@]/
 
         before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index, :export ]
         before_action -> { require_campaign_role!("treasurer") }, only: [ :create, :update, :void, :mark_reimbursed ]
@@ -76,7 +76,7 @@ module Api
                 entry.id.to_s,
                 entry.entry_date&.iso8601,
                 escape_csv_text(entry.entry_type),
-                format("%.2f", entry.amount_cents / 100.0),
+                format("%d.%02d", entry.amount_cents / 100, entry.amount_cents % 100),
                 escape_csv_text(entry.source),
                 escape_csv_text(entry.payment_method),
                 escape_csv_text(entry.counterparty),
@@ -107,12 +107,17 @@ module Api
         end
 
         def create
-          if supplied_keys_in?(RECEIPT_PARAM_KEYS)
+          raw = extract_object_params(:ledgerEntry, :ledger_entry)
+          return if performed?
+
+          if supplied_keys_in?(raw, RECEIPT_PARAM_KEYS)
             return render json: { error: "Receipt attachment is not yet enabled; private receipt storage ships in the next release." },
               status: :unprocessable_entity
           end
 
-          attrs = create_entry_params
+          attrs = create_entry_params(raw)
+          return if performed?
+
           if attrs[:reimbursement_status].present? && !%w[not_applicable requested].include?(attrs[:reimbursement_status])
             return render json: { error: "New entries can only start with reimbursementStatus 'not_applicable' or 'requested'." },
               status: :unprocessable_entity
@@ -155,12 +160,15 @@ module Api
         end
 
         def update
-          if supplied_keys_in?(RECEIPT_PARAM_KEYS)
+          raw = extract_object_params(:ledgerEntry, :ledger_entry)
+          return if performed?
+
+          if supplied_keys_in?(raw, RECEIPT_PARAM_KEYS)
             return render json: { error: "Receipt attachment is not yet enabled; private receipt storage ships in the next release." },
               status: :unprocessable_entity
           end
 
-          immutable_attempted = supplied_keys_in?(IMMUTABLE_UPDATE_KEYS, return_matches: true)
+          immutable_attempted = supplied_keys_in?(raw, IMMUTABLE_UPDATE_KEYS, return_matches: true)
           if immutable_attempted.any?
             return render json: { error: "Core monetary and workflow fields are immutable (#{immutable_attempted.join(', ')}); void and re-enter instead." },
               status: :unprocessable_entity
@@ -173,14 +181,18 @@ module Api
 
           LedgerEntry.transaction do
             entry.lock!
-            entry.assign_attributes(update_metadata_params)
+            entry.assign_attributes(update_metadata_params(raw))
             changes = entry.changes
             unless entry.save
               render_errors(entry)
               raise ActiveRecord::Rollback
             end
 
-            record_audit!(record: entry, action: "update", changes: changes) if changes.any?
+            if changes.any?
+              audit_changes = changes.except("reference_number")
+              audit_changes["reference_number_updated"] = true if changes.key?("reference_number")
+              record_audit!(record: entry, action: "update", changes: audit_changes)
+            end
           end
           return if performed?
 
@@ -188,7 +200,10 @@ module Api
         end
 
         def void
-          reason = extract_reason(:voidReason, :void_reason, :reason)
+          raw = extract_object_params(:ledgerEntry, :ledger_entry)
+          return if performed?
+
+          reason = extract_reason(raw, :voidReason, :void_reason, :reason)
           if reason.blank?
             return render json: { error: "A void reason is required." }, status: :unprocessable_entity
           end
@@ -224,8 +239,11 @@ module Api
         end
 
         def approve_reimbursement
+          raw = extract_object_params(:ledgerEntry, :ledger_entry)
+          return if performed?
+
           entry = @campaign.ledger_entries.find(params[:id])
-          override_reason = extract_reason(:overrideReason, :override_reason, :reason)
+          override_reason = extract_reason(raw, :overrideReason, :override_reason, :reason)
 
           LedgerEntry.transaction do
             entry.lock!
@@ -240,7 +258,7 @@ module Api
               raise ActiveRecord::Rollback
             end
 
-            if entry.paid_by_user_id.nil? && entry.recorded_by_id == current_user.id
+            if entry.recorded_by_id == current_user.id
               unless current_user.admin? && override_reason.present?
                 render_forbidden("A second officer must approve a reimbursement you recorded.")
                 raise ActiveRecord::Rollback
@@ -265,11 +283,22 @@ module Api
         end
 
         def mark_reimbursed
+          raw = extract_object_params(:ledgerEntry, :ledger_entry)
+          return if performed?
+
           entry = @campaign.ledger_entries.find(params[:id])
-          raw = entry_raw_params
-          reimbursed_at = params[:reimbursedAt].presence || params[:reimbursed_at].presence ||
-                          raw[:reimbursedAt].presence || raw[:reimbursed_at].presence ||
-                          LedgerEntry.guam_today
+          raw_reimbursed_at = if params.key?(:reimbursedAt) || params.key?(:reimbursed_at)
+            params.key?(:reimbursedAt) ? params[:reimbursedAt] : params[:reimbursed_at]
+          elsif raw.key?(:reimbursedAt) || raw.key?(:reimbursed_at)
+            raw.key?(:reimbursedAt) ? raw[:reimbursedAt] : raw[:reimbursed_at]
+          end
+
+          ok, parsed_date_or_err = parse_strict_iso_date(raw_reimbursed_at, field_label: "reimbursedAt")
+          unless ok
+            return render json: { error: parsed_date_or_err }, status: :unprocessable_entity
+          end
+          reimbursed_at = parsed_date_or_err || LedgerEntry.guam_today
+
           reference = (
             params[:reimbursementReference].presence || params[:reimbursement_reference].presence ||
             raw[:reimbursementReference].presence || raw[:reimbursement_reference].presence
@@ -322,19 +351,14 @@ module Api
           scope
         end
 
-        def entry_raw_params
-          params[:ledgerEntry] || params[:ledger_entry] || params
-        end
-
-        def supplied_keys_in?(target_keys, return_matches: false)
-          raw_keys = entry_raw_params.to_unsafe_h.keys.map(&:to_s)
+        def supplied_keys_in?(raw, target_keys, return_matches: false)
+          raw_keys = raw.to_unsafe_h.keys.map(&:to_s)
           top_keys = params.to_unsafe_h.keys.map(&:to_s)
           matches = (raw_keys | top_keys) & target_keys
           return_matches ? matches : matches.any?
         end
 
-        def extract_reason(*keys)
-          raw = entry_raw_params
+        def extract_reason(raw, *keys)
           keys.each do |k|
             val = params[k].presence || raw[k].presence
             return val.to_s.strip if val.present?
@@ -342,8 +366,7 @@ module Api
           nil
         end
 
-        def create_entry_params
-          raw = entry_raw_params
+        def create_entry_params(raw)
           permitted = raw.permit(
             :entry_type, :entryType,
             :amount_cents, :amountCents,
@@ -365,7 +388,15 @@ module Api
           attrs = {}
           assign_param(attrs, permitted, :entry_type, :entry_type, :entryType)
           assign_param(attrs, permitted, :amount_cents, :amount_cents, :amountCents)
-          assign_param(attrs, permitted, :entry_date, :entry_date, :entryDate)
+          if permitted.key?(:entry_date) || permitted.key?(:entryDate)
+            raw_date = permitted.key?(:entry_date) ? permitted[:entry_date] : permitted[:entryDate]
+            ok, parsed_or_err = parse_strict_iso_date(raw_date, field_label: "entryDate")
+            unless ok
+              render json: { error: parsed_or_err }, status: :unprocessable_entity
+              return {}
+            end
+            attrs[:entry_date] = parsed_or_err if parsed_or_err
+          end
           assign_param(attrs, permitted, :budget_line_id, :budget_line_id, :budgetLineId)
           assign_param(attrs, permitted, :campaign_event_id, :campaign_event_id, :campaignEventId)
           assign_param(attrs, permitted, :sponsor_id, :sponsor_id, :sponsorId)
@@ -383,8 +414,7 @@ module Api
           attrs
         end
 
-        def update_metadata_params
-          raw = entry_raw_params
+        def update_metadata_params(raw)
           permitted = raw.permit(
             :description,
             :reference_number, :referenceNumber,
@@ -408,12 +438,7 @@ module Api
           text = value.to_s
           return "" if text.empty?
 
-          first_char = text[0]
-          if CSV_FORMULA_PREFIXES.include?(first_char) || first_char == "\t" || first_char == "\r"
-            "'#{text}"
-          else
-            text
-          end
+          text.match?(CSV_FORMULA_REGEX) ? "'#{text}" : text
         end
       end
     end

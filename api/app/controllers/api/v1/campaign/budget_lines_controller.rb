@@ -17,7 +17,10 @@ module Api
         end
 
         def create
-          line = @campaign.budget_lines.build(budget_line_params)
+          attrs = budget_line_params
+          return if performed?
+
+          line = @campaign.budget_lines.build(attrs)
 
           BudgetLine.transaction do
             unless line.save
@@ -37,10 +40,17 @@ module Api
         end
 
         def update
+          attrs = budget_line_params
+          return if performed?
+
           line = @campaign.budget_lines.find(params[:id])
+          if line.archived?
+            return render json: { error: "Archived budget lines are read-only." }, status: :unprocessable_entity
+          end
 
           BudgetLine.transaction do
-            line.assign_attributes(budget_line_params)
+            line.lock!
+            line.assign_attributes(attrs)
             changes = line.changes
             unless line.save
               render_errors(line)
@@ -71,7 +81,9 @@ module Api
         private
 
         def budget_line_params
-          raw = params.fetch(:budgetLine, params.fetch(:budget_line, params))
+          raw = extract_object_params(:budgetLine, :budget_line)
+          return {} unless raw
+
           permitted = raw.permit(:kind, :category, :budget_cents, :budgetCents, :position, :notes)
 
           attrs = {}

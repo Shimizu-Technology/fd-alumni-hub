@@ -2,10 +2,10 @@ module HostCampaigns
   class FinanceSummary
     class << self
       def public_meter_totals(campaign)
-        scope = campaign.ledger_entries.live.where(entry_type: "income")
-        scope = scope.where.not(source: LedgerEntry::FDAA_SOURCES) unless campaign.include_fdaa_in_public_meter?
-        raised = scope.sum(:amount_cents).to_i
-        latest_update = scope.maximum(:updated_at) || campaign.updated_at
+        income_scope = campaign.ledger_entries.where(entry_type: "income")
+        income_scope = income_scope.where.not(source: LedgerEntry::FDAA_SOURCES) unless campaign.include_fdaa_in_public_meter?
+        raised = income_scope.live.sum(:amount_cents).to_i
+        latest_update = [ campaign.updated_at, income_scope.maximum(:updated_at) ].compact.max
         { raised_cents: raised, updated_at: latest_update }
       end
 
