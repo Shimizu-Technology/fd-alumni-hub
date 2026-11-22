@@ -65,7 +65,7 @@ class MediaAsset < ApplicationRecord
   end
 
   def normalize_media_fields
-    self.external_video_id = external_video_id.to_s.strip.presence
+    self.external_video_id = external_video_id&.to_s&.gsub(/\A[ \t]+|[ \t]+\z/, "")&.presence
     self.video_provider = video_provider.to_s.strip.presence
     self.video_url = video_url.to_s.strip.presence
     self.image_url = image_url.to_s.strip.presence
