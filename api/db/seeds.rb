@@ -4,6 +4,7 @@
 Audit::DatabaseTriggers.install!
 
 if ENV["FD_ADMIN_EMAIL"].present?
+  User.find_by(email: ENV["FD_ADMIN_EMAIL"].strip.downcase)&.update!(super_admin: true)
   AdminWhitelist.find_or_create_by!(email: ENV["FD_ADMIN_EMAIL"].downcase) do |admin|
     admin.role = "admin"
     admin.notes = "Seeded from FD_ADMIN_EMAIL"

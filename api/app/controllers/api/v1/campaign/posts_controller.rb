@@ -2,8 +2,10 @@ module Api
   module V1
     module Campaign
       class PostsController < BaseController
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index ]
-        before_action -> { require_campaign_role!("chair") }, only: [ :create, :update, :destroy ]
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "view", "board", "chair", "treasurer") }, only: :index
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :create
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :update
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :destroy
         before_action :require_campaign_writable!, only: [ :create, :update, :destroy ]
 
         def index
@@ -12,7 +14,11 @@ module Api
         end
 
         def create
-          post = @campaign.campaign_posts.build(post_params.merge(author: current_user))
+          attrs = post_params
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if attrs[:published_at].present?
+          return if performed?
+
+          post = @campaign.campaign_posts.build(attrs.merge(author: current_user))
 
           CampaignPost.transaction do
             unless post.save
@@ -30,8 +36,12 @@ module Api
         def update
           post = @campaign.campaign_posts.find(params[:id])
 
+          attrs = post_params
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if attrs.key?(:published_at) && (post.published_at.present? || attrs[:published_at].present?)
+          return if performed?
+
           CampaignPost.transaction do
-            post.assign_attributes(post_params)
+            post.assign_attributes(attrs)
             changes = post.changes
             unless post.save
               render_errors(post)
@@ -47,6 +57,8 @@ module Api
 
         def destroy
           post = @campaign.campaign_posts.find(params[:id])
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if post.published_at.present?
+          return if performed?
 
           CampaignPost.transaction do
             record_audit!(

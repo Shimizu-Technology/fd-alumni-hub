@@ -1,3 +1,4 @@
+import { hasCapability } from '../../lib/adminModules'
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
@@ -174,7 +175,8 @@ function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.
 
 export function AdminCampaignFinancePage() {
   const auth = useAuthContext()
-  const isAdmin = Boolean(auth.user?.isAdmin)
+  const isAdmin = Boolean(auth.user?.isSuperAdmin ?? auth.user?.isAdmin)
+  const hasScopedLookup = isAdmin || Boolean(auth.user?.capabilities)
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<FinanceTab>('ledger')
   const [entryTypeFilter, setEntryTypeFilter] = useState('')
@@ -186,12 +188,12 @@ export function AdminCampaignFinancePage() {
   const [receiptError, setReceiptError] = useState('')
 
   const adminCampaignsQuery = useAsync(
-    () => (isAdmin ? api.adminCampaigns() : Promise.resolve({ campaigns: [] as AdminHostCampaign[] })),
-    [isAdmin],
+    () => (hasScopedLookup ? api.adminCampaignWorkspace("finance_and_reimbursements") : Promise.resolve({ campaigns: [] as AdminHostCampaign[] })),
+    [hasScopedLookup],
   )
 
   const campaignOptions = useMemo(() => {
-    if (isAdmin && adminCampaignsQuery.data?.campaigns) {
+    if (hasScopedLookup && adminCampaignsQuery.data?.campaigns) {
       return adminCampaignsQuery.data.campaigns.map((c) => ({ slug: c.slug, title: c.title, status: c.status }))
     }
     return (auth.user?.campaignMemberships || []).map((m) => ({
@@ -199,7 +201,7 @@ export function AdminCampaignFinancePage() {
       title: m.campaignTitle,
       status: m.status,
     }))
-  }, [isAdmin, adminCampaignsQuery.data, auth.user?.campaignMemberships])
+  }, [hasScopedLookup, adminCampaignsQuery.data, auth.user?.campaignMemberships])
 
   const requestedSlug = searchParams.get('campaign')
   const selectedSlug = useMemo(() => {
@@ -314,11 +316,11 @@ export function AdminCampaignFinancePage() {
     }
   }
 
-  if (isAdmin && adminCampaignsQuery.loading && !adminCampaignsQuery.data) {
+  if (hasScopedLookup && adminCampaignsQuery.loading && !adminCampaignsQuery.data) {
     return <LoadingState label="Loading host campaigns" />
   }
 
-  if (isAdmin && adminCampaignsQuery.error) {
+  if (hasScopedLookup && adminCampaignsQuery.error) {
     return <ErrorState message={adminCampaignsQuery.error} onRetry={adminCampaignsQuery.reload} />
   }
 
@@ -378,8 +380,13 @@ export function AdminCampaignFinancePage() {
     : { budgetLines: [], events: [], pledges: [], sponsors: [], members: [] }
 
   const isArchived = campaign.status === 'archived'
-  const canWriteFinance = (isAdmin || roles.includes('treasurer')) && !isArchived
-  const canApproveReimbursements = (isAdmin || roles.includes('chair') || roles.includes('treasurer')) && !isArchived
+  const financePermission = (action: string, legacyAllowed: boolean) => auth.user?.capabilities
+    ? hasCapability(auth.user, 'finance_and_reimbursements', action, { type: 'campaign', id: campaign.id })
+    : isAdmin || legacyAllowed
+  const canWriteFinance = financePermission('record', roles.includes('treasurer')) && !isArchived
+  const canApproveReimbursements = financePermission('approve', roles.includes('chair') || roles.includes('treasurer')) && !isArchived
+  const canMarkReimbursed = financePermission('payout', roles.includes('treasurer')) && !isArchived
+  const canViewReceipts = financePermission('view_receipts', true)
 
   return (
     <div className="page-stack admin-page finance-page">
@@ -401,7 +408,7 @@ export function AdminCampaignFinancePage() {
                   ))}
                 </select>
               )}
-              <button
+              {financePermission('export', true) && <button
                 type="button"
                 className="btn secondary"
                 title="Downloads the complete campaign ledger (including voided entries) as a CSV file"
@@ -409,7 +416,7 @@ export function AdminCampaignFinancePage() {
                 disabled={exportingCsv}
               >
                 {exportingCsv ? 'Exporting…' : 'Export CSV'}
-              </button>
+              </button>}
             </div>
           )}
         />
@@ -527,7 +534,7 @@ export function AdminCampaignFinancePage() {
           includeVoided={includeVoided}
           onEntryTypeFilter={setEntryTypeFilter}
           onIncludeVoided={setIncludeVoided}
-          onOpenReceipt={handleOpenReceipt}
+          onOpenReceipt={canViewReceipts ? handleOpenReceipt : undefined}
           receiptLoadingId={receiptLoadingId}
           onSaved={reloadAll}
         />
@@ -572,11 +579,10 @@ export function AdminCampaignFinancePage() {
             campaign={campaign}
             entries={reimbursementExpenses}
             currentUserId={auth.user?.id || ''}
-            isAdmin={isAdmin}
             canApprove={canApproveReimbursements}
-            canMarkReimbursed={canWriteFinance}
+            canMarkReimbursed={canMarkReimbursed}
             receiptLoadingId={receiptLoadingId}
-            onOpenReceipt={handleOpenReceipt}
+            onOpenReceipt={canViewReceipts ? handleOpenReceipt : undefined}
             onSaved={reloadAll}
           />
         )
@@ -946,7 +952,7 @@ function LedgerTab({
   includeVoided: boolean
   onEntryTypeFilter: (value: string) => void
   onIncludeVoided: (value: boolean) => void
-  onOpenReceipt: (entryId: string) => Promise<void>
+  onOpenReceipt?: (entryId: string) => Promise<void>
   receiptLoadingId: string | null
   onSaved: () => Promise<void>
 }) {
@@ -1276,14 +1282,16 @@ function LedgerTab({
 
                 <div className="row-actions" style={{ flexWrap: 'wrap' }}>
                   {entry.hasReceipt ? (
-                    <button
-                      type="button"
-                      className="btn secondary small"
-                      disabled={receiptLoadingId === entry.id}
-                      onClick={() => void onOpenReceipt(entry.id)}
-                    >
-                      {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
-                    </button>
+                    onOpenReceipt && (
+                      <button
+                        type="button"
+                        className="btn secondary small"
+                        disabled={receiptLoadingId === entry.id}
+                        onClick={() => void onOpenReceipt(entry.id)}
+                      >
+                        {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
+                      </button>
+                    )
                   ) : (
                     canWrite && !entry.voided && (
                       <label className="btn secondary small file-upload-btn">
@@ -1681,7 +1689,6 @@ function ReimbursementsTab({
   campaign,
   entries,
   currentUserId,
-  isAdmin,
   canApprove,
   canMarkReimbursed,
   receiptLoadingId,
@@ -1691,11 +1698,10 @@ function ReimbursementsTab({
   campaign: AdminHostCampaign
   entries: LedgerEntryRecord[]
   currentUserId: string
-  isAdmin: boolean
   canApprove: boolean
   canMarkReimbursed: boolean
   receiptLoadingId: string | null
-  onOpenReceipt: (entryId: string) => Promise<void>
+  onOpenReceipt?: (entryId: string) => Promise<void>
   onSaved: () => Promise<void>
 }) {
   const [references, setReferences] = useState<Record<string, string>>({})
@@ -1719,15 +1725,7 @@ function ReimbursementsTab({
     setError('')
     setMessage('')
     try {
-      let overrideReason: string | undefined
-      if (entry.recordedById === currentUserId && isAdmin) {
-        const prompted = window.prompt('Admin override reason (required when approving an entry you recorded):')
-        if (!prompted?.trim()) {
-          return
-        }
-        overrideReason = prompted.trim()
-      }
-      await api.campaignApproveReimbursement(campaign.slug, entry.id, overrideReason)
+      await api.campaignApproveReimbursement(campaign.slug, entry.id)
       setMessage(`Approved reimbursement for ${entry.counterparty}.`)
       await onSaved()
     } catch (err) {
@@ -1767,7 +1765,7 @@ function ReimbursementsTab({
         <div className="admin-list">
           {reimbEntries.map((entry) => {
             const isSelfPayer = Boolean(entry.paidByUserId && entry.paidByUserId === currentUserId)
-            const isRecorderOnly = entry.recordedById === currentUserId && !isAdmin
+            const isRecorderOnly = entry.recordedById === currentUserId
             return (
               <div key={entry.id} className="compact-admin-row" style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--line)' }}>
                 <div>
@@ -1782,12 +1780,12 @@ function ReimbursementsTab({
                 </div>
 
                 <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                  {entry.hasReceipt && (
+                  {entry.hasReceipt && onOpenReceipt && (
                     <button
                       type="button"
                       className="btn secondary small"
                       disabled={receiptLoadingId === entry.id}
-                      onClick={() => void onOpenReceipt(entry.id)}
+                      onClick={() => void onOpenReceipt?.(entry.id)}
                     >
                       {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
                     </button>

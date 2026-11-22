@@ -4,6 +4,8 @@ import { api } from '../../lib/api'
 import type { AdminAuditResponse } from '../../lib/types'
 import { AdminAuditHistoryPage } from './AdminAuditHistoryPage'
 
+vi.mock('../../contexts/AuthContext', () => ({ useAuthContext: () => ({ user: { isSuperAdmin: true } }) }))
+
 vi.mock('../../lib/api', () => ({ api: { adminAuditEvents: vi.fn(), adminAuditExport: vi.fn() } }))
 
 const firstPage: AdminAuditResponse = {

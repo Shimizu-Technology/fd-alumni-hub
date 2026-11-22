@@ -3,7 +3,13 @@ module Api
     module Admin
       class AlertsController < BaseController
         def index
+          ids = access_policy.scope_ids("tournament", capability: "tonights_menu_and_news", action: "view")
+          site_access = access_policy.allows?("tonights_menu_and_news", "view")
+          return render_forbidden unless site_access || ids.any?
+          return render_forbidden if !site_access && params[:tournamentId].present? && !ids.include?(params[:tournamentId].to_i)
+
           alerts = TournamentAlert.ordered_for_display
+          alerts = alerts.where(tournament_id: ids) unless site_access
           if params[:tournamentId].present?
             tid = Integer(params[:tournamentId].to_s.strip, 10, exception: false)
             return render json: { errors: [ "tournamentId must be a valid integer" ] }, status: :unprocessable_entity unless tid&.positive?
@@ -20,6 +26,7 @@ module Api
 
         def create
           alert = TournamentAlert.new(alert_params)
+          return unless authorize_alert_write!(alert.tournament_id)
           alert.created_by = current_user
           alert.updated_by = current_user
 
@@ -32,6 +39,10 @@ module Api
 
         def update
           alert = TournamentAlert.find(params[:id])
+          return unless authorize_alert_write!(alert.tournament_id)
+          target = alert_params
+          return if target.key?(:tournament_id) && !authorize_alert_write!(target[:tournament_id])
+
           alert.assign_attributes(alert_params)
           alert.updated_by = current_user
 
@@ -43,11 +54,20 @@ module Api
         end
 
         def destroy
-          TournamentAlert.find(params[:id]).destroy!
+          alert = TournamentAlert.find(params[:id])
+          return unless authorize_alert_write!(alert.tournament_id)
+
+          alert.destroy!
           head :no_content
         end
 
         private
+
+        def authorize_alert_write!(id)
+          return authorize!("tonights_menu_and_news", "alert_site_wide") unless id
+
+          authorize_tournament!("tonights_menu_and_news", "publish", id)
+        end
 
         def alert_params
           raw = params.fetch(:alert, params)

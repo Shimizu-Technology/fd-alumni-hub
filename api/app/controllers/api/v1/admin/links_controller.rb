@@ -5,13 +5,15 @@ module Api
         STALE_MESSAGE = "This game was updated by another user. Reload to review the latest values.".freeze
 
         def index
-          tournament = admin_tournament
+          return unless authorize_tournament!("schedule_and_teams", "view", admin_tournament("schedule_and_teams")&.id)
+          tournament = admin_tournament("schedule_and_teams")
           games = tournament ? games_scope(tournament).limit(500) : Game.none
           render json: { tournament: tournament&.api_json, games: games.map { |g| g.api_json(include_score_audit: true) } }
         end
 
         def missing
-          tournament = admin_tournament
+          return unless authorize_tournament!("schedule_and_teams", "view", admin_tournament("schedule_and_teams")&.id)
+          tournament = admin_tournament("schedule_and_teams")
           games = tournament ? games_scope(tournament).to_a : []
 
           missing_tickets = games.select { |game| game.ticket_url.blank? }
@@ -32,6 +34,10 @@ module Api
         end
 
         def bulk_update
+          allowed = access_policy.allows?("schedule_and_teams", "edit") ||
+            access_policy.scope_ids("tournament", capability: "schedule_and_teams", action: "edit").any?
+          return render_forbidden unless allowed
+
           updates = bulk_link_updates
           return render json: { errors: [ "updates must be an array" ] }, status: :bad_request unless updates
 
@@ -39,7 +45,7 @@ module Api
           errors = []
           conflict_ids = []
 
-          Game.transaction do
+          Game.transaction(requires_new: true) do
             updates.each do |payload|
               id = payload[:id]
               attrs = bulk_link_attrs(payload)
@@ -66,6 +72,9 @@ module Api
               end
 
               game = Game.find(id)
+              unless authorize_tournament!("schedule_and_teams", "edit", game.tournament_id)
+                raise ActiveRecord::Rollback
+              end
               game.lock_version = parsed_version unless parsed_version.nil?
               game.update!(attrs)
               changed << game
@@ -82,6 +91,8 @@ module Api
 
             raise ActiveRecord::Rollback if errors.any?
           end
+
+          return if performed?
 
           if conflict_ids.any?
             # Reload current committed state AFTER rollback so reverted writes are never exposed as currentGame

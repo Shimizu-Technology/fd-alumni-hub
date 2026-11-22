@@ -2,8 +2,8 @@ module Api
   module V1
     module Admin
       class AuditEventsController < BaseController
-        skip_before_action :require_staff!
-        before_action :require_admin!
+        before_action :require_admin!, only: :export
+        before_action :authorize_audit_view!, only: :index
 
         TEXT_FILTERS = %i[area action record_type record_id operation_id].freeze
         ID_FILTERS = %i[actor_id tournament_id host_campaign_id].freeze
@@ -22,7 +22,7 @@ module Api
           }
           if params[:cursor].blank?
             payload[:filterOptions] = filter_options
-            payload[:checkpointSummary] = Audit::CheckpointService.summary
+            payload[:checkpointSummary] = Audit::CheckpointService.summary if access_policy.super_admin?
           end
 
           render json: payload
@@ -80,10 +80,32 @@ module Api
 
         private
 
+        def audit_scope_ids
+          @audit_scope_ids ||= { tournament_id: "tournament", host_campaign_id: "campaign" }.transform_values do |type|
+            access_policy.scope_ids(type, capability: "view_audit_log", action: "view")
+          end
+        end
+
+        def authorize_audit_view!
+          return if access_policy.super_admin?
+
+          authorized = audit_scope_ids.values.any?(&:any?) && audit_scope_ids.all? do |key, ids|
+            params[key].blank? || ids.include?(Integer(params[key].to_s, 10, exception: false))
+          end
+          render_forbidden unless authorized
+        end
+
+        def authorized_events
+          return AuditEvent.all if access_policy.super_admin?
+
+          AuditEvent.where(tournament_id: audit_scope_ids[:tournament_id], host_campaign_id: nil)
+            .or(AuditEvent.where(host_campaign_id: audit_scope_ids[:host_campaign_id]))
+        end
+
         def filtered_events
           filters = request.query_parameters.slice(*TEXT_FILTERS.map(&:to_s)).select { |_, value| value.is_a?(String) && value.present? }
           ID_FILTERS.each { |key| filters[key] = integer_param(params[key]) if params[key].present? }
-          scope = AuditEvent.where(filters)
+          scope = authorized_events.where(filters)
           if params[:q].present?
             term = "%#{AuditEvent.sanitize_sql_like(params[:q].to_s.strip)}%"
             scope = scope.where(SEARCH_FIELDS.map { |field| "#{field} ILIKE :term" }.join(" OR "), term: term)
@@ -129,7 +151,7 @@ module Api
         end
 
         def filter_options
-          actor_rows = AuditEvent.where.not(actor_id: nil)
+          actor_rows = authorized_events.where.not(actor_id: nil)
             .select("DISTINCT ON (actor_id) actor_id, actor_name, actor_email")
             .order(:actor_id, occurred_at: :desc, id: :desc)
           actors = actor_rows.map do |event|
@@ -138,7 +160,7 @@ module Api
           campaigns = HostCampaign.pluck(:id, :title).to_h
           tournaments = Tournament.pluck(:id, :year, :name).to_h { |id, year, name| [ id, "#{year} · #{name}" ] }
           {
-            areas: AuditEvent.distinct.order(:area).pluck(:area),
+            areas: authorized_events.distinct.order(:area).pluck(:area),
             actors: actors.sort_by { |actor| actor[:label].downcase },
             tournaments: scope_options(:tournament_id, tournaments, "Season"),
             campaigns: scope_options(:host_campaign_id, campaigns, "Campaign")
@@ -146,7 +168,9 @@ module Api
         end
 
         def scope_options(column, labels, fallback)
-          AuditEvent.where.not(column => nil).distinct.pluck(column).map do |id|
+          events = authorized_events.where.not(column => nil)
+          events = events.where(column => audit_scope_ids.fetch(column)) unless access_policy.super_admin?
+          events.distinct.pluck(column).map do |id|
             { id: id.to_s, label: labels.fetch(id, "#{fallback} ##{id}") }
           end.sort_by { |option| option[:label].downcase }
         end

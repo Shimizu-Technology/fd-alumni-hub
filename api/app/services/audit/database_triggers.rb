@@ -1,10 +1,11 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 3
+    TRIGGER_VERSION = 4
 
     RECORD_TYPES = {
       users: "User",
+      permission_grants: "PermissionGrant",
       admin_whitelists: "AdminWhitelist",
       campaign_memberships: "CampaignMembership",
       campaign_invitations: "CampaignInvitation",
@@ -315,6 +316,14 @@ module Audit
           WHEN 'pending_receipt_uploads' THEN
             audit_area := 'finance';
             label := 'Receipt upload #' || (record_data->>'id');
+          WHEN 'permission_grants' THEN
+            audit_area := 'access';
+            label := format('%s · %s', record_data->>'email', replace(record_data->>'capability', '_', ' '));
+            IF record_data->>'scope_type' = 'tournament' THEN
+              season_id := (record_data->>'scope_id')::bigint;
+            ELSIF record_data->>'scope_type' = 'campaign' THEN
+              campaign_id := (record_data->>'scope_id')::bigint;
+            END IF;
           ELSE
             audit_area := 'access';
             label := record_data->>'email';

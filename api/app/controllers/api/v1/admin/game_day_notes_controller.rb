@@ -7,7 +7,8 @@ module Api
         rescue_from InvalidDateParam, with: :render_invalid_date
 
         def index
-          tournament = admin_tournament
+          return unless authorize_tournament!("tonights_menu_and_news", "view", admin_tournament("tonights_menu_and_news")&.id)
+          tournament = admin_tournament("tonights_menu_and_news")
           date = requested_date || Time.zone.today
           note = tournament.game_day_notes.find_by(date: date)
           games = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record).where(start_time: date.beginning_of_day..date.end_of_day).ordered
@@ -22,7 +23,8 @@ module Api
         end
 
         def create
-          tournament = admin_tournament
+          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
+          tournament = admin_tournament("tonights_menu_and_news")
           attrs = note_params.except(:tournament_id)
           note = tournament.game_day_notes.find_or_initialize_by(date: attrs[:date] || Time.zone.today)
           created = note.new_record?
@@ -35,7 +37,9 @@ module Api
         end
 
         def update
-          note = admin_tournament.game_day_notes.find(params[:id])
+          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
+          note = GameDayNote.find(params[:id])
+          return unless authorize_record_season!("tonights_menu_and_news", "publish", note.tournament_id, admin_tournament("tonights_menu_and_news"))
 
           if note.update(note_params.except(:date, :tournament_id))
             render json: { gameDayNote: note.api_json }

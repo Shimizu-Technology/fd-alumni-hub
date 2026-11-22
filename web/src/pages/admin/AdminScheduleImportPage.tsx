@@ -39,7 +39,7 @@ export function AdminScheduleImportPage() {
 
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, divisions] = await Promise.all([
-      api.adminTournaments(),
+      api.adminTournaments("schedule_and_teams"),
       api.adminDivisions(tournamentId || null),
     ])
     return { tournaments: tournaments.tournaments, divisions: divisions.divisions }

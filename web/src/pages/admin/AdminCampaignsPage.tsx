@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -42,6 +43,25 @@ function formatUsd(cents: number) {
 }
 
 export function AdminCampaignsPage() {
+  const { user } = useAuthContext()
+  return (user?.isSuperAdmin ?? user?.isAdmin) ? <CampaignAdministration /> : <ScopedCampaignDirectory />
+}
+
+function ScopedCampaignDirectory() {
+  const query = useAsync(() => api.adminCampaignWorkspace('fundraisers_and_sponsors'), [])
+  if (query.loading) return <LoadingState label="Loading campaigns" />
+  if (query.error) return <ErrorState message={query.error} onRetry={query.reload} />
+  const campaigns = query.data?.campaigns ?? []
+  return <div className="page-stack">
+    <PageHeader title="Campaigns" />
+    {campaigns.length === 0 && <EmptyState title="No campaigns in your workspace" />}
+    {campaigns.map((campaign) => <Panel key={campaign.id}>
+      <Link to={`/admin/campaign/host-year?campaign=${encodeURIComponent(campaign.slug)}`}>{campaign.title}</Link>
+    </Panel>)}
+  </div>
+}
+
+function CampaignAdministration() {
   const query = useAsync(async () => {
     const [campaignsRes, tournamentsRes, cohortsRes] = await Promise.all([
       api.adminCampaigns(),

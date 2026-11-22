@@ -457,16 +457,18 @@ class CampaignReceiptsControllerTest < ActionDispatch::IntegrationTest
       original_cache = Rails.cache
       begin
         Rails.cache = ActiveSupport::Cache::MemoryStore.new
-        30.times do
+        travel_to(Time.current.beginning_of_minute + 10.seconds) do
+          30.times do
+            post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
+              params: { upload: { filename: "r.jpg", contentType: "image/jpeg", byteSize: 512 } },
+              headers: auth_headers(@treasurer), as: :json
+            assert_response :success
+          end
           post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
             params: { upload: { filename: "r.jpg", contentType: "image/jpeg", byteSize: 512 } },
             headers: auth_headers(@treasurer), as: :json
-          assert_response :success
+          assert_response :too_many_requests
         end
-        post "/api/v1/campaign/#{@campaign.slug}/receipts/presign",
-          params: { upload: { filename: "r.jpg", contentType: "image/jpeg", byteSize: 512 } },
-          headers: auth_headers(@treasurer), as: :json
-        assert_response :too_many_requests
       ensure
         Rails.cache = original_cache
       end

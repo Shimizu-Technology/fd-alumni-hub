@@ -17,7 +17,7 @@ export function AdminMediaPage() {
   const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
-    const [tournaments, media, games] = await Promise.all([api.adminTournaments(), api.adminMedia(tournamentId || null), api.adminGames(tournamentId || null)])
+    const [tournaments, media, games] = await Promise.all([api.adminTournaments("history_and_media"), api.adminMedia(tournamentId || null), api.adminGames(tournamentId || null)])
     return { tournaments: tournaments.tournaments, mediaAssets: media.mediaAssets, games: games.games }
   }, [tournamentId])
 

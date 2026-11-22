@@ -6,16 +6,21 @@ module Api
 
         def index
           articles = ArticleLink.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
-          articles = articles.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
+          articles = authorize_collection_scope(articles, "history_and_media")
+          return if performed?
           render json: { articles: articles.limit(300).map(&:api_json) }
         end
 
         def show
-          render_record ArticleLink.find(params[:id]), key: :article
+          article = ArticleLink.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "view", article.tournament_id)
+
+          render_record article, key: :article
         end
 
         def create
           article = ArticleLink.new(article_params)
+          return unless authorize_tournament!("history_and_media", "edit", article.tournament_id)
 
           if article.save
             render_record article, key: :article, status: :created
@@ -26,8 +31,12 @@ module Api
 
         def update
           article = ArticleLink.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", article.tournament_id)
 
-          if article.update(article_params)
+          attrs = article_params
+          return if attrs.key?(:tournament_id) && !authorize_tournament!("history_and_media", "edit", attrs[:tournament_id])
+
+          if article.update(attrs)
             render_record article, key: :article
           else
             render_errors article
@@ -35,7 +44,10 @@ module Api
         end
 
         def destroy
-          ArticleLink.find(params[:id]).destroy!
+          article = ArticleLink.find(params[:id])
+          return unless authorize_tournament!("history_and_media", "edit", article.tournament_id)
+
+          article.destroy!
           head :no_content
         end
 

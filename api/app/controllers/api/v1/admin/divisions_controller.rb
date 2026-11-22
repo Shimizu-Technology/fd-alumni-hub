@@ -2,9 +2,8 @@ module Api
   module V1
     module Admin
       class DivisionsController < BaseController
-        before_action :require_admin!, only: [ :create, :update ]
-
         def index
+          return unless authorize_tournament!("schedule_and_teams", "view", resolved_tournament&.id)
           tournament = resolved_tournament
           divisions = tournament ? tournament.divisions.active.ordered : Division.none
           all_divisions = tournament ? tournament.divisions.ordered : Division.none
@@ -18,7 +17,7 @@ module Api
 
         def create
           tournament = resolved_tournament
-          return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
+          return render_forbidden unless tournament && access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: tournament.id)
 
           division = tournament.divisions.build(division_params)
 
@@ -31,9 +30,11 @@ module Api
 
         def update
           tournament = resolved_tournament
-          return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
+          return render_forbidden unless tournament && access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: tournament.id)
 
-          division = tournament.divisions.find(params[:id])
+          division = Division.find(params[:id])
+          return render_forbidden unless access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: division.tournament_id)
+          return render json: { error: "Record not found" }, status: :not_found if division.tournament_id != tournament.id
 
           if division.update(division_params)
             render json: { division: division.api_json(tournament: tournament) }
@@ -52,7 +53,7 @@ module Api
           if explicit_id.present?
             Tournament.find(explicit_id)
           else
-            admin_tournament
+            admin_tournament("schedule_and_teams")
           end
         end
 

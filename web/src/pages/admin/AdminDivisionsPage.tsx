@@ -30,7 +30,7 @@ export function AdminDivisionsPage() {
   const [teamSort, setTeamSort] = useState<TeamSortOption>('display')
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, teams, divisions, classCohorts] = await Promise.all([
-      api.adminTournaments(),
+      api.adminTournaments("schedule_and_teams"),
       api.adminTeams(tournamentId || null),
       api.adminDivisions(tournamentId || null),
       api.adminClassCohorts().catch(() => ({ classCohorts: [] })),

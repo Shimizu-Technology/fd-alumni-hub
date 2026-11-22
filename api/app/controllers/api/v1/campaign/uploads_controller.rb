@@ -4,7 +4,7 @@ module Api
       class UploadsController < BaseController
         PRESIGN_LIMIT_PER_MINUTE = 30
 
-        before_action -> { require_campaign_role!("chair") }
+        before_action -> { require_campaign_access!("fundraisers_and_sponsors", "edit", "chair") }, only: :presign
         before_action :require_campaign_writable!
 
         def presign

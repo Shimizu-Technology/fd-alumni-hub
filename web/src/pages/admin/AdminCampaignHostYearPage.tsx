@@ -1,3 +1,4 @@
+import { hasCapability } from '../../lib/adminModules'
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
@@ -63,18 +64,21 @@ function parseOptionalDollarsToCents(raw: string): { ok: true; value: number | n
 
 export function AdminCampaignHostYearPage() {
   const auth = useAuthContext()
-  const isAdmin = Boolean(auth.user?.isAdmin)
+  const isAdmin = Boolean(auth.user?.isSuperAdmin ?? auth.user?.isAdmin)
+  const hasCampaignAccess = auth.user?.capabilities?.some((entry) =>
+    entry.capability === 'fundraisers_and_sponsors' && (entry.allScopes || entry.scopeType === 'campaign'))
+  const hasScopedLookup = isAdmin || Boolean(hasCampaignAccess)
   const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<WorkspaceTab>('settings')
   const [includeArchived, setIncludeArchived] = useState(false)
 
   const adminCampaignsQuery = useAsync(
-    () => (isAdmin ? api.adminCampaigns() : Promise.resolve({ campaigns: [] as AdminHostCampaign[] })),
-    [isAdmin],
+    () => (hasScopedLookup ? api.adminCampaignWorkspace("fundraisers_and_sponsors") : Promise.resolve({ campaigns: [] as AdminHostCampaign[] })),
+    [hasScopedLookup],
   )
 
   const campaignOptions = useMemo(() => {
-    if (isAdmin && adminCampaignsQuery.data?.campaigns) {
+    if (hasScopedLookup && adminCampaignsQuery.data?.campaigns) {
       return adminCampaignsQuery.data.campaigns.map((c) => ({
         slug: c.slug,
         title: c.title,
@@ -86,7 +90,7 @@ export function AdminCampaignHostYearPage() {
       title: m.campaignTitle,
       status: m.status,
     }))
-  }, [isAdmin, adminCampaignsQuery.data, auth.user?.campaignMemberships])
+  }, [hasScopedLookup, adminCampaignsQuery.data, auth.user?.campaignMemberships])
 
   const requestedSlug = searchParams.get('campaign')
   const selectedSlug = useMemo(() => {
@@ -113,11 +117,11 @@ export function AdminCampaignHostYearPage() {
     [selectedSlug, includeArchived],
   )
 
-  if (isAdmin && adminCampaignsQuery.loading && !adminCampaignsQuery.data) {
+  if (hasScopedLookup && adminCampaignsQuery.loading && !adminCampaignsQuery.data) {
     return <LoadingState label="Loading host campaigns" />
   }
 
-  if (isAdmin && adminCampaignsQuery.error) {
+  if (hasScopedLookup && adminCampaignsQuery.error) {
     return <ErrorState message={adminCampaignsQuery.error} onRetry={adminCampaignsQuery.reload} />
   }
 
@@ -132,7 +136,9 @@ export function AdminCampaignHostYearPage() {
         <EmptyState
           title="No host campaigns available yet"
           description={isAdmin ? 'Create a host campaign in System → Campaigns to start managing Host Year content.' : 'Ask an administrator to assign your account to a host campaign.'}
-          action={isAdmin ? <Link className="btn primary" to="/admin/campaigns">Create a campaign</Link> : undefined}
+          action={isAdmin ? <Link className="btn primary" to="/admin/campaigns">Create a campaign</Link>
+            : !hasCampaignAccess && auth.user?.capabilities?.some((entry) => entry.capability === 'fundraisers_and_sponsors' && entry.scopeType === 'tournament')
+              ? <Link className="btn primary" to="/admin/sponsors">Open sponsors</Link> : undefined}
         />
       </div>
     )
@@ -155,7 +161,9 @@ export function AdminCampaignHostYearPage() {
 
   const isArchived = campaign.status === 'archived'
   const isDraft = campaign.status === 'draft'
-  const canEditContent = (isAdmin || roles.includes('chair')) && !isArchived
+  const canEditContent = (auth.user?.capabilities
+    ? hasCapability(auth.user, 'fundraisers_and_sponsors', 'edit', { type: 'campaign', id: campaign.id })
+    : isAdmin || roles.includes('chair')) && !isArchived
 
   return (
     <div className="page-stack admin-page">

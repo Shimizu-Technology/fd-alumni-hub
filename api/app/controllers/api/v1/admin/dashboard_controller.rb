@@ -3,7 +3,12 @@ module Api
     module Admin
       class DashboardController < BaseController
         def show
+          return render_forbidden unless access_policy.workspace[:allowedModules].include?("work")
           tournament = admin_tournament
+          return render_forbidden if tournament && !workspace_tournaments.exists?(id: tournament.id)
+          unless tournament && access_policy.allows?("schedule_and_teams", "view", scope_type: "tournament", scope_id: tournament.id)
+            return render json: { tournament: tournament&.api_json, counts: empty_counts.merge(tournaments: workspace_tournaments.count), missing: missing_for(nil), recentArticles: [] }
+          end
 
           render json: {
             tournament: tournament&.api_json,
@@ -19,7 +24,7 @@ module Api
           return empty_counts unless tournament
 
           {
-            tournaments: Tournament.count,
+            tournaments: workspace_tournaments.count,
             teams: tournament.teams.count,
             games: tournament.games.count,
             finalGames: tournament.games.where(status: "final").count,
@@ -43,7 +48,7 @@ module Api
 
         def empty_counts
           {
-            tournaments: Tournament.count,
+            tournaments: workspace_tournaments.count,
             teams: 0,
             games: 0,
             finalGames: 0,

@@ -37,6 +37,7 @@ module ClerkAuthenticatable
 
     if @current_user && verified_email.present?
       begin
+        PermissionGrant.accept_pending_for!(@current_user, verified_email: verified_email)
         CampaignInvitation.accept_pending_for!(
           @current_user,
           verified_email: verified_email,
@@ -48,7 +49,7 @@ module ClerkAuthenticatable
     end
 
     unless @current_user
-      render_unauthorized("User not allowed. Ask an organizer to add this email to the admin allowlist.")
+      render_unauthorized(@auth_error_message || "User not allowed. Ask an organizer to add this email to the admin allowlist.")
     end
   end
 
@@ -94,12 +95,17 @@ module ClerkAuthenticatable
 
     user = User.active.find_by(clerk_id: clerk_id)
     if user
-      return sync_existing_user(user, email, first_name, last_name)
+      return sync_existing_user(user, verified_email, first_name, last_name)
     end
 
     if verified_email.present?
       user = User.active.find_by("LOWER(email) = ?", verified_email.downcase)
       if user
+        if user.clerk_id.present? && user.clerk_id != clerk_id
+          @auth_error_message = "This email is already linked to a different sign-in identity. Ask a Super Admin to relink your account."
+          return nil
+        end
+
         return sync_existing_user(user, verified_email, first_name, last_name, clerk_id: clerk_id)
       end
 
@@ -114,7 +120,7 @@ module ClerkAuthenticatable
         )
       end
 
-      if CampaignInvitation.pending_for_email(verified_email).exists?
+      if CampaignInvitation.pending_for_email(verified_email).exists? || PermissionGrant.pending_for_email(verified_email).exists?
         return create_whitelisted_user(
           clerk_id: clerk_id,
           email: verified_email,
@@ -163,6 +169,7 @@ module ClerkAuthenticatable
         record.first_name = first_name
         record.last_name = last_name
         record.role = role
+        record.super_admin = role == "admin"
         record.active = true
       end
     end
@@ -174,6 +181,11 @@ module ClerkAuthenticatable
   end
 
   def sync_whitelisted_user(user, email, first_name, last_name, clerk_id:, role:)
+    if user&.clerk_id.present? && user.clerk_id != clerk_id
+      @auth_error_message = "This email is already linked to a different sign-in identity. Ask a Super Admin to relink your account."
+      return nil
+    end
+
     sync_existing_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
   end
 

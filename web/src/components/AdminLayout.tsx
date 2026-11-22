@@ -2,30 +2,24 @@ import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { SignInButton, SignOutButton } from '@clerk/clerk-react'
+import { canOpenAdminRoute, defaultWorkspaceHome, hasCapability, visibleAdminModules } from '../lib/adminModules'
+import { AdminModuleTabs } from './AdminModuleTabs'
 import { tournamentScopedPath } from '../lib/admin'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 import type { CurrentUser } from '../lib/types'
 import {
   IconCalendar,
-  IconChart,
   IconClose,
-  IconDashboard,
-  IconDatabase,
-  IconHandshake,
   IconHome,
   IconImage,
   IconLink,
-  IconList,
   IconLogOut,
   IconMenu,
-  IconNewspaper,
   IconPanelLeftClose,
   IconPanelLeftOpen,
   IconShield,
-  IconTicket,
   IconTrophy,
-  IconUsers,
 } from './Icons'
 import { LoadingState, Panel } from './ui'
 
@@ -37,7 +31,6 @@ type NavItem = {
   icon: IconComponent
   end?: boolean
   tournamentScoped?: boolean
-  access: 'campaign' | 'scorekeeper' | 'staff' | 'admin'
 }
 
 type NavSection = {
@@ -48,77 +41,26 @@ type NavSection = {
 const sidebarStorageKey = 'fd-alumni-admin-sidebar-collapsed'
 const mobileNavId = 'fd-admin-mobile-navigation'
 
-const navSections: NavSection[] = [
-  {
-    label: 'Host Year',
-    items: [
-      { to: '/admin/campaign/finance', label: 'Finance', icon: IconChart, access: 'campaign' },
-      { to: '/admin/campaign/host-year', label: 'Host Year', icon: IconTicket, access: 'campaign' },
-    ],
-  },
-  {
-    label: 'Command',
-    items: [
-      { to: '/admin', label: 'Overview', icon: IconDashboard, end: true, access: 'staff' },
-      { to: '/admin/tournaments', label: 'Tournaments', icon: IconTrophy, access: 'staff' },
-    ],
-  },
-  {
-    label: 'Tournament ops',
-    items: [
-      { to: '/admin/scorekeeper', label: 'Scorekeeper', icon: IconTrophy, tournamentScoped: true, access: 'scorekeeper' },
-      { to: '/admin/divisions', label: 'Teams', icon: IconUsers, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/import', label: 'Import', icon: IconDatabase, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/games', label: 'Games', icon: IconCalendar, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/game-day', label: 'Game Day', icon: IconHome, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/standings', label: 'Standings', icon: IconChart, tournamentScoped: true, access: 'staff' },
-    ],
-  },
-  {
-    label: 'Coverage',
-    items: [
-      { to: '/admin/links', label: 'Links', icon: IconLink, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/missing-links', label: 'Missing Links', icon: IconList, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/news', label: 'News', icon: IconNewspaper, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/media', label: 'Media', icon: IconImage, tournamentScoped: true, access: 'staff' },
-      { to: '/admin/sponsors', label: 'Sponsors', icon: IconHandshake, tournamentScoped: true, access: 'staff' },
-    ],
-  },
-  {
-    label: 'System',
-    items: [
-      { to: '/admin/campaigns', label: 'Campaigns', icon: IconTrophy, access: 'admin' },
-      { to: '/admin/people', label: 'People & Roles', icon: IconUsers, access: 'admin' },
-      { to: '/admin/audit', label: 'Audit History', icon: IconList, access: 'admin' },
-      { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase, tournamentScoped: true, access: 'admin' },
-    ],
-  },
-]
-
 export function hasScorekeeperAccess(user: CurrentUser | null | undefined) {
   if (!user) return false
+  if (user.capabilities) return hasCapability(user, 'scores_and_stats')
   return Boolean(user.isAdmin || user.isStaff || user.isScorekeeper || user.canScoreGames || user.role === 'scorekeeper')
 }
 
 export function hasCampaignAccess(user: CurrentUser | null | undefined) {
   if (!user) return false
+  if (user.capabilities) return hasCapability(user, 'finance_and_reimbursements') || hasCapability(user, 'fundraisers_and_sponsors')
   return user.isAdmin || Boolean(user.campaignMemberships && user.campaignMemberships.length > 0)
 }
 
-export function defaultWorkspaceHome(user: CurrentUser | null | undefined) {
-  if (user?.isStaff) return '/admin'
-  if (hasScorekeeperAccess(user)) return '/admin/scorekeeper'
-  const roles = new Set((user?.campaignMemberships || []).flatMap((m) => m.roles))
-  if (roles.has('treasurer') || roles.has('board')) return '/admin/campaign/finance'
-  return '/admin/campaign/host-year'
-}
+export { defaultWorkspaceHome } from '../lib/adminModules'
 
 function displayUserRole(user: CurrentUser) {
-  if (user.isAdmin) return 'Admin'
+  if (user.isSuperAdmin ?? user.isAdmin) return 'Super Admin'
   if (user.isStaff) return 'Staff'
   if (hasScorekeeperAccess(user)) return 'Scorekeeper'
   const roles = Array.from(new Set((user.campaignMemberships || []).flatMap((m) => m.roles)))
-  if (roles.length === 0) return 'Member'
+  if (roles.length === 0) return 'Organizer'
   return roles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(' · ')
 }
 
@@ -230,20 +172,14 @@ function UtilityLink({ to, label, icon: Icon, collapsed, onNavigate }: { to: str
   )
 }
 
-function visibleNavSections(user: CurrentUser) {
-  const canCampaign = hasCampaignAccess(user)
-  const canScore = hasScorekeeperAccess(user)
-  return navSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => {
-        if (item.access === 'admin') return user.isAdmin
-        if (item.access === 'staff') return user.isStaff
-        if (item.access === 'scorekeeper') return canScore
-        return canCampaign
-      }),
-    }))
-    .filter((section) => section.items.length > 0)
+function visibleNavSections(user: CurrentUser, tournamentId: string | null) {
+  return [{
+    label: 'Workspace',
+    items: visibleAdminModules(user).map((module) => ({
+      to: module.key === 'scorekeeper' && !canOpenAdminRoute(user, module.path) ? '/admin/standings' : module.path,
+      label: module.label, icon: module.icon, end: module.key === 'work', tournamentScoped: module.tournamentScoped && canOpenAdminRoute(user, module.path, tournamentId),
+    })),
+  }] satisfies NavSection[]
 }
 
 function SidebarContent({
@@ -262,14 +198,10 @@ function SidebarContent({
   const collapseButtonRef = useRef<HTMLButtonElement | null>(null)
   const [collapseTooltipVisible, setCollapseTooltipVisible] = useState(false)
   const collapseLabel = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-  const sections = visibleNavSections(user)
+  const sections = visibleNavSections(user, tournamentId)
   const userRole = displayUserRole(user)
   const homePath = defaultWorkspaceHome(user)
-  const subtitle = user.isStaff
-    ? 'Tournament workspace'
-    : hasScorekeeperAccess(user)
-      ? 'Scorekeeper console'
-      : 'Host Year workspace'
+  const subtitle = visibleAdminModules(user).find((module) => module.path === homePath)?.label || 'Workspace'
 
   useEffect(() => setCollapseTooltipVisible(false), [collapsed])
 
@@ -419,10 +351,20 @@ export function RequireCampaignRoute({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+export function RequireCapabilityRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuthContext()
+  const { pathname, search } = useLocation()
+  if (!canOpenAdminRoute(user, pathname)) return <Navigate to={defaultWorkspaceHome(user)} replace />
+  if (!canOpenAdminRoute(user, pathname, new URLSearchParams(search).get('tournamentId'))) {
+    return <Navigate to={pathname} replace />
+  }
+  return <>{children}</>
+}
+
 export function AdminIndexRoute({ staffElement }: { staffElement: ReactNode }) {
   const auth = useAuthContext()
-  if (auth.user?.isStaff) return <>{staffElement}</>
-  return <Navigate to={defaultWorkspaceHome(auth.user)} replace />
+  const home = defaultWorkspaceHome(auth.user)
+  return home === '/admin' ? <>{staffElement}</> : <Navigate to={home} replace />
 }
 
 export function AdminLayout() {
@@ -514,7 +456,7 @@ export function AdminLayout() {
     )
   }
 
-  const hasAccess = Boolean(auth.user && (auth.user.isStaff || hasScorekeeperAccess(auth.user) || hasCampaignAccess(auth.user)))
+  const hasAccess = Boolean(auth.user && visibleAdminModules(auth.user).length > 0)
 
   if (!hasAccess || !auth.user) {
     return (
@@ -536,11 +478,7 @@ export function AdminLayout() {
   const closeMobileNav = () => setMobileOpen(false)
   const userName = auth.user.fullName
   const userRole = displayUserRole(auth.user)
-  const workspaceSubtitle = auth.user.isStaff
-    ? 'Tournament workspace'
-    : hasScorekeeperAccess(auth.user)
-      ? 'Scorekeeper console'
-      : 'Host Year workspace'
+  const workspaceSubtitle = visibleAdminModules(auth.user).find((module) => module.path === defaultWorkspaceHome(auth.user))?.label || 'Workspace'
 
   return (
     <div className="admin-shell">
@@ -580,6 +518,7 @@ export function AdminLayout() {
           <div className="admin-topbar-icons" aria-hidden="true"><IconCalendar /><IconTrophy /><IconLink /><IconImage /></div>
           <span>{userName} · {userRole}</span>
         </div>
+        <AdminModuleTabs path={location.pathname} user={auth.user} tournamentId={tournamentId} />
         <Outlet />
       </section>
     </div>

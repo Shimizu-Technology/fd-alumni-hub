@@ -2,8 +2,10 @@ module Api
   module V1
     module Campaign
       class BudgetLinesController < BaseController
-        before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :index ]
-        before_action -> { require_campaign_role!("treasurer") }, only: [ :create, :update, :archive ]
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "view", "board", "chair", "treasurer") }, only: :index
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :create
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :update
+        before_action -> { require_campaign_access!("finance_and_reimbursements", "record", "treasurer") }, only: :archive
         before_action :require_campaign_writable!, only: [ :create, :update, :archive ]
 
         def index

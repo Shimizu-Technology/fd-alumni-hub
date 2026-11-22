@@ -4,14 +4,21 @@ module Api
   module V1
     module Admin
       class GamesController < BaseController
+        BRACKET_FIELDS = %i[bracket_code bracket_round bracket_slot next_game_id next_game_slot].freeze
+
         SCOREKEEPER_ALLOWED_TOURNAMENT_STATUSES = %w[live upcoming].freeze
 
-        skip_before_action :require_staff!, only: [ :index, :show, :score ]
-        before_action :require_scorekeeper_or_staff!, only: [ :index, :show, :score ]
 
         def index
           games = games_with_associations.ordered
-          games = games.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
+          ids = %w[schedule_and_teams scores_and_stats tonights_menu_and_news history_and_media].flat_map do |capability|
+            access_policy.scope_ids("tournament", capability: capability, action: "view")
+          end.uniq
+          return render_forbidden if ids.empty?
+          id = params[:tournamentId].presence || params[:tournament_id].presence
+          return render_forbidden if id && !ids.include?(id.to_i)
+
+          games = games.where(tournament_id: id || ids)
           games = games.where(division: params[:division]) if params[:division].present?
           games = games.where(division_id: params[:divisionId]) if params[:divisionId].present?
           games = games.where(phase: params[:phase]) if params[:phase].present?
@@ -21,12 +28,17 @@ module Api
 
         def show
           game = games_with_associations.find(params[:id])
+          return render_forbidden unless %w[schedule_and_teams scores_and_stats].any? do |capability|
+            access_policy.allows?(capability, "view", scope_type: "tournament", scope_id: game.tournament_id)
+          end
           render json: { game: game.api_json(include_score_audit: true) }
         end
 
         def create
           attrs = game_params.except(:lock_version)
+          return unless authorize_tournament!("schedule_and_teams", "edit", attrs[:tournament_id])
           game = Game.new(attrs)
+          return unless authorize_game_changes(game, attrs)
           saved = with_bracket_lock_if_needed(game.tournament, attrs) { game.save }
 
           if saved
@@ -41,6 +53,13 @@ module Api
         def update
           game = Game.find(params[:id])
           incoming = game_params.except(:tournament_id)
+          return unless authorize_game_changes(game, incoming)
+          if (incoming.keys & BRACKET_FIELDS).any?
+            return unless authorize_tournament!("brackets", "edit", game.tournament_id)
+          end
+          if (incoming.keys - BRACKET_FIELDS - [ :lock_version ]).any? || (incoming.keys & BRACKET_FIELDS).empty?
+            return unless authorize_tournament!("schedule_and_teams", "edit", game.tournament_id)
+          end
           lock_version_present = incoming.key?(:lock_version)
           lock_version_param = incoming.delete(:lock_version)
 
@@ -76,6 +95,7 @@ module Api
 
         def score
           game = Game.includes(:tournament).find(params[:id])
+          return unless authorize_tournament!("scores_and_stats", "edit", game.tournament_id)
           incoming = score_params
           client_mutation_id = incoming[:client_mutation_id].to_s.strip.presence
           force_overwrite = ActiveModel::Type::Boolean.new.cast(incoming[:force_overwrite]) == true
@@ -109,7 +129,7 @@ module Api
             return render_mutation_id_match(game, payload_digest)
           end
 
-          unless current_user.staff?
+          unless access_policy.allows?("scores_and_stats", "correct_final", scope_type: "tournament", scope_id: game.tournament_id)
             unless SCOREKEEPER_ALLOWED_TOURNAMENT_STATUSES.include?(game.tournament&.status)
               return render_forbidden("Scorekeepers can only enter scores for live or upcoming tournaments.")
             end
@@ -175,8 +195,23 @@ module Api
 
         private
 
+        def authorize_game_changes(game, attrs)
+          baseline = game.new_record? ? Game.new : game
+          changes = attrs.select { |key, value| Game.type_for_attribute(key.to_s).cast(value) != baseline.public_send(key) }
+          if (changes.keys & BRACKET_FIELDS).any? && !authorize_tournament!("brackets", "edit", game.tournament_id)
+            return false
+          end
+
+          scoring = changes.keys.intersect?(%i[home_score away_score]) || changes[:status] == "final" || (game.persisted? && game.status == "final" && changes.key?(:status))
+          return true unless scoring
+
+          action = game.persisted? && game.status == "final" ? "correct_final" : "edit"
+          authorize_tournament!("scores_and_stats", action, game.tournament_id)
+        end
+
         def replay_authorized?(game)
-          current_user.staff? || game.score_updated_by_id == current_user.id
+          access_policy.allows?("scores_and_stats", "correct_final", scope_type: "tournament", scope_id: game.tournament_id) ||
+            game.score_updated_by_id == current_user.id
         end
 
         def render_mutation_id_match(game, payload_digest)

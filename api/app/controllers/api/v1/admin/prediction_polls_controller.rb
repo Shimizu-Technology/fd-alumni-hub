@@ -3,7 +3,8 @@ module Api
     module Admin
       class PredictionPollsController < BaseController
         def index
-          tournament = admin_tournament
+          return unless authorize_tournament!("tonights_menu_and_news", "view", admin_tournament("tonights_menu_and_news")&.id)
+          tournament = admin_tournament("tonights_menu_and_news")
           polls = tournament.prediction_polls
             .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
             .ordered
@@ -12,10 +13,11 @@ module Api
         end
 
         def create
+          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
           attrs = prediction_poll_params.except(:tournament_id)
           game_id = attrs.delete(:game_id)
-          poll = admin_tournament.prediction_polls.build(attrs)
-          poll.game = admin_tournament.games.find(game_id) if poll.poll_type == "game" && game_id.present?
+          poll = admin_tournament("tonights_menu_and_news").prediction_polls.build(attrs)
+          poll.game = admin_tournament("tonights_menu_and_news").games.find(game_id) if poll.poll_type == "game" && game_id.present?
 
           if poll.save
             render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json }, status: :created
@@ -27,7 +29,9 @@ module Api
         end
 
         def update
-          poll = admin_tournament.prediction_polls.find(params[:id])
+          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
+          poll = PredictionPoll.find(params[:id])
+          return unless authorize_record_season!("tonights_menu_and_news", "publish", poll.tournament_id, admin_tournament("tonights_menu_and_news"))
 
           if poll.update(prediction_poll_params.except(:tournament_id, :game_id, :poll_type))
             render json: { predictionPoll: prediction_poll_for_response(poll.id).api_json }

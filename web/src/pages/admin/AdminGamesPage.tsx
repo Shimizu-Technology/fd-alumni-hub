@@ -47,7 +47,7 @@ export function AdminGamesPage() {
   const [gameSort, setGameSort] = useState<GameSortOption>('startAsc')
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, teams, games, divisions] = await Promise.all([
-      api.adminTournaments(),
+      api.adminTournaments("schedule_and_teams"),
       api.adminTeams(tournamentId || null),
       api.adminGames(tournamentId || null),
       api.adminDivisions(tournamentId || null),

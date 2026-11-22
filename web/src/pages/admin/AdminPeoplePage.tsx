@@ -1,3 +1,6 @@
+import { useAuthContext } from '../../contexts/AuthContext'
+import { hasCapability } from '../../lib/adminModules'
+import type { AccessDirectory, GrantScope, GrantSelection, PermissionGrant } from '../../lib/access'
 import { useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
 import { mutationErrorMessage } from '../../lib/errors'
@@ -7,7 +10,7 @@ import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Pane
 
 const CAMPAIGN_ROLES: CampaignRole[] = ['chair', 'treasurer', 'board']
 
-export function AdminPeoplePage() {
+function LegacyPeopleAccess() {
   const baseQuery = useAsync(async () => {
     const [campaignsRes, whitelistsRes] = await Promise.all([
       api.adminCampaigns(),
@@ -348,6 +351,241 @@ export function AdminPeoplePage() {
           ))}
         </div>
       </Panel>
+    </div>
+  )
+}
+
+const capabilityLabels: Record<string, string> = {
+  site_mode_and_settings: 'Site settings',
+  tonights_menu_and_news: "Tonight’s menu and news",
+  schedule_and_teams: 'Schedule and teams',
+  scores_and_stats: 'Scores and stats',
+  brackets: 'Brackets',
+  fundraisers_and_sponsors: 'Fundraisers and sponsors',
+  finance_and_reimbursements: 'Finance and reimbursements',
+  history_and_media: 'History and media',
+  manage_admins: 'People and access',
+  view_audit_log: 'Audit history',
+}
+
+const actionLabels: Record<string, string> = {
+  view_receipts: 'View receipts', request_correction: 'Request corrections',
+  correct_final: 'Correct final scores', publish_stats: 'Publish stats',
+  alert_site_wide: 'Send a site-wide alert', manage_donation_links: 'Manage donation links',
+}
+
+const accessLabel = (key: string) => capabilityLabels[key] ?? key.replaceAll('_', ' ')
+const actionLabel = (key: string) => actionLabels[key] ?? key.replaceAll('_', ' ')
+
+function describeGrant(grant: GrantSelection) {
+  if (grant.capability === 'tonights_menu_and_news' && grant.actions.includes('publish')) return 'post tonight’s menu'
+  if (grant.capability === 'scores_and_stats' && grant.actions.includes('edit')) return 'enter scores'
+  return `${new Intl.ListFormat('en').format(grant.actions.map((action) => actionLabel(action).toLowerCase()))} ${accessLabel(grant.capability).toLowerCase()}`
+}
+
+export function AdminPeoplePage() {
+  const { user } = useAuthContext()
+  const superAdmin = Boolean(user?.isSuperAdmin ?? user?.isAdmin)
+  const query = useAsync(api.adminPermissionGrants, [])
+  const [email, setEmail] = useState('')
+  const [scopeType, setScopeType] = useState(superAdmin ? 'site' : 'campaign')
+  const [scopeId, setScopeId] = useState('')
+  const [presetKey, setPresetKey] = useState<string>()
+  const [grants, setGrants] = useState<GrantSelection[]>([])
+  const [legacy, setLegacy] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+
+  if (query.loading && !query.data) return <LoadingState label="Loading access directory" />
+  if (!query.data) return <ErrorState message={String(query.error || "Unable to load access.")} onRetry={query.reload} />
+
+  const directory = query.data
+  const scopeName = (type: string, id: string | null) => {
+    if (type === 'site') return 'the whole site'
+    if (type === 'campaign') return directory.campaigns.find((campaign) => campaign.id === id)?.title ?? 'the selected campaign'
+    const tournament = directory.tournaments.find((entry) => entry.id === id)
+    return tournament ? `the ${tournament.year} tournament` : 'the selected tournament'
+  }
+  const canEdit = (type: string, id: string | null) =>
+    superAdmin || Boolean(type !== 'site' && id && hasCapability(user, 'manage_admins', 'edit', { type, id }))
+  const canEditAny = superAdmin || hasCapability(user, 'manage_admins', 'edit')
+  const scopeChoices = scopeType === 'campaign'
+    ? directory.campaigns.map((campaign) => ({ id: campaign.id, name: campaign.title }))
+    : directory.tournaments.map((tournament) => ({ id: tournament.id, name: `${tournament.year} · ${tournament.name}` }))
+  const subject = directory.users.find((person) => person.email === email.trim().toLowerCase())?.fullName ?? (email.trim() || 'This person')
+
+  const mutate = async (operation: () => Promise<unknown>, notice: string) => {
+    setBusy(true)
+    setMessage('')
+    setError('')
+    try {
+      await operation()
+      await query.reload()
+      setMessage(notice)
+    } catch (cause) {
+      setError(mutationErrorMessage(cause, 'Unable to update access.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function toggleAction(capability: string, action: string) {
+    setGrants((previous) => {
+      const current = previous.find((entry) => entry.capability === capability)?.actions ?? []
+      const actions = current.includes(action) ? current.filter((value) => value !== action) : [...current, action]
+      return [...previous.filter((entry) => entry.capability !== capability), ...(actions.length ? [{ capability, actions }] : [])]
+    })
+  }
+
+  function removeScope(scope: GrantScope) {
+    const name = scopeName(scope.scopeType, scope.scopeId)
+    if (!window.confirm(`Remove ${scope.email}’s access for ${name}? Their account and access to other seasons or campaigns stay active.`)) return
+    void mutate(() => api.revokePermissionScope(scope), 'Scoped access removed.')
+  }
+
+  function scopeGroups(personEmail: string, rows: PermissionGrant[], memberships: AccessDirectory['users'][number]['campaignMemberships'] = []) {
+    const scopes = new Map<string, GrantScope>()
+    for (const membership of memberships) {
+      scopes.set(`campaign:${membership.campaignId}`, { email: personEmail, scopeType: 'campaign', scopeId: membership.campaignId })
+    }
+    for (const row of rows) scopes.set(`${row.scopeType}:${row.scopeId}`, { email: personEmail, scopeType: row.scopeType, scopeId: row.scopeId })
+    return [...scopes].map(([key, scope]) => (
+      <div key={key} className="mt-3 border-t border-slate-200 pt-3">
+        <strong className="capitalize">{scopeName(scope.scopeType, scope.scopeId)}</strong>
+        <ul>
+          {rows.filter((row) => row.scopeType === scope.scopeType && row.scopeId === scope.scopeId).map((row) => (
+            <li key={row.id}>{accessLabel(row.capability)} · {row.actions.map(actionLabel).join(', ')}</li>
+          ))}
+          {memberships.filter((membership) => scope.scopeType === 'campaign' && membership.campaignId === scope.scopeId).map((membership) => (
+            <li key={membership.campaignId}>Campaign membership · {membership.roles.join(', ')}</li>
+          ))}
+        </ul>
+        {canEdit(scope.scopeType, scope.scopeId) && <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" className="btn secondary" disabled={busy} onClick={() => {
+            setEmail(personEmail)
+            setScopeType(scope.scopeType)
+            setScopeId(scope.scopeId || '')
+            setPresetKey(undefined)
+            setGrants(rows.filter((row) => row.scopeType === scope.scopeType && row.scopeId === scope.scopeId)
+              .map(({ capability, actions }) => ({ capability, actions })))
+            document.getElementById('grant-email')?.focus()
+          }}>Edit scoped grants</button>
+          <button type="button" className="btn secondary" disabled={busy}
+            onClick={() => removeScope(scope)}>{scope.scopeType === 'site' ? 'Remove whole-site grants' : "Remove this season/campaign’s access"}</button>
+        </div>}
+      </div>
+    ))
+  }
+
+  return (
+    <div className="page-stack">
+      <PageHeader title="People & access" description="Give people the access they need for their season or campaign." />
+      {message && <p role="status">{message}</p>}
+      {error && <p role="alert" className="form-error">{error}</p>}
+      {canEditAny && (
+        <Panel>
+          <h2>Invite or update access</h2>
+          <form onSubmit={(event) => {
+            event.preventDefault()
+            if (!canEdit(scopeType, scopeId || null)) return
+            void mutate(() => api.assignPermissionGrants({ email: email.trim(), scopeType, scopeId: scopeId || null, presetKey, grants }), 'Access saved.')
+          }}>
+            <FormGrid>
+              <Field label="Email address"><input id="grant-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
+              <Field label="Scope">
+                <select value={scopeType} onChange={(event) => {
+                  setScopeType(event.target.value)
+                  setScopeId('')
+                  setPresetKey(undefined)
+                  setGrants([])
+                }}>
+                  {superAdmin && <option value="site">Whole site</option>}
+                  <option value="tournament">Season / Tournament</option>
+                  <option value="campaign">Host Campaign</option>
+                </select>
+              </Field>
+              {scopeType !== 'site' && <Field label="Season or campaign">
+                <select required value={scopeId} onChange={(event) => setScopeId(event.target.value)}>
+                  <option value="">Select a scope</option>
+                  {scopeChoices.filter((choice) => canEdit(scopeType, choice.id)).map((choice) =>
+                    <option value={choice.id} key={choice.id}>{choice.name}</option>,
+                  )}
+                </select>
+              </Field>}
+            </FormGrid>
+            <fieldset className="my-4">
+              <legend>Presets</legend>
+              <div className="flex flex-wrap gap-2">
+                {directory.presets.map((preset) => (
+                  <button type="button" className="btn secondary" key={preset.key} aria-pressed={presetKey === preset.key}
+                    onClick={() => {
+                      if (!preset.scopeTypes.includes(scopeType)) {
+                        setScopeType(preset.scopeTypes[0])
+                        setScopeId('')
+                      }
+                      setPresetKey(preset.key)
+                      setGrants(preset.grants)
+                    }}>{preset.label}</button>
+                ))}
+              </div>
+            </fieldset>
+            <div className="grid gap-3 md:grid-cols-2">
+              {Object.entries(directory.capabilities).filter(([capability]) => scopeType !== 'site' || capability !== 'view_audit_log').map(([capability, actions]) => (
+                <fieldset className="rounded border border-slate-200 p-3" key={capability}>
+                  <legend>{accessLabel(capability)}</legend>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {actions.filter((action) => capability !== 'view_audit_log' || action !== 'export').map((action) => (
+                      <label className="flex items-center gap-1 capitalize" key={action}>
+                        <input type="checkbox" checked={grants.some((grant) => grant.capability === capability && grant.actions.includes(action))}
+                          onChange={() => toggleAction(capability, action)} />
+                        {actionLabel(action)}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+            <p aria-live="polite" className="my-4">
+              {grants.length ? `${subject} can ${new Intl.ListFormat('en').format(grants.map(describeGrant))} for ${scopeName(scopeType, scopeId)}.` : 'Choose a preset or select actions.'}
+            </p>
+            <button className="btn primary" disabled={busy || !grants.length || !canEdit(scopeType, scopeId || null)}>Save access</button>
+          </form>
+        </Panel>
+      )}
+      <Panel>
+        <h2>People directory</h2>
+        {directory.users.map((person) => {
+          const last = person.superAdmin && person.active && directory.activeSuperAdminCount === 1
+          return (
+            <article key={person.id} className="my-3 rounded border border-slate-200 p-4">
+              <h3>{person.fullName}</h3>
+              <p>{person.email} · {person.active ? 'Active' : 'Deactivated'}{person.superAdmin ? ' · Super Admin' : ''}</p>
+              {scopeGroups(person.email, person.grants, person.campaignMemberships)}
+              {superAdmin && <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn secondary" disabled={busy || last} onClick={() => {
+                  if (!window.confirm(`${person.superAdmin ? 'Remove' : 'Grant'} Super Admin access for ${person.email}?`)) return
+                  void mutate(() => api.updateUserAccess(person.id, { superAdmin: !person.superAdmin }), 'Super Admin access updated.')
+                }}>{person.superAdmin ? 'Demote Super Admin' : 'Promote to Super Admin'}</button>
+                <button className="btn secondary" disabled={busy || last} onClick={() => {
+                  if (!window.confirm(person.active ? `Deactivate ${person.email}’s account? This blocks sign-in across all seasons and campaigns.` : `Reactivate ${person.email}’s account?`)) return
+                  void mutate(() => api.updateUserAccess(person.id, { active: !person.active }), 'Account status updated.')
+                }}>{person.active ? 'Deactivate account' : 'Reactivate account'}</button>
+              </div>}
+            </article>
+          )
+        })}
+        {[...new Set(directory.pendingInvites.map((grant) => grant.email))].map((pendingEmail) => (
+          <article key={pendingEmail} className="my-3 rounded border border-slate-200 p-4">
+            <h3>{pendingEmail} · Pending</h3>
+            {scopeGroups(pendingEmail, directory.pendingInvites.filter((grant) => grant.email === pendingEmail))}
+          </article>
+        ))}
+      </Panel>
+      {superAdmin && <details onToggle={(event) => setLegacy(event.currentTarget.open)}>
+        <summary>Legacy allowlist and campaign invitations</summary>
+        {legacy && <LegacyPeopleAccess />}
+      </details>}
     </div>
   )
 }

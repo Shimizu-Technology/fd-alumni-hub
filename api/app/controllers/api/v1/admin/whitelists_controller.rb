@@ -11,7 +11,7 @@ module Api
 
         def create
           entry = AdminWhitelist.new(whitelist_params)
-          AdminWhitelist.transaction do
+          AdminWhitelist.transaction(requires_new: true) do
             unless entry.save
               render_errors(entry)
               raise ActiveRecord::Rollback
@@ -23,6 +23,8 @@ module Api
           return if performed?
 
           render json: { whitelist: serialize_whitelist(entry) }, status: :created
+        rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved => error
+          render json: { error: error.record&.errors&.full_messages&.to_sentence.presence || error.message }, status: :unprocessable_entity
         end
 
         def update
@@ -33,7 +35,7 @@ module Api
             return render json: { error: "Cannot deactivate or demote your own admin account" }, status: :unprocessable_entity
           end
 
-          AdminWhitelist.transaction do
+          AdminWhitelist.transaction(requires_new: true) do
             unless entry.update(incoming)
               render_errors(entry)
               raise ActiveRecord::Rollback
@@ -45,6 +47,8 @@ module Api
           return if performed?
 
           render json: { whitelist: serialize_whitelist(entry) }
+        rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved => error
+          render json: { error: error.record&.errors&.full_messages&.to_sentence.presence || error.message }, status: :unprocessable_entity
         end
 
         private
@@ -55,8 +59,17 @@ module Api
           return if user.id == current_user.id
 
           updates = {}
-          updates[:role] = entry.role if entry.active? && user.role != entry.role
-          updates[:active] = entry.active? if user.active? != entry.active?
+          if entry.active?
+            updates[:role] = entry.role if user.role != entry.role
+            if entry.role == "admin" && entry.saved_change_to_role?
+              updates[:super_admin] = true
+            elsif entry.role != "admin" && entry.saved_change_to_role? && user.super_admin?
+              updates[:super_admin] = false
+            end
+          else
+            updates[:role] = "viewer" if %w[admin staff scorekeeper].include?(user.role)
+            updates[:super_admin] = false if user.super_admin?
+          end
           user.update!(updates) if updates.any?
         end
 
