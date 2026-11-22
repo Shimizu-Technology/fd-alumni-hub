@@ -25,11 +25,16 @@ export function AdminScorekeeperPage() {
   const auth = useAuthContext()
   const userId = auth.user?.id || 'anonymous'
   const [tournamentId, setTournamentId] = useTournamentSelection()
-  const scope = tournamentId ? { type: 'tournament', id: tournamentId } : undefined
-  const isStaff = auth.user?.capabilities
-    ? hasCapability(auth.user, 'scores_and_stats', 'correct_final', scope)
-    : Boolean(auth.user?.isStaff)
-  const canEdit = hasCapability(auth.user, 'scores_and_stats', 'edit', scope)
+  const canCorrectTournament = useCallback((tid?: string | null) => {
+    const tScope = tid ? { type: 'tournament', id: tid } : undefined
+    return auth.user?.capabilities
+      ? hasCapability(auth.user, 'scores_and_stats', 'correct_final', tScope)
+      : Boolean(auth.user?.isStaff)
+  }, [auth.user])
+  const canEditTournament = useCallback((tid?: string | null) => {
+    const tScope = tid ? { type: 'tournament', id: tid } : undefined
+    return hasCapability(auth.user, 'scores_and_stats', 'edit', tScope)
+  }, [auth.user])
   const [filter, setFilter] = useState<ScoreFilter>('today')
   const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
   const [queue, setQueue] = useState<QueuedScoreItem[]>(() => readScoreQueue(userId))
@@ -152,9 +157,8 @@ export function AdminScorekeeperPage() {
 
   const tournaments = data?.tournaments || []
   const visibleTournaments = useMemo(() => {
-    if (isStaff) return tournaments
-    return tournaments.filter((t) => t.status === 'live' || t.status === 'upcoming')
-  }, [tournaments, isStaff])
+    return tournaments.filter((t) => t.status === 'live' || t.status === 'upcoming' || canCorrectTournament(t.id))
+  }, [tournaments, canCorrectTournament])
 
   const currentTournament = selectedTournament(tournaments, tournamentId)
   const queueByGameId = useMemo(() => new Map(queue.map((item) => [item.gameId, item])), [queue])
@@ -285,9 +289,9 @@ export function AdminScorekeeperPage() {
             <ScorekeeperGameCard
               key={game.id}
               game={game}
-              tournamentStatus={currentTournament?.status || 'live'}
-              isStaff={isStaff}
-              canEdit={canEdit}
+              tournamentStatus={tournaments.find((t) => t.id === game.tournamentId)?.status || currentTournament?.status || 'live'}
+              isStaff={canCorrectTournament(game.tournamentId)}
+              canEdit={canEditTournament(game.tournamentId)}
               queuedItem={queueByGameId.get(game.id)}
               onSubmit={handleQueueAndFlush}
               onUseServer={handleUseServer}

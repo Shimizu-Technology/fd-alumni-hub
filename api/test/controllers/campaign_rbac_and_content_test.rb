@@ -299,6 +299,8 @@ class CampaignRbacAndContentTest < ActionDispatch::IntegrationTest
       as: :json
     assert_response :success
     assert existing_staff.reload.active?
+    assert_equal "viewer", existing_staff.role
+    assert_not existing_staff.staff?
 
     # L1: unexpected fields like featured/status return explicit 403 for chair
     patch "/api/v1/campaign/#{@campaign.slug}/settings",

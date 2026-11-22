@@ -2,8 +2,6 @@ module Api
   module V1
     module Admin
       class DivisionsController < BaseController
-        before_action :require_admin!, only: [ :create, :update ]
-
         def index
           return unless authorize_tournament!("schedule_and_teams", "view", resolved_tournament&.id)
           tournament = resolved_tournament
@@ -18,9 +16,8 @@ module Api
         end
 
         def create
-          return unless authorize_tournament!("schedule_and_teams", "edit", resolved_tournament&.id)
           tournament = resolved_tournament
-          return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
+          return render_forbidden unless tournament && access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: tournament.id)
 
           division = tournament.divisions.build(division_params)
 
@@ -32,12 +29,12 @@ module Api
         end
 
         def update
-          return unless authorize_tournament!("schedule_and_teams", "edit", resolved_tournament&.id)
           tournament = resolved_tournament
-          return render json: { errors: [ "Tournament is required" ] }, status: :unprocessable_entity unless tournament
+          return render_forbidden unless tournament && access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: tournament.id)
 
           division = Division.find(params[:id])
-          return unless authorize_record_season!("schedule_and_teams", "edit", division.tournament_id, tournament)
+          return render_forbidden unless division.tournament_id == tournament.id &&
+            access_policy.explicitly_allows?("schedule_and_teams", "edit", scope_type: "tournament", scope_id: division.tournament_id)
 
           if division.update(division_params)
             render json: { division: division.api_json(tournament: tournament) }

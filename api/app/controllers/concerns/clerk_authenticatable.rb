@@ -49,7 +49,7 @@ module ClerkAuthenticatable
     end
 
     unless @current_user
-      render_unauthorized("User not allowed. Ask an organizer to add this email to the admin allowlist.")
+      render_unauthorized(@auth_error_message || "User not allowed. Ask an organizer to add this email to the admin allowlist.")
     end
   end
 
@@ -101,7 +101,10 @@ module ClerkAuthenticatable
     if verified_email.present?
       user = User.active.find_by("LOWER(email) = ?", verified_email.downcase)
       if user
-        return nil if user.clerk_id.present? && user.clerk_id != clerk_id
+        if user.clerk_id.present? && user.clerk_id != clerk_id
+          @auth_error_message = "This email is already linked to a different sign-in identity. Ask a Super Admin to relink your account."
+          return nil
+        end
 
         return sync_existing_user(user, verified_email, first_name, last_name, clerk_id: clerk_id)
       end
@@ -178,7 +181,10 @@ module ClerkAuthenticatable
   end
 
   def sync_whitelisted_user(user, email, first_name, last_name, clerk_id:, role:)
-    return nil if user&.clerk_id.present? && user.clerk_id != clerk_id
+    if user&.clerk_id.present? && user.clerk_id != clerk_id
+      @auth_error_message = "This email is already linked to a different sign-in identity. Ask a Super Admin to relink your account."
+      return nil
+    end
 
     sync_existing_user(user, email, first_name, last_name, clerk_id: clerk_id, role: role)
   end

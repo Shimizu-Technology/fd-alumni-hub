@@ -30,6 +30,8 @@ module Api
           end
 
           rows = permitted_schedule_rows
+          return unless authorize_schedule_import_rows!(tournament, rows)
+
           result = Imports::ScheduleCommit.call(
             tournament: tournament,
             rows: rows,
@@ -85,6 +87,26 @@ module Api
         end
 
         private
+
+        def authorize_schedule_import_rows!(tournament, rows)
+          return true unless rows.is_a?(Array)
+
+          has_bracket_fields = rows.any? do |row|
+            %w[bracketCode bracket_code bracketRound bracket_round bracketSlot bracket_slot].any? { |key| row[key].present? }
+          end
+          if has_bracket_fields && !authorize_tournament!("brackets", "edit", tournament.id)
+            return false
+          end
+
+          has_score_fields = rows.any? do |row|
+            %w[homeScore home_score awayScore away_score].any? { |key| row[key].present? } || row["status"].to_s.strip.downcase == "final"
+          end
+          if has_score_fields && !authorize_tournament!("scores_and_stats", "edit", tournament.id)
+            return false
+          end
+
+          true
+        end
 
         def requested_import_format
           body_format = request.request_parameters["format"] || params[:importFormat] || params[:import_format]

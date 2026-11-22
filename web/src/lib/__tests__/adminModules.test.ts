@@ -34,4 +34,11 @@ describe('admin workspace access', () => {
     expect(defaultWorkspaceHome(admin)).toBe('/admin')
     expect(visibleAdminModules(admin)).toHaveLength(9)
   })
+
+  it('authorizes tournament detail routes against the path tournament ID', () => {
+    const editor = userWith(duty('schedule_and_teams', ['view', 'edit']))
+    expect(canOpenAdminRoute(editor, '/admin/tournaments/1')).toBe(true)
+    expect(canOpenAdminRoute(editor, '/admin/tournaments/2')).toBe(false)
+    expect(canOpenAdminRoute(editor, '/admin/tournaments/2', '1')).toBe(false)
+  })
 })

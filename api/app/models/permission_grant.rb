@@ -6,6 +6,7 @@ class PermissionGrant < ApplicationRecord
   scope :pending_for_email, ->(email) { active.where(user_id: nil, email: email.to_s.strip.downcase) }
 
   normalizes :email, with: ->(email) { email.strip.downcase }
+  before_validation :include_implied_view_action
 
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :scope_type, inclusion: { in: Access::Capabilities::SCOPES }
@@ -25,6 +26,13 @@ class PermissionGrant < ApplicationRecord
   end
 
   private
+
+  def include_implied_view_action
+    return unless actions.is_a?(Array) && actions.any?
+
+    allowed = Access::Capabilities::ACTIONS.fetch(capability, [])
+    self.actions = (actions | [ "view" ]) if allowed.include?("view") && (actions - allowed).empty?
+  end
 
   def validate_permissions
     allowed = Access::Capabilities::ACTIONS.fetch(capability, [])

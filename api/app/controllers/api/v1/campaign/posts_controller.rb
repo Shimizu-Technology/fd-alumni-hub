@@ -57,6 +57,8 @@ module Api
 
         def destroy
           post = @campaign.campaign_posts.find(params[:id])
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if post.published_at.present?
+          return if performed?
 
           CampaignPost.transaction do
             record_audit!(

@@ -1282,14 +1282,16 @@ function LedgerTab({
 
                 <div className="row-actions" style={{ flexWrap: 'wrap' }}>
                   {entry.hasReceipt ? (
-                    <button
-                      type="button"
-                      className="btn secondary small"
-                      disabled={receiptLoadingId === entry.id}
-                      onClick={() => void onOpenReceipt?.(entry.id)}
-                    >
-                      {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
-                    </button>
+                    onOpenReceipt && (
+                      <button
+                        type="button"
+                        className="btn secondary small"
+                        disabled={receiptLoadingId === entry.id}
+                        onClick={() => void onOpenReceipt(entry.id)}
+                      >
+                        {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
+                      </button>
+                    )
                   ) : (
                     canWrite && !entry.voided && (
                       <label className="btn secondary small file-upload-btn">

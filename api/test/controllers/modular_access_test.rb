@@ -199,6 +199,49 @@ class ModularAccessTest < ActionDispatch::IntegrationTest
     assert_nil grant_row.accepted_at
   end
 
+  test "scoped division, class cohort, import, campaign publish, and clerk mismatch checks hold" do
+    grant("schedule_and_teams", %w[edit import], scope: @season)
+    assert_includes PermissionGrant.find_by!(user: @viewer, capability: "schedule_and_teams").actions, "view"
+
+    get "/api/v1/admin/class-cohorts", headers: headers(@viewer)
+    assert_response :success
+
+    post "/api/v1/admin/divisions", params: { tournamentId: @season.id, division: { name: "Platinum", position: 9 } }, headers: headers(@viewer), as: :json
+    assert_response :created
+
+    # Schedule import with bracket or score fields requires brackets/edit and scores_and_stats/edit
+    post "/api/v1/admin/tournaments/#{@season.id}/schedule-import/commit",
+      params: { rows: [ { rowIndex: 1, startTime: "2027-07-01T18:00:00+10:00", homeTeam: "2017", awayTeam: "2018", bracketRound: "semifinal", bracketSlot: 1 } ] },
+      headers: headers(@viewer), as: :json
+    assert_response :forbidden
+
+    post "/api/v1/admin/tournaments/#{@season.id}/schedule-import/commit",
+      params: { rows: [ { rowIndex: 1, startTime: "2027-07-01T18:00:00+10:00", homeTeam: "2017", awayTeam: "2018", status: "final", homeScore: 50, awayScore: 45 } ] },
+      headers: headers(@viewer), as: :json
+    assert_response :forbidden
+
+    # Edit-only campaign grant cannot publish an event or delete a published post
+    grant("fundraisers_and_sponsors", %w[edit], scope: @campaign)
+    post "/api/v1/campaign/#{@campaign.slug}/events",
+      params: { event: { kind: "fundraiser", title: "Draft Gala", publicVisible: true } },
+      headers: headers(@viewer), as: :json
+    assert_response :forbidden
+
+    post "/api/v1/campaign/#{@campaign.slug}/events",
+      params: { event: { kind: "fundraiser", title: "Draft Gala", publicVisible: false } },
+      headers: headers(@viewer), as: :json
+    assert_response :created
+
+    published_post = @campaign.campaign_posts.create!(author: @admin, title: "Live News", body: "Published body", published_at: Time.current)
+    delete "/api/v1/campaign/#{@campaign.slug}/posts/#{published_post.id}", headers: headers(@viewer)
+    assert_response :forbidden
+
+    # Clerk identity mismatch returns a clear identity-linked error instead of allowlist message
+    get "/api/v1/me", headers: { "Authorization" => "Bearer test_token_clerk_different_sub:#{@viewer.email}:verified" }
+    assert_response :unauthorized
+    assert_match(/different sign-in identity/i, response.body)
+  end
+
   test "a Super Admin who recorded a reimbursement cannot approve it with an override" do
     expense = @campaign.ledger_entries.create!(recorded_by: @admin, entry_type: "expense", amount_cents: 500,
       source: "event_expense", payment_method: "cash", counterparty: "Store", paid_by: "Member", reimbursement_status: "requested")

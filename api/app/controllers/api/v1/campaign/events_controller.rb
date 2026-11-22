@@ -16,6 +16,8 @@ module Api
 
         def create
           event = @campaign.campaign_events.build(event_params)
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if event.public_visible?
+          return if performed?
 
           CampaignEvent.transaction do
             unless event.save
@@ -32,9 +34,11 @@ module Api
 
         def update
           event = @campaign.campaign_events.find(params[:id])
+          event.assign_attributes(event_params)
+          require_campaign_access!("fundraisers_and_sponsors", "publish", "chair") if event.will_save_change_to_public_visible?
+          return if performed?
 
           CampaignEvent.transaction do
-            event.assign_attributes(event_params)
             changes = event.changes
             unless event.save
               render_errors(event)

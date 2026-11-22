@@ -89,7 +89,9 @@ export function canOpenAdminRoute(user: CurrentUser | null | undefined, path: st
   if (['/admin/sponsors', '/admin/campaigns'].includes(path) && user?.capabilities && !user.isSuperAdmin) {
     return user.capabilities.some((entry) => entry.capability === capability && (entry.allScopes || entry.scopeType === (path === '/admin/sponsors' ? 'tournament' : 'campaign')) && entry.actions.includes('view'))
   }
-  const scope = tournamentId && module.tournamentScoped ? { type: 'tournament', id: tournamentId } : undefined
+  const detailMatch = path.match(/^\/admin\/tournaments\/(\d+)$/)
+  const resolvedTournamentId = detailMatch ? detailMatch[1] : tournamentId
+  const scope = resolvedTournamentId && module.tournamentScoped ? { type: 'tournament', id: resolvedTournamentId } : undefined
   return hasCapability(user, capability, tab?.action || 'view', scope) ||
     (path === '/admin/standings' && hasCapability(user, 'brackets', 'view', scope))
 }
