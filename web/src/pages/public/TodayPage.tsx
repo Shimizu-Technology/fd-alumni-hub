@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
-import { externalHref } from '../../lib/urls'
+import { safeHttpsHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import type { Game, PredictionPoll, RosterEntry } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
@@ -111,7 +111,15 @@ export function TodayPage() {
             <div className="section-heading"><h2>Games today</h2><span>{data?.games.length || 0}</span></div>
             {!data?.games.length ? <EmptyState title="No games scheduled today" description="Check the full schedule for the next matchup at The Jungle." /> : (
               <div className="today-game-list">
-                {data.games.map((game) => <TodayGameCard key={game.id} game={game} poll={gamePolls.get(game.id)} onVote={vote} />)}
+                {data.games.map((game) => (
+                  <TodayGameCard
+                    key={game.id}
+                    game={game}
+                    fallbackTicketUrl={data.fallbackTicketUrl || null}
+                    poll={gamePolls.get(game.id)}
+                    onVote={vote}
+                  />
+                ))}
               </div>
             )}
           </Panel>
@@ -121,7 +129,22 @@ export function TodayPage() {
   )
 }
 
-function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPoll; onVote: (poll: PredictionPoll, teamId: string) => Promise<void> }) {
+function TodayGameCard({
+  game,
+  fallbackTicketUrl,
+  poll,
+  onVote,
+}: {
+  game: Game
+  fallbackTicketUrl: string | null
+  poll?: PredictionPoll
+  onVote: (poll: PredictionPoll, teamId: string) => Promise<void>
+}) {
+  const hasScore = game.homeScore !== null && game.awayScore !== null
+  const directTicketHref = safeHttpsHref(game.ticketUrl)
+  const effectiveTicketHref = directTicketHref || safeHttpsHref(fallbackTicketUrl)
+  const streamHref = safeHttpsHref(game.streamUrl)
+
   return (
     <article className={poll ? 'today-game-card' : 'today-game-card today-game-card--no-poll'}>
       <div className="today-game-main">
@@ -130,10 +153,28 @@ function TodayGameCard({ game, poll, onVote }: { game: Game; poll?: PredictionPo
           <StatusBadge status={game.status} />
         </div>
         <h2><TeamNameLink team={game.awayTeam} fallback="Away team" /> at <TeamNameLink team={game.homeTeam} fallback="Home team" /></h2>
+        {hasScore && (
+          <div className="today-score-strip" aria-label="Game score">
+            <span>{game.awayTeam?.displayName || 'Away'}</span>
+            <strong>{game.awayScore} – {game.homeScore}</strong>
+            <span>{game.homeTeam?.displayName || 'Home'}</span>
+          </div>
+        )}
+        {game.statusNote && <p className="game-status-note">{game.statusNote}</p>}
         <p>{game.venue || DEFAULT_GAME_VENUE}</p>
         <div className="game-actions">
-          {game.ticketUrl ? <a className="btn secondary small" href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Tickets <IconExternal /></a> : <span className="link-muted">Tickets pending</span>}
-          {game.streamUrl ? <a className="btn primary small" href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Stream <IconExternal /></a> : <span className="link-muted">Stream pending</span>}
+          {effectiveTicketHref ? (
+            <a className="btn secondary small" href={effectiveTicketHref} target="_blank" rel="noreferrer">
+              {directTicketHref ? 'Tickets' : 'Tournament tickets'} <IconExternal />
+            </a>
+          ) : (
+            <span className="link-muted">Tickets pending</span>
+          )}
+          {streamHref ? (
+            <a className="btn primary small" href={streamHref} target="_blank" rel="noreferrer">Stream <IconExternal /></a>
+          ) : (
+            <span className="link-muted">Stream pending</span>
+          )}
         </div>
         <RosterDetails game={game} />
       </div>

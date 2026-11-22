@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000010) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -554,6 +554,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000010) do
     t.index ["tournament_id"], name: "index_teams_on_tournament_id"
   end
 
+  create_table "tournament_alerts", force: :cascade do |t|
+    t.bigint "tournament_id"
+    t.string "severity", default: "warning", null: false
+    t.string "title", null: false
+    t.text "message", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "starts_at"
+    t.datetime "expires_at"
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "starts_at", "expires_at"], name: "index_tournament_alerts_on_active_window"
+    t.index ["created_by_id"], name: "index_tournament_alerts_on_created_by_id"
+    t.index ["tournament_id", "active"], name: "index_tournament_alerts_on_tournament_and_active"
+    t.index ["tournament_id"], name: "index_tournament_alerts_on_tournament_id"
+    t.index ["updated_by_id"], name: "index_tournament_alerts_on_updated_by_id"
+    t.check_constraint "severity::text = ANY (ARRAY['info'::character varying, 'warning'::character varying, 'urgent'::character varying]::text[])", name: "chk_tournament_alerts_severity"
+  end
+
   create_table "tournament_champion_credits", force: :cascade do |t|
     t.bigint "tournament_champion_id", null: false
     t.bigint "class_cohort_id", null: false
@@ -675,6 +695,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000010) do
   add_foreign_key "team_class_memberships", "teams", on_delete: :cascade
   add_foreign_key "teams", "divisions", on_delete: :nullify
   add_foreign_key "teams", "tournaments", on_delete: :cascade
+  add_foreign_key "tournament_alerts", "tournaments", on_delete: :cascade
+  add_foreign_key "tournament_alerts", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "tournament_alerts", "users", column: "updated_by_id", on_delete: :nullify
   add_foreign_key "tournament_champion_credits", "class_cohorts", on_delete: :cascade
   add_foreign_key "tournament_champion_credits", "tournament_champions", on_delete: :cascade
   add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify

@@ -15,12 +15,20 @@ module Api
           note = tournament.game_day_notes.active.find_by(date: day)
           polls = relevant_polls(tournament, games).to_a
           voter_hash = voter_token_hash
-          last_updated_at = latest_updated_at(note, games, polls)
+          alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10).to_a
+          campaign = HostCampaign
+            .where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES)
+            .order(featured: :desc, updated_at: :desc, id: :desc)
+            .first
+          fallback_ticket_url = Hafapass::EventsClient.all_tickets_url_for(campaign)
+          last_updated_at = latest_updated_at(note, games, polls, alerts)
 
           render json: {
             tournament: tournament.api_json,
             date: day.iso8601,
             gameDayNote: note&.api_json,
+            alerts: alerts.map(&:api_json),
+            fallbackTicketUrl: fallback_ticket_url,
             games: games.map { |game| game.api_json(include_rosters: true) },
             predictionPolls: polls.map { |poll| poll.api_json(voter_token_hash: voter_hash) },
             sponsors: tournament.sponsors.active.ordered_by_tier.limit(4).map(&:api_json),

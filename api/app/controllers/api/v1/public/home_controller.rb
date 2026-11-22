@@ -6,6 +6,7 @@ module Api
           context = Tournament.home_context
           tournament = Tournament.active_for_public(context)
           active_host_campaign = HostCampaign.resolve_active_for_home&.home_summary_json
+          alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10).map(&:api_json)
 
           unless tournament
             return render json: {
@@ -13,6 +14,7 @@ module Api
               upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
               latestResultsTournament: context[:latest_completed_with_games]&.api_json,
               activeHostCampaign: active_host_campaign,
+              alerts: alerts,
               todayGames: [],
               liveGames: [],
               latestNews: [],
@@ -33,6 +35,7 @@ module Api
             upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
             latestResultsTournament: context[:latest_completed_with_games]&.api_json,
             activeHostCampaign: active_host_campaign,
+            alerts: alerts,
             todayGames: today_games.map(&:api_json),
             liveGames: live_games.map(&:api_json),
             latestNews: tournament.article_links.includes(game: [ :division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ]).latest.limit(5).map(&:api_json),

@@ -6,7 +6,7 @@ import { formatGuamDate, formatGuamDateTime, toDateInputValue, toLocalDateTimeIn
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
-import type { Game, GameDayNote, PredictionPoll, Tournament } from '../../lib/types'
+import type { AlertSeverity, Game, GameDayNote, PredictionPoll, Tournament, TournamentAlert } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 const gameDayRefreshIntervalMs = 10_000
@@ -77,6 +77,7 @@ export function AdminGameDayPage() {
       </Panel>
 
       <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={gameDayState.reload} />
+      <TournamentAlertsAdminPanel tournament={tournament} />
       <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />
     </div>
   )
@@ -203,5 +204,146 @@ function PredictionPollControls({ poll, onUpdate }: { poll: PredictionPoll; onUp
       <span className="muted">{poll.totalVotes ?? 0} votes</span>
       <button className="btn secondary small" onClick={() => onUpdate(poll, { status: poll.status === 'open' ? 'closed' : 'open' })}>{poll.status === 'open' ? 'Close voting' : 'Reopen voting'}</button>
     </div>
+  )
+}
+
+function TournamentAlertsAdminPanel({ tournament }: { tournament: Tournament | null }) {
+  const { data, loading, error, reload } = useAsync(
+    () => api.adminAlerts(tournament?.id || null),
+    [tournament?.id],
+  )
+
+  const [severity, setSeverity] = useState<AlertSeverity>('warning')
+  const [scope, setScope] = useState<'tournament' | 'sitewide'>('tournament')
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
+  const [formError, setFormError] = useState('')
+
+  const createAlert = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setNotice('')
+    setFormError('')
+    try {
+      await api.adminCreateAlert({
+        tournamentId: scope === 'sitewide' ? null : (tournament?.id || null),
+        severity,
+        title: title.trim(),
+        message: message.trim(),
+        active: true,
+        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      })
+      setTitle('')
+      setMessage('')
+      setExpiresAt('')
+      setNotice('Alert published')
+      await reload()
+    } catch (err) {
+      setFormError(mutationErrorMessage(err, 'Unable to publish alert'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleAlert = async (alert: TournamentAlert) => {
+    setFormError('')
+    setNotice('')
+    try {
+      await api.adminUpdateAlert(alert.id, { active: !alert.active })
+      setNotice(alert.active ? 'Alert hidden' : 'Alert activated')
+      await reload()
+    } catch (err) {
+      setFormError(mutationErrorMessage(err, 'Unable to update alert'))
+    }
+  }
+
+  const removeAlert = async (alert: TournamentAlert) => {
+    if (!window.confirm(`Delete alert "${alert.title}"?`)) return
+    setFormError('')
+    setNotice('')
+    try {
+      await api.adminDeleteAlert(alert.id)
+      setNotice('Alert deleted')
+      await reload()
+    } catch (err) {
+      setFormError(mutationErrorMessage(err, 'Unable to delete alert'))
+    }
+  }
+
+  const alerts = data?.alerts || []
+
+  return (
+    <Panel>
+      <div className="section-heading">
+        <h2>Site-wide storm &amp; schedule alerts</h2>
+        {notice && <span role="status">{notice}</span>}
+      </div>
+      <p className="muted">Active alerts display immediately at the top of every public page for typhoon delays, power outages, or schedule changes.</p>
+
+      <form onSubmit={createAlert} className="stacked-form">
+        <FormGrid>
+          <Field label="Severity">
+            <select value={severity} onChange={(event) => setSeverity(event.target.value as AlertSeverity)}>
+              <option value="info">Info</option>
+              <option value="warning">Warning (Delay / Schedule)</option>
+              <option value="urgent">Urgent (Storm / Power Outage)</option>
+            </select>
+          </Field>
+          <Field label="Scope">
+            <select value={scope} onChange={(event) => setScope(event.target.value as 'tournament' | 'sitewide')}>
+              <option value="tournament">{tournament ? `${tournament.year} tournament` : 'Current tournament'}</option>
+              <option value="sitewide">Site-wide (all pages)</option>
+            </select>
+          </Field>
+          <Field label="Title">
+            <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={140} placeholder="Typhoon delay — Games pushed 1 hour" required />
+          </Field>
+          <Field label="Auto-expire (optional)">
+            <input type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} />
+          </Field>
+          <Field label="Message">
+            <textarea rows={2} maxLength={1000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Check back at 6:00 PM for updated tip-off times at the Phoenix Center." required />
+          </Field>
+        </FormGrid>
+        {formError && <p className="form-error" role="alert">{formError}</p>}
+        <button className="btn primary" type="submit" disabled={saving}>{saving ? 'Publishing…' : 'Publish alert'}</button>
+      </form>
+
+      {loading && !data ? (
+        <LoadingState label="Loading alerts" />
+      ) : error ? (
+        <ErrorState message={error} onRetry={reload} />
+      ) : alerts.length === 0 ? (
+        <EmptyState title="No alerts posted" description="Publish a storm or schedule alert above whenever game-night plans change." />
+      ) : (
+        <div className="admin-list" style={{ marginTop: '1rem' }}>
+          {alerts.map((alert) => (
+            <article key={alert.id} className="admin-row-card">
+              <div>
+                <div className="game-card-top">
+                  <span className={`tournament-alert-pill tournament-alert-pill--${alert.severity}`}>{alert.severity}</span>
+                  <StatusBadge status={alert.active ? 'live' : 'cancelled'} />
+                  <small className="muted">{alert.tournamentId ? 'Tournament alert' : 'Site-wide'}</small>
+                </div>
+                <strong>{alert.title}</strong>
+                <p className="muted">{alert.message}</p>
+                {alert.expiresAt && <small className="muted">Expires {formatGuamDateTime(alert.expiresAt)}</small>}
+              </div>
+              <div className="row-actions">
+                <button type="button" className="btn secondary small" onClick={() => void toggleAlert(alert)}>
+                  {alert.active ? 'Hide' : 'Activate'}
+                </button>
+                <button type="button" className="btn danger small" onClick={() => void removeAlert(alert)}>
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </Panel>
   )
 }

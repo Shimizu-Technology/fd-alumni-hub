@@ -27,6 +27,7 @@ const OFFLINE_ROUTES = [
   { path: '/', expectedHeading: /FD Alumni/i },
   { path: '/host-year', expectedHeading: /Host Year|Fundraisers/i },
   { path: '/schedule', expectedHeading: /Schedule/i },
+  { path: '/bracket', expectedHeading: /Playoff bracket/i },
   { path: '/standings', expectedHeading: /Standings/i },
   { path: '/tickets', expectedHeading: /Tournament Tickets/i },
   { path: '/sponsors', expectedHeading: /Tournament support/i },
@@ -138,6 +139,14 @@ test.describe('FD Alumni Hub smoke suite', () => {
         body: JSON.stringify({ tournaments: [], activeTournament: null }),
       }),
     )
+    await page.route('**/api/v1/public/alerts*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({ tournamentId: null, alerts: [] }),
+      }),
+    )
     await page.route('**/api/v1/public/host-year*', (route) =>
       route.fulfill({
         status: 200,
@@ -208,6 +217,14 @@ test.describe('FD Alumni Hub smoke suite', () => {
         }),
       }),
     )
+    await page.route('**/api/v1/public/alerts*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({ tournamentId: '1', alerts: [] }),
+      }),
+    )
     await page.route('**/api/v1/public/tickets*', (route) =>
       route.fulfill({
         status: 200,
@@ -262,6 +279,186 @@ test.describe('FD Alumni Hub smoke suite', () => {
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(1)
+    expect(pageErrors).toEqual([])
+    expect(consoleErrors).toEqual([])
+    await context.close()
+  })
+
+  test('online mocked /bracket and /today render storm alert banner, mobile round switcher, scores, and delay note', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+    const page = await context.newPage()
+    const { pageErrors, consoleErrors } = attachErrorCollectors(page)
+
+    await page.route('**/health', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'text/plain',
+        body: 'ok',
+      }),
+    )
+    await page.route('**/api/v1/public/tournaments*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tournaments: [{ id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' }],
+          activeTournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
+        }),
+      }),
+    )
+    await page.route('**/api/v1/public/alerts*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tournamentId: '1',
+          alerts: [
+            {
+              id: 'alert-1',
+              tournamentId: '1',
+              severity: 'urgent',
+              title: 'Typhoon Delay',
+              message: 'Tip-off moved back 1 hour due to heavy rain.',
+              active: true,
+              startsAt: null,
+              expiresAt: null,
+            },
+          ],
+        }),
+      }),
+    )
+    await page.route('**/api/v1/public/bracket*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
+          divisions: [
+            {
+              division: { id: '10', name: 'Maroon', slug: 'maroon', position: 1 },
+              rounds: [
+                {
+                  round: 'quarterfinal',
+                  label: 'Quarterfinals',
+                  games: [
+                    {
+                      id: '101',
+                      tournamentId: '1',
+                      homeTeamId: '1',
+                      awayTeamId: '2',
+                      startTime: '2027-07-12T09:00:00Z',
+                      venue: 'FD Phoenix Center',
+                      status: 'final',
+                      phase: 'playoff',
+                      bracketCode: 'MQF1',
+                      bracketRound: 'quarterfinal',
+                      bracketSlot: 1,
+                      homeScore: 81,
+                      awayScore: 73,
+                      streamUrl: null,
+                      ticketUrl: null,
+                      notes: null,
+                      division: 'Maroon',
+                      homeTeam: { id: '1', displayName: 'Class of 2017', classYearLabel: '2017', classCohorts: [], division: 'Maroon' },
+                      awayTeam: { id: '2', displayName: 'Class of 2018', classYearLabel: '2018', classCohorts: [], division: 'Maroon' },
+                    },
+                  ],
+                },
+                {
+                  round: 'semifinal',
+                  label: 'Semifinals',
+                  games: [
+                    {
+                      id: '102',
+                      tournamentId: '1',
+                      homeTeamId: '1',
+                      awayTeamId: '3',
+                      startTime: '2027-07-14T09:00:00Z',
+                      venue: 'FD Phoenix Center',
+                      status: 'scheduled',
+                      phase: 'playoff',
+                      bracketCode: 'MSF1',
+                      bracketRound: 'semifinal',
+                      bracketSlot: 1,
+                      homeScore: null,
+                      awayScore: null,
+                      streamUrl: null,
+                      ticketUrl: null,
+                      notes: null,
+                      division: 'Maroon',
+                      placeholder: true,
+                      homeTeam: { id: '1', displayName: 'Class of 2017', classYearLabel: '2017', classCohorts: [], division: 'Maroon' },
+                      awayTeam: { id: '3', displayName: 'Winner MQF2', classYearLabel: 'WMQF2', classCohorts: [], division: 'Maroon' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    )
+    await page.route('**/api/v1/public/today*', (route) =>
+      route.fulfill({
+        status: 200,
+        headers: { 'access-control-allow-origin': '*' },
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
+          date: '2027-07-12',
+          gameDayNote: null,
+          alerts: [],
+          fallbackTicketUrl: 'https://hafapass.shimizu-technology.com/go/fd2027',
+          games: [
+            {
+              id: '201',
+              tournamentId: '1',
+              homeTeamId: '1',
+              awayTeamId: '2',
+              startTime: '2027-07-12T09:00:00Z',
+              venue: 'FD Phoenix Center',
+              status: 'delayed',
+              statusNote: 'Delayed 60 minutes due to power flicker',
+              homeScore: 42,
+              awayScore: 39,
+              streamUrl: null,
+              ticketUrl: null,
+              notes: null,
+              division: 'Maroon',
+              bracketCode: null,
+              homeTeam: { id: '1', displayName: 'Class of 2017', classYearLabel: '2017', classCohorts: [], division: 'Maroon' },
+              awayTeam: { id: '2', displayName: 'Class of 2018', classYearLabel: '2018', classCohorts: [], division: 'Maroon' },
+            },
+          ],
+          predictionPolls: [],
+          sponsors: [],
+          lastUpdatedAt: '2027-07-12T09:05:00Z',
+        }),
+      }),
+    )
+
+    await page.goto('/bracket', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('alert')).toContainText('Typhoon Delay')
+    const mobileRound = page.locator('.bracket-mobile-round')
+    await expect(mobileRound).toBeVisible()
+    await expect(mobileRound).toContainText('Class of 2017')
+    await expect(mobileRound).not.toContainText('Winner MQF2')
+    await page.getByRole('button', { name: /Semifinals/i }).click()
+    await expect(mobileRound).toContainText('Winner MQF2')
+    const bracketOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(bracketOverflow).toBeLessThanOrEqual(1)
+
+    await page.goto('/today', { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('main')).toContainText('39 – 42')
+    await expect(page.locator('main')).toContainText('Delayed 60 minutes due to power flicker')
+    await expect(page.locator('main')).toContainText('Tournament tickets')
+    const todayOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(todayOverflow).toBeLessThanOrEqual(1)
+
     expect(pageErrors).toEqual([])
     expect(consoleErrors).toEqual([])
     await context.close()

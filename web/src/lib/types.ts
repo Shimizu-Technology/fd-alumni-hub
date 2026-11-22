@@ -437,6 +437,42 @@ export type TicketsDoorInfo = {
   tournamentYear: number | null
 }
 
+export type AlertSeverity = 'info' | 'warning' | 'urgent'
+
+export type TournamentAlert = {
+  id: string
+  tournamentId: string | null
+  severity: AlertSeverity
+  title: string
+  message: string
+  active: boolean
+  startsAt: string | null
+  expiresAt: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type BracketRoundGroup = {
+  round: string
+  label: string
+  games: Game[]
+}
+
+export type BracketDivisionGroup = {
+  division: {
+    id: string
+    name: string
+    slug: string
+    position: number
+  }
+  rounds: BracketRoundGroup[]
+}
+
+export type PublicBracketResponse = {
+  tournament: Tournament | null
+  divisions: BracketDivisionGroup[]
+}
+
 export type PublicTicketsResponse = {
   tournament: Tournament | null
   campaign: {

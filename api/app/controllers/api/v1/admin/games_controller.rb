@@ -49,9 +49,11 @@ module Api
 
           if saved
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
+            advancement = advance_bracket_winner_safely(game)
             render json: {
               game: games_with_associations.find(game.id).api_json(include_score_audit: true),
-              recompute: recompute && { teams: recompute.teams, games: recompute.games }
+              recompute: recompute && { teams: recompute.teams, games: recompute.games },
+              bracketAdvancement: advancement&.api_json
             }.compact
           else
             render_errors(game)
@@ -73,6 +75,15 @@ module Api
           else
             yield
           end
+        end
+
+        def advance_bracket_winner_safely(game)
+          return nil unless game.next_game_id.present?
+
+          Games::AdvanceBracketWinner.call(game)
+        rescue StandardError => e
+          Rails.logger.error("Games::AdvanceBracketWinner failed for game #{game.id}: #{e.class}: #{e.message}")
+          Games::AdvanceBracketWinner::Result.new(advanced: false, reason: "advancement_failed")
         end
 
         def parse_lock_version(value)
