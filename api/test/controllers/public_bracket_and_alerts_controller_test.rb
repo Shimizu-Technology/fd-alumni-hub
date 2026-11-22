@@ -10,7 +10,8 @@ class PublicBracketAndAlertsControllerTest < ActionDispatch::IntegrationTest
       year: 2027,
       start_date: Date.new(2027, 6, 25),
       end_date: Date.new(2027, 7, 16),
-      status: "live"
+      status: "live",
+      schedule_published_at: Time.current
     )
     @other_tournament = Tournament.create!(
       name: "FD Alumni Basketball Tournament 2026",

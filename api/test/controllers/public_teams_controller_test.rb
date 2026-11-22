@@ -7,7 +7,8 @@ class PublicTeamsControllerTest < ActionDispatch::IntegrationTest
       year: 2026,
       start_date: Date.new(2026, 7, 3),
       end_date: Date.new(2026, 7, 24),
-      status: "upcoming"
+      status: "upcoming",
+      schedule_published_at: Time.current
     )
     team = tournament.teams.create!(class_year_label: "2006", display_name: "Class of 2006", division: "Maroon")
     opponent = tournament.teams.create!(class_year_label: "2013", display_name: "Class of 2013", division: "Gold")

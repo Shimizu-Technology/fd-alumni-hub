@@ -7,7 +7,8 @@ class PublicStandingsControllerTest < ActionDispatch::IntegrationTest
       year: 2027,
       start_date: Date.new(2027, 7, 2),
       end_date: Date.new(2027, 7, 23),
-      status: "live"
+      status: "live",
+      schedule_published_at: Time.current
     )
     @tournament.ensure_default_divisions!
     @maroon = @tournament.divisions.find_by!(name: "Maroon")

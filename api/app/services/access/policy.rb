@@ -7,6 +7,7 @@ module Access
       "campaign/host-year" => %w[fundraisers_and_sponsors],
       "campaign/finance" => %w[finance_and_reimbursements],
       "news" => %w[history_and_media],
+      "site-mode" => %w[site_mode_and_settings],
       "people" => %w[manage_admins],
       "audit" => %w[view_audit_log]
     }.freeze
@@ -70,7 +71,7 @@ module Access
     end
 
     def workspace
-      modules = MODULES.filter_map { |path, keys| path if capabilities.any? { |entry| keys.include?(entry[:capability]) } }
+      modules = MODULES.filter_map { |path, keys| path if capabilities.any? { |entry| keys.include?(entry[:capability]) && (path != "site-mode" || (entry[:allScopes] && entry[:actions].include?("view"))) } }
       task_modules = modules - %w[people audit]
       if super_admin? || (task_modules.length > 1 && task_modules != %w[campaign/host-year campaign/finance])
         modules.unshift("work")

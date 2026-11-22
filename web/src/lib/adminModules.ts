@@ -40,6 +40,7 @@ export const adminModules: Module[] = [
     { path: '/admin/media', label: 'Photos & Videos' },
     { path: '/admin/ingest', label: 'Review Links', superAdmin: true },
   ] },
+  { key: 'site-mode', path: '/admin/site-mode', label: 'Site Mode', icon: IconHome, capability: 'site_mode_and_settings' },
   { key: 'people', path: '/admin/people', label: 'People & access', icon: IconUsers, capability: 'manage_admins' },
   { key: 'audit', path: '/admin/audit', label: 'Audit History', icon: IconList, capability: 'view_audit_log' },
 ]
@@ -48,6 +49,7 @@ export function hasCapability(user: CurrentUser | null | undefined, capability: 
   if (!user || user.active === false) return false
   if (user.isSuperAdmin ?? user.isAdmin) return true
   if (user.capabilities) return user.capabilities.some((entry) =>
+    (capability !== 'site_mode_and_settings' || entry.allScopes) &&
     entry.capability === capability && (!action || entry.actions.includes(action)) &&
     (!scope || entry.allScopes || (entry.scopeType === scope.type && entry.scopeIds.includes(scope.id))),
   )
@@ -57,7 +59,7 @@ export function hasCapability(user: CurrentUser | null | undefined, capability: 
 }
 
 export function visibleAdminModules(user: CurrentUser | null | undefined) {
-  const visible = adminModules.slice(1).filter((module) => hasCapability(user, module.capability!) ||
+  const visible = adminModules.slice(1).filter((module) => hasCapability(user, module.capability!, module.key === 'site-mode' ? 'view' : undefined) ||
     (module.key === 'scorekeeper' && hasCapability(user, 'brackets')))
   const tasks = visible.filter((module) => !['people', 'audit'].includes(module.key))
   const campaignOnly = tasks.every((module) => module.key.startsWith('campaign/'))

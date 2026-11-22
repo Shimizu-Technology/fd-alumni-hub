@@ -3,7 +3,7 @@ module Api
     module Public
       class StandingsController < BaseController
         def index
-          tournament = current_tournament
+          tournament = public_schedule_tournament
           unless tournament
             return render json: {
               tournament: nil,

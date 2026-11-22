@@ -6,7 +6,7 @@ module Api
           tournaments = Tournament.order(year: :desc, start_date: :desc)
           render json: {
             tournaments: tournaments.map(&:api_json),
-            activeTournament: Tournament.active_for_public&.api_json
+            activeTournament: site_context.tournament&.api_json
           }
         end
 

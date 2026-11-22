@@ -25,9 +25,15 @@ class Tournament < ApplicationRecord
   scope :completed, -> { where(status: "completed") }
   scope :with_games, -> { joins(:games).distinct }
 
+  scope :with_public_schedule, -> { completed.or(where.not(schedule_published_at: nil)) }
+
+  def publicly_visible_schedule?
+    schedule_published_at.present? || status == "completed"
+  end
+
   def self.home_context
     live = live_tournaments.first
-    upcoming_with_games = where(status: "upcoming").with_games.order(start_date: :asc, year: :asc, id: :asc).first
+    upcoming_with_games = where(status: "upcoming").with_public_schedule.with_games.order(start_date: :asc, year: :asc, id: :asc).first
     earliest_upcoming = where(status: "upcoming").order(start_date: :asc, year: :asc, id: :asc).first
 
     {
@@ -40,7 +46,7 @@ class Tournament < ApplicationRecord
     context ||= home_context
     upcoming = context[:upcoming_or_live]
 
-    if upcoming&.status == "live" || upcoming&.games&.exists?
+    if upcoming&.status == "live" || (upcoming&.publicly_visible_schedule? && upcoming.games.exists?)
       upcoming
     else
       context[:latest_completed_with_games] || upcoming

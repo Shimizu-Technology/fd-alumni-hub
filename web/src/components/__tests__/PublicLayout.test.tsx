@@ -1,8 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { api } from '../../lib/api'
+import { offlineSiteMode } from '../../lib/siteMode'
+import { NotFoundPage } from '../../pages/public/NotFoundPage'
 import { PublicLayout } from '../PublicLayout'
 import * as backendHook from '../../hooks/useBackendAvailability'
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 describe('PublicLayout', () => {
   it('renders offline status banner with Retry button when API is unavailable', () => {
@@ -57,5 +65,43 @@ describe('PublicLayout', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: /Site menu/i })).not.toBeInTheDocument()
+  })
+})
+
+describe('seasonal navigation', () => {
+  const modes = [
+    ['fundraising', ['Home', 'Fundraisers', 'History'], ['Home', 'Fundraisers', 'History']],
+    ['schedule_ready', ['Home', 'Schedule', 'Teams', 'Tickets', 'Bracket', 'History'], ['Home', 'Schedule', 'Tickets']],
+    ['tournament_live', ['Tonight', 'Schedule', 'Standings', 'Bracket', 'Tickets', 'History'], ['Tonight', 'Schedule', 'Tickets']],
+    ['tournament_recap', ['Recap', 'History', 'Fundraisers'], ['Recap', 'History']],
+  ] as const
+
+  it.each(modes)('renders %s navigation and keeps urgent warnings and the 404 visible', async (mode, desktop, bottom) => {
+    const paths: Record<string, string> = { Home: '/', Fundraisers: '/host-year', Tonight: '/today', Recap: '/history/2090' }
+    const link = (label: string) => ({ label, to: paths[label] || `/${label.toLowerCase()}` })
+    vi.spyOn(backendHook, 'useBackendAvailabilityContext').mockReturnValue({
+      status: 'available', isUnavailable: false, isChecking: false,
+      retry: vi.fn(async () => {}), reportUnavailable: vi.fn(), reportAvailable: vi.fn(),
+    })
+    vi.spyOn(api, 'publicSiteMode').mockResolvedValue({
+      siteMode: { ...offlineSiteMode, mode, navItems: desktop.map(link), mobileBottomNav: [...bottom.map(link), { label: 'More', to: null }] },
+      alerts: [{
+        id: '1', severity: 'urgent', title: 'Storm warning', message: 'Check road conditions.',
+        active: true, tournamentId: null, startsAt: null, expiresAt: null,
+      }],
+    })
+    render(
+      <MemoryRouter initialEntries={['/missing']}>
+        <Routes><Route element={<PublicLayout />}><Route path="*" element={<NotFoundPage />} /></Route></Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByRole('alert')).toHaveTextContent('Storm warning')
+    const primary = within(screen.getByRole('navigation', { name: 'Primary navigation' }))
+    expect(primary.getAllByRole('link').map((entry) => entry.textContent)).toEqual(desktop)
+    const mobile = within(screen.getByRole('navigation', { name: 'Mobile quick navigation' }))
+    expect(mobile.getAllByRole('link').map((entry) => entry.textContent)).toEqual(bottom)
+    expect(mobile.getByRole('button', { name: 'Open more menu' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Organizer sign in' })).toBeInTheDocument()
   })
 })

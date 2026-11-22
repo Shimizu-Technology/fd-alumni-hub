@@ -3,7 +3,11 @@ module Api
     module Public
       class HostYearsController < BaseController
         def show
-          campaign = HostCampaign.resolve_public(slug: params[:slug], year: params[:year])
+          campaign = if params[:slug].blank? && params[:year].blank? && site_context.publication
+            site_context.campaign
+          else
+            HostCampaign.resolve_public(slug: params[:slug], year: params[:year])
+          end
           return render json: { error: "Host year campaign not found" }, status: :not_found unless campaign
 
           events = campaign.campaign_events.public_listing.ordered.to_a

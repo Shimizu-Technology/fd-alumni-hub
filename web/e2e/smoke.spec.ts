@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { offlineSiteMode } from '../src/lib/siteMode'
 
 function attachErrorCollectors(page: import('@playwright/test').Page, { ignoreOfflineNetwork = false } = {}) {
   const pageErrors: string[] = []
@@ -31,6 +32,8 @@ const OFFLINE_ROUTES = [
   { path: '/standings', expectedHeading: /Standings/i },
   { path: '/tickets', expectedHeading: /Tournament Tickets/i },
   { path: '/sponsors', expectedHeading: /Tournament support/i },
+  { path: '/teams', expectedHeading: /Teams & Rosters/i },
+  { path: '/unknown-page', expectedHeading: /Page not found/i },
   { path: '/history', expectedHeading: /Champion history|History/i },
 ]
 
@@ -80,7 +83,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(nav).toBeVisible()
 
     const items = nav.locator('.mobile-bottom-nav-item')
-    await expect(items).toHaveCount(5)
+    await expect(items).toHaveCount(4)
 
     const count = await items.count()
     for (let i = 0; i < count; i += 1) {
@@ -131,21 +134,8 @@ test.describe('FD Alumni Hub smoke suite', () => {
         body: JSON.stringify({ error: 'Not mocked' }),
       }),
     )
-    await page.route('**/api/v1/public/tournaments*', (route) =>
-      route.fulfill({
-        status: 200,
-        headers: { 'access-control-allow-origin': '*' },
-        contentType: 'application/json',
-        body: JSON.stringify({ tournaments: [], activeTournament: null }),
-      }),
-    )
-    await page.route('**/api/v1/public/alerts*', (route) =>
-      route.fulfill({
-        status: 200,
-        headers: { 'access-control-allow-origin': '*' },
-        contentType: 'application/json',
-        body: JSON.stringify({ tournamentId: null, alerts: [] }),
-      }),
+    await page.route('**/api/v1/public/site-mode', (route) =>
+      route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { siteMode: offlineSiteMode, alerts: [] } }),
     )
     await page.route('**/api/v1/public/host-year*', (route) =>
       route.fulfill({
@@ -191,7 +181,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await context.close()
   })
 
-  test('online mocked /tickets renders stale badge fallback and swaps mobile bottom nav to Today when live', async ({ browser }) => {
+  test('online mocked /tickets renders stale badge fallback and switches mobile navigation to Tonight when live', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
     const page = await context.newPage()
     const { pageErrors, consoleErrors } = attachErrorCollectors(page)
@@ -204,27 +194,13 @@ test.describe('FD Alumni Hub smoke suite', () => {
         body: 'ok',
       }),
     )
-    await page.route('**/api/v1/public/tournaments*', (route) =>
-      route.fulfill({
-        status: 200,
+    await page.route('**/api/v1/public/site-mode', (route) => {
+      const links = [{ to: '/today', label: 'Tonight' }, { to: '/schedule', label: 'Schedule' }, { to: '/tickets', label: 'Tickets' }]
+      return route.fulfill({
         headers: { 'access-control-allow-origin': '*' },
-        contentType: 'application/json',
-        body: JSON.stringify({
-          tournaments: [
-            { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
-          ],
-          activeTournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
-        }),
-      }),
-    )
-    await page.route('**/api/v1/public/alerts*', (route) =>
-      route.fulfill({
-        status: 200,
-        headers: { 'access-control-allow-origin': '*' },
-        contentType: 'application/json',
-        body: JSON.stringify({ tournamentId: '1', alerts: [] }),
-      }),
-    )
+        json: { siteMode: { ...offlineSiteMode, mode: 'tournament_live', navItems: links, mobileBottomNav: [...links, { to: null, label: 'More' }] }, alerts: [] },
+      })
+    })
     await page.route('**/api/v1/public/tickets*', (route) =>
       route.fulfill({
         status: 200,
@@ -274,7 +250,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(page.locator('main')).toContainText('Door & admission info')
 
     const nav = page.locator('nav.mobile-bottom-nav')
-    await expect(nav).toContainText('Today')
+    await expect(nav).toContainText('Tonight')
     await expect(nav).toContainText('Tickets')
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
@@ -297,24 +273,13 @@ test.describe('FD Alumni Hub smoke suite', () => {
         body: 'ok',
       }),
     )
-    await page.route('**/api/v1/public/tournaments*', (route) =>
+    await page.route('**/api/v1/public/site-mode', (route) =>
       route.fulfill({
         status: 200,
         headers: { 'access-control-allow-origin': '*' },
         contentType: 'application/json',
         body: JSON.stringify({
-          tournaments: [{ id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' }],
-          activeTournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
-        }),
-      }),
-    )
-    await page.route('**/api/v1/public/alerts*', (route) =>
-      route.fulfill({
-        status: 200,
-        headers: { 'access-control-allow-origin': '*' },
-        contentType: 'application/json',
-        body: JSON.stringify({
-          tournamentId: '1',
+          siteMode: { ...offlineSiteMode, mode: 'tournament_live' },
           alerts: [
             {
               id: 'alert-1',
@@ -463,4 +428,43 @@ test.describe('FD Alumni Hub smoke suite', () => {
     expect(consoleErrors).toEqual([])
     await context.close()
   })
+})
+
+test('published teams can be searched, filtered and opened from the desktop season navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 })
+  const tournament = { id: '1', year: 2027, name: 'Alumni Tournament', startDate: '2027-07-03', endDate: '2027-07-24', status: 'upcoming' }
+  const links = [
+    { label: 'Home', to: '/' }, { label: 'Schedule', to: '/schedule' }, { label: 'Teams', to: '/teams' },
+    { label: 'Tickets', to: '/tickets' }, { label: 'History', to: '/history' },
+  ]
+  const siteMode = { ...offlineSiteMode, tournament, mode: 'schedule_ready', navItems: links, schedulePublished: true }
+  const classCohort = { id: '1', key: '16', routeKey: '16', displayName: 'Class of 2016', graduationYear: 2016, shortLabel: "'16" }
+  const team = { id: '1', tournamentId: tournament.id, displayName: 'Class of 2016', classYearLabel: '2016', division: 'Maroon', classCohorts: [classCohort] }
+  const other = { id: '2', tournamentId: tournament.id, displayName: 'Class of 2018', classYearLabel: '2018', division: 'Gold', classCohorts: [] }
+  const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'x-fd-voter-token' }
+  await page.route('**/health', (route) => route.fulfill({ headers, body: 'ok' }))
+  await page.route('**/api/v1/public/home', (route) => route.fulfill({
+    headers,
+    json: { siteMode, tournament, championRecords: [], todayGames: [], liveGames: [], latestNews: [], gameDayNote: null, predictionPolls: [], alerts: [] },
+  }))
+  await page.route('**/api/v1/public/teams', (route) => route.fulfill({
+    headers, json: { tournament, teams: [team, other], divisions: ['Gold', 'Maroon'], schedulePublished: true },
+  }))
+  await page.route('**/api/v1/public/teams/1', (route) => route.fulfill({
+    headers, json: { tournament, team, standing: null, games: [], articles: [], titleRecords: [] },
+  }))
+  await page.goto('/')
+  const nav = page.getByRole('navigation', { name: 'Primary navigation' })
+  await expect(nav.getByRole('link')).toHaveCount(5)
+  await nav.getByRole('link', { name: 'Teams', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '2027 Teams & Rosters' })).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search teams' }).fill('2018')
+  await expect(page.locator('main').getByRole('link', { name: 'Class of 2018' })).toBeVisible()
+  await expect(page.locator('main').getByRole('link', { name: 'Class of 2016' })).toHaveCount(0)
+  await page.getByRole('searchbox', { name: 'Search teams' }).clear()
+  await page.getByLabel('Division').selectOption('Maroon')
+  await expect(page.locator('main').getByRole('link', { name: 'Class of 2018' })).toHaveCount(0)
+  await expect(page.locator('a[href="/classes/16"]')).toBeVisible()
+  await page.locator('a[href="/teams/1"]').click()
+  await expect(page.getByRole('heading', { name: 'Class of 2016', level: 1 })).toBeVisible()
 })

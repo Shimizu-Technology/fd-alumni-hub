@@ -1,7 +1,7 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 4
+    TRIGGER_VERSION = 5
 
     RECORD_TYPES = {
       users: "User",
@@ -10,6 +10,7 @@ module Audit
       campaign_memberships: "CampaignMembership",
       campaign_invitations: "CampaignInvitation",
       host_campaigns: "HostCampaign",
+      site_publications: "SitePublication",
       games: "Game",
       tournaments: "Tournament",
       divisions: "Division",
@@ -221,6 +222,9 @@ module Audit
         verb := CASE TG_OP WHEN 'INSERT' THEN 'created' WHEN 'UPDATE' THEN 'updated' ELSE 'deleted' END;
 
         CASE TG_TABLE_NAME
+          WHEN 'site_publications' THEN
+            audit_area := 'site_mode';
+            label := format('Site Mode v%s (%s)', record_data->>'version_number', record_data->>'mode');
           WHEN 'host_campaigns' THEN
             audit_area := 'campaigns';
             label := record_data->>'title';

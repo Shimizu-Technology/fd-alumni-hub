@@ -4,7 +4,12 @@ module Api
       class TicketsController < BaseController
         def show
           requested_slug = params[:campaignSlug].to_s.strip.presence
-          campaign = HostCampaign.resolve_public(slug: requested_slug, year: params[:year])
+          default_selection = requested_slug.nil? && params[:year].blank? && params[:tournamentId].blank?
+          campaign = if default_selection && site_context.publication
+            site_context.campaign
+          else
+            HostCampaign.resolve_public(slug: requested_slug, year: params[:year])
+          end
 
           if campaign && !HostCampaign::FEATUREABLE_STATUSES.include?(campaign.status)
             campaign = nil
@@ -14,11 +19,11 @@ module Api
             return render json: { error: "Campaign not found" }, status: :not_found
           end
 
-          tournament = campaign&.tournament || current_tournament
+          tournament = default_selection ? current_tournament : (campaign&.tournament || current_tournament)
 
           ticket_data = if campaign
             begin
-              Hafapass::EventsClient.for_tickets_page(campaign)
+              Hafapass::EventsClient.for_tickets_page(campaign, tournament: tournament)
             rescue StandardError => e
               Rails.logger.warn("Public::TicketsController HafaPass fallback for campaign #{campaign.id}: #{e.class}: #{e.message}")
               Hafapass::EventsClient.empty_tickets_payload(

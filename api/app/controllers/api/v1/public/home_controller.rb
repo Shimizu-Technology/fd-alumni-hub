@@ -4,14 +4,18 @@ module Api
       class HomeController < BaseController
         def show
           context = Tournament.home_context
-          tournament = Tournament.active_for_public(context)
-          active_host_campaign = HostCampaign.resolve_active_for_home&.home_summary_json
-          alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10).map(&:api_json)
+          tournament = site_context.tournament
+          site_mode = site_context.as_json
+          champion_records = site_context.sections["recap"] ? site_context.champion_records.map(&:api_json) : []
+          active_host_campaign = site_context.campaign&.home_summary_json
+          alerts = site_context.alerts.map(&:api_json)
 
-          unless tournament
+          unless tournament&.publicly_visible_schedule?
             return render json: {
-              tournament: nil,
-              upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
+              tournament: tournament&.api_json,
+              siteMode: site_mode,
+              championRecords: champion_records,
+              upcomingOrLiveTournament: (site_context.publication ? tournament : context[:upcoming_or_live])&.api_json,
               latestResultsTournament: context[:latest_completed_with_games]&.api_json,
               activeHostCampaign: active_host_campaign,
               alerts: alerts,
@@ -32,7 +36,9 @@ module Api
 
           render json: {
             tournament: tournament.api_json,
-            upcomingOrLiveTournament: context[:upcoming_or_live]&.api_json,
+            siteMode: site_mode,
+            championRecords: champion_records,
+            upcomingOrLiveTournament: (site_context.publication ? tournament : context[:upcoming_or_live])&.api_json,
             latestResultsTournament: context[:latest_completed_with_games]&.api_json,
             activeHostCampaign: active_host_campaign,
             alerts: alerts,

@@ -7,7 +7,8 @@ class PublicScheduleControllerTest < ActionDispatch::IntegrationTest
       year: 2026,
       start_date: Date.new(2026, 7, 3),
       end_date: Date.new(2026, 7, 24),
-      status: "upcoming"
+      status: "upcoming",
+      schedule_published_at: Time.current
     )
     maroon_home = tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
     maroon_away = tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")

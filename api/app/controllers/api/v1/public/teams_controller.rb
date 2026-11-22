@@ -2,9 +2,23 @@ module Api
   module V1
     module Public
       class TeamsController < BaseController
+        def index
+          tournament = public_schedule_tournament
+          return render json: { tournament: nil, teams: [], divisions: [], schedulePublished: false } unless tournament
+
+          teams = tournament.teams.includes(:tournament, :division_record, team_class_memberships: :class_cohort).order(:display_name, :id)
+          divisions = teams.map(&:resolved_division).compact.uniq.sort
+          division = params[:division].to_s.strip
+          search = params[:q].to_s.strip.downcase
+          teams = teams.select { |team| team.resolved_division.to_s.casecmp?(division) } if division.present?
+          teams = teams.select { |team| team.display_name.downcase.include?(search) || team.class_year_label.include?(search) } if search.present?
+
+          render json: { tournament: tournament.api_json, teams: teams.map(&:api_json), divisions: divisions, schedulePublished: true }
+        end
+
         def show
           team = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).find_by(id: params[:id])
-          return render_not_found("Team not found") unless team
+          return render_not_found("Team not found") unless team&.tournament&.publicly_visible_schedule?
 
           games = team_games(team)
           standing = Standing.includes(team: [ :division_record, { team_class_memberships: :class_cohort } ]).find_by(team_id: team.id, tournament_id: team.tournament_id)

@@ -151,15 +151,15 @@ class HostCampaign < ApplicationRecord
     )
   end
 
-  def home_summary_json(meter_raised_cents: nil, meter_updated_at: nil)
-    if public_meter_enabled? && meter_raised_cents.nil?
+  def home_summary_json(meter_raised_cents: nil, meter_updated_at: nil, include_meter: true)
+    if include_meter && public_meter_enabled? && meter_raised_cents.nil?
       totals = HostCampaigns::FinanceSummary.public_meter_totals(self)
       meter_raised_cents = totals[:raised_cents]
       meter_updated_at ||= totals[:updated_at]
     end
     next_event = campaign_events.public_listing.upcoming_or_tba.ordered.first
 
-    {
+    summary = {
       slug: slug,
       title: title,
       tagline: tagline,
@@ -169,9 +169,10 @@ class HostCampaign < ApplicationRecord
       countdownLabel: countdown_label,
       donationUrl: donation_url,
       golfUrl: golf_url,
-      meter: public_meter_json(raised_cents: meter_raised_cents.to_i, updated_at: meter_updated_at || updated_at),
       nextEvent: next_event&.public_json
     }
+    summary[:meter] = public_meter_json(raised_cents: meter_raised_cents.to_i, updated_at: meter_updated_at || updated_at) if include_meter
+    summary
   end
 
   private

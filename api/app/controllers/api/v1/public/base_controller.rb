@@ -4,6 +4,15 @@ module Api
       class BaseController < Api::V1::BaseController
         private
 
+        def site_context
+          @site_context ||= SiteMode::Resolver.new
+        end
+
+        def public_schedule_tournament
+          tournament = current_tournament
+          tournament if tournament&.publicly_visible_schedule?
+        end
+
         def current_tournament
           @current_tournament ||= begin
             if params[:tournamentId].present?
@@ -11,7 +20,7 @@ module Api
             elsif params[:year].present?
               Tournament.find_by(year: params[:year].to_i)
             else
-              Tournament.active_for_public
+              site_context.tournament
             end
           end
         end
