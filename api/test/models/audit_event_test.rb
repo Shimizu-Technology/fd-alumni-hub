@@ -119,6 +119,21 @@ class AuditEventTest < ActiveSupport::TestCase
     refute_equal "outer", recent.first.operation_id
   end
 
+  test "set_actor! applies inside an unmaterialized savepoint after an outer write" do
+    other = User.create!(email: "savepoint-actor@example.test", first_name: "Sam", role: "staff")
+    Audit::Context.with(actor: @actor, operation_id: "savepoint-actor-op") do
+      @actor.update!(first_name: "AriOuter")
+      ActiveRecord::Base.transaction(requires_new: true) do
+        Audit::Context.set_actor!(other)
+        other.update!(first_name: "SamInner")
+      end
+    end
+
+    inner_event = AuditEvent.find_by!(operation_id: "savepoint-actor-op", record_type: "User", record_id: other.id.to_s)
+    assert_equal other.id, inner_event.actor_id
+    assert_equal "Sam", inner_event.actor_name
+  end
+
   test "finance sync redacts nested secrets and backfills without duplicates" do
     campaign = create_campaign
     changes = { "amount_cents" => [ 100, 150 ], "receiptKey" => "private/receipt",

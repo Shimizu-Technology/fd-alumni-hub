@@ -7,49 +7,6 @@ module Audit
       reason request_id http_method route_path ip_address action_override
     ].freeze
 
-    module PostgresAdapterExtension
-      def begin_db_transaction
-        super
-        Audit::Context.apply_to_transaction!(self)
-      end
-
-      def begin_isolated_db_transaction(isolation)
-        super
-        Audit::Context.apply_to_transaction!(self)
-      end
-
-      def exec_restart_db_transaction
-        super
-        Audit::Context.apply_to_transaction!(self)
-      end
-
-      def exec_insert(*args, **kwargs)
-        with_audit_transaction { super }
-      end
-
-      def exec_insert_all(*args, **kwargs)
-        with_audit_transaction { super }
-      end
-
-      def exec_update(*args, **kwargs)
-        with_audit_transaction { super }
-      end
-
-      def exec_delete(*args, **kwargs)
-        with_audit_transaction { super }
-      end
-
-      private
-
-      def with_audit_transaction
-        if Audit::Context.values.present? && !transaction_open?
-          transaction(requires_new: false) { yield }
-        else
-          yield
-        end
-      end
-    end
-
     def self.with(actor: nil, actor_type: nil, request_id: nil, http_method: nil, route_path: nil,
                   ip_address: nil, operation_id: nil, reason: nil, action_override: nil)
       context = {
@@ -82,7 +39,7 @@ module Audit
       values.merge!(snapshot)
 
       conn = active_transaction_connection
-      apply_local!(conn, snapshot) if conn&.current_transaction&.materialized?
+      apply_local!(conn, snapshot) if conn
     end
 
     def self.apply_to_transaction!(conn)
