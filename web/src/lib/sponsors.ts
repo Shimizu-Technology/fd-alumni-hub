@@ -25,8 +25,8 @@ export const SPONSOR_TIER_OPTIONS: Array<{ value: SponsorTier; label: string }> 
 ]
 
 export function normalizeSponsorTier(raw?: string | null): SponsorTier {
-  const cleaned = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ')
-  if (cleaned === 'diamond' || cleaned === 'title' || cleaned === 'presenting' || cleaned === 'title sponsor' || cleaned === 'presenting sponsor') {
+  const cleaned = (raw || '').trim().toLowerCase().replace(/\s+/g, ' ').replace(/\s+(sponsor|partner)$/, '')
+  if (cleaned === 'diamond' || cleaned === 'title' || cleaned === 'presenting') {
     return 'diamond'
   }
   if (cleaned === 'platinum') return 'platinum'

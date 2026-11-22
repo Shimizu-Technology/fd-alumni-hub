@@ -260,6 +260,7 @@ class PublicSponsorsAndTicketsControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal true, body.dig("hafapass", "stale")
     pass = body.fetch("passes").first
+    assert_equal true, pass["stale"]
     assert_nil pass["ticketState"]
     assert_nil pass["minAllInPriceCents"]
     assert_equal [], pass["ticketTypes"]

@@ -7,16 +7,29 @@ class StandardizeSponsorTiers < ActiveRecord::Migration[8.1]
 
   CANONICAL_TIER_MAP = {
     "diamond" => "diamond",
+    "diamond sponsor" => "diamond",
+    "diamond partner" => "diamond",
     "title" => "diamond",
+    "title sponsor" => "diamond",
+    "title partner" => "diamond",
     "presenting" => "diamond",
     "presenting sponsor" => "diamond",
-    "title sponsor" => "diamond",
+    "presenting partner" => "diamond",
     "platinum" => "platinum",
+    "platinum sponsor" => "platinum",
+    "platinum partner" => "platinum",
     "gold" => "gold",
+    "gold sponsor" => "gold",
+    "gold partner" => "gold",
     "silver" => "silver",
+    "silver sponsor" => "silver",
+    "silver partner" => "silver",
     "community" => "community",
+    "community sponsor" => "community",
     "community partner" => "community",
-    "bronze" => "community"
+    "bronze" => "community",
+    "bronze sponsor" => "community",
+    "bronze partner" => "community"
   }.freeze
 
   def up

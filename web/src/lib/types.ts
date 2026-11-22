@@ -331,6 +331,7 @@ export type HafapassEventSummary = {
   ticketTypes: HafapassTicketType[]
   availabilityLabel: string | null
   buyUrl: string | null
+  stale?: boolean
 }
 
 export type PublicHostCampaign = {

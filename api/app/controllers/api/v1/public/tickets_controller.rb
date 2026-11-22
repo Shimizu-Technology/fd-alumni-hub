@@ -54,9 +54,9 @@ module Api
         def default_door_info(tournament)
           {
             venue: "Father Duenas Phoenix Center (Mangilao, Guam)",
-            doorsOpenNote: "Doors typically open 45 minutes before the first scheduled tip-off each game night.",
-            paymentNote: "Advance digital tickets and tournament passes are sold through HåfaPass. Walk-up admission is available at the Phoenix Center entrance when capacity permits.",
-            reentryNote: "Keep your digital QR pass or hand stamp visible for same-night re-entry.",
+            doorsOpenNote: "Check the schedule and Today at The Jungle for nightly tip-off times and door-opening updates.",
+            paymentNote: "Advance digital tickets and tournament passes are sold online through HåfaPass. Check HåfaPass event listings or game-day notes for door admission details.",
+            reentryNote: "Keep your digital HåfaPass ticket ready at the entrance and follow FDAA staff guidance for re-entry.",
             tournamentYear: tournament&.year
           }
         end

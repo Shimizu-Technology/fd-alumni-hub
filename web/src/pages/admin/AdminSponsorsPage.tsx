@@ -113,7 +113,7 @@ function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: 
 
   useEffect(() => {
     setForm(sponsorToForm(sponsor))
-  }, [sponsor])
+  }, [sponsor.id, sponsor.updatedAt])
 
   const save = async () => {
     setSaving(true)

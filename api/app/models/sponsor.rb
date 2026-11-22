@@ -11,16 +11,29 @@ class Sponsor < ApplicationRecord
   }.freeze
   LEGACY_TIER_ALIASES = {
     "diamond" => "diamond",
+    "diamond sponsor" => "diamond",
+    "diamond partner" => "diamond",
     "title" => "diamond",
+    "title sponsor" => "diamond",
+    "title partner" => "diamond",
     "presenting" => "diamond",
     "presenting sponsor" => "diamond",
-    "title sponsor" => "diamond",
+    "presenting partner" => "diamond",
     "platinum" => "platinum",
+    "platinum sponsor" => "platinum",
+    "platinum partner" => "platinum",
     "gold" => "gold",
+    "gold sponsor" => "gold",
+    "gold partner" => "gold",
     "silver" => "silver",
+    "silver sponsor" => "silver",
+    "silver partner" => "silver",
     "community" => "community",
+    "community sponsor" => "community",
     "community partner" => "community",
-    "bronze" => "community"
+    "bronze" => "community",
+    "bronze sponsor" => "community",
+    "bronze partner" => "community"
   }.freeze
   TIER_ORDER_SQL = "CASE tier WHEN 'diamond' THEN 1 WHEN 'platinum' THEN 2 WHEN 'gold' THEN 3 WHEN 'silver' THEN 4 ELSE 5 END".freeze
 

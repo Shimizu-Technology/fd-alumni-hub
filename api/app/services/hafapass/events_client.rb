@@ -566,7 +566,8 @@ module Hafapass
           minAllInPriceCents: stale ? nil : hp["minAllInPriceCents"],
           ticketTypes: stale ? [] : Array(hp["ticketTypes"]),
           availabilityLabel: stale ? "Check availability on HåfaPass" : nil,
-          buyUrl: buy_url
+          buyUrl: buy_url,
+          stale: stale
         }
       end
 
