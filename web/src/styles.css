@@ -1124,3 +1124,89 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ==========================================================================
+   Mobile Bottom Navigation Bar (Slice A2.3b)
+   ========================================================================== */
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 253, 249, 0.97);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(111, 29, 53, 0.14);
+    box-shadow: 0 -8px 24px rgba(66, 16, 31, 0.08);
+  }
+
+  .mobile-bottom-nav-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.18rem;
+    min-height: 3.1rem;
+    padding: 0.28rem 0.2rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-bottom-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-bottom-nav-item.active {
+    color: var(--fd-maroon);
+    background: rgba(111, 29, 53, 0.08);
+  }
+
+  .mobile-bottom-nav-item.active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 24%;
+    right: 24%;
+    height: 2.5px;
+    border-radius: 0 0 999px 999px;
+    background: var(--fd-gold);
+  }
+
+  .mobile-bottom-nav-item:focus-visible {
+    outline: 2px solid var(--fd-maroon);
+    outline-offset: -2px;
+  }
+
+  .mobile-bottom-nav-icon {
+    flex: 0 0 auto;
+  }
+
+  .site-footer {
+    padding-bottom: calc(5.4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
