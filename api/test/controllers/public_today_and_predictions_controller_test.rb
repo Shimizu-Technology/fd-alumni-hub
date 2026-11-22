@@ -37,6 +37,43 @@ class PublicTodayAndPredictionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @poll.id.to_s, body.dig("predictionPolls", 0, "id")
   end
 
+  test "rest days keep their own date and unpublished schedules hide games and polls" do
+    get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-02" }
+    assert_response :success
+    body = response.parsed_body
+    assert_equal "2026-07-02", body["requestedDate"]
+    assert_equal "2026-07-02", body["resolvedDate"]
+    assert_equal "2026-07-03", body["nextScheduledDate"]
+    assert body["isRestDay"]
+    assert_empty body["games"]
+
+    @tournament.update!(schedule_published_at: nil)
+    get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-02" }
+    assert_response :success
+    assert_nil response.parsed_body["nextScheduledDate"]
+    get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-03" }
+    assert_empty response.parsed_body["games"]
+    assert_empty response.parsed_body["predictionPolls"]
+  end
+
+  test "linked campaign events use the requested Guam date and expose public fields only" do
+    cohort = ClassCohort.create!(key: "31", graduation_year: 2031, display_name: "Class of 2031", short_label: "31")
+    campaign = @tournament.create_host_campaign!(class_cohort: cohort, slug: "tonight-hosts", title: "Tonight hosts", status: "active", goal_cents: 1000)
+    start = Time.zone.local(2026, 7, 3, 0, 30)
+    campaign.campaign_events.create!(title: "Father-Son Night", kind: "host_night", starts_at: start, public_visible: true, goal_cents: 1200)
+    campaign.campaign_events.create!(title: "Private planning", kind: "meeting", starts_at: start, public_visible: false)
+    campaign.campaign_events.create!(title: "Old event", kind: "host_night", starts_at: start, public_visible: true, archived_at: Time.current)
+    campaign.campaign_events.create!(title: "Next day", kind: "host_night", starts_at: start + 1.day, public_visible: true)
+
+    get "/api/v1/public/today", params: { tournamentId: @tournament.id, date: "2026-07-03" }
+    assert_response :success
+    events = response.parsed_body.fetch("linkedCampaignEvents")
+    assert_equal [ "Father-Son Night" ], events.pluck("title")
+    refute events.first.key?("goalCents")
+    refute events.first.key?("hostCampaignId")
+    assert_equal "BBQ", response.parsed_body.dig("gameDayNote", "foodMenu")
+  end
+
   test "anonymous prediction vote can be changed for same device token" do
     post "/api/v1/public/prediction-polls/#{@poll.id}/vote",
       params: { predictionVote: { voterToken: "device-123", teamId: @away.id } },

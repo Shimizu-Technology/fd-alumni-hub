@@ -10,6 +10,7 @@ class Tournament < ApplicationRecord
   has_many :media_assets, dependent: :destroy
   has_many :sponsors, dependent: :destroy
   has_many :tournament_alerts, dependent: :destroy
+  has_many :tournament_updates, dependent: :destroy
   has_many :content_ingest_items, dependent: :destroy
   has_many :game_day_notes, dependent: :destroy
   has_many :prediction_polls, dependent: :destroy
@@ -19,6 +20,10 @@ class Tournament < ApplicationRecord
   validates :start_date, :end_date, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :name, uniqueness: { scope: :year }
+
+  validate do
+    errors.add(:info_guide_json, "must contain valid guide copy") unless TonightCopy.valid_object?(info_guide_json, TonightCopy::GUIDE)
+  end
 
   scope :live_tournaments, -> { where(status: "live").order(year: :desc, start_date: :desc, id: :desc) }
   scope :upcoming_or_live, -> { where(status: %w[live upcoming]).order(Arel.sql("CASE status WHEN 'live' THEN 0 ELSE 1 END, start_date ASC, year ASC, id ASC")) }

@@ -8,6 +8,7 @@ Rails.application.routes.draw do
 
       namespace :public do
         resource :home, only: :show, controller: :home
+        resource :info, only: :show, controller: :info
         resource :today, only: :show, controller: :today
         get "host-year", to: "host_years#show"
         resources :prediction_polls, path: "prediction-polls", only: [] do
@@ -94,7 +95,14 @@ Rails.application.routes.draw do
         resources :roster_entries, path: "roster-entries", only: [ :create, :update, :destroy ] do
           post :bulk, on: :collection
         end
-        resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ]
+        resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ] do
+          collection do
+            post "copy-previous", action: :copy_previous
+            get :preview
+            patch "info-guide", action: :info_guide
+          end
+        end
+        resources :tournament_updates, path: "tournament-updates", only: [ :index, :create, :update, :destroy ]
         resources :alerts, only: [ :index, :create, :update, :destroy ]
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
         resources :games, only: [ :index, :show, :create, :update ] do

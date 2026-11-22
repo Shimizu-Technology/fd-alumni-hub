@@ -1943,3 +1943,54 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .season-team-list { list-style: none; padding: 0; }
 
 .public-hero-card[aria-label="Season overview"] { grid-template-columns: minmax(0, 1fr); }
+
+.today-menu {
+  list-style: none;
+  padding: 0;
+}
+
+.today-menu li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: 0.75rem;
+  border-bottom: 1px solid var(--border, #ddd);
+  overflow-wrap: anywhere;
+}
+
+.today-menu small {
+  display: block;
+}
+
+.today-menu .tournament-alert-pill {
+  white-space: nowrap;
+}
+
+.night-copy {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.night-spotlight-photo {
+  width: min(100%, 28rem);
+  max-height: 22rem;
+  object-fit: contain;
+  object-position: left;
+}
+
+.night-editor-fieldset {
+  min-width: 0;
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border, #ddd);
+}
+
+.night-editor-fieldset legend {
+  padding-inline: 0.25rem;
+  font-weight: 700;
+}
+
+.night-preview {
+  margin-top: 1.5rem;
+}

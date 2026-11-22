@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../lib/api'
@@ -10,6 +10,7 @@ import * as backendHook from '../../hooks/useBackendAvailability'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.useRealTimers()
 })
 
 describe('PublicLayout', () => {
@@ -75,6 +76,28 @@ describe('seasonal navigation', () => {
     ['tournament_live', ['Tonight', 'Schedule', 'Standings', 'Bracket', 'Tickets', 'History'], ['Tonight', 'Schedule', 'Tickets']],
     ['tournament_recap', ['Recap', 'History', 'Fundraisers'], ['Recap', 'History']],
   ] as const
+
+  it('refreshes seasonal navigation on a page that stays open', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(backendHook, 'useBackendAvailabilityContext').mockReturnValue({
+      status: 'available', isUnavailable: false, isChecking: false,
+      retry: vi.fn(async () => {}), reportUnavailable: vi.fn(), reportAvailable: vi.fn(),
+    })
+    vi.spyOn(api, 'publicSiteMode')
+      .mockResolvedValueOnce({ siteMode: offlineSiteMode, alerts: [] })
+      .mockResolvedValue({ siteMode: {
+        ...offlineSiteMode, mode: 'tournament_live', navItems: [{ label: 'Tonight', to: '/today' }],
+      }, alerts: [] })
+    render(<MemoryRouter initialEntries={['/schedule']}>
+      <Routes><Route element={<PublicLayout />}><Route path="*" element={<div>Schedule content</div>} /></Route></Routes>
+    </MemoryRouter>)
+    await act(async () => {})
+    const primary = within(screen.getByRole('navigation', { name: 'Primary navigation' }))
+    expect(primary.queryByRole('link', { name: 'Tonight' })).not.toBeInTheDocument()
+    await act(async () => { await vi.advanceTimersByTimeAsync(45_000) })
+    expect(primary.getByRole('link', { name: 'Tonight' })).toHaveAttribute('href', '/today')
+    expect(screen.getByText('Schedule content')).toBeInTheDocument()
+  })
 
   it.each(modes)('renders %s navigation and keeps urgent warnings and the 404 visible', async (mode, desktop, bottom) => {
     const paths: Record<string, string> = { Home: '/', Fundraisers: '/host-year', Tonight: '/today', Recap: '/history/2090' }

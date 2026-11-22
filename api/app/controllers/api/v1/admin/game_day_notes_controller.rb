@@ -2,86 +2,166 @@ module Api
   module V1
     module Admin
       class GameDayNotesController < BaseController
+        CAPABILITY = "tonights_menu_and_news"
         class InvalidDateParam < StandardError; end
 
         rescue_from InvalidDateParam, with: :render_invalid_date
 
         def index
-          return unless authorize_tournament!("tonights_menu_and_news", "view", admin_tournament("tonights_menu_and_news")&.id)
-          tournament = admin_tournament("tonights_menu_and_news")
-          date = requested_date || Time.zone.today
+          return unless authorize_tournament!(CAPABILITY, "view", tournament&.id)
+
+          date = requested_date
           note = tournament.game_day_notes.find_by(date: date)
-          games = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record).where(start_time: date.beginning_of_day..date.end_of_day).ordered
+          games = tournament.games.includes(:division_record, home_team: :division_record, away_team: :division_record).where(start_time: date.all_day).ordered
 
           render json: {
-            tournament: tournament.api_json,
-            date: date.iso8601,
-            gameDayNote: note&.api_json,
-            games: games.map(&:api_json),
-            predictionPolls: prediction_polls_for_admin(tournament).map(&:api_json)
+            tournament: tournament.api_json, date: date.iso8601, gameDayNote: note&.api_json,
+            games: games.map(&:api_json), predictionPolls: prediction_polls_for_admin.map(&:api_json),
+            infoGuide: Tonight::InfoGuide.for(tournament)
           }
         end
 
         def create
-          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
-          tournament = admin_tournament("tonights_menu_and_news")
-          attrs = note_params.except(:tournament_id)
-          note = tournament.game_day_notes.find_or_initialize_by(date: attrs[:date] || Time.zone.today)
-          created = note.new_record?
+          return unless authorize_tournament!(CAPABILITY, "view", tournament&.id)
 
-          if note.update(attrs.except(:date))
-            render json: { gameDayNote: note.api_json }, status: created ? :created : :ok
-          else
-            render_errors(note)
-          end
+          raw = raw_note_params
+          date = parse_date(raw[:date].presence || params[:date].presence || Time.zone.today.iso8601)
+          note = tournament.game_day_notes.find_or_initialize_by(date: date)
+          persist(note, note_params)
+        rescue ActiveRecord::RecordNotUnique
+          conflict(tournament.game_day_notes.find_by!(date: date))
         end
 
         def update
-          return unless authorize_tournament!("tonights_menu_and_news", "publish", admin_tournament("tonights_menu_and_news")&.id)
           note = GameDayNote.find(params[:id])
-          return unless authorize_record_season!("tonights_menu_and_news", "publish", note.tournament_id, admin_tournament("tonights_menu_and_news"))
+          return unless authorize_record_season!(CAPABILITY, "view", note.tournament_id, tournament)
 
-          if note.update(note_params.except(:date, :tournament_id))
-            render json: { gameDayNote: note.api_json }
-          else
-            render_errors(note)
+          parse_date(raw_note_params[:date]) if raw_note_params[:date].present?
+          persist(note, note_params)
+        end
+
+        def copy_previous
+          return unless authorize_tournament!(CAPABILITY, "edit", tournament&.id)
+
+          date = requested_date
+          previous = tournament.game_day_notes.where(date: ...date)
+            .where("menu_items <> '[]'::jsonb OR NULLIF(BTRIM(food_menu), '') IS NOT NULL").ordered.first
+          unless previous
+            return render json: { errors: [ "No earlier menu is available to copy" ] }, status: :unprocessable_entity
+          end
+
+          note = tournament.game_day_notes.find_or_initialize_by(date: date)
+          return conflict(note) if note.persisted? && note.status == "published"
+
+          spotlight = note.host_spotlight.presence || previous.host_spotlight
+          persist(note, { menu_items: previous.menu_items, food_menu: previous.food_menu, host_spotlight: spotlight, status: "draft" })
+        rescue ActiveRecord::RecordNotUnique
+          conflict(tournament.game_day_notes.find_by!(date: date))
+        end
+
+        def preview
+          response.headers["Cache-Control"] = "no-store"
+          return unless authorize_tournament!(CAPABILITY, "view", tournament&.id)
+
+          render json: Tonight::Payload.call(tournament: tournament, day: requested_date, preview: true,
+            campaign: Tonight::Payload.campaign_for(tournament),
+            alerts: SiteMode::Resolver.new.alerts(tournament).to_a)
+        end
+
+        def info_guide
+          site_editor = access_policy.allows?("site_mode_and_settings", "edit")
+          season = site_editor ? admin_tournament("site_mode_and_settings") : tournament
+          return render_forbidden unless season
+          return unless site_editor || authorize_tournament!(CAPABILITY, "publish", season.id)
+
+          guide = params[:infoGuide]
+          guide = guide.to_unsafe_h.to_h if guide.is_a?(ActionController::Parameters)
+          season.with_lock do
+            guide = season.info_guide_json.merge(guide) if guide.is_a?(Hash)
+            if season.update(info_guide_json: guide)
+              render json: { infoGuide: Tonight::InfoGuide.for(season) }
+            else
+              render_errors(season)
+            end
           end
         end
 
         private
 
-        def prediction_polls_for_admin(tournament)
+        def tournament
+          admin_tournament(CAPABILITY)
+        end
+
+        def persist(note, attrs)
+          already_published = note.persisted? && note.status == "published"
+          action = already_published || attrs[:status] == "published" ? "publish" : "edit"
+          return unless authorize_tournament!(CAPABILITY, action, note.tournament_id)
+
+          raw = raw_note_params
+          version_key = %i[lockVersion lock_version].find { |key| raw.key?(key) }
+          if version_key
+            version = raw[version_key]
+            matches = note.persisted? ? version.to_s == note.lock_version.to_s : version.nil?
+            return conflict(note) unless matches
+          end
+
+          attrs[:status] = "draft" if note.new_record? && !attrs.key?(:status)
+          created = note.new_record?
+          if note.update(attrs)
+            render_record(note, key: :gameDayNote, status: created ? :created : :ok)
+          elsif created && note.errors.of_kind?(:date, :taken)
+            conflict(tournament.game_day_notes.find_by!(date: note.date))
+          else
+            render_errors(note)
+          end
+        rescue ActiveRecord::StaleObjectError
+          conflict(note.reload)
+        end
+
+        def conflict(note)
+          render json: { errors: [ "This night changed since you opened it. Reload the current note before saving." ], currentNote: note.api_json }, status: :conflict
+        end
+
+        def prediction_polls_for_admin
           tournament.prediction_polls
             .includes(:prediction_votes, { tournament: { teams: :division_record } }, game: [ { home_team: :division_record }, { away_team: :division_record } ])
             .ordered
         end
 
         def requested_date
-          return nil if params[:date].blank?
+          parse_date(params[:date].presence || Time.zone.today.iso8601)
+        end
 
-          Date.iso8601(params[:date])
-        rescue ArgumentError
-          nil
+        def raw_note_params
+          raw = params.fetch(:gameDayNote, params.fetch(:game_day_note, params))
+          raise ActionController::ParameterMissing, :gameDayNote unless raw.is_a?(ActionController::Parameters)
+
+          raw
         end
 
         def note_params
-          raw = params.fetch(:gameDayNote, params.fetch(:game_day_note, params))
-          permitted = raw.permit(:tournament_id, :tournamentId, :date, :host_class, :hostClass, :food_menu, :foodMenu, :announcement, :sponsor_shoutout, :sponsorShoutout, :active)
+          raw = raw_note_params
+          permitted = raw.permit(:host_class, :hostClass, :food_menu, :foodMenu, :announcement, :sponsor_shoutout, :sponsorShoutout, :active)
 
           attrs = {}
-          assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
-          assign_param(attrs, permitted, :date, :date)
           assign_param(attrs, permitted, :host_class, :host_class, :hostClass)
           assign_param(attrs, permitted, :food_menu, :food_menu, :foodMenu)
           assign_param(attrs, permitted, :announcement, :announcement)
           assign_param(attrs, permitted, :sponsor_shoutout, :sponsor_shoutout, :sponsorShoutout)
           assign_param(attrs, permitted, :active, :active)
-          attrs[:date] = parse_note_date(attrs[:date]) if attrs[:date].is_a?(String) && attrs[:date].present?
+          attrs[:status] = raw[:status] if raw.key?(:status)
+          structured = raw.to_unsafe_h
+          { menu_items: :menuItems, special_events: :specialEvents, host_spotlight: :hostSpotlight }.each do |column, key|
+            next unless raw.key?(key) || raw.key?(column)
+
+            # Validate the full shape in the model so invalid or private keys are rejected.
+            attrs[column] = structured.fetch(key) { structured[column] }
+          end
           attrs
         end
 
-        def parse_note_date(value)
-          Date.iso8601(value)
+        def parse_date(value)
+          Tonight::Payload.parse_date(value)
         rescue ArgumentError
           raise InvalidDateParam
         end

@@ -3,6 +3,10 @@ class GameDayNote < ApplicationRecord
 
   validates :date, presence: true, uniqueness: { scope: :tournament_id }
 
+  validates :status, inclusion: { in: %w[draft published] }
+  validate :validate_structured_copy
+  before_save { self.published_at ||= Time.current if status == "published" }
+
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(date: :desc, id: :desc) }
 
@@ -16,8 +20,22 @@ class GameDayNote < ApplicationRecord
       announcement: announcement,
       sponsorShoutout: sponsor_shoutout,
       active: active,
+      menuItems: menu_items,
+      specialEvents: special_events,
+      hostSpotlight: host_spotlight,
+      status: status,
+      publishedAt: published_at&.iso8601,
+      lockVersion: lock_version,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
+  end
+
+  private
+
+  def validate_structured_copy
+    errors.add(:menu_items, "must contain valid menu items") unless TonightCopy.valid_rows?(menu_items, TonightCopy::MENU, "name")
+    errors.add(:special_events, "must contain valid events") unless TonightCopy.valid_rows?(special_events, TonightCopy::EVENT, "title")
+    errors.add(:host_spotlight, "must contain valid public spotlight copy") unless TonightCopy.valid_object?(host_spotlight, TonightCopy::SPOTLIGHT)
   end
 end

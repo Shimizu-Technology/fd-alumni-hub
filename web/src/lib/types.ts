@@ -68,10 +68,59 @@ export type RosterEntry = {
   updatedAt?: string
 }
 
+export type MenuItem = { name: string; price?: string; category?: string; available?: boolean; notes?: string }
+export type SpecialEvent = { title: string; timeLabel?: string; description?: string; campaignEventId?: string }
+export type HostSpotlight = { hostClassLabel?: string; headline?: string; body?: string; photoUrl?: string; hostCampaignId?: string }
+export type TournamentUpdate = {
+  id: string
+  tournamentId: string
+  title: string
+  body: string
+  targetDate: string | null
+  status: 'draft' | 'published'
+  publishedAt: string | null
+  expiresAt: string | null
+  pinned: boolean
+}
+export type InfoGuide = {
+  venueName: string
+  venueAddress: string
+  ticketSourceName: string
+  ticketSourceUrl: string
+  ticketSummary: string
+  doorInfo: string
+  eligibilityHighlights: string[]
+  gameRuleHighlights: string[]
+  conductHighlights: string[]
+  bylawDisclaimer: string
+}
+export type TonightPayload = {
+  tournament: Tournament | null
+  date: string
+  requestedDate: string
+  resolvedDate: string
+  nextScheduledDate: string | null
+  isRestDay: boolean
+  gameDayNote: GameDayNote | null
+  alerts?: TournamentAlert[]
+  games: Game[]
+  linkedCampaignEvents: PublicCampaignEvent[]
+  updates: TournamentUpdate[]
+  fallbackTicketUrl?: string | null
+  predictionPolls: PredictionPoll[]
+  sponsors: Sponsor[]
+  lastUpdatedAt: string | null
+}
 export type GameDayNote = {
   id: string
   tournamentId: string
   date: string
+  menuItems?: MenuItem[]
+  specialEvents?: SpecialEvent[]
+  hostSpotlight?: HostSpotlight
+  status?: 'draft' | 'published'
+  publishedAt?: string | null
+  lockVersion?: number | null
   hostClass: string | null
   foodMenu: string | null
   announcement: string | null

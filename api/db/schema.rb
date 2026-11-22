@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -263,6 +263,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "menu_items", default: [], null: false
+    t.jsonb "special_events", default: [], null: false
+    t.jsonb "host_spotlight", default: {}, null: false
+    t.string "status", default: "published", null: false
+    t.datetime "published_at"
+    t.integer "lock_version", default: 0, null: false
     t.index ["date", "active"], name: "index_game_day_notes_on_date_and_active"
     t.index ["tournament_id", "date"], name: "index_game_day_notes_on_tournament_id_and_date", unique: true
     t.index ["tournament_id"], name: "index_game_day_notes_on_tournament_id"
@@ -706,6 +712,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
     t.index ["year", "position"], name: "index_tournament_champions_on_year_and_position"
   end
 
+  create_table "tournament_updates", force: :cascade do |t|
+    t.bigint "tournament_id", null: false
+    t.string "title", null: false
+    t.text "body", null: false
+    t.date "target_date"
+    t.string "status", default: "draft", null: false
+    t.datetime "published_at"
+    t.datetime "expires_at"
+    t.boolean "pinned", default: false, null: false
+    t.bigint "author_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_tournament_updates_on_author_id"
+    t.index ["tournament_id", "status", "published_at"], name: "idx_on_tournament_id_status_published_at_d5a5f5b9b7"
+    t.index ["tournament_id", "target_date"], name: "index_tournament_updates_on_tournament_id_and_target_date"
+  end
+
   create_table "tournaments", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "end_date", null: false
@@ -717,6 +740,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
     t.integer "year", null: false
     t.datetime "schedule_published_at"
     t.integer "schedule_revision", default: 0, null: false
+    t.jsonb "info_guide_json", default: {}, null: false
     t.index ["legacy_id"], name: "index_tournaments_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["year", "name"], name: "index_tournaments_on_year_and_name", unique: true
     t.index ["year", "status"], name: "index_tournaments_on_year_and_status"
@@ -804,4 +828,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
   add_foreign_key "tournament_champion_credits", "class_cohorts", on_delete: :cascade
   add_foreign_key "tournament_champion_credits", "tournament_champions", on_delete: :cascade
   add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify
+  add_foreign_key "tournament_updates", "tournaments", on_delete: :cascade
+  add_foreign_key "tournament_updates", "users", column: "author_id", on_delete: :nullify
 end
