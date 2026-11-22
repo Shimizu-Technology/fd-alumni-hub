@@ -89,6 +89,7 @@ const navSections: NavSection[] = [
     items: [
       { to: '/admin/campaigns', label: 'Campaigns', icon: IconTrophy, access: 'admin' },
       { to: '/admin/people', label: 'People & Roles', icon: IconUsers, access: 'admin' },
+      { to: '/admin/audit', label: 'Audit History', icon: IconList, access: 'admin' },
       { to: '/admin/ingest', label: 'Ingest', icon: IconDatabase, tournamentScoped: true, access: 'admin' },
     ],
   },

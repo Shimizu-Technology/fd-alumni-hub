@@ -27,6 +27,7 @@ import { SponsorsPage } from './pages/public/SponsorsPage'
 import { InfoPage } from './pages/public/InfoPage'
 import { TeamProfilePage } from './pages/public/TeamProfilePage'
 import { ClassProfilePage } from './pages/public/ClassProfilePage'
+import { AdminAuditHistoryPage } from './pages/admin/AdminAuditHistoryPage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
 import { AdminTournamentDetailPage } from './pages/admin/AdminTournamentDetailPage'
@@ -96,6 +97,7 @@ export function App() {
             <Route path="media" element={<RequireStaffRoute><AdminMediaPage /></RequireStaffRoute>} />
             <Route path="sponsors" element={<RequireStaffRoute><AdminSponsorsPage /></RequireStaffRoute>} />
             <Route path="campaigns" element={<RequireAdminRoute><AdminCampaignsPage /></RequireAdminRoute>} />
+            <Route path="audit" element={<RequireAdminRoute><AdminAuditHistoryPage /></RequireAdminRoute>} />
             <Route path="people" element={<RequireAdminRoute><AdminPeoplePage /></RequireAdminRoute>} />
             <Route path="ingest" element={<RequireAdminRoute><AdminIngestPage /></RequireAdminRoute>} />
           </Route>

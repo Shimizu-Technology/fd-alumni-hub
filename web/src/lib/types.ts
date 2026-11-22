@@ -924,3 +924,59 @@ export type RosterImportCommitResult = {
   updated: number
   unchanged: number
 }
+
+export type AuditEvent = {
+  id: string
+  occurredAt: string
+  operationId: string
+  actorType: 'user' | 'system' | 'anonymous'
+  actorId: string | null
+  actorName: string | null
+  actorEmail: string | null
+  actorRole: string | null
+  area: string
+  action: string
+  recordType: string
+  recordId: string
+  recordLabel: string | null
+  tournamentId: string | null
+  hostCampaignId: string | null
+  summary: string
+  before: Record<string, unknown>
+  after: Record<string, unknown>
+  metadata: Record<string, unknown>
+  legacySource: string | null
+  reason: string | null
+  requestId: string | null
+  httpMethod: string | null
+  routePath: string | null
+}
+
+export type AdminAuditFilters = {
+  q?: string
+  area?: string
+  action?: string
+  actor_id?: string
+  record_type?: string
+  record_id?: string
+  operation_id?: string
+  tournament_id?: string
+  host_campaign_id?: string
+  from?: string
+  to?: string
+  limit?: number
+  cursor?: string | null
+}
+
+export type AuditFilterOption = { id: string; label: string }
+
+export type AdminAuditResponse = {
+  auditEvents: AuditEvent[]
+  nextCursor: string | null
+  filterOptions?: {
+    areas: string[]
+    actors: AuditFilterOption[]
+    tournaments: AuditFilterOption[]
+    campaigns: AuditFilterOption[]
+  }
+}

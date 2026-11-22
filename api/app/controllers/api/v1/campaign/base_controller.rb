@@ -16,6 +16,7 @@ module Api
 
         def load_campaign
           @campaign = HostCampaign.find_by!(slug: params[:campaign_slug].to_s.strip.downcase)
+          Audit::Context.set_actor!(current_user, roles: current_campaign_roles) unless request.get? || request.head?
         end
 
         def current_campaign_roles

@@ -1,4 +1,6 @@
 import type {
+  AdminAuditFilters,
+  AdminAuditResponse,
   AdminCampaignEvent,
   AdminCampaignPost,
   AdminHostCampaign,
@@ -156,6 +158,9 @@ function query(params: Record<string, string | number | null | undefined>) {
 }
 
 export const api = {
+  adminAuditEvents: (params: AdminAuditFilters = {}, signal?: AbortSignal) =>
+    request<AdminAuditResponse>(`/admin/audit_events${query(params)}`, { signal }),
+
   getCurrentUser: () => request<{ user: CurrentUser }>('/me'),
 
   publicHome: (voterToken?: string | null) => request<{

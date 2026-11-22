@@ -1,6 +1,8 @@
 # Idempotent local seed helpers for the Rails migration API.
 # Production data migration remains an explicit operator-run import/cutover step.
 
+Audit::DatabaseTriggers.install!
+
 if ENV["FD_ADMIN_EMAIL"].present?
   AdminWhitelist.find_or_create_by!(email: ENV["FD_ADMIN_EMAIL"].downcase) do |admin|
     admin.role = "admin"
