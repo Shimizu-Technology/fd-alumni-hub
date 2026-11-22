@@ -1,8 +1,11 @@
 class ArticleLink < ApplicationRecord
+  KINDS = %w[preview recap playoffs championship history event_page].freeze
+
   belongs_to :tournament
   belongs_to :game, optional: true
 
   validates :title, :source, :url, presence: true
+  validates :kind, inclusion: { in: KINDS }
   validates :url, uniqueness: { scope: :tournament_id }
   validate :game_belongs_to_tournament
 
@@ -20,6 +23,9 @@ class ArticleLink < ApplicationRecord
       publishedAt: published_at&.iso8601,
       imageUrl: image_url,
       excerpt: excerpt,
+      kind: kind,
+      divisionSlug: division_slug,
+      photoCount: photo_count,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }

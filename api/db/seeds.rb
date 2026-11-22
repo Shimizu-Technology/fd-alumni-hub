@@ -11,11 +11,6 @@ if ENV["FD_ADMIN_EMAIL"].present?
   end
 end
 
-if ENV.fetch("FD_SEED_CHAMPION_HISTORY", "1") == "1"
-  result = DataImport::FdChampionHistoryImport.call
-  puts "Seeded champion history: #{result[:imported]} records"
-end
-
 if ENV.fetch("FD_SEED_2026_SCHEDULE", "1") == "1"
   result = DataImport::Fd2026ScheduleImport.call
   season = Tournament.find(result.fetch(:tournamentId))
@@ -23,6 +18,14 @@ if ENV.fetch("FD_SEED_2026_SCHEDULE", "1") == "1"
     season.update!(schedule_published_at: Time.current, schedule_revision: 1)
   end
   puts "Seeded 2026 schedule: #{result[:games]} games, #{result[:teams]} teams, #{result[:skippedRows]} skipped source rows"
+end
+
+if ENV.fetch("FD_SEED_ENRICHED_ARCHIVE", ENV.fetch("FD_SEED_CHAMPION_HISTORY", "1")) == "1"
+  result = DataImport::FdEnrichedArchiveImport.call
+  puts "Seeded historical archive: #{result[:tournaments]} tournaments, #{result[:articles]} articles, #{result[:videos]} videos, #{result[:games]} games"
+elsif ENV.fetch("FD_SEED_CHAMPION_HISTORY", "1") == "1"
+  result = DataImport::FdChampionHistoryImport.call
+  puts "Seeded champion history: #{result[:imported]} records"
 end
 
 if ENV["FD_SEED_DEMO"] == "1"

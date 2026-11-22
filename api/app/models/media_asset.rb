@@ -1,8 +1,20 @@
 class MediaAsset < ApplicationRecord
+  include SafeUrlValidation
+
+  MEDIA_TYPES = %w[photo video gallery].freeze
+  YOUTUBE_ID_REGEX = /\A[a-zA-Z0-9_-]{11}\z/
   belongs_to :tournament
   belongs_to :game, optional: true
 
-  validates :source, :title, :image_url, presence: true
+  before_validation :set_youtube_thumbnail
+
+  validates :source, :title, presence: true
+  validates :media_type, inclusion: { in: MEDIA_TYPES }
+  validates :image_url, presence: true, unless: :video?
+  validates :video_url, presence: true, if: :video?
+  validates :external_video_id, uniqueness: { scope: :tournament_id }, allow_nil: true
+  validates :external_video_id, format: { with: YOUTUBE_ID_REGEX }, if: :youtube?
+  validates_https_url :video_url, :article_url, strict: true
   validate :game_belongs_to_tournament
 
   scope :latest, -> { order(taken_at: :desc, created_at: :desc, id: :desc) }
@@ -21,6 +33,13 @@ class MediaAsset < ApplicationRecord
       title: title,
       imageUrl: image_url,
       articleUrl: article_url,
+      mediaType: media_type,
+      videoUrl: video_url,
+      videoProvider: video_provider,
+      externalVideoId: external_video_id,
+      embedUrl: ("https://www.youtube-nocookie.com/embed/#{external_video_id}" if youtube_video?),
+      durationSeconds: duration_seconds,
+      divisionSlug: division_slug,
       caption: caption,
       tags: tags,
       tagList: tag_list,
@@ -31,6 +50,22 @@ class MediaAsset < ApplicationRecord
   end
 
   private
+
+  def video?
+    media_type == "video"
+  end
+
+  def youtube?
+    video_provider == "youtube"
+  end
+
+  def youtube_video?
+    video? && youtube? && YOUTUBE_ID_REGEX.match?(external_video_id)
+  end
+
+  def set_youtube_thumbnail
+    self.image_url ||= "https://i.ytimg.com/vi/#{external_video_id}/hqdefault.jpg" if youtube_video?
+  end
 
   def game_belongs_to_tournament
     return if game_id.blank? || tournament_id.blank? || game&.tournament_id == tournament_id

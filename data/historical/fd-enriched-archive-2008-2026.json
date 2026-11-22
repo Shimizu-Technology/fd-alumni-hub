@@ -1,0 +1,227 @@
+{
+  "seasons": [
+    {
+      "tournament": {"year": 2026, "startDate": "2026-07-03", "endDate": "2026-07-30", "status": "completed", "hostClassLabel": "Class of 2016", "hostClassKey": "16", "name": "FD Alumni Basketball Tournament", "editionNumber": 43, "theme": "Summer of Sixteen"},
+      "articles": [
+        {"title": "YOUTH PREVAILS: '25 SNAGS FIRST ALUMNI CROWN", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2026/youth-prevails-25-snags-first-alumni-crown/", "kind": "championship", "divisionSlug": "maroon", "publishedDate": "2026-07-31", "photoCount": 18},
+        {"title": "CLASS OF '91 MAKES FD ALUMNI HOOPS HISTORY", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2026/class-of-91-makes-fd-alumni-hoops-history/", "kind": "championship", "divisionSlug": "platinum", "publishedDate": "2026-07-30"},
+        {"title": "FD ALUMNI HOOPS POWERS THROUGH PLAYOFFS", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2026/fd-alumni-hoops-powers-through-playoffs/", "kind": "playoffs", "divisionSlug": "maroon", "publishedDate": "2026-07-25"},
+        {"title": "'13 HOLDS OFF LATE '16 CHARGE IN FD HOOPS", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2026/13-holds-off-late-16-charge-in-fd-hoops/", "kind": "recap", "divisionSlug": "maroon", "publishedDate": "2026-07-17"},
+        {"title": "SUMMER OF SIXTEEN TOURNEY TIPS OFF FRIDAY", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2026/summer-of-sixteen-tourney-tips-off-friday/", "kind": "preview", "publishedDate": "2026-07-02"},
+        {"title": "FDMSAA Alumni Basketball Tournament 2026", "source": "GuamTime", "url": "https://events.guamtime.net/event/fdmsaa-alumni-basketball-tournament-2026", "kind": "event_page", "publishedDate": "2026-07-01"},
+        {"title": "Season Pass — FD Alumni Basketball 2026", "source": "GuamTime", "url": "https://events.guamtime.net/event/season-pass-fd-alumni-basketball-tournament-2026", "kind": "event_page", "publishedDate": "2026-07-01"},
+        {"title": "Championship Passes — FD Alumni Basketball 2026", "source": "GuamTime", "url": "https://events.guamtime.net/event/championship-passes-fd-alumni-basketball-tournament-2026", "kind": "event_page", "publishedDate": "2026-07-28"}
+      ],
+      "videos": [
+        {"externalVideoId": "jbidgTyVSuM", "title": "1996 vs 2001 | FD 2026 Alumni Tourney", "source": "Acdavate", "takenDate": "2026-07-30", "durationSeconds": 2883},
+        {"externalVideoId": "gExNQKCX60E", "title": "99/01/03 vs 2005 | FD 2026 Alumni Gold Championship", "source": "Acdavate", "takenDate": "2026-07-29", "durationSeconds": 5293, "divisionSlug": "gold", "highlightBracket": "gold"},
+        {"externalVideoId": "E4I_BTp5GPc", "title": "2026 vs 2025 | FD 2026 Alumni Tourney Playoffs", "source": "Acdavate", "takenDate": "2026-07-25", "durationSeconds": 3453, "divisionSlug": "maroon"},
+        {"externalVideoId": "q2RAVroDl1c", "title": "99/01/03 vs 430-5 | FD 2026 Alumni Gold Semifinals", "source": "Acdavate", "takenDate": "2026-07-26", "durationSeconds": 3544, "divisionSlug": "gold"},
+        {"externalVideoId": "asiFudVo-5g", "title": "99/01/03 vs 98/00 | FD 2026 Alumni Tourney", "source": "Acdavate", "takenDate": "2026-07-15", "durationSeconds": 3241, "divisionSlug": "gold"},
+        {"externalVideoId": "ik90KxjmVO0", "title": "99/01/03 vs 2022 | FD 2026 Alumni Tourney", "source": "Acdavate", "takenDate": "2026-07-12", "durationSeconds": 3791},
+        {"externalVideoId": "tVqIn-wZn5s", "title": "FS2 vs FS3 | FD 2026 Alumni Father/Son Game", "source": "Acdavate", "takenDate": "2026-07-18", "durationSeconds": 3415, "divisionSlug": "fatherson"},
+        {"externalVideoId": "gRJek5EzMaM", "title": "FD's courts host annual Alumni Basketball Tournament & Liberation Volleyfest", "source": "kuamnews", "takenDate": "2026-07-11", "durationSeconds": 127},
+        {"externalVideoId": "Ki1zwJRA7No", "title": "99/01/03 vs 2026 | FD Alumni Opening Night", "source": "Acdavate", "takenDate": "2026-07-03", "durationSeconds": 3828}
+      ],
+      "games": [
+        {"date": "2026-07-16", "phase": "pool", "home": "2013", "away": "2016", "homeScore": 46, "awayScore": 42, "divisionSlug": "maroon", "topPerformers": ["Michael Sakazaki 18 pts", "John Baza 16 pts", "Josh Paulino 15 pts"]},
+        {"date": "2026-07-25", "phase": "playoff", "home": "2013", "away": "2022", "homeScore": 48, "awayScore": 34, "divisionSlug": "maroon", "topPerformers": ["Michael Sakazaki 16 pts", "John Baza 11 pts", "Maratita 8 pts", "Toves 8 pts"]},
+        {"date": "2026-07-25", "phase": "playoff", "home": "2021", "away": "2016", "homeScore": 55, "awayScore": 40, "divisionSlug": "maroon", "topPerformers": ["Matt Santos 18 pts", "Michael Tenorio 15 pts", "Bryton Cepeda 11 pts", "Frankie Tenorio 11 pts"]},
+        {"date": "2026-07-29", "phase": "playoff", "home": "91", "away": "88", "homeScore": 41, "awayScore": 20, "divisionSlug": "platinum", "bracketRound": "final", "topPerformers": ["Luis Cruz 11 pts", "Dave Arriola 6 pts", "Dana Lujan 6 pts"]},
+        {"date": "2026-07-29", "phase": "playoff", "home": "99/01/03", "away": "2005", "homeScore": null, "awayScore": null, "divisionSlug": "gold", "bracketRound": "final", "outcome": "overtime", "winner": "99/01/03", "note": "OT championship win; exact score in full video"},
+        {"date": "2026-07-30", "phase": "playoff", "home": "2025", "away": "2013", "homeScore": 61, "awayScore": 49, "divisionSlug": "maroon", "bracketRound": "final", "topPerformers": ["Noah Tenorio 19 pts", "Noah Cruz 16 pts", "Daethan Alcantara 14 pts", "Michael Sakazaki 16 pts", "John Baza 16 pts"]}
+      ]
+    },
+    {
+      "tournament": {"year": 2025, "startDate": "2025-06-27", "endDate": "2025-07-18", "status": "completed", "hostClassLabel": "Class of 2015", "hostClassKey": "15", "theme": "Kings of the Jungle!"},
+      "articles": [
+        {"title": "Class of 2002/04 captures its fourth FD Alumni crown", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2025/02-04-captures-4th-fd-alumni-crown/", "kind": "championship", "divisionSlug": "maroon"}
+      ],
+      "games": [
+        {"date": "2025-07-18", "phase": "playoff", "home": "02/04", "away": "2013", "homeScore": 50, "awayScore": 44, "divisionSlug": "maroon", "bracketRound": "final", "topPerformers": ["Shaun Perez 20 pts", "Matt Leon Guerrero 9 pts", "Vince Estella 7 pts", "John Baza 15 pts", "Michael Sakazaki 12 pts", "Jordan Guevara 10 pts"]}
+      ]
+    },
+    {
+      "tournament": {"year": 2024, "startDate": "2024-06-28", "endDate": "2024-07-19", "status": "completed", "hostClassLabel": "Class of 2014", "hostClassKey": "14", "theme": "Jungle Boys"},
+      "articles": [
+        {"title": "Shimizu adds instant lore to FD Alumni tradition", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2024/shimizu-adds-instant-lore-to-fd-alumni-tradition/", "kind": "championship", "divisionSlug": "maroon"}
+      ],
+      "videos": [
+        {"externalVideoId": "MdJQb0z8O1w", "title": "2024 FDMS Alumni Tournament OPENING NIGHT", "source": "Clutch Guam", "takenDate": "2024-06-28", "durationSeconds": 8055},
+        {"externalVideoId": "aMeIlSnlbYQ", "title": "Friars for life: annual FD Alumni Basketball Tourney celebrates lifelong brotherhood", "source": "kuamnews", "takenDate": "2024-06-27", "durationSeconds": 258}
+      ],
+      "games": [
+        {"date": "2024-07-15", "phase": "playoff", "home": "02/04", "away": "2014", "homeScore": 48, "awayScore": 33, "divisionSlug": "maroon", "bracketRound": "quarterfinal"},
+        {"date": "2024-07-19", "phase": "playoff", "home": "16/17", "away": "2013", "homeScore": 58, "awayScore": 56, "divisionSlug": "maroon", "bracketRound": "final", "topPerformers": ["Leon Shimizu 10 pts, 7 reb, buzzer-beater", "RJ Rokop 15 pts", "Devin Sudo 11 pts", "Frankie Tenorio 10 pts", "Michael Sakazaki 21 pts", "John Baza 19 pts"]}
+      ]
+    },
+    {
+      "tournament": {"year": 2023, "startDate": "2023-06-30", "endDate": "2023-07-21", "status": "completed", "hostClassLabel": "Class of 2013", "hostClassKey": "13", "theme": "Friarfest"},
+      "articles": [
+        {"title": "Class of 2013 wins Friarfest", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2023/class-of-2013-kings-of-friarfest/", "kind": "championship", "divisionSlug": "maroon"}
+      ],
+      "games": [
+        {"date": "2023-06-30", "phase": "pool", "home": "79/80", "away": "75", "homeScore": 27, "awayScore": 27, "outcome": "shootout", "winner": "79/80", "note": "Class of 1979/80 won the shootout 4–2."},
+        {"date": "2023-06-30", "phase": "pool", "home": "16/17", "away": "2018", "homeScore": 100, "awayScore": 32, "topPerformers": ["Sudo 34 pts", "Rokop 27 pts"]},
+        {"date": "2023-06-30", "phase": "pool", "home": "2020", "away": "02/04", "homeScore": 77, "awayScore": 49, "topPerformers": ["C. Leon Guerrero 34 pts", "M. Fegurgur 24 pts"]},
+        {"date": "2023-07-02", "phase": "pool", "home": "2018", "away": "2021", "homeScore": 40, "awayScore": 36},
+        {"date": "2023-07-02", "phase": "pool", "home": "2005", "away": "2007", "homeScore": 32, "awayScore": 27},
+        {"date": "2023-07-02", "phase": "pool", "home": "84/85", "away": "88", "homeScore": 42, "awayScore": 33},
+        {"date": "2023-07-02", "phase": "pool", "home": "82/86/AD7", "away": "89", "homeScore": 42, "awayScore": 37},
+        {"date": "2023-07-02", "phase": "pool", "home": "2010", "away": "2014", "homeScore": 50, "awayScore": 29},
+        {"date": "2023-07-02", "phase": "pool", "home": "2019", "away": "2011", "homeScore": 44, "awayScore": 30},
+        {"date": "2023-07-02", "phase": "pool", "home": "2020", "away": "2023", "homeScore": 48, "awayScore": 48},
+        {"date": "2023-07-07", "phase": "pool", "home": "2006", "away": "2005", "homeScore": 49, "awayScore": 36, "topPerformers": ["Julius Yu 28 pts"]},
+        {"date": "2023-07-07", "phase": "pool", "home": "2023", "away": "2013", "homeScore": 81, "awayScore": 59, "topPerformers": ["Sayama 25 pts"]},
+        {"date": "2023-07-07", "phase": "pool", "home": "16/17", "away": "2020", "homeScore": 58, "awayScore": 56},
+        {"date": "2023-07-15", "phase": "playoff", "home": "88", "away": "82/86/AD7", "homeScore": 38, "awayScore": 28, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "89", "away": "75", "homeScore": 42, "awayScore": 39, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "96/97", "away": "84/85", "homeScore": 33, "awayScore": 30, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "98/00", "away": "2003", "homeScore": 66, "awayScore": 55, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "96/97", "away": "79/80", "homeScore": 35, "awayScore": 34, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "99/01", "away": "89", "homeScore": 62, "awayScore": 43, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "91/92", "away": "88", "homeScore": 46, "awayScore": 40, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "98/00", "away": "430-5", "homeScore": 72, "awayScore": 44, "divisionSlug": "gold"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2012", "away": "2019", "homeScore": 29, "awayScore": 27, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2005", "away": "2011", "homeScore": 43, "awayScore": 30, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "16/17", "away": "2021", "homeScore": 48, "awayScore": 37, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2013", "away": "2007", "homeScore": 48, "awayScore": 42, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2022", "away": "2020", "homeScore": 50, "awayScore": 48, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "02/04", "away": "2014", "homeScore": 53, "awayScore": 43, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2023", "away": "2010", "homeScore": 79, "awayScore": 49, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2009", "away": "2005", "homeScore": 40, "awayScore": 36, "divisionSlug": "maroon"},
+        {"date": "2023-07-15", "phase": "playoff", "home": "2012", "away": "2018", "homeScore": 56, "awayScore": 44, "divisionSlug": "maroon"},
+        {"date": "2023-07-21", "phase": "playoff", "home": "99/01", "away": "98/00", "homeScore": 59, "awayScore": 34, "divisionSlug": "gold", "bracketRound": "final", "topPerformers": ["Frankie Perez 26 pts"]}
+      ]
+    },
+    {
+      "tournament": {"year": 2022, "startDate": "2022-06-24", "endDate": "2022-07-15", "status": "completed", "hostClassLabel": "Class of 2012", "hostClassKey": "12"},
+      "articles": [
+        {"title": "Class of 2002/04 reclaims the FD Alumni title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2022/02-04-reclaims-fd-alumni-hoops-reign/", "kind": "championship", "divisionSlug": "maroon"}
+      ],
+      "videos": [
+        {"externalVideoId": "zaNPeQqlW1o", "title": "Alumni 02/04 vs 2020 Championship Highlights", "source": "Heavy Hooper", "takenDate": "2022-07-15", "durationSeconds": 871, "divisionSlug": "maroon", "highlightBracket": "maroon"},
+        {"externalVideoId": "Zy4XMxTFb8Q", "title": "Alumni 02/04 vs 16 Semifinal Highlights", "source": "Heavy Hooper", "takenDate": "2022-07-13", "durationSeconds": 703, "divisionSlug": "maroon"},
+        {"externalVideoId": "qBTzwnBDHUI", "title": "Raw footage, last 5 mins | Alumni 2006 vs 2007", "source": "Heavy Hooper", "takenDate": "2022-07-12", "durationSeconds": 381, "divisionSlug": "maroon"}
+      ],
+      "games": [
+        {"date": "2022-07-11", "phase": "playoff", "home": "2020", "away": "2012", "homeScore": 43, "awayScore": 36, "divisionSlug": "maroon", "bracketRound": "quarterfinal"},
+        {"date": "2022-07-13", "phase": "playoff", "home": "2020", "away": "2006", "homeScore": 57, "awayScore": 26, "divisionSlug": "maroon", "bracketRound": "semifinal"},
+        {"date": "2022-07-13", "phase": "playoff", "home": "02/04", "away": "2016", "homeScore": 54, "awayScore": 43, "divisionSlug": "maroon", "bracketRound": "semifinal"},
+        {"date": "2022-07-15", "phase": "playoff", "home": "02/04", "away": "2020", "homeScore": 62, "awayScore": 52, "divisionSlug": "maroon", "bracketRound": "final", "topPerformers": ["Shaun Perez 25 pts", "Christian Leon Guerrero 20 pts in 1st half, six 3s"]},
+        {"date": "2022-07-15", "phase": "playoff", "home": "98/00", "away": "430-5", "homeScore": 60, "awayScore": 43, "divisionSlug": "gold", "bracketRound": "final", "topPerformers": ["Romeo Sanchez 20 pts", "Brian Matanane 16 pts", "EJ Calvo 15 pts"]}
+      ]
+    },
+    {
+      "tournament": {"year": 2021, "startDate": "2021-07-09", "endDate": "2021-07-30", "status": "completed", "hostClassLabel": "Class of 2011", "hostClassKey": "11"},
+      "articles": [
+        {"title": "Class of 2006 wins its eighth FD Alumni title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2021/2006-brings-in-eighth-alumni-title-in-big-way/", "kind": "championship"}
+      ],
+      "videos": [
+        {"externalVideoId": "ARI1hJc1Qyo", "title": "FD Alumni Tournament Championship Game | 2002/2004 vs 2006", "source": "Heavy Hooper", "takenDate": "2021-07-31", "durationSeconds": 775, "highlightBracket": "overall"},
+        {"externalVideoId": "gr2nj3piElw", "title": "FD Alumni Tournament | 2006 vs 2014 Game Highlights", "source": "Heavy Hooper", "takenDate": "2021-07-24", "durationSeconds": 454},
+        {"externalVideoId": "gVq7sut3iQw", "title": "FD Alumni Tournament | 2016 vs 2021 Game Highlights", "source": "Heavy Hooper", "takenDate": "2021-07-23", "durationSeconds": 735},
+        {"externalVideoId": "sOFH7lGFUm8", "title": "FD Alumni Tournament | 2018 vs 2020 2nd Half Highlights", "source": "Heavy Hooper", "takenDate": "2021-07-21", "durationSeconds": 559},
+        {"externalVideoId": "ShRBTe7lr1Q", "title": "FD Alumni Tournament | 2002/2004 vs 2006 Pool Play Highlights", "source": "Heavy Hooper", "takenDate": "2021-07-17", "durationSeconds": 711},
+        {"externalVideoId": "4EtzFu5czLc", "title": "FD Alumni Tournament | 2019 vs 2021 Pool Play Highlights", "source": "Heavy Hooper", "takenDate": "2021-07-11", "durationSeconds": 657}
+      ],
+      "games": [
+        {"date": "2021-07-09", "phase": "pool", "home": "79/80", "away": "75", "homeScore": 38, "awayScore": 15},
+        {"date": "2021-07-09", "phase": "pool", "home": "88", "away": "89", "homeScore": 26, "awayScore": 20},
+        {"date": "2021-07-09", "phase": "pool", "home": "2016", "away": "2012", "homeScore": 52, "awayScore": 43},
+        {"date": "2021-07-16", "phase": "pool", "home": "96/97", "away": "79/80", "homeScore": 33, "awayScore": 31},
+        {"date": "2021-07-16", "phase": "pool", "home": "2012", "away": "2008", "homeScore": 59, "awayScore": 37},
+        {"date": "2021-07-16", "phase": "pool", "home": "02/04", "away": "2006", "homeScore": 64, "awayScore": 55},
+        {"date": "2021-07-30", "phase": "playoff", "home": "2006", "away": "02/04", "homeScore": 58, "awayScore": 38, "topPerformers": ["Rob Leon Guerrero 12 pts", "AJ Reyes 12 pts", "Willie Stinnett 11 pts", "Vince Estella 10 pts"], "bracketRound": "final"}
+      ]
+    },
+    {
+      "tournament": {"year": 2019, "startDate": "2019-06-21", "endDate": "2019-07-12", "status": "completed", "hostClassLabel": "Class of 2009", "hostClassKey": "09"},
+      "articles": [
+        {"title": "Class of 2006 captures its seventh FD Alumni title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2019/2006-captures-seventh-fd-alumni-title/", "kind": "championship", "divisionSlug": "maroon"}
+      ]
+    },
+    {
+      "tournament": {"year": 2018, "startDate": "2018-06-29", "endDate": "2018-07-13", "status": "completed", "hostClassLabel": "Class of 2008", "hostClassKey": "08"},
+      "articles": [
+        {"title": "FD Alumni Tournament finals broadcast", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2018/live-video-fd-alumni-tournament-finals/", "kind": "championship", "divisionSlug": "maroon"}
+      ],
+      "videos": [
+        {"externalVideoId": "n_KoNH6ENJ8", "title": "2018 FD Alumni Finals Broadcast", "source": "Guam Sports Network", "takenDate": "2018-07-13", "durationSeconds": 4556, "divisionSlug": "maroon", "highlightBracket": "maroon"}
+      ]
+    },
+    {
+      "tournament": {"year": 2017, "startDate": "2017-06-23", "endDate": "2017-07-14", "status": "completed", "hostClassLabel": "Class of 2007", "hostClassKey": "07"},
+      "articles": [
+        {"title": "Estella hits the game-winner for Class of 2002/04", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2017/estella-hits-game-winner-give-0204-fd-alumni-title/", "kind": "championship"}
+      ]
+    },
+    {
+      "tournament": {"year": 2016, "startDate": "2016-06-24", "endDate": "2016-07-16", "status": "completed", "hostClassLabel": "Class of 2006", "hostClassKey": "06"},
+      "videos": [
+        {"externalVideoId": "n2lw-cEOlRU", "title": "Class of 2006 wins FD Alumni Basketball Tournament", "source": "kuamnews", "takenDate": "2016-07-18", "durationSeconds": 210, "highlightBracket": "overall"}
+      ]
+    },
+    {
+      "tournament": {"year": 2015, "startDate": "2015-06-05", "endDate": "2015-06-26", "status": "completed", "hostClassLabel": "Class of 2005", "hostClassKey": "05", "editionNumber": 30},
+      "articles": [
+        {"title": "Class of 2013 wins its first FD Alumni title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2015/2013-wins-first-ever-fd-alumni-tourney/", "kind": "championship"}
+      ],
+      "videos": [
+        {"externalVideoId": "Qp_wb3k8N54", "title": "2015 FD Alumni Tournament Championship Game", "source": "Guam Sports Network", "takenDate": "2015-06-28", "durationSeconds": 181, "highlightBracket": "overall"}
+      ]
+    },
+    {
+      "tournament": {"year": 2014, "startDate": "2014-07-03", "endDate": "2014-07-18", "status": "completed", "hostClassLabel": "Class of 2004", "hostClassKey": "04"},
+      "articles": [
+        {"title": "Class of 2004 wins the FD Alumni title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2014/2004-wins-coveted-fd-alumni-title/", "kind": "championship"},
+        {"title": "FD Basketball Night of Champions", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2014/fd-basketball-night-of-champions/", "kind": "championship"},
+        {"title": "FD Alumni Masters Scores", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2014/fd-alumni-masters-scores/", "kind": "recap"}
+      ],
+      "videos": [
+        {"externalVideoId": "e6BF50da27A", "title": "2014 FDMS Alumni Basketball Tournament Class 91 & 98", "source": "Jeffrey Charfauros", "takenDate": "2014-07-20", "durationSeconds": 1109},
+        {"externalVideoId": "xcRDuYphEFI", "title": "PNC Sports: FD Alumni Basketball", "source": "Pncnews Newsfirst", "takenDate": "2014-07-10", "durationSeconds": 76}
+      ]
+    },
+    {
+      "tournament": {"year": 2013, "startDate": "2013-07-05", "endDate": "2013-07-23", "status": "completed", "hostClassLabel": "Class of 2003", "hostClassKey": "03"},
+      "articles": [
+        {"title": "Class of 2006 wins its fourth straight title", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2013/fd-06-on-tetravalent-streak/", "kind": "championship"},
+        {"title": "The FD Alumni reign of ’06", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2013/the-fd-alumni-reign-of-06/", "kind": "history"}
+      ],
+      "videos": [
+        {"externalVideoId": "KSmJ-X9s72U", "title": "2013 FD Alumni Tourney 2002 vs 2001", "source": "guahan", "takenDate": "2013-07-20", "durationSeconds": 185},
+        {"externalVideoId": "Klh4D-oEOqw", "title": "FD Alumni 7/8 Recap", "source": "PNC GUAM", "takenDate": "2013-07-08", "durationSeconds": 53}
+      ]
+    },
+    {
+      "tournament": {"year": 2012, "startDate": "2012-07-06", "endDate": "2012-07-22", "status": "completed", "hostClassLabel": "Class of 2002", "hostClassKey": "02", "editionNumber": 27},
+      "articles": [
+        {"title": "Class of 2006 three-peat", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2012/06-three-peat-champs/", "kind": "championship"},
+        {"title": "History of the FD Alumni Basketball Tournament", "source": "GSPN", "url": "https://www.guamsportsnetwork.com/2012/history-of-the-fd-alumni-basketball-tournament/", "kind": "history"}
+      ]
+    },
+    {
+      "tournament": {"year": 2010, "startDate": "2010-07-01", "endDate": "2010-08-01", "status": "completed", "hostClassLabel": "Class of 2000", "hostClassKey": "00"},
+      "videos": [
+        {"externalVideoId": "EFgSI4C-Sck", "title": "2010 FD Alumni Basketball Tournament Championship", "source": "guamnewswatch", "takenDate": "2010-08-02", "durationSeconds": 147},
+        {"externalVideoId": "ymAiCGPU0-A", "title": "Guam Sports Watch: FD Alumni Class of 2000 vs 2001", "source": "guamnewswatch", "takenDate": "2010-07-22", "durationSeconds": 123},
+        {"externalVideoId": "bmTpVJvpJus", "title": "Guam Sports Watch: FD Alumni Basketball Tournament", "source": "guamnewswatch", "takenDate": "2010-07-21", "durationSeconds": 140}
+      ]
+    },
+    {
+      "tournament": {"year": 2008, "startDate": "2008-07-01", "endDate": "2008-07-31", "status": "completed", "hostClassLabel": "Class of 1998", "hostClassKey": "98"},
+      "articles": [
+        {"title": "Class of 1997/99 advances to face Class of 1995", "source": "PostGuam", "url": "https://www.postguam.com/sports/local/99-97-downs-02-44-35-95-set-to-challenge-99-97-for-title/article_d0c41798-5f84-5448-97d0-5d8c7aa60330.html", "kind": "playoffs"}
+      ],
+      "videos": [
+        {"externalVideoId": "LIIbnqa9k5E", "title": "Web Bonus: 2008 Father Duenas Alumni Basketball Championship", "source": "pncsports", "takenDate": "2008-07-31", "durationSeconds": 114, "highlightBracket": "overall"},
+        {"externalVideoId": "UKUdaTwbBZk", "title": "2008 Father Duenas Alumni Basketball Championships", "source": "pncsports", "takenDate": "2008-07-31", "durationSeconds": 54},
+        {"externalVideoId": "KspBNh-Gzng", "title": "2008 Father Duenas Alumni Tournament", "source": "pncsports", "takenDate": "2008-07-29", "durationSeconds": 66}
+      ]
+    }
+  ],
+  "dateCorrections": [
+    {"year": 2025, "from": "2025-07-10", "to": "2025-07-02", "home": "2013", "away": "2025", "homeScore": 70, "awayScore": 63}
+  ]
+}

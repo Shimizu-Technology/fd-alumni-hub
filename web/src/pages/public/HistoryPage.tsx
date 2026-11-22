@@ -6,6 +6,8 @@ import { useAsync } from '../../lib/hooks'
 import { staticChampionRecords, staticTitleCounts } from '../../lib/staticChampions'
 import type { Tournament, TournamentChampion } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
+import { ArchiveChampionDetails } from '../../components/ArchiveChampionDetails'
+import { DivisionPill } from '../../components/ArchiveBadges'
 import { IconArrowRight } from '../../components/Icons'
 
 export function HistoryPage() {
@@ -30,7 +32,7 @@ export function HistoryPage() {
       <PageHeader
         eyebrow="Historical archive"
         title="Brotherhood tournament history"
-        description="Champion records, class title credits, game results, photos, and source coverage are collected by tournament edition. Shared-team wins credit every represented class while preserving the original team entry."
+        description="Explore champions, results, and tournament coverage by year."
       />
 
       {loading && !data ? (
@@ -53,7 +55,6 @@ export function HistoryPage() {
           <Panel className="title-leaderboard-panel">
             <div className="section-heading">
               <h2>Class title credits</h2>
-              <span>Shared wins count for each represented class</span>
             </div>
             {!titleCounts.length ? <EmptyState title="Title history pending" /> : (
               <div className="title-leaderboard-grid">
@@ -66,6 +67,7 @@ export function HistoryPage() {
                 ))}
               </div>
             )}
+            <p className="archive-footnote">Shared-team primary wins credit each represented class. Gold and Platinum titles are listed separately in the archive.</p>
           </Panel>
 
           <Panel>
@@ -76,18 +78,19 @@ export function HistoryPage() {
             {!records.length ? <EmptyState title="History archive pending" /> : (
               <div className="timeline-list">
                 {records.map((record) => (
-                  <Link key={record.id} to={`/history/${record.year}`} className="timeline-row timeline-link-row">
+                  <article key={record.id} className="timeline-row timeline-link-row">
                     <div className="timeline-year">{record.label}</div>
                     <div>
                       <div className="timeline-title">
-                        <strong>{record.championLabel || 'Champion research pending'}</strong>
-                        <StatusBadge status={record.status} />
+                        <Link className="archive-year-link" to={`/history/${record.year}`}><strong>{record.championLabel || 'Champion research pending'}</strong></Link>
+                        <div className="archive-chip-row"><DivisionPill division={record.bracket} /><StatusBadge status={record.status} /></div>
                       </div>
                       <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || 'Open tournament archive'}</p>
                       <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
+                      <ArchiveChampionDetails record={record} highlightHref={`/history/${record.year}#archive-video-${record.highlightVideoId}`} />
                     </div>
                     <IconArrowRight />
-                  </Link>
+                  </article>
                 ))}
               </div>
             )}
@@ -98,7 +101,7 @@ export function HistoryPage() {
   )
 }
 
-type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes' | 'primary' | 'position'>
+type HistoryRecord = Pick<TournamentChampion, 'id' | 'tournamentId' | 'year' | 'editionLabel' | 'label' | 'championLabel' | 'runnerUpLabel' | 'score' | 'status' | 'source' | 'notes' | 'primary' | 'position' | 'bracket' | 'mvpName' | 'mvpNote' | 'sourceUrl' | 'highlightVideoId'>
 
 function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournament[]): HistoryRecord[] {
   const historyRecords: HistoryRecord[] = records.map((record) => ({ ...record }))
@@ -120,6 +123,7 @@ function mergeHistoryRecords(records: TournamentChampion[], tournaments: Tournam
       status: tournament.status === 'completed' || tournament.status === 'cancelled' || tournament.status === 'upcoming' || tournament.status === 'live' ? tournament.status === 'live' ? 'upcoming' : tournament.status : 'unknown',
       notes: tournament.status === 'completed' ? null : `${tournament.status} tournament`,
       primary: true,
+      bracket: 'unknown',
       position: 0,
     })
   })

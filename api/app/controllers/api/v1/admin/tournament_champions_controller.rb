@@ -81,7 +81,8 @@ module Api
 
           raw = ActionController::Parameters.new(raw) if raw.is_a?(Hash)
           raw.permit(:bracket, :editionLabel, :edition_label, :championLabel, :champion_label,
-            :runnerUpLabel, :runner_up_label, :score, :status, :primary, :notes, :position)
+            :runnerUpLabel, :runner_up_label, :score, :status, :primary, :notes, :position,
+            :mvpName, :mvp_name, :mvpNote, :mvp_note, :sourceUrl, :source_url)
             .to_h.transform_keys(&:underscore).symbolize_keys
         end
       end

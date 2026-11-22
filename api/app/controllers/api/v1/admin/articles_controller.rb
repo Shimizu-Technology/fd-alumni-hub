@@ -55,7 +55,8 @@ module Api
 
         def article_params
           raw = params.fetch(:article, params)
-          permitted = raw.permit(:tournament_id, :tournamentId, :game_id, :gameId, :title, :source, :url, :published_at, :publishedAt, :image_url, :imageUrl, :excerpt)
+          permitted = raw.permit(:tournament_id, :tournamentId, :game_id, :gameId, :title, :source, :url, :published_at, :publishedAt, :image_url, :imageUrl, :excerpt,
+            :kind, :division_slug, :divisionSlug, :photo_count, :photoCount)
 
           attrs = {}
           assign_param(attrs, permitted, :tournament_id, :tournament_id, :tournamentId)
@@ -66,6 +67,9 @@ module Api
           assign_param(attrs, permitted, :published_at, :published_at, :publishedAt)
           assign_param(attrs, permitted, :image_url, :image_url, :imageUrl)
           assign_param(attrs, permitted, :excerpt, :excerpt)
+          assign_param(attrs, permitted, :kind, :kind)
+          assign_param(attrs, permitted, :division_slug, :division_slug, :divisionSlug)
+          assign_param(attrs, permitted, :photo_count, :photo_count, :photoCount)
           attrs
         end
       end

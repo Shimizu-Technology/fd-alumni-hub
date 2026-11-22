@@ -11,6 +11,9 @@ export type StaticChampionSeed = {
   score?: string
   status?: 'completed' | 'cancelled'
   source: string
+  sourceUrl?: string
+  mvpName?: string
+  mvpNote?: string
   notes?: string
 }
 
@@ -68,6 +71,9 @@ export function staticChampionRecords(): TournamentChampion[] {
       primary: seed.primary ?? true,
       status,
       source: seed.source,
+      sourceUrl: seed.sourceUrl || null,
+      mvpName: seed.mvpName || null,
+      mvpNote: seed.mvpNote || null,
       notes: seed.notes || null,
       position: index + 1,
     }

@@ -1,6 +1,8 @@
 class Tournament < ApplicationRecord
   STATUSES = %w[upcoming live completed cancelled].freeze
 
+  belongs_to :host_class_cohort, class_name: "ClassCohort", optional: true
+
   has_one :host_campaign, dependent: :restrict_with_error
   has_many :standings, dependent: :destroy
   has_many :games, dependent: :destroy, inverse_of: :tournament
@@ -80,6 +82,10 @@ class Tournament < ApplicationRecord
       id: id.to_s,
       name: name,
       year: year,
+      hostClassLabel: host_class_label,
+      hostClassCohortId: host_class_cohort_id&.to_s,
+      editionNumber: edition_number,
+      theme: theme,
       startDate: start_date&.iso8601,
       endDate: end_date&.iso8601,
       status: status,

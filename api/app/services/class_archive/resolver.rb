@@ -33,7 +33,7 @@ module ClassArchive
       return [] if label.blank?
 
       alias_keys = alias_map[label]
-      return alias_keys if alias_keys.present?
+      return alias_keys if alias_keys
 
       parse_numeric_class_keys(label)
     end

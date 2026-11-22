@@ -162,7 +162,7 @@ function errorEntryMessages(entry: unknown): string[] {
   return []
 }
 
-function query(params: Record<string, string | number | null | undefined>) {
+function query(params: Record<string, string | number | boolean | null | undefined>) {
   const search = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== '') search.set(key, String(value))
@@ -230,7 +230,7 @@ export const api = {
     request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
   publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
     request<{ tournament: Tournament | null; articles: Article[] }>(`/public/articles${query(params)}`),
-  publicMedia: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
+  publicMedia: (params: { tournamentId?: string | null; year?: number | null; limit?: number; archive?: boolean; mediaType?: 'photo' | 'video' } = {}) =>
     request<{ tournament: Tournament | null; mediaAssets: MediaAsset[] }>(`/public/media-assets${query(params)}`),
   publicSponsors: (params: { tournamentId?: string | null; year?: number | null } = {}) =>
     request<{ tournament: Tournament | null; sponsors: Sponsor[] }>(`/public/sponsors${query(params)}`),

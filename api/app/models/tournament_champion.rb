@@ -1,8 +1,12 @@
 class TournamentChampion < ApplicationRecord
+  include SafeUrlValidation
+
   STATUSES = %w[completed cancelled research_pending upcoming unknown].freeze
   BRACKETS = %w[overall maroon gold platinum unknown].freeze
 
   belongs_to :tournament, optional: true
+  belongs_to :recap_article, class_name: "ArticleLink", optional: true
+  belongs_to :highlight_video, class_name: "MediaAsset", optional: true
   has_many :tournament_champion_credits, dependent: :destroy
   has_many :class_cohorts, through: :tournament_champion_credits
 
@@ -18,6 +22,7 @@ class TournamentChampion < ApplicationRecord
   validates :source, exclusion: { in: [ nil ] }
   validates :bracket, inclusion: { in: BRACKETS }
   validates :champion_label, presence: true, unless: :cancelled?
+  validates_https_url :source_url, strict: true
 
   scope :for_tournament, ->(tournament) {
     where(tournament_id: tournament.id).or(where(tournament_id: nil, year: tournament.year))
@@ -128,6 +133,11 @@ class TournamentChampion < ApplicationRecord
       primary: primary,
       status: status,
       source: source,
+      sourceUrl: source_url,
+      mvpName: mvp_name,
+      mvpNote: mvp_note,
+      recapArticleId: recap_article_id&.to_s,
+      highlightVideoId: highlight_video_id&.to_s,
       notes: notes.presence,
       position: position,
       createdAt: created_at&.iso8601,

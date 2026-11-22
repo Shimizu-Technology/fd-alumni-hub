@@ -86,6 +86,21 @@ class AdminContentControllerTest < ActionDispatch::IntegrationTest
     assert_includes JSON.parse(response.body)["errors"], "Game must belong to the same tournament"
   end
 
+  test "admin creates YouTube media with archive metadata" do
+    post "/api/v1/admin/media-assets",
+      params: { mediaAsset: {
+        tournamentId: @tournament.id, mediaType: "video", title: "FD Alumni finals", source: "GSPN",
+        videoUrl: "https://www.youtube.com/watch?v=n_KoNH6ENJ8", video_provider: "youtube",
+        externalVideoId: "n_KoNH6ENJ8", duration_seconds: 4556, divisionSlug: "maroon"
+      } }, headers: auth_headers, as: :json
+
+    assert_response :created
+    asset = response.parsed_body.fetch("mediaAsset")
+    assert_equal [ "video", "youtube", "n_KoNH6ENJ8", 4556, "maroon" ],
+      asset.values_at("mediaType", "videoProvider", "externalVideoId", "durationSeconds", "divisionSlug")
+    assert_equal "https://www.youtube-nocookie.com/embed/n_KoNH6ENJ8", asset.fetch("embedUrl")
+  end
+
   test "bulk links update only ticket and stream urls" do
     patch "/api/v1/admin/links/bulk",
       params: {

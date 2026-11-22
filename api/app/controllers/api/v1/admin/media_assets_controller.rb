@@ -69,7 +69,13 @@ module Api
             :caption,
             :tags,
             :taken_at,
-            :takenAt
+            :takenAt,
+            :media_type, :mediaType,
+            :video_url, :videoUrl,
+            :video_provider, :videoProvider,
+            :external_video_id, :externalVideoId,
+            :duration_seconds, :durationSeconds,
+            :division_slug, :divisionSlug
           )
 
           attrs = {}
@@ -82,6 +88,12 @@ module Api
           assign_param(attrs, permitted, :caption, :caption)
           assign_param(attrs, permitted, :tags, :tags)
           assign_param(attrs, permitted, :taken_at, :taken_at, :takenAt)
+          assign_param(attrs, permitted, :media_type, :media_type, :mediaType)
+          assign_param(attrs, permitted, :video_url, :video_url, :videoUrl)
+          assign_param(attrs, permitted, :video_provider, :video_provider, :videoProvider)
+          assign_param(attrs, permitted, :external_video_id, :external_video_id, :externalVideoId)
+          assign_param(attrs, permitted, :duration_seconds, :duration_seconds, :durationSeconds)
+          assign_param(attrs, permitted, :division_slug, :division_slug, :divisionSlug)
           attrs
         end
       end
