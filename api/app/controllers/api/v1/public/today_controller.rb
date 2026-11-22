@@ -23,7 +23,7 @@ module Api
             gameDayNote: note&.api_json,
             games: games.map { |game| game.api_json(include_rosters: true) },
             predictionPolls: polls.map { |poll| poll.api_json(voter_token_hash: voter_hash) },
-            sponsors: tournament.sponsors.active.ordered.limit(4).map(&:api_json),
+            sponsors: tournament.sponsors.active.ordered_by_tier.limit(4).map(&:api_json),
             lastUpdatedAt: last_updated_at&.iso8601
           }
         end

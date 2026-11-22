@@ -202,7 +202,7 @@ module DataMigration
             name: source.fetch("name"),
             logo_url: blank_to_nil(source["logoUrl"]),
             target_url: blank_to_nil(source["targetUrl"]),
-            tier: blank_to_nil(source["tier"]),
+            tier: Sponsor.normalize_legacy_tier(source["tier"]),
             active: source.fetch("active"),
             position: source.fetch("position")
           })

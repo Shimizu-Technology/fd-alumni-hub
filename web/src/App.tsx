@@ -15,6 +15,7 @@ import { HostYearPage } from './pages/public/HostYearPage'
 import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
 import { StandingsPage } from './pages/public/StandingsPage'
+import { TicketsPage } from './pages/public/TicketsPage'
 import { WatchPage } from './pages/public/WatchPage'
 import { NewsPage } from './pages/public/NewsPage'
 import { GalleryPage } from './pages/public/GalleryPage'
@@ -61,6 +62,7 @@ export function App() {
             <Route path="today" element={<TodayPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="standings" element={<StandingsPage />} />
+            <Route path="tickets" element={<TicketsPage />} />
             <Route path="watch" element={<WatchPage />} />
             <Route path="news" element={<NewsPage />} />
             <Route path="gallery" element={<GalleryPage />} />

@@ -206,6 +206,155 @@ module Hafapass
         }
       end
 
+      def for_tickets_page(campaign)
+        return empty_tickets_payload unless campaign
+
+        tournament = campaign.tournament
+        tournament_slug = campaign.hafapass_tournament_organizer_slug.to_s.strip.downcase.presence
+        host_slug = campaign.hafapass_organizer_slug.to_s.strip.downcase.presence
+        all_tickets_url = all_tickets_url_for(campaign)
+        hub_events = campaign.campaign_events.public_listing.ordered.to_a
+
+        slugs = [ tournament_slug, host_slug ].compact.uniq
+        ttl = cache_ttl_seconds
+        backoff = error_backoff_seconds
+        snapshots_by_slug = slugs.index_with { |slug| read_or_schedule_snapshot(slug, ttl: ttl, backoff: backoff) }
+
+        available_snapshots = snapshots_by_slug.values.select(&:has_data?)
+        any_stale = snapshots_by_slug.values.any? { |s| s.has_data? && !s.fresh?(ttl) } ||
+                    (available_snapshots.any? && available_snapshots.length < snapshots_by_slug.size)
+        latest_fetched_at = available_snapshots.filter_map(&:fetched_at).max
+
+        all_hp_entries = []
+        seen_all_ids = Set.new
+        [ host_slug, tournament_slug ].compact.uniq.each do |slug|
+          snapshot = snapshots_by_slug[slug]
+          next unless snapshot&.has_data?
+
+          snap_stale = !snapshot.fresh?(ttl)
+          Array(snapshot.payload_json).each do |hp|
+            next unless hp.is_a?(Hash) && hp["id"].present?
+            next if seen_all_ids.include?(hp["id"])
+
+            seen_all_ids.add(hp["id"])
+            all_hp_entries << { event: hp, stale: snap_stale, slug: slug }
+          end
+        end
+
+        passes = []
+        game_nights = []
+        other_events = []
+        tournament_event_ids = Set.new
+
+        if tournament_slug && snapshots_by_slug[tournament_slug]&.has_data?
+          t_snapshot = snapshots_by_slug[tournament_slug]
+          t_stale = !t_snapshot.fresh?(ttl)
+          Array(t_snapshot.payload_json).each do |hp|
+            next unless hp.is_a?(Hash) && hp["id"].present?
+            next if tournament_event_ids.include?(hp["id"])
+            next unless in_tournament_window?(hp, tournament)
+
+            tournament_event_ids.add(hp["id"])
+            presented = present_event(
+              hp,
+              stale: t_stale,
+              distribution_code: campaign.hafapass_distribution_code
+            )
+
+            if hp["isPass"] == true
+              passes << presented
+            elsif game_night_event?(hp, tournament)
+              game_nights << presented
+            else
+              other_events << presented
+            end
+          end
+        end
+
+        sort_by_start = ->(item) { [ item[:startsAt] || "9999-12-31T23:59:59Z", item[:title].to_s.downcase ] }
+        passes.sort_by!(&sort_by_start)
+        game_nights.sort_by!(&sort_by_start)
+        other_events.sort_by!(&sort_by_start)
+
+        matched_ids = Set.new
+        fundraiser_events = hub_events.map do |hub_event|
+          match_entry = match_hafapass_entry(hub_event, all_hp_entries)
+          if match_entry
+            match = match_entry[:event]
+            matched_ids.add(match["id"])
+            present_fundraiser_hub_event(
+              hub_event,
+              hafapass_event: present_event(
+                match,
+                stale: match_entry[:stale],
+                distribution_code: hub_event.hafapass_distribution_code,
+                manual_cancelled: hub_event.status == "cancelled"
+              ),
+              stale: match_entry[:stale]
+            )
+          else
+            present_fundraiser_hub_event(hub_event)
+          end
+        end
+
+        if host_slug && snapshots_by_slug[host_slug]&.has_data?
+          h_snapshot = snapshots_by_slug[host_slug]
+          h_stale = !h_snapshot.fresh?(ttl)
+          Array(h_snapshot.payload_json).each do |hp|
+            next unless hp.is_a?(Hash) && hp["id"].present?
+            next if matched_ids.include?(hp["id"]) || tournament_event_ids.include?(hp["id"])
+
+            presented = present_event(hp, stale: h_stale)
+            fundraiser_events << {
+              id: "hp-#{presented[:id]}",
+              title: presented[:title],
+              shortDescription: presented[:shortDescription],
+              startsAt: presented[:startsAt],
+              endsAt: presented[:endsAt],
+              dateLabel: nil,
+              venueName: presented[:venueName],
+              kind: "fundraiser",
+              status: "open",
+              ticketState: presented[:ticketState],
+              minAllInPriceCents: presented[:minAllInPriceCents],
+              ticketTypes: presented[:ticketTypes],
+              availabilityLabel: h_stale ? "Check live availability on HåfaPass" : presented[:availabilityLabel],
+              buyUrl: presented[:buyUrl],
+              ctaLabel: "Buy tickets",
+              stale: h_stale
+            }
+          end
+        end
+
+        {
+          hafapass: {
+            available: available_snapshots.any?,
+            stale: any_stale,
+            fetchedAt: latest_fetched_at&.iso8601,
+            allTicketsUrl: all_tickets_url
+          },
+          passes: passes,
+          gameNights: game_nights,
+          otherEvents: other_events,
+          fundraiserEvents: fundraiser_events
+        }
+      end
+
+      def empty_tickets_payload(all_tickets_url: nil)
+        {
+          hafapass: {
+            available: false,
+            stale: false,
+            fetchedAt: nil,
+            allTicketsUrl: all_tickets_url
+          },
+          passes: [],
+          gameNights: [],
+          otherEvents: [],
+          fundraiserEvents: []
+        }
+      end
+
       private
 
       def safe_base_url(raw, fallback:)
@@ -431,6 +580,60 @@ module Hafapass
         return nil unless safe_slug.present? && safe_slug.match?(HostCampaign::HAFAPASS_CODE_FORMAT)
 
         "#{web_base_url}/events/#{safe_slug}"
+      end
+
+      def in_tournament_window?(hp, tournament)
+        return true unless tournament
+
+        if hp["startsAt"].present?
+          parsed_date = Time.iso8601(hp["startsAt"]).in_time_zone(HostCampaign::GUAM_ZONE).to_date
+          if tournament.start_date && tournament.end_date
+            return parsed_date >= (tournament.start_date - 120.days) && parsed_date <= (tournament.end_date + 45.days)
+          end
+
+          return parsed_date.year == tournament.year
+        end
+
+        text = "#{hp['title']} #{hp['slug']}"
+        years = text.scan(/\b(20\d{2})\b/).flatten.uniq
+        return true if years.empty?
+
+        years.include?(tournament.year.to_s)
+      rescue ArgumentError
+        false
+      end
+
+      def game_night_event?(hp, tournament)
+        if hp["startsAt"].present? && tournament&.start_date && tournament&.end_date
+          event_date = Time.iso8601(hp["startsAt"]).in_time_zone(HostCampaign::GUAM_ZONE).to_date
+          return true if event_date >= (tournament.start_date - 3.days) && event_date <= (tournament.end_date + 3.days)
+        end
+
+        text = "#{hp['title']} #{hp['seriesSlug']} #{hp['slug']}".downcase
+        text.match?(/\b(night|day\s*\d+|game\s*day|playoff|semifinal|quarterfinal|championship|tip[- ]?off|opening\s*night)\b/)
+      rescue ArgumentError
+        false
+      end
+
+      def present_fundraiser_hub_event(hub_event, hafapass_event: nil, stale: false)
+        {
+          id: hub_event.id.to_s,
+          title: hub_event.title,
+          shortDescription: hub_event.description,
+          startsAt: hub_event.starts_at&.iso8601 || hafapass_event&.dig(:startsAt),
+          endsAt: hub_event.ends_at&.iso8601 || hafapass_event&.dig(:endsAt),
+          dateLabel: hub_event.date_label,
+          venueName: hub_event.venue || hafapass_event&.dig(:venueName),
+          kind: hub_event.kind,
+          status: hub_event.status,
+          ticketState: hafapass_event&.dig(:ticketState),
+          minAllInPriceCents: stale ? nil : hafapass_event&.dig(:minAllInPriceCents),
+          ticketTypes: stale ? [] : Array(hafapass_event&.dig(:ticketTypes)),
+          availabilityLabel: stale && hafapass_event ? "Check live availability on HåfaPass" : hafapass_event&.dig(:availabilityLabel),
+          buyUrl: hafapass_event&.dig(:buyUrl) || hub_event.external_url,
+          ctaLabel: hub_event.cta_label,
+          stale: stale && hafapass_event.present?
+        }
       end
     end
   end

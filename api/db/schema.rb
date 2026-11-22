@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000009) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -494,12 +494,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000009) do
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.string "target_url"
-    t.string "tier"
+    t.string "tier", default: "community", null: false
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
+    t.text "description"
     t.index ["legacy_id"], name: "index_sponsors_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "active", "position"], name: "index_sponsors_on_tournament_id_and_active_and_position"
+    t.index ["tournament_id", "active", "tier", "position"], name: "index_sponsors_on_tournament_active_tier_position"
     t.index ["tournament_id"], name: "index_sponsors_on_tournament_id"
+    t.check_constraint "tier::text = ANY (ARRAY['diamond'::character varying, 'platinum'::character varying, 'gold'::character varying, 'silver'::character varying, 'community'::character varying]::text[])", name: "chk_sponsors_tier"
   end
 
   create_table "standings", force: :cascade do |t|

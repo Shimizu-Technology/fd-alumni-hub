@@ -19,6 +19,7 @@ Rails.application.routes.draw do
         resources :teams, only: :show
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"
+        get :tickets, to: "tickets#show"
         resources :articles, only: :index
         resources :media_assets, path: "media-assets", only: :index
         resources :sponsors, only: :index

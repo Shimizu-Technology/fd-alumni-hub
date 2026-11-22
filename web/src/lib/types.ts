@@ -174,13 +174,17 @@ export type MediaAsset = {
   updatedAt?: string
 }
 
+export type SponsorTier = 'diamond' | 'platinum' | 'gold' | 'silver' | 'community'
+
 export type Sponsor = {
   id: string
   tournamentId: string
   name: string
   logoUrl: string | null
   targetUrl: string | null
-  tier: string | null
+  tier: SponsorTier | string | null
+  tierLabel?: string | null
+  description?: string | null
   active: boolean
   position: number
   createdAt?: string
@@ -403,6 +407,52 @@ export type HostYearResponse = {
     allTicketsUrl?: string | null
     events: HafapassEventSummary[]
   }
+}
+
+export type PublicTicketFundraiserItem = {
+  id: string
+  title: string
+  shortDescription: string | null
+  startsAt: string | null
+  endsAt: string | null
+  dateLabel: string | null
+  venueName: string | null
+  kind: CampaignEventKind
+  status: CampaignEventStatus
+  ticketState: HafapassTicketState | null
+  minAllInPriceCents: number | null
+  ticketTypes: HafapassTicketType[]
+  availabilityLabel: string | null
+  buyUrl: string | null
+  ctaLabel: string | null
+  stale: boolean
+}
+
+export type TicketsDoorInfo = {
+  venue: string
+  doorsOpenNote: string
+  paymentNote: string
+  reentryNote: string
+  tournamentYear: number | null
+}
+
+export type PublicTicketsResponse = {
+  tournament: Tournament | null
+  campaign: {
+    slug: string
+    title: string
+    allTicketsUrl: string | null
+  } | null
+  hafapass: {
+    available: boolean
+    stale: boolean
+    fetchedAt: string | null
+  }
+  passes: HafapassEventSummary[]
+  gameNights: HafapassEventSummary[]
+  otherEvents: HafapassEventSummary[]
+  fundraiserEvents: PublicTicketFundraiserItem[]
+  doorInfo: TicketsDoorInfo
 }
 
 export type CampaignRole = 'chair' | 'treasurer' | 'board'
