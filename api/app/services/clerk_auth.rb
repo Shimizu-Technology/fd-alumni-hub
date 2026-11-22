@@ -28,8 +28,34 @@ class ClerkAuth
     end
 
     def fetch_user_email(clerk_user_id)
+      data = fetch_clerk_user(clerk_user_id)
+      return nil unless data
+
+      primary_id = data["primary_email_address_id"]
+      addresses = Array(data["email_addresses"]).select { |a| a.is_a?(Hash) }
+      primary = addresses.find { |address| address["id"] == primary_id } || addresses.first
+      primary&.dig("email_address")
+    end
+
+    def fetch_verified_user_email(clerk_user_id)
+      data = fetch_clerk_user(clerk_user_id)
+      return nil unless data
+
+      primary_id = data["primary_email_address_id"]
+      addresses = Array(data["email_addresses"]).select do |address|
+        address.is_a?(Hash) && address.dig("verification", "status") == "verified"
+      end
+      primary = addresses.find { |address| address["id"] == primary_id } || addresses.first
+      primary&.dig("email_address")
+    end
+
+    def fetch_clerk_user(clerk_user_id)
       secret_key = ENV.fetch("CLERK_SECRET_KEY", nil)
       return nil if secret_key.blank? || clerk_user_id.blank?
+
+      cache_key = "clerk_user:v1:#{clerk_user_id}"
+      cached = Rails.cache.read(cache_key)
+      return cached if cached.is_a?(Hash)
 
       response = HTTParty.get(
         "https://api.clerk.com/v1/users/#{clerk_user_id}",
@@ -37,15 +63,13 @@ class ClerkAuth
         timeout: 5
       )
 
-      return nil unless response.success?
+      return nil unless response.success? && response.parsed_response.is_a?(Hash)
 
       data = response.parsed_response
-      primary_id = data["primary_email_address_id"]
-      addresses = data["email_addresses"] || []
-      primary = addresses.find { |address| address["id"] == primary_id } || addresses.first
-      primary&.dig("email_address")
-    rescue HTTParty::Error, Timeout::Error => e
-      Rails.logger.warn("Clerk API email fetch failed for #{clerk_user_id}: #{e.message}")
+      Rails.cache.write(cache_key, data, expires_in: 5.minutes)
+      data
+    rescue HTTParty::Error, Timeout::Error, SocketError, OpenSSL::SSL::SSLError, Errno::ECONNRESET, Errno::ECONNREFUSED => e
+      Rails.logger.warn("Clerk API user fetch failed for #{clerk_user_id}: #{e.message}")
       nil
     end
 
@@ -213,6 +237,18 @@ class ClerkAuth
     end
 
     def handle_test_token(token)
+      if token.start_with?("test_token_clerk_")
+        parts = token.delete_prefix("test_token_clerk_").split(":", 3)
+        clerk_id, email, verification = parts
+        return nil if clerk_id.blank? || email.blank?
+
+        return {
+          "sub" => clerk_id,
+          "email" => email,
+          "email_verified" => verification == "verified"
+        }
+      end
+
       user_id = token.delete_prefix("test_token_")
       user = User.find_by(id: user_id)
       return nil unless user
@@ -220,6 +256,7 @@ class ClerkAuth
       {
         "sub" => user.clerk_id.presence || "test_clerk_#{user.id}",
         "email" => user.email,
+        "email_verified" => true,
         "first_name" => user.first_name,
         "last_name" => user.last_name
       }

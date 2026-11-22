@@ -6,6 +6,8 @@ import type {
   Division,
   Game,
   GameDayNote,
+  HomeHostCampaignSummary,
+  HostYearResponse,
   IngestItem,
   MediaAsset,
   PredictionPoll,
@@ -131,12 +133,15 @@ export const api = {
     tournament: Tournament | null
     upcomingOrLiveTournament: Tournament | null
     latestResultsTournament: Tournament | null
+    activeHostCampaign?: HomeHostCampaignSummary | null
     todayGames: Game[]
     liveGames: Game[]
     latestNews: Article[]
     gameDayNote: GameDayNote | null
     predictionPolls: PredictionPoll[]
   }>('/public/home', voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
+  publicHostYear: (params: { slug?: string | null; year?: number | null } = {}) =>
+    request<HostYearResponse>(`/public/host-year${query(params)}`),
   publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>
     request<{
       tournament: Tournament | null

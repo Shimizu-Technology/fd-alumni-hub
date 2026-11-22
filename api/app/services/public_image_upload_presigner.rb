@@ -15,6 +15,10 @@ class PublicImageUploadPresigner
     "media-asset" => "media",
     "sponsor" => "sponsors",
     "sponsor-logo" => "sponsors",
+    "campaign" => "campaigns",
+    "campaign-hero" => "campaigns",
+    "campaign-event" => "campaigns",
+    "campaign-post" => "campaigns",
     "admin" => "admin"
   }.freeze
 
@@ -24,8 +28,9 @@ class PublicImageUploadPresigner
     new(...).call
   end
 
-  def initialize(tournament:, filename:, content_type:, byte_size: nil, purpose: nil)
+  def initialize(filename:, content_type:, tournament: nil, scope_id: nil, byte_size: nil, purpose: nil)
     @tournament = tournament
+    @scope_id = scope_id || tournament&.id
     @filename = filename.to_s
     @content_type = normalize_content_type(content_type)
     @byte_size = byte_size.presence&.to_i
@@ -47,9 +52,10 @@ class PublicImageUploadPresigner
 
   private
 
-  attr_reader :tournament, :filename, :content_type, :byte_size, :purpose
+  attr_reader :tournament, :scope_id, :filename, :content_type, :byte_size, :purpose
 
   def validate!
+    raise ArgumentError, "scope is required" if scope_id.blank?
     raise ArgumentError, "filename is required" if filename.blank?
     raise ArgumentError, "contentType is required" if content_type.blank?
     raise ArgumentError, "Only image uploads are allowed" unless content_type.start_with?("image/")
@@ -156,7 +162,7 @@ class PublicImageUploadPresigner
   end
 
   def key
-    @key ||= [ folder, tournament.id, "#{timestamp.to_i}-#{SecureRandom.hex(6)}-#{safe_filename}" ].join("/")
+    @key ||= [ folder, scope_id, "#{timestamp.to_i}-#{SecureRandom.hex(6)}-#{safe_filename}" ].join("/")
   end
 
   def folder

@@ -53,6 +53,17 @@ class CampaignEvent < ApplicationRecord
     }
   end
 
+  def admin_json
+    public_json.merge(
+      hostCampaignId: host_campaign_id.to_s,
+      publicVisible: public_visible,
+      goalCents: goal_cents,
+      archivedAt: archived_at&.iso8601,
+      createdAt: created_at&.iso8601,
+      updatedAt: updated_at&.iso8601
+    )
+  end
+
   private
 
   def normalize_fields

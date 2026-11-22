@@ -5,6 +5,7 @@ import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
 import { AdminLayout, RequireAdminRoute } from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
+import { HostYearPage } from './pages/public/HostYearPage'
 import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
 import { StandingsPage } from './pages/public/StandingsPage'
@@ -43,6 +44,8 @@ export function App() {
         <Routes>
           <Route element={<PublicLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="host-year" element={<HostYearPage />} />
+            <Route path="host-year/:slug" element={<HostYearPage />} />
             <Route path="today" element={<TodayPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="standings" element={<StandingsPage />} />

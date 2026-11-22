@@ -20,15 +20,30 @@ module ClerkAuthenticatable
     end
 
     clerk_id = decoded["sub"]
-    email = email_from_claims(decoded)
+    verified_email = verified_email_from_claims(decoded)
+    verified_email ||= ClerkAuth.fetch_verified_user_email(clerk_id) if clerk_id.present?
+    email = verified_email || email_from_claims(decoded)
     email ||= ClerkAuth.fetch_user_email(clerk_id) if clerk_id.present?
 
     @current_user = find_or_create_user(
       clerk_id: clerk_id,
       email: email,
+      verified_email: verified_email,
       first_name: decoded["first_name"] || decoded.dig("user", "first_name"),
       last_name: decoded["last_name"] || decoded.dig("user", "last_name")
     )
+
+    if @current_user && verified_email.present?
+      begin
+        CampaignInvitation.accept_pending_for!(
+          @current_user,
+          verified_email: verified_email,
+          ip_address: request.remote_ip
+        )
+      rescue StandardError => e
+        Rails.logger.error("CampaignInvitation auto-accept failed for user #{@current_user.id}: #{e.class}: #{e.message}")
+      end
+    end
 
     unless @current_user
       render_unauthorized("User not allowed. Ask an organizer to add this email to the admin allowlist.")
@@ -64,7 +79,7 @@ module ClerkAuthenticatable
     render_forbidden("Staff access required") unless @current_user&.staff?
   end
 
-  def find_or_create_user(clerk_id:, email:, first_name:, last_name:)
+  def find_or_create_user(clerk_id:, email:, verified_email: nil, first_name:, last_name:)
     return nil if clerk_id.blank?
 
     user = User.active.find_by(clerk_id: clerk_id)
@@ -72,20 +87,30 @@ module ClerkAuthenticatable
       return sync_existing_user(user, email, first_name, last_name)
     end
 
-    if email.present?
-      user = User.active.find_by("LOWER(email) = ?", email.downcase)
+    if verified_email.present?
+      user = User.active.find_by("LOWER(email) = ?", verified_email.downcase)
       if user
-        return sync_existing_user(user, email, first_name, last_name, clerk_id: clerk_id)
+        return sync_existing_user(user, verified_email, first_name, last_name, clerk_id: clerk_id)
       end
 
-      whitelist = AdminWhitelist.active_for_email(email)
+      whitelist = AdminWhitelist.active_for_email(verified_email)
       if whitelist
         return create_whitelisted_user(
           clerk_id: clerk_id,
-          email: email,
+          email: verified_email,
           first_name: first_name,
           last_name: last_name,
           role: whitelist.role
+        )
+      end
+
+      if CampaignInvitation.pending_for_email(verified_email).exists?
+        return create_whitelisted_user(
+          clerk_id: clerk_id,
+          email: verified_email,
+          first_name: first_name,
+          last_name: last_name,
+          role: "viewer"
         )
       end
     end
@@ -147,6 +172,13 @@ module ClerkAuthenticatable
     updates[:last_name] = last_name if last_name.present?
     updates[:role] = role if role.present? && user.role != role
     user.update!(updates) if updates.any?
+  end
+
+  def verified_email_from_claims(decoded)
+    return nil unless decoded["email_verified"] == true
+
+    direct = decoded["email"] || decoded["email_address"] || decoded["primary_email_address"]
+    direct.presence
   end
 
   def email_from_claims(decoded)

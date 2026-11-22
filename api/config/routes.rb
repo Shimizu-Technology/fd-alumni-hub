@@ -24,8 +24,27 @@ Rails.application.routes.draw do
         resources :sponsors, only: :index
       end
 
+      namespace :campaign do
+        scope ":campaign_slug" do
+          get :settings, to: "settings#show"
+          patch :settings, to: "settings#update"
+          post "uploads/presign", to: "uploads#presign"
+          resources :events, only: [ :index, :create, :update ] do
+            post :archive, on: :member
+          end
+          resources :posts, only: [ :index, :create, :update, :destroy ]
+        end
+      end
+
       namespace :admin do
         resource :dashboard, only: :show, controller: "dashboard"
+        resources :campaigns, only: [ :index, :show, :create, :update ] do
+          resources :memberships, controller: "campaign_memberships", only: [ :index, :create, :update ]
+          resources :invitations, controller: "campaign_invitations", only: [ :index, :create ] do
+            post :revoke, on: :member
+          end
+        end
+        resources :whitelists, only: [ :index, :create, :update ]
         resources :tournaments, only: [ :index, :show, :create, :update ] do
           post :recompute_standings, path: "recompute-standings", on: :member
         end
