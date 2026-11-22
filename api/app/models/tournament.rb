@@ -2,6 +2,7 @@ class Tournament < ApplicationRecord
   STATUSES = %w[upcoming live completed cancelled].freeze
 
   has_one :host_campaign, dependent: :restrict_with_error
+  has_many :divisions, dependent: :destroy
   has_many :teams, dependent: :destroy
   has_many :games, dependent: :destroy
   has_many :standings, dependent: :destroy
@@ -42,6 +43,17 @@ class Tournament < ApplicationRecord
       upcoming
     else
       context[:latest_completed_with_games] || upcoming
+    end
+  end
+
+  def ensure_default_divisions!
+    Division::DEFAULT_SPECS.map do |spec|
+      divisions.find_or_create_by!(slug: spec[:name].parameterize) do |division|
+        division.name = spec[:name]
+        division.position = spec[:position]
+        division.counts_for_standings = spec[:counts_for_standings]
+        division.active = true
+      end
     end
   end
 

@@ -3,23 +3,25 @@ module Api
     module Admin
       class GamesController < BaseController
         def index
-          games = Game.includes(:division_record, home_team: :division_record, away_team: :division_record).ordered
+          games = games_with_associations.ordered
           games = games.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
           games = games.where(division: params[:division]) if params[:division].present?
+          games = games.where(division_id: params[:divisionId]) if params[:divisionId].present?
+          games = games.where(phase: params[:phase]) if params[:phase].present?
 
           render json: { games: games.limit(500).map(&:api_json) }
         end
 
         def show
-          game = Game.includes(:division_record, home_team: :division_record, away_team: :division_record).find(params[:id])
+          game = games_with_associations.find(params[:id])
           render json: { game: game.api_json }
         end
 
         def create
-          game = Game.new(game_params)
+          game = Game.new(game_params.except(:lock_version))
 
           if game.save
-            render json: { game: game.api_json }, status: :created
+            render json: { game: games_with_associations.find(game.id).api_json }, status: :created
           else
             render_errors(game)
           end
@@ -28,20 +30,33 @@ module Api
         def update
           game = Game.find(params[:id])
           incoming = game_params
+          lock_version_param = incoming.delete(:lock_version)
+          if !lock_version_param.nil? && lock_version_param.to_s.strip != ""
+            game.lock_version = lock_version_param.to_i
+          end
           standings_sensitive = standings_sensitive_change?(incoming)
 
           if game.update(incoming)
             recompute = standings_sensitive ? Standings::Recompute.call(game.tournament) : nil
             render json: {
-              game: Game.includes(:division_record, home_team: :division_record, away_team: :division_record).find(game.id).api_json,
+              game: games_with_associations.find(game.id).api_json,
               recompute: recompute && { teams: recompute.teams, games: recompute.games }
             }.compact
           else
             render_errors(game)
           end
+        rescue ActiveRecord::StaleObjectError
+          render json: {
+            error: "This game was updated by another user. Reload to review the latest values.",
+            currentGame: games_with_associations.find(game.id).api_json
+          }, status: :conflict
         end
 
         private
+
+        def games_with_associations
+          Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
+        end
 
         def game_params
           raw = params.fetch(:game, params)
@@ -56,6 +71,21 @@ module Api
             :startTime,
             :venue,
             :status,
+            :status_note,
+            :statusNote,
+            :phase,
+            :game_number,
+            :gameNumber,
+            :bracket_code,
+            :bracketCode,
+            :bracket_round,
+            :bracketRound,
+            :bracket_slot,
+            :bracketSlot,
+            :next_game_id,
+            :nextGameId,
+            :next_game_slot,
+            :nextGameSlot,
             :home_score,
             :homeScore,
             :away_score,
@@ -68,8 +98,8 @@ module Api
             :division_id,
             :divisionId,
             :division,
-            :bracket_code,
-            :bracketCode
+            :lock_version,
+            :lockVersion
           )
 
           attrs = {}
@@ -79,6 +109,14 @@ module Api
           assign_param(attrs, permitted, :start_time, :start_time, :startTime)
           assign_param(attrs, permitted, :venue, :venue)
           assign_param(attrs, permitted, :status, :status)
+          assign_param(attrs, permitted, :status_note, :status_note, :statusNote)
+          assign_param(attrs, permitted, :phase, :phase)
+          assign_param(attrs, permitted, :game_number, :game_number, :gameNumber)
+          assign_param(attrs, permitted, :bracket_code, :bracket_code, :bracketCode)
+          assign_param(attrs, permitted, :bracket_round, :bracket_round, :bracketRound)
+          assign_param(attrs, permitted, :bracket_slot, :bracket_slot, :bracketSlot)
+          assign_param(attrs, permitted, :next_game_id, :next_game_id, :nextGameId)
+          assign_param(attrs, permitted, :next_game_slot, :next_game_slot, :nextGameSlot)
           assign_param(attrs, permitted, :home_score, :home_score, :homeScore)
           assign_param(attrs, permitted, :away_score, :away_score, :awayScore)
           assign_param(attrs, permitted, :stream_url, :stream_url, :streamUrl)
@@ -86,14 +124,14 @@ module Api
           assign_param(attrs, permitted, :notes, :notes)
           assign_param(attrs, permitted, :division_id, :division_id, :divisionId)
           assign_param(attrs, permitted, :division, :division)
-          assign_param(attrs, permitted, :bracket_code, :bracket_code, :bracketCode)
+          assign_param(attrs, permitted, :lock_version, :lock_version, :lockVersion)
           attrs
         end
 
         def standings_sensitive_change?(incoming)
           incoming.key?(:status) || incoming.key?(:home_score) || incoming.key?(:away_score) ||
             incoming.key?(:home_team_id) || incoming.key?(:away_team_id) ||
-            incoming.key?(:notes) || incoming.key?(:bracket_code) ||
+            incoming.key?(:phase) || incoming.key?(:notes) || incoming.key?(:bracket_code) ||
             incoming.key?(:division_id) || incoming.key?(:division)
         end
       end

@@ -5,9 +5,13 @@ class Standing < ApplicationRecord
   validates :team_id, uniqueness: { scope: :tournament_id }
   validates :wins, :losses, :points_for, :points_against,
     numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :division_rank, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
   validate :team_belongs_to_tournament
 
-  scope :ranked, -> { includes(team: [ :division_record, { team_class_memberships: :class_cohort } ]).order(wins: :desc, losses: :asc, points_for: :desc, points_against: :asc, id: :asc) }
+  scope :ranked, -> {
+    includes(team: [ :division_record, { team_class_memberships: :class_cohort } ])
+      .order(Arel.sql("division_rank ASC NULLS LAST, wins DESC, losses ASC, (points_for - points_against) DESC, points_for DESC, id ASC"))
+  }
 
   def point_differential
     points_for - points_against
@@ -18,6 +22,7 @@ class Standing < ApplicationRecord
       id: id.to_s,
       tournamentId: tournament_id.to_s,
       teamId: team_id.to_s,
+      rank: division_rank,
       wins: wins,
       losses: losses,
       pointsFor: points_for,

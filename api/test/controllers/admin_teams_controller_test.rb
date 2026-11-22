@@ -10,8 +10,15 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
       end_date: Date.new(2026, 7, 24),
       status: "upcoming"
     )
-    @maroon = Division.create!(name: "Maroon", position: 1)
-    @future_division = Division.create!(name: "Platinum", starts_year: 2027, position: 2)
+    @other_tournament = Tournament.create!(
+      name: "FD Alumni Basketball Tournament",
+      year: 2027,
+      start_date: Date.new(2027, 7, 2),
+      end_date: Date.new(2027, 7, 23),
+      status: "upcoming"
+    )
+    @maroon = @tournament.divisions.create!(name: "Maroon", position: 1)
+    @other_tournament_division = @other_tournament.divisions.create!(name: "Platinum", position: 2)
     @team = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
   end
 
@@ -30,14 +37,14 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Maroon", body.dig("team", "division")
   end
 
-  test "division id must be available for tournament year" do
+  test "division id must belong to the same tournament" do
     patch "/api/v1/admin/teams/#{@team.id}",
-      params: { team: { divisionId: @future_division.id } },
+      params: { tournamentId: @tournament.id, team: { divisionId: @other_tournament_division.id } },
       headers: auth_headers,
       as: :json
 
     assert_response :unprocessable_entity
-    assert_includes JSON.parse(response.body)["errors"].join, "Division is not available for this tournament year"
+    assert_includes JSON.parse(response.body)["errors"].join, "must belong to the same tournament"
   end
 
   test "explicit null division clears a team division" do
@@ -116,14 +123,7 @@ class AdminTeamsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "same represented class can be used in a different tournament" do
-    other_tournament = Tournament.create!(
-      name: "FD Alumni Basketball Tournament",
-      year: 2027,
-      start_date: Date.new(2027, 7, 3),
-      end_date: Date.new(2027, 7, 24),
-      status: "upcoming"
-    )
-    other_team = other_tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
+    other_team = @other_tournament.teams.create!(class_year_label: "12 Pack", display_name: "12 Pack", division: "Maroon")
     ClassArchive::SyncManualTeamMemberships.call(other_team, class_keys: %w[12 17])
     assert_equal [ 2012, 2017 ], other_team.reload.class_cohorts.order(:graduation_year).map(&:graduation_year)
 

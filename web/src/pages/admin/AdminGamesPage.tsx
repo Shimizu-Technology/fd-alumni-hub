@@ -1,16 +1,42 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { api } from '../../lib/api'
+import { api, ApiError } from '../../lib/api'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, divisionNameById, gameResultLabel, teamDivision } from '../../lib/games'
-import { externalHref } from '../../lib/urls'
-import type { Division, Game, Team, Tournament } from '../../lib/types'
+import { normalizeHttpsInput, safeHttpsHref } from '../../lib/urls'
+import type { BracketRound, Division, Game, GamePhase, GameStatus, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 const legacyPrefix = 'legacy:'
 const tipoffQuickTimes = ['11:00', '12:00', '13:15', '13:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30']
 type GameSortOption = 'startAsc' | 'startDesc' | 'matchup' | 'status'
+
+const GAME_STATUS_OPTIONS: Array<{ value: GameStatus; label: string }> = [
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'live', label: 'Live' },
+  { value: 'final', label: 'Final' },
+  { value: 'delayed', label: 'Delayed' },
+  { value: 'postponed', label: 'Postponed' },
+  { value: 'cancelled', label: 'Cancelled' },
+]
+
+const GAME_PHASE_OPTIONS: Array<{ value: GamePhase; label: string }> = [
+  { value: 'pool', label: 'Pool play' },
+  { value: 'playoff', label: 'Playoff' },
+  { value: 'fatherson', label: 'Father-Son' },
+  { value: 'exhibition', label: 'Exhibition' },
+]
+
+const BRACKET_ROUND_OPTIONS: Array<{ value: '' | BracketRound; label: string }> = [
+  { value: '', label: 'None' },
+  { value: 'play_in', label: 'Play-in' },
+  { value: 'round_of_16', label: 'Round of 16' },
+  { value: 'quarterfinal', label: 'Quarterfinal' },
+  { value: 'semifinal', label: 'Semifinal' },
+  { value: 'final', label: 'Championship Final' },
+  { value: 'third_place', label: 'Third Place' },
+]
 
 export function AdminGamesPage() {
   const [tournamentId, setTournamentId] = useTournamentSelection()
@@ -44,7 +70,7 @@ export function AdminGamesPage() {
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader eyebrow="Admin" title="Games and scores" description="Build the schedule, enter final scores, and attach GuamTime ticket links or Clutch stream links for each game. Final scores automatically refresh standings." />
+      <PageHeader eyebrow="Admin" title="Games and scores" description="Build the schedule, enter final scores, and attach ticket or stream links for each game. Final pool scores automatically refresh division standings." />
       <TournamentFilter tournaments={tournaments} value={currentTournament?.id || ''} onChange={setTournamentId} />
       <CreateGamePanel tournament={currentTournament} teams={data?.teams || []} gamesCount={games.length} divisions={divisions} onSaved={reload} />
       <Panel>
@@ -73,8 +99,14 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
 function GameToolbar({ query, status, division, sort, divisions, onQueryChange, onStatusChange, onDivisionChange, onSortChange }: { query: string; status: string; division: string; sort: GameSortOption; divisions: string[]; onQueryChange: (value: string) => void; onStatusChange: (value: string) => void; onDivisionChange: (value: string) => void; onSortChange: (value: GameSortOption) => void }) {
   return (
     <div className="game-toolbar toolbar-panel">
-      <label><span>Search games</span><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Team, bracket, ticket, stream" /></label>
-      <label><span>Status</span><select value={status} onChange={(event) => onStatusChange(event.target.value)}><option value="">All statuses</option><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="final">Final</option></select></label>
+      <label><span>Search games</span><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Team, game #, bracket, link" /></label>
+      <label>
+        <span>Status</span>
+        <select value={status} onChange={(event) => onStatusChange(event.target.value)}>
+          <option value="">All statuses</option>
+          {GAME_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>
       <label><span>Division</span><select value={division} onChange={(event) => onDivisionChange(event.target.value)}><option value="">All divisions</option>{divisions.map((name) => <option key={name} value={name}>{name}</option>)}</select></label>
       <label><span>Sort</span><select value={sort} onChange={(event) => onSortChange(event.target.value as GameSortOption)}><option value="startAsc">Start time · earliest</option><option value="startDesc">Start time · latest</option><option value="matchup">Matchup</option><option value="status">Status</option></select></label>
     </div>
@@ -82,7 +114,22 @@ function GameToolbar({ query, status, division, sort, divisions, onQueryChange, 
 }
 
 function CreateGamePanel({ tournament, teams, gamesCount, divisions, onSaved }: { tournament: Tournament | null; teams: Team[]; gamesCount: number; divisions: Division[]; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ homeTeamId: '', awayTeamId: '', startDate: guamTodayInputValue(), startTime: '18:30', divisionId: '', bracketCode: '', ticketUrl: '', streamUrl: '', status: 'scheduled' as Game['status'] })
+  const [form, setForm] = useState({
+    homeTeamId: '',
+    awayTeamId: '',
+    startDate: guamTodayInputValue(),
+    startTime: '18:30',
+    divisionId: '',
+    phase: 'pool' as GamePhase,
+    gameNumber: '',
+    bracketCode: '',
+    bracketRound: '' as '' | BracketRound,
+    bracketSlot: '',
+    ticketUrl: '',
+    streamUrl: '',
+    status: 'scheduled' as GameStatus,
+    statusNote: '',
+  })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [open, setOpen] = useState(gamesCount === 0)
@@ -104,6 +151,17 @@ function CreateGamePanel({ tournament, teams, gamesCount, divisions, onSaved }: 
       return
     }
 
+    const ticket = normalizeHttpsInput(form.ticketUrl, 'Ticket URL')
+    if (!ticket.ok) {
+      setMessage(ticket.error)
+      return
+    }
+    const stream = normalizeHttpsInput(form.streamUrl, 'Stream URL')
+    if (!stream.ok) {
+      setMessage(stream.error)
+      return
+    }
+
     const divisionAttrs = form.divisionId ? divisionPayload(form.divisionId, divisions) : derivedDivisionPayload(form.homeTeamId, form.awayTeamId, availableTeams)
 
     setSaving(true)
@@ -113,14 +171,19 @@ function CreateGamePanel({ tournament, teams, gamesCount, divisions, onSaved }: 
         homeTeamId: form.homeTeamId,
         awayTeamId: form.awayTeamId,
         status: form.status,
+        statusNote: form.statusNote.trim() || null,
+        phase: form.phase,
+        gameNumber: form.gameNumber.trim() || null,
         venue: DEFAULT_GAME_VENUE,
-        bracketCode: form.bracketCode,
-        ticketUrl: externalHref(form.ticketUrl),
-        streamUrl: externalHref(form.streamUrl),
+        bracketCode: form.bracketCode.trim() || null,
+        bracketRound: form.bracketRound || null,
+        bracketSlot: form.bracketSlot.trim() ? Number(form.bracketSlot) : null,
+        ticketUrl: ticket.url,
+        streamUrl: stream.url,
         startTime: guamLocalDateTimeInputToIso(`${form.startDate}T${form.startTime}`),
         ...divisionAttrs,
       })
-      setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', startTime: '18:30', divisionId: '', bracketCode: '', ticketUrl: '', streamUrl: '' }))
+      setForm((current) => ({ ...current, homeTeamId: '', awayTeamId: '', startTime: '18:30', divisionId: '', gameNumber: '', bracketCode: '', bracketRound: '', bracketSlot: '', ticketUrl: '', streamUrl: '', statusNote: '' }))
       setMessage('Game created')
       await onSaved()
     } catch (err) {
@@ -154,9 +217,13 @@ function CreateGamePanel({ tournament, teams, gamesCount, divisions, onSaved }: 
               <Field label="Game date (Guam)"><input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} required /></Field>
               <TipoffTimeField value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} />
               <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
-              <Field label="Bracket / round"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
-              <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="GuamTime link" /></Field>
-              <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="Clutch or partner stream" /></Field>
+              <Field label="Phase"><select value={form.phase} onChange={(event) => setForm({ ...form, phase: event.target.value as GamePhase })}>{GAME_PHASE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+              <Field label="Game #"><input value={form.gameNumber} onChange={(event) => setForm({ ...form, gameNumber: event.target.value })} placeholder="G1, MQF1, FS1" /></Field>
+              <Field label="Bracket / code"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} placeholder="Pool A, Semifinal, Final" /></Field>
+              <Field label="Bracket round"><select value={form.bracketRound} onChange={(event) => setForm({ ...form, bracketRound: event.target.value as '' | BracketRound })}>{BRACKET_ROUND_OPTIONS.map((option) => <option key={option.value || 'none'} value={option.value}>{option.label}</option>)}</select></Field>
+              <Field label="Bracket slot"><input type="number" min={1} value={form.bracketSlot} onChange={(event) => setForm({ ...form, bracketSlot: event.target.value })} placeholder="1, 2, ..." /></Field>
+              <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="https://..." /></Field>
+              <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="https://..." /></Field>
             </FormGrid>
             <button className="btn primary" type="submit" disabled={saving || availableTeams.length < 2}>{saving ? 'Saving' : 'Create game'}</button>
           </form>
@@ -188,6 +255,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   const [editingDetails, setEditingDetails] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [conflict, setConflict] = useState(false)
   const scoreComplete = form.homeScore !== '' && form.awayScore !== ''
   const detailsDirty = gameDetailsChanged(form, game, divisions)
   const projectedResult = gameResultLabel({
@@ -198,9 +266,10 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 
   useEffect(() => {
     setForm(gameFormState(game, divisions))
+    setConflict(false)
   }, [game, divisions])
 
-  const saveScores = async (statusOverride?: Game['status']) => {
+  const saveScores = async (statusOverride?: GameStatus) => {
     if (detailsDirty) {
       setEditingDetails(true)
       setSaveError('Save or cancel game detail changes before saving scores.')
@@ -209,16 +278,20 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 
     setSaving(true)
     setSaveError('')
+    setConflict(false)
     try {
       const nextStatus = statusOverride || form.status
       await api.adminUpdateGame(game.id, {
         status: nextStatus,
+        statusNote: form.statusNote.trim() || null,
         homeScore: form.homeScore === '' ? null : Number(form.homeScore),
         awayScore: form.awayScore === '' ? null : Number(form.awayScore),
+        lockVersion: game.lockVersion,
       })
       if (statusOverride) setForm((current) => ({ ...current, status: statusOverride }))
       await onSaved()
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setConflict(true)
       setSaveError(err instanceof Error ? err.message : 'Unable to save score')
     } finally {
       setSaving(false)
@@ -226,22 +299,39 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
   }
 
   const saveDetails = async () => {
+    const ticket = normalizeHttpsInput(form.ticketUrl, 'Ticket URL')
+    if (!ticket.ok) {
+      setSaveError(ticket.error)
+      return
+    }
+    const stream = normalizeHttpsInput(form.streamUrl, 'Stream URL')
+    if (!stream.ok) {
+      setSaveError(stream.error)
+      return
+    }
+
     setSaving(true)
     setSaveError('')
+    setConflict(false)
     try {
       await api.adminUpdateGame(game.id, {
-        status: form.status,
         startTime: guamLocalDateTimeInputToIso(form.startTime),
-        bracketCode: form.bracketCode,
-        ticketUrl: externalHref(form.ticketUrl),
-        streamUrl: externalHref(form.streamUrl),
+        phase: form.phase,
+        gameNumber: form.gameNumber.trim() || null,
+        bracketCode: form.bracketCode.trim() || null,
+        bracketRound: form.bracketRound || null,
+        bracketSlot: form.bracketSlot.trim() ? Number(form.bracketSlot) : null,
+        ticketUrl: ticket.url,
+        streamUrl: stream.url,
         notes: form.notes || null,
         venue: game.venue || DEFAULT_GAME_VENUE,
+        lockVersion: game.lockVersion,
         ...divisionPayload(form.divisionId, divisions),
       })
       setEditingDetails(false)
       await onSaved()
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setConflict(true)
       setSaveError(err instanceof Error ? err.message : 'Unable to save game details')
     } finally {
       setSaving(false)
@@ -252,6 +342,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
     setForm(gameFormState(game, divisions))
     setEditingDetails(false)
     setSaveError('')
+    setConflict(false)
   }
 
   return (
@@ -259,7 +350,7 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
       <div className="admin-row-head">
         <div>
           <strong>{game.awayTeam?.displayName} at {game.homeTeam?.displayName}</strong>
-          <span>{formatGuamDateTime(game.startTime)} · {game.venue || DEFAULT_GAME_VENUE}</span>
+          <span>{formatGuamDateTime(game.startTime)} · {game.venue || DEFAULT_GAME_VENUE}{game.gameNumber ? ` · #${game.gameNumber}` : ''}</span>
         </div>
         <StatusBadge status={game.status} />
       </div>
@@ -270,11 +361,24 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
         <FormGrid>
           <Field label="Away score"><input type="number" value={form.awayScore} onChange={(event) => setForm({ ...form, awayScore: event.target.value })} /></Field>
           <Field label="Home score"><input type="number" value={form.homeScore} onChange={(event) => setForm({ ...form, homeScore: event.target.value })} /></Field>
+          <Field label="Status">
+            <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as GameStatus })}>
+              {GAME_STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Status note (delay / reschedule)">
+            <input value={form.statusNote} onChange={(event) => setForm({ ...form, statusNote: event.target.value })} placeholder="Optional delay or gym note" />
+          </Field>
         </FormGrid>
         {projectedResult && <p className="form-note">{projectedResult}</p>}
-        {saveError && <p className="form-error" role="alert">{saveError}</p>}
+        {saveError && (
+          <p className="form-error" role="alert">
+            {saveError}{' '}
+            {conflict && <button type="button" className="btn secondary small" onClick={() => void onSaved()}>Reload latest</button>}
+          </p>
+        )}
         <div className="row-actions">
-          <button className="btn secondary" onClick={() => saveScores()} disabled={saving}>{saving ? 'Saving' : 'Save scores'}</button>
+          <button className="btn secondary" onClick={() => saveScores()} disabled={saving}>{saving ? 'Saving' : 'Save score & status'}</button>
           <button className="btn primary" onClick={() => saveScores('final')} disabled={saving || !scoreComplete}>{saving ? 'Saving' : 'Save final score'}</button>
           <button className="btn secondary" type="button" onClick={() => setEditingDetails((value) => !value)} aria-expanded={editingDetails}>{editingDetails ? 'Hide game details' : 'Edit game details'}</button>
         </div>
@@ -282,14 +386,17 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 
       {editingDetails && (
         <div className="game-detail-editor">
-          <div className="section-heading compact-heading"><h3>Game details</h3><span>Schedule, links, status</span></div>
+          <div className="section-heading compact-heading"><h3>Game details</h3><span>Schedule, phase, links (scores &amp; status untouched)</span></div>
           <FormGrid>
-            <Field label="Status"><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as Game['status'] })}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="final">Final</option></select></Field>
             <Field label="Start"><input type="datetime-local" value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></Field>
-            <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} /></Field>
-            <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} /></Field>
             <Field label="Division"><DivisionSelect value={form.divisionId} divisions={divisions} currentName={game.division} onChange={(divisionId) => setForm({ ...form, divisionId })} /></Field>
-            <Field label="Bracket"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
+            <Field label="Phase"><select value={form.phase} onChange={(event) => setForm({ ...form, phase: event.target.value as GamePhase })}>{GAME_PHASE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+            <Field label="Game #"><input value={form.gameNumber} onChange={(event) => setForm({ ...form, gameNumber: event.target.value })} /></Field>
+            <Field label="Bracket code"><input value={form.bracketCode} onChange={(event) => setForm({ ...form, bracketCode: event.target.value })} /></Field>
+            <Field label="Bracket round"><select value={form.bracketRound} onChange={(event) => setForm({ ...form, bracketRound: event.target.value as '' | BracketRound })}>{BRACKET_ROUND_OPTIONS.map((option) => <option key={option.value || 'none'} value={option.value}>{option.label}</option>)}</select></Field>
+            <Field label="Bracket slot"><input type="number" min={1} value={form.bracketSlot} onChange={(event) => setForm({ ...form, bracketSlot: event.target.value })} /></Field>
+            <Field label="Ticket URL"><input value={form.ticketUrl} onChange={(event) => setForm({ ...form, ticketUrl: event.target.value })} placeholder="https://..." /></Field>
+            <Field label="Stream URL"><input value={form.streamUrl} onChange={(event) => setForm({ ...form, streamUrl: event.target.value })} placeholder="https://..." /></Field>
           </FormGrid>
           <div className="row-actions">
             <button className="btn secondary" type="button" onClick={cancelDetails} disabled={saving}>Cancel</button>
@@ -302,12 +409,14 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
 }
 
 function GameDetailsSummary({ game }: { game: Game }) {
+  const safeTicket = safeHttpsHref(game.ticketUrl)
+  const safeStream = safeHttpsHref(game.streamUrl)
   return (
     <dl className="game-detail-summary">
       <div><dt>Division</dt><dd>{game.division || 'Use team division'}</dd></div>
-      <div><dt>Bracket</dt><dd>{game.bracketCode || 'Not set'}</dd></div>
-      <div><dt>Tickets</dt><dd>{game.ticketUrl ? <a href={externalHref(game.ticketUrl) || undefined} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
-      <div><dt>Stream</dt><dd>{game.streamUrl ? <a href={externalHref(game.streamUrl) || undefined} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
+      <div><dt>Phase</dt><dd>{game.phase || 'pool'}{game.bracketCode ? ` · ${game.bracketCode}` : ''}</dd></div>
+      <div><dt>Tickets</dt><dd>{safeTicket ? <a href={safeTicket} target="_blank" rel="noreferrer">Open ticket link</a> : 'Not posted'}</dd></div>
+      <div><dt>Stream</dt><dd>{safeStream ? <a href={safeStream} target="_blank" rel="noreferrer">Open stream link</a> : 'Not posted'}</dd></div>
     </dl>
   )
 }
@@ -315,10 +424,13 @@ function GameDetailsSummary({ game }: { game: Game }) {
 function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, divisions: Division[]) {
   const persisted = gameFormState(game, divisions)
 
-  return form.status !== persisted.status ||
-    form.startTime !== persisted.startTime ||
+  return form.startTime !== persisted.startTime ||
     form.divisionId !== persisted.divisionId ||
+    form.phase !== persisted.phase ||
+    form.gameNumber !== persisted.gameNumber ||
     form.bracketCode !== persisted.bracketCode ||
+    form.bracketRound !== persisted.bracketRound ||
+    form.bracketSlot !== persisted.bracketSlot ||
     form.ticketUrl !== persisted.ticketUrl ||
     form.streamUrl !== persisted.streamUrl ||
     form.notes !== persisted.notes
@@ -327,11 +439,16 @@ function gameDetailsChanged(form: ReturnType<typeof gameFormState>, game: Game, 
 function gameFormState(game: Game, divisions: Division[]) {
   return {
     status: game.status,
+    statusNote: game.statusNote || '',
     homeScore: game.homeScore?.toString() || '',
     awayScore: game.awayScore?.toString() || '',
     startTime: toLocalDateTimeInputValue(game.startTime),
     divisionId: divisionValueFor(game, divisions),
+    phase: (game.phase || 'pool') as GamePhase,
+    gameNumber: game.gameNumber || '',
     bracketCode: game.bracketCode || '',
+    bracketRound: (game.bracketRound || '') as '' | BracketRound,
+    bracketSlot: game.bracketSlot?.toString() || '',
     ticketUrl: game.ticketUrl || '',
     streamUrl: game.streamUrl || '',
     notes: game.notes || '',
@@ -395,6 +512,7 @@ function filterAndSortGames(games: Game[], query: string, status: string, divisi
         game.awayTeam?.displayName,
         game.homeTeam?.displayName,
         game.division,
+        game.gameNumber,
         game.bracketCode,
         game.ticketUrl,
         game.streamUrl,

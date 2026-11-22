@@ -5,7 +5,7 @@ import { selectedTournament, tournamentScopedPath, useTournamentSelection } from
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameMatchupLabel } from '../../lib/games'
-import { externalHref } from '../../lib/urls'
+import { normalizeHttpsInput } from '../../lib/urls'
 import type { Game, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, LoadingState, PageHeader, PaginationControls, Panel, StatCard } from '../../components/ui'
 
@@ -109,16 +109,29 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
   }, [game.id, game.homeScore, game.awayScore, gap.missingTicket, gap.missingStream, gap.missingScore])
 
   const saveUpdates = async () => {
-    const linkUpdate: { id: string; ticketUrl?: string | null; streamUrl?: string | null } = { id: game.id }
+    const linkUpdate: { id: string; ticketUrl?: string | null; streamUrl?: string | null; lockVersion?: number } = {
+      id: game.id,
+      lockVersion: game.lockVersion,
+    }
     let hasLinkUpdate = false
 
     if (gap.missingTicket && ticketUrl.trim()) {
-      linkUpdate.ticketUrl = externalHref(ticketUrl)
+      const ticket = normalizeHttpsInput(ticketUrl, 'Ticket URL')
+      if (!ticket.ok) {
+        setMessage(ticket.error)
+        return
+      }
+      linkUpdate.ticketUrl = ticket.url
       hasLinkUpdate = true
     }
 
     if (gap.missingStream && streamUrl.trim()) {
-      linkUpdate.streamUrl = externalHref(streamUrl)
+      const stream = normalizeHttpsInput(streamUrl, 'Stream URL')
+      if (!stream.ok) {
+        setMessage(stream.error)
+        return
+      }
+      linkUpdate.streamUrl = stream.url
       hasLinkUpdate = true
     }
 
@@ -139,10 +152,20 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
     setSaving(true)
     setMessage('')
     try {
-      const requests: Array<Promise<unknown>> = []
-      if (hasLinkUpdate) requests.push(api.adminBulkLinks([linkUpdate]))
-      if (scoreChanged) requests.push(api.adminUpdateGame(game.id, { homeScore: parsedHomeScore, awayScore: parsedAwayScore, status: 'final' }))
-      await Promise.all(requests)
+      let nextLockVersion = game.lockVersion
+      if (hasLinkUpdate) {
+        const linkRes = await api.adminBulkLinks([linkUpdate])
+        const updatedGame = linkRes.games.find((item) => item.id === game.id)
+        if (updatedGame?.lockVersion !== undefined) nextLockVersion = updatedGame.lockVersion
+      }
+      if (scoreChanged) {
+        await api.adminUpdateGame(game.id, {
+          homeScore: parsedHomeScore,
+          awayScore: parsedAwayScore,
+          status: 'final',
+          lockVersion: nextLockVersion,
+        })
+      }
       await onSaved()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Unable to save updates')

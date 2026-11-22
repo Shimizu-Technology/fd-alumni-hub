@@ -9,28 +9,58 @@ module Api
               tournament: nil,
               standings: [],
               divisions: [],
-              scoreCoverage: { scoredGames: 0, totalGames: 0, percent: 0 }
+              divisionStandings: [],
+              scoreCoverage: Standings::Coverage.empty
             }
           end
 
-          teams = tournament.teams
-          divisions = teams.distinct.order(:division).pluck(:division).compact
-          team_scope = params[:division].present? ? teams.where(division: params[:division]) : teams
-          standings = tournament.standings.ranked.where(team_id: team_scope.select(:id))
-          total_games = tournament.games.count
-          scored_games = tournament.games.scored.count
-          percent = total_games.positive? ? ((scored_games.to_f / total_games) * 1000).round / 10.0 : 0
+          eligible_divisions = tournament.divisions.standings_eligible.ordered.to_a
+          selected_division = resolve_division_filter(eligible_divisions)
+
+          filtered_divisions = if params[:divisionId].present? || params[:division].present?
+            selected_division ? [ selected_division ] : []
+          else
+            eligible_divisions
+          end
+
+          all_standings = tournament.standings.ranked.to_a
+          standings_by_division = all_standings.group_by { |standing| standing.team.division_id }
+
+          division_standings = filtered_divisions.map do |division|
+            {
+              division: division.api_json(tournament: tournament),
+              standings: (standings_by_division[division.id] || []).map(&:api_json),
+              scoreCoverage: Standings::Coverage.for(tournament, division_id: division.id)
+            }
+          end
+
+          filtered_standings = if params[:divisionId].present? || params[:division].present?
+            selected_division ? (standings_by_division[selected_division.id] || []) : []
+          else
+            eligible_ids = eligible_divisions.map(&:id)
+            eligible_ids.flat_map { |div_id| standings_by_division[div_id] || [] }
+          end
+
+          coverage = selected_division ? Standings::Coverage.for(tournament, division_id: selected_division.id) : Standings::Coverage.for(tournament)
 
           render json: {
             tournament: tournament.api_json,
-            standings: standings.map(&:api_json),
-            divisions: divisions,
-            scoreCoverage: {
-              scoredGames: scored_games,
-              totalGames: total_games,
-              percent: percent
-            }
+            standings: filtered_standings.map(&:api_json),
+            divisions: eligible_divisions.map(&:name),
+            divisionStandings: division_standings,
+            scoreCoverage: coverage
           }
+        end
+
+        private
+
+        def resolve_division_filter(divisions)
+          if params[:divisionId].present?
+            divisions.find { |division| division.id.to_s == params[:divisionId].to_s }
+          elsif params[:division].present?
+            token = params[:division].to_s.strip.downcase
+            divisions.find { |division| division.name.downcase == token || division.slug.downcase == token }
+          end
         end
       end
     end

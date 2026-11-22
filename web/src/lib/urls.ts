@@ -29,3 +29,29 @@ export function safeHttpsHref(value?: string | null) {
     return null
   }
 }
+
+export type NormalizedUrlResult =
+  | { ok: true; url: string | null }
+  | { ok: false; error: string }
+
+export function normalizeHttpsInput(value?: string | null, label = 'URL'): NormalizedUrlResult {
+  const raw = value?.trim()
+  if (!raw) return { ok: true, url: null }
+
+  let candidate = raw
+  if (candidate.startsWith('//')) {
+    candidate = `https:${candidate}`
+  } else if (/^http:\/\//i.test(candidate)) {
+    const devLocalhost = import.meta.env.DEV && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(candidate)
+    if (!devLocalhost) candidate = `https://${candidate.slice(7)}`
+  } else if (!/^[a-z][a-z0-9+.-]*:/i.test(candidate)) {
+    candidate = `https://${candidate}`
+  }
+
+  const normalized = safeHttpsHref(candidate)
+  if (!normalized) {
+    return { ok: false, error: `${label} must be a valid https:// URL` }
+  }
+
+  return { ok: true, url: normalized }
+}

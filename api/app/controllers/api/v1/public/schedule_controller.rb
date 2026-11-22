@@ -6,9 +6,9 @@ module Api
           tournament = current_tournament
           return render json: { tournament: nil, games: [], teams: [], divisions: [], phases: [] } unless tournament
 
-          games = tournament.games.includes(:division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] }).ordered.to_a
+          games = tournament.games.includes(:division_record, :score_updated_by, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] }).ordered.to_a
           teams = tournament.teams.includes(:division_record, team_class_memberships: :class_cohort).order(:display_name, :id).to_a
-          divisions = games.filter_map(&:resolved_division).uniq.sort
+          divisions = ordered_division_names(tournament, games)
           phases = collect_phases(games)
 
           games = apply_division_filter(games, params[:division]) if params[:division].present?
@@ -26,6 +26,14 @@ module Api
 
         private
 
+        def ordered_division_names(tournament, games)
+          configured = tournament.divisions.ordered.pluck(:name)
+          from_games = games.filter_map(&:resolved_division).uniq
+          ordered_known = configured.select { |name| from_games.include?(name) }
+          extras = (from_games - ordered_known).sort
+          ordered_known + extras
+        end
+
         def apply_division_filter(games, division)
           games.select { |game| game.resolved_division == division }
         end
@@ -38,6 +46,8 @@ module Api
             games.select(&:playoff_phase?)
           when "fatherson"
             games.select(&:fatherson_phase?)
+          when "exhibition"
+            games.select(&:exhibition_phase?)
           else
             games
           end
@@ -52,6 +62,7 @@ module Api
           phases << "pool" if games.any?(&:pool_phase?)
           phases << "playoff" if games.any?(&:playoff_phase?)
           phases << "fatherson" if games.any?(&:fatherson_phase?)
+          phases << "exhibition" if games.any?(&:exhibition_phase?)
           phases
         end
       end

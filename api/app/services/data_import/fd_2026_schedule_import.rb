@@ -54,6 +54,7 @@ module DataImport
       tournament.end_date = source_end_date if tournament.new_record? || overwrite? || tournament.end_date.blank?
       tournament.status = attrs.fetch("status") if tournament.new_record?
       tournament.save!
+      tournament.ensure_default_divisions!
       tournament
     end
 
@@ -94,14 +95,23 @@ module DataImport
       game.home_team = home_team
       game.start_time = start_time
       game.venue = source.fetch("venue", "The Jungle")
+      game.phase = normalized_phase(entry.fetch("phase"))
+      game.game_number = entry.fetch("gameNumber")
       game.bracket_code = entry.fetch("gameNumber")
       game.notes = imported_notes(game.notes, entry.fetch("phase"), source.fetch("scheduleAsOf"))
     end
 
     def preserve_schedule_metadata(game, entry, source)
       game.venue = source.fetch("venue", "The Jungle") if game.venue.blank?
+      game.phase = normalized_phase(entry.fetch("phase")) if game.phase.blank?
+      game.game_number = entry.fetch("gameNumber") if game.game_number.blank?
       game.bracket_code = entry.fetch("gameNumber") if game.bracket_code.blank?
       game.notes = imported_notes(game.notes, entry.fetch("phase"), source.fetch("scheduleAsOf")) unless game.notes.to_s.include?("phase=")
+    end
+
+    def normalized_phase(value)
+      candidate = value.to_s.strip.downcase
+      Game::PHASES.include?(candidate) ? candidate : "pool"
     end
 
     def game_for_import(tournament, entry, away_team, home_team, start_time)

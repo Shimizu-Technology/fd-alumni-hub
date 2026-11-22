@@ -16,13 +16,15 @@ class Team < ApplicationRecord
   validates :class_year_label, :display_name, presence: true
   validates :display_name, uniqueness: { scope: :tournament_id }
   validate :division_record_exists
-  validate :division_record_is_available_for_tournament
+  validate :division_record_belongs_to_tournament
 
   def resolved_division
     division_record&.name || division
   end
 
   def special_division?
+    return !division_record.counts_for_standings? if division_record
+
     resolved_division.to_s.casecmp?("Special")
   end
 
@@ -44,7 +46,9 @@ class Team < ApplicationRecord
   end
 
   def standings_exclusion_reason
-    return "special_division" if special_division?
+    return "no_division" if division_id.blank?
+    return "inactive_division" if division_record && !division_record.active?
+    return "non_standings_division" if special_division?
     return "fatherson_team" if fatherson_team?
     return "placeholder_team" if placeholder_team?
 
@@ -133,10 +137,14 @@ class Team < ApplicationRecord
     ClassArchive::SyncTeamMemberships.call(self)
   end
 
-  def division_record_is_available_for_tournament
-    return unless division_record && tournament
-    return if division_record.available_for?(tournament)
+  def division_record_belongs_to_tournament
+    return unless division_record && tournament_id.present?
+    return if division_record.tournament_id == tournament_id && division_record.active?
 
-    errors.add(:division_id, "is not available for this tournament year")
+    if division_record.tournament_id != tournament_id
+      errors.add(:division_id, "must belong to the same tournament")
+    else
+      errors.add(:division_id, "is not active for this tournament")
+    end
   end
 end

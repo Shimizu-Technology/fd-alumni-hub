@@ -22,13 +22,15 @@ class AdminTournamentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.new(2026, 7, 3), @tournament.reload.start_date
   end
 
-  test "recompute standings returns freshly recomputed rows" do
-    class_2016 = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
-    class_2017 = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
+  test "recompute standings returns freshly recomputed rows and pool scoreCoverage" do
+    maroon = @tournament.divisions.create!(name: "Maroon", position: 1)
+    class_2016 = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division_record: maroon)
+    class_2017 = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division_record: maroon)
     @tournament.standings.create!(team: class_2016, wins: 9, losses: 0, points_for: 999, points_against: 1)
     @tournament.games.create!(
       home_team: class_2016,
       away_team: class_2017,
+      division_record: maroon,
       start_time: Time.zone.local(2026, 7, 3, 18, 0),
       status: "final",
       home_score: 72,
@@ -40,10 +42,34 @@ class AdminTournamentsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    standings = JSON.parse(response.body).fetch("standings")
+    body = JSON.parse(response.body)
+    standings = body.fetch("standings")
     class_2016_row = standings.find { |row| row.dig("team", "displayName") == "Class of 2016" }
+    assert_equal 1, class_2016_row["rank"]
     assert_equal 1, class_2016_row["wins"]
     assert_equal 72, class_2016_row["pointsFor"]
+    assert_equal 1, body.dig("scoreCoverage", "scoredPoolGames")
+    assert_equal 1, body.dig("scoreCoverage", "totalPoolGames")
+  end
+
+  test "creating tournament with seedDefaultDivisions creates default per-tournament divisions" do
+    post "/api/v1/admin/tournaments",
+      params: {
+        tournament: {
+          name: "FD 2027",
+          year: 2027,
+          startDate: "2027-07-02",
+          endDate: "2027-07-23",
+          status: "upcoming",
+          seedDefaultDivisions: true
+        }
+      },
+      headers: auth_headers,
+      as: :json
+
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert_equal %w[Maroon Gold Platinum Special], body.fetch("divisions").map { |d| d["name"] }
   end
 
   test "missing tournament returns JSON 404" do

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { externalHref, safeHttpsHref } from '../urls'
+import { externalHref, normalizeHttpsInput, safeHttpsHref } from '../urls'
 
 describe('urls helpers', () => {
   it('normalizes valid external http/https URLs and bare domains', () => {
@@ -27,5 +27,20 @@ describe('urls helpers', () => {
     expect(safeHttpsHref('http://evil.example/a.pdf')).toBeNull()
     expect(safeHttpsHref('javascript:alert(1)')).toBeNull()
     expect(safeHttpsHref('not a url')).toBeNull()
+  })
+
+  it('auto-upgrades bare domains and http:// in normalizeHttpsInput while rejecting unsafe protocols', () => {
+    expect(normalizeHttpsInput('')).toEqual({ ok: true, url: null })
+    expect(normalizeHttpsInput('guamtime.net/events/fd')).toEqual({ ok: true, url: 'https://guamtime.net/events/fd' })
+    expect(normalizeHttpsInput('http://guamtime.net/events/fd')).toEqual({ ok: true, url: 'https://guamtime.net/events/fd' })
+    expect(normalizeHttpsInput('//clutchguam.com/live')).toEqual({ ok: true, url: 'https://clutchguam.com/live' })
+    expect(normalizeHttpsInput('javascript:alert(1)', 'Ticket URL')).toEqual({
+      ok: false,
+      error: 'Ticket URL must be a valid https:// URL',
+    })
+    expect(normalizeHttpsInput('https://user:pass@evil.example/', 'Stream URL')).toEqual({
+      ok: false,
+      error: 'Stream URL must be a valid https:// URL',
+    })
   })
 })

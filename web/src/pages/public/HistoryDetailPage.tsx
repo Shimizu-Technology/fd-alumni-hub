@@ -100,7 +100,7 @@ export function HistoryDetailPage() {
 
       <div className="stats-grid four">
         <StatCard label="Games tracked" value={failed?.schedule ? '—' : games.length} tone="maroon" />
-        <StatCard label="Final scores" value={failed?.schedule ? '—' : finalGames.length} detail={failed?.standings ? 'Unavailable' : scoreCoverage ? `${scoreCoverage.percent}% coverage` : 'Coverage pending'} />
+        <StatCard label="Final scores" value={failed?.schedule ? '—' : finalGames.length} detail={failed?.standings ? 'Unavailable' : scoreCoverage ? `${scoreCoverage.percent}% pool score coverage` : 'Coverage pending'} />
         <StatCard label="Articles" value={failed?.articles ? '—' : articles.length} tone="gold" />
         <StatCard label="Photos" value={failed?.media ? '—' : mediaAssets.length} />
       </div>
