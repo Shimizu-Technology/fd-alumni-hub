@@ -137,18 +137,29 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    event.target.value = ''
     if (!file) return
-    const text = await file.text()
-    setContent(text)
-    setPreview(null)
-    setCommitResult(null)
-    setError('')
+    if (file.size > 512_000) {
+      setError('Schedule file exceeds the 500 KB limit.')
+      return
+    }
+    try {
+      const text = await file.text()
+      setContent(text)
+      setPreview(null)
+      setCommitResult(null)
+      setOverwriteScores(false)
+      setError('')
+    } catch {
+      setError('Unable to read the selected file.')
+    }
   }
 
   const runPreview = async (structuredRows?: ScheduleImportRow[]) => {
     setBusy(true)
     setError('')
     setCommitResult(null)
+    if (!structuredRows) setOverwriteScores(false)
     try {
       const response = await api.adminPreviewScheduleImport(
         tournament.id,
@@ -157,8 +168,14 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
           : { format, content, defaultVenue },
       )
       setPreview(response)
-      setDraftRows(response.rows)
-      if (!structuredRows) setExcludedIndexes(new Set())
+      if (structuredRows) {
+        // Merge re-validated rows back into draftRows so excluded rows remain visible and toggleable
+        const updatedByIndex = new Map(response.rows.map((row) => [row.rowIndex, row]))
+        setDraftRows((current) => current.map((row) => updatedByIndex.get(row.rowIndex) || row))
+      } else {
+        setDraftRows(response.rows)
+        setExcludedIndexes(new Set())
+      }
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to preview schedule import'))
     } finally {
@@ -186,6 +203,9 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
       setError('Include at least one row to commit.')
       return
     }
+    if (isAdmin && overwriteScores && !window.confirm('Overwrite existing scores and statuses for matched games in this import?')) {
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -195,6 +215,7 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
         defaultVenue,
       })
       setCommitResult(result)
+      setOverwriteScores(false)
       setPreview(null)
       setDraftRows([])
       setExcludedIndexes(new Set())
@@ -250,9 +271,11 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
 
       {commitResult && (
         <Panel className="notice-panel">
-          <strong>Schedule import committed.</strong>{' '}
-          Created {commitResult.createdTeams} teams, {commitResult.createdGames} games; updated {commitResult.updatedGames}; unchanged {commitResult.unchangedGames}. Standings recomputed for {commitResult.recompute.teams} teams.{' '}
-          <Link to={tournamentScopedPath('/admin/games', tournament.id)}>View schedule</Link>
+          <div role="status">
+            <strong>Schedule import committed.</strong>{' '}
+            Created {commitResult.createdTeams} teams, {commitResult.createdGames} games; updated {commitResult.updatedGames}; unchanged {commitResult.unchangedGames}. Standings recomputed for {commitResult.recompute.teams} teams.{' '}
+            <Link to={tournamentScopedPath('/admin/games', tournament.id)}>View schedule</Link>
+          </div>
         </Panel>
       )}
 
@@ -264,6 +287,19 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
             <StatCard label="New teams" value={preview.summary.newTeamsCount} />
             <StatCard label="Errors" value={includedErrorCount} />
           </div>
+
+          {preview.skippedLines && preview.skippedLines.length > 0 && (
+            <Panel className="notice-panel">
+              <h3>Skipped unparsed lines ({preview.skippedLines.length})</h3>
+              <p className="muted">These non-empty lines were not recognized as dates or game rows. Check whether any game was missed before committing.</p>
+              <ul className="compact-list">
+                {preview.skippedLines.slice(0, 20).map((item) => (
+                  <li key={`${item.lineNumber}-${item.text}`}><strong>Line {item.lineNumber}:</strong> {item.text}</li>
+                ))}
+              </ul>
+              {preview.skippedLines.length > 20 && <p className="muted">+{preview.skippedLines.length - 20} more skipped lines.</p>}
+            </Panel>
+          )}
 
           {preview.unmatchedExistingGames.length > 0 && (
             <Panel className="notice-panel">
@@ -280,6 +316,9 @@ function ScheduleImporterPanel({ tournament, divisions, isAdmin }: { tournament:
                   </li>
                 ))}
               </ul>
+              {preview.unmatchedExistingGames.length > 12 && (
+                <p className="muted">+{preview.unmatchedExistingGames.length - 12} more unmatched existing games.</p>
+              )}
             </Panel>
           )}
 
@@ -411,11 +450,20 @@ function RosterImporterPanel({ tournament }: { tournament: Tournament }) {
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    event.target.value = ''
     if (!file) return
-    setContent(await file.text())
-    setPreview(null)
-    setCommitResult(null)
-    setError('')
+    if (file.size > 512_000) {
+      setError('Roster file exceeds the 500 KB limit.')
+      return
+    }
+    try {
+      setContent(await file.text())
+      setPreview(null)
+      setCommitResult(null)
+      setError('')
+    } catch {
+      setError('Unable to read the selected file.')
+    }
   }
 
   const runPreview = async (structuredRows?: RosterImportRow[]) => {
@@ -428,8 +476,13 @@ function RosterImporterPanel({ tournament }: { tournament: Tournament }) {
         structuredRows ? { rows: structuredRows } : { format, content },
       )
       setPreview(response)
-      setDraftRows(response.rows)
-      if (!structuredRows) setExcludedIndexes(new Set())
+      if (structuredRows) {
+        const updatedByIndex = new Map(response.rows.map((row) => [row.rowIndex, row]))
+        setDraftRows((current) => current.map((row) => updatedByIndex.get(row.rowIndex) || row))
+      } else {
+        setDraftRows(response.rows)
+        setExcludedIndexes(new Set())
+      }
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to preview roster import'))
     } finally {
@@ -505,9 +558,11 @@ function RosterImporterPanel({ tournament }: { tournament: Tournament }) {
 
       {commitResult && (
         <Panel className="notice-panel">
-          <strong>Roster import committed.</strong>{' '}
-          Created {commitResult.created}, updated {commitResult.updated}, unchanged {commitResult.unchanged}.{' '}
-          <Link to={tournamentScopedPath('/admin/divisions', tournament.id)}>View teams &amp; rosters</Link>
+          <div role="status">
+            <strong>Roster import committed.</strong>{' '}
+            Created {commitResult.created}, updated {commitResult.updated}, unchanged {commitResult.unchanged}.{' '}
+            <Link to={tournamentScopedPath('/admin/divisions', tournament.id)}>View teams &amp; rosters</Link>
+          </div>
         </Panel>
       )}
 

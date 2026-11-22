@@ -14,6 +14,7 @@ module Imports
 
     # Strictly read-only: NEVER writes to teams, games, class_cohorts, or divisions.
     def call
+      skipped_lines = []
       if @raw_rows.is_a?(Array)
         detected_format = "structured"
         parsed_rows = normalize_structured_rows(@raw_rows)
@@ -26,6 +27,7 @@ module Imports
         )
         detected_format = parsed.detected_format
         parsed_rows = parsed.rows
+        skipped_lines = parsed.skipped_lines || []
       end
 
       divisions_by_key = index_divisions
@@ -37,6 +39,8 @@ module Imports
       end
 
       seen_game_numbers = {}
+      seen_matchup_slots = {}
+      matched_game_row_index = {}
       matched_game_ids = Set.new
       new_teams = {}
 
@@ -49,6 +53,8 @@ module Imports
           existing_games: existing_games,
           games_by_number: games_by_number,
           seen_game_numbers: seen_game_numbers,
+          seen_matchup_slots: seen_matchup_slots,
+          matched_game_row_index: matched_game_row_index,
           matched_game_ids: matched_game_ids,
           new_teams: new_teams
         )
@@ -65,7 +71,8 @@ module Imports
         unchangedCount: evaluated_rows.count { |r| r[:action] == "unchanged" },
         errorCount: evaluated_rows.count { |r| r[:action] == "error" },
         newTeamsCount: new_teams.length,
-        unmatchedExistingCount: unmatched_existing.length
+        unmatchedExistingCount: unmatched_existing.length,
+        skippedLinesCount: skipped_lines.length
       }
 
       {
@@ -74,7 +81,8 @@ module Imports
         summary: summary,
         newTeams: new_teams.values,
         rows: evaluated_rows,
-        unmatchedExistingGames: unmatched_existing
+        unmatchedExistingGames: unmatched_existing,
+        skippedLines: skipped_lines
       }
     end
 
@@ -107,11 +115,11 @@ module Imports
           phase: (h[:phase].to_s.strip.downcase.presence || "pool"),
           startTime: start_time,
           startTimeError: start_time_err,
-          awayTeam: (h[:awayTeam] || h[:away_team]).to_s.strip.presence,
-          homeTeam: (h[:homeTeam] || h[:home_team]).to_s.strip.presence,
-          division: h[:division].to_s.strip.presence,
-          venue: h[:venue].to_s.strip.presence || @default_venue,
-          notes: h[:notes].to_s.strip.presence,
+          awayTeam: (h[:awayTeam] || h[:away_team]).to_s.strip.first(120).presence,
+          homeTeam: (h[:homeTeam] || h[:home_team]).to_s.strip.first(120).presence,
+          division: h[:division].to_s.strip.first(80).presence,
+          venue: h[:venue].to_s.strip.first(160).presence,
+          notes: h[:notes].to_s.strip.first(500).presence,
           status: h[:status].to_s.strip.downcase.presence,
           homeScore: parse_int(h[:homeScore] || h[:home_score]),
           awayScore: parse_int(h[:awayScore] || h[:away_score])
@@ -119,7 +127,7 @@ module Imports
       end
     end
 
-    def evaluate_row(row:, seq:, divisions_by_key:, teams_by_key:, existing_games:, games_by_number:, seen_game_numbers:, matched_game_ids:, new_teams:)
+    def evaluate_row(row:, seq:, divisions_by_key:, teams_by_key:, existing_games:, games_by_number:, seen_game_numbers:, seen_matchup_slots:, matched_game_row_index:, matched_game_ids:, new_teams:)
       errors = []
       warnings = []
 
@@ -132,6 +140,15 @@ module Imports
 
       if away_canonical.present? && home_canonical.present? && away_canonical.casecmp?(home_canonical)
         errors << "Home team and away team must be different"
+      end
+
+      if row[:startTime].present? && away_canonical.present? && home_canonical.present?
+        slot_key = [ row[:startTime], home_canonical.downcase, away_canonical.downcase ]
+        if seen_matchup_slots[slot_key]
+          errors << "Duplicate matchup at #{row[:startTime]} (first seen on row #{seen_matchup_slots[slot_key]})"
+        else
+          seen_matchup_slots[slot_key] = row[:rowIndex] || seq
+        end
       end
 
       phase = row[:phase].to_s.strip.downcase.presence || "pool"
@@ -193,6 +210,14 @@ module Imports
         home_team: home_team,
         away_team: away_team
       )
+
+      if existing_game
+        if matched_game_row_index[existing_game.id]
+          errors << "Matches the same existing game (##{existing_game.game_number || existing_game.id}) as row #{matched_game_row_index[existing_game.id]}"
+        else
+          matched_game_row_index[existing_game.id] = row[:rowIndex] || seq
+        end
+      end
 
       action = if errors.any?
         "error"

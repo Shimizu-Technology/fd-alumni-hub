@@ -60,6 +60,7 @@ module Imports
         action = if errors.any?
           "error"
         elsif existing
+          warnings << "Will reactivate hidden roster entry" unless existing.active?
           entry_changed?(existing, row) ? "update" : "unchanged"
         else
           "create"
@@ -132,7 +133,8 @@ module Imports
     end
 
     def entry_changed?(existing, row)
-      (row[:jerseyNumber].present? && existing.jersey_number != row[:jerseyNumber]) ||
+      !existing.active? ||
+        (row[:jerseyNumber].present? && existing.jersey_number != row[:jerseyNumber]) ||
         (row[:position].present? && existing.position != row[:position]) ||
         (row[:nickname].present? && existing.nickname != row[:nickname]) ||
         existing.name != row[:name].to_s.strip

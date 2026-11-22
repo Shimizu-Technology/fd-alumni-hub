@@ -43,7 +43,7 @@ module Imports
             end
 
             entry = team.roster_entries.find(row[:matchedEntryId])
-            attrs = { name: row[:name] }
+            attrs = { name: row[:name], active: true }
             attrs[:jersey_number] = row[:jerseyNumber] if row[:jerseyNumber].present?
             attrs[:position] = row[:position] if row[:position].present?
             attrs[:nickname] = row[:nickname] if row[:nickname].present?

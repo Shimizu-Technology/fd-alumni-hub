@@ -104,7 +104,8 @@ module Imports
       game.home_team = home_team
       game.start_time = Time.iso8601(row[:startTime])
       game.phase = row[:phase]
-      game.venue = row[:venue].presence || @default_venue
+      game.venue = row[:venue] if row[:venue].present?
+      game.venue = @default_venue if is_new && game.venue.blank?
       game.game_number = row[:gameNumber] if row[:gameNumber].present?
       game.bracket_code = row[:bracketCode] if row[:bracketCode].present?
       game.bracket_round = row[:bracketRound] if row[:bracketRound].present?

@@ -706,10 +706,12 @@ export type ScheduleImportPreview = {
     errorCount: number
     newTeamsCount: number
     unmatchedExistingCount: number
+    skippedLinesCount?: number
   }
   newTeams: Array<{ displayName: string; division: string | null; inferredClassKeys: string[] }>
   rows: ScheduleImportRow[]
   unmatchedExistingGames: UnmatchedExistingGame[]
+  skippedLines?: Array<{ lineNumber: number; text: string }>
 }
 
 export type ScheduleImportCommitResult = {

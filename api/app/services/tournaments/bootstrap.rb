@@ -78,6 +78,12 @@ module Tournaments
       raise Error, "Tournament attributes are required" unless @tournament_attrs.is_a?(Hash) && @tournament_attrs.present?
 
       attrs = @tournament_attrs.symbolize_keys
+      if attrs[:start_date].present? && attrs[:end_date].present?
+        start_d = attrs[:start_date].is_a?(Date) ? attrs[:start_date] : Date.iso8601(attrs[:start_date].to_s)
+        end_d = attrs[:end_date].is_a?(Date) ? attrs[:end_date] : Date.iso8601(attrs[:end_date].to_s)
+        raise Error, "End date must be on or after start date" if end_d < start_d
+      end
+
       Tournament.create!(
         name: attrs[:name],
         year: attrs[:year],
@@ -85,6 +91,8 @@ module Tournaments
         end_date: attrs[:end_date],
         status: attrs[:status].presence || "upcoming"
       )
+    rescue Date::Error
+      raise Error, "Invalid tournament start or end date"
     end
 
     def configure_divisions!(tournament)
@@ -106,8 +114,8 @@ module Tournaments
             counts_for_standings: counts,
             active: active
           )
-        end
-      elsif @seed_default_divisions
+        end.uniq(&:id)
+      elsif @seed_default_divisions || (@divisions_input.is_a?(Array) && @divisions_input.empty?)
         tournament.ensure_default_divisions!
       else
         tournament.divisions.ordered.to_a

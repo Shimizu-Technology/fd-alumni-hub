@@ -207,6 +207,79 @@ class AdminImportsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  test "schedule preview surfaces skipped FDMSAA lines, flags duplicate keyless rows, preserves existing venue, and enforces size/row limits" do
+    # Skipped line surfaced in FDMSAA text
+    text = <<~TXT
+      Friday, July 2, 2027
+      Some random unparsed gym announcement line
+      G1  6:00 PM  Class of 2016 vs Class of 2017  Maroon
+    TXT
+    post "/api/v1/admin/tournaments/#{@tournament.id}/schedule-import/preview",
+      params: { format: "fdmsaa_text", content: text },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 1, body.dig("summary", "skippedLinesCount")
+    assert_includes body.dig("skippedLines", 0, "text"), "Some random unparsed"
+
+    # Duplicate rows without game_number are flagged as errors
+    dup_csv = <<~CSV
+      date,time,away_team,home_team,division
+      2027-07-02,18:00,Class of 2016,Class of 2017,Maroon
+      2027-07-02,18:00,Class of 2016,Class of 2017,Maroon
+    CSV
+    post "/api/v1/admin/tournaments/#{@tournament.id}/schedule-import/preview",
+      params: { format: "csv", content: dup_csv },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :success
+    assert_equal 1, JSON.parse(response.body).dig("summary", "errorCount")
+
+    # Updating a game without a venue in the CSV preserves the manually edited venue
+    h = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division_record: @maroon)
+    a = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division_record: @maroon)
+    existing = @tournament.games.create!(home_team: h, away_team: a, division_record: @maroon, game_number: "G50", venue: "UOG Fieldhouse", start_time: Time.zone.local(2027, 7, 5, 18, 0))
+    post "/api/v1/admin/tournaments/#{@tournament.id}/schedule-import/commit",
+      params: {
+        rows: [
+          { rowIndex: 1, gameNumber: "G50", startTime: Time.zone.local(2027, 7, 6, 19, 0).iso8601, awayTeam: "Class of 2017", homeTeam: "Class of 2016", division: "Maroon", phase: "pool" }
+        ]
+      },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :success
+    assert_equal "UOG Fieldhouse", existing.reload.venue
+
+    # Size limit > 500 KB rejected with 422
+    post "/api/v1/admin/tournaments/#{@tournament.id}/schedule-import/preview",
+      params: { content: "x" * 520_000 },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :unprocessable_entity
+  end
+
+  test "roster import reactivates inactive roster entries on match" do
+    team = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division_record: @maroon)
+    hidden = team.roster_entries.create!(name: "John Cruz", jersey_number: "23", active: false)
+
+    post "/api/v1/admin/tournaments/#{@tournament.id}/roster-import/preview",
+      params: { content: "team,name,jersey_number\nClass of 2017,John Cruz,23" },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal "update", body.dig("rows", 0, "action")
+    assert_includes body.dig("rows", 0, "warnings").join, "reactivate"
+
+    post "/api/v1/admin/tournaments/#{@tournament.id}/roster-import/commit",
+      params: { rows: body.fetch("rows") },
+      headers: headers_for(@staff),
+      as: :json
+    assert_response :success
+    assert_equal true, hidden.reload.active?
+  end
+
   private
 
   def headers_for(user)

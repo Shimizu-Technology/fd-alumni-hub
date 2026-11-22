@@ -10,7 +10,7 @@ module Api
             tournament: tournament,
             rows: rows,
             content: params[:content],
-            format: params[:format].presence || "auto",
+            format: requested_import_format,
             default_venue: params[:defaultVenue].presence || params[:default_venue].presence || "The Jungle"
           )
 
@@ -40,6 +40,8 @@ module Api
           render json: { error: e.message }, status: :unprocessable_entity
         rescue Imports::ScheduleCommit::ValidationError => e
           render json: { error: e.message, preview: e.preview }, status: :unprocessable_entity
+        rescue ActiveRecord::StaleObjectError
+          render json: { error: "A game was updated while committing this import. Please preview again and retry." }, status: :conflict
         rescue ActiveRecord::RecordInvalid => e
           render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         rescue ActiveRecord::RecordNotUnique
@@ -54,7 +56,7 @@ module Api
             tournament: tournament,
             rows: rows,
             content: params[:content],
-            format: params[:format].presence || "auto"
+            format: requested_import_format
           )
 
           render json: result
@@ -79,6 +81,11 @@ module Api
         end
 
         private
+
+        def requested_import_format
+          body_format = request.request_parameters["format"] || params[:importFormat] || params[:import_format]
+          body_format.to_s.strip.presence || "auto"
+        end
 
         def permitted_schedule_rows
           raw = params[:rows]

@@ -9,7 +9,7 @@ module Imports
 
     class ParseError < StandardError; end
 
-    Result = Struct.new(:detected_format, :rows, keyword_init: true)
+    Result = Struct.new(:detected_format, :rows, :skipped_lines, keyword_init: true)
 
     HEADER_ALIASES = {
       "date" => :date,
@@ -74,11 +74,12 @@ module Imports
       raise ParseError, "Schedule content exceeds #{MAX_BYTES / 1024} KB limit" if @content.bytesize > MAX_BYTES
 
       detected = detect_format
+      skipped_lines = []
       rows = case detected
       when "csv"
         parse_csv
       when "fdmsaa_text"
-        parse_fdmsaa_text
+        parse_fdmsaa_text(skipped_lines)
       else
         raise ParseError, "Unsupported import format: #{@format}"
       end
@@ -86,7 +87,7 @@ module Imports
       raise ParseError, "Import exceeds maximum of #{MAX_ROWS} rows (#{rows.length} found)" if rows.length > MAX_ROWS
       raise ParseError, "No schedule rows could be parsed from the input" if rows.empty?
 
-      Result.new(detected_format: detected, rows: rows)
+      Result.new(detected_format: detected, rows: rows, skipped_lines: skipped_lines)
     end
 
     private
@@ -137,7 +138,7 @@ module Imports
       raise ParseError, "Invalid CSV syntax: #{e.message}"
     end
 
-    def parse_fdmsaa_text
+    def parse_fdmsaa_text(skipped_lines)
       rows = []
       current_date = nil
 
@@ -152,7 +153,11 @@ module Imports
         end
 
         row = parse_fdmsaa_game_line(line, line_no, current_date)
-        rows << row if row
+        if row
+          rows << row
+        else
+          skipped_lines << { lineNumber: line_no, text: line.first(160) }
+        end
       end
 
       rows
@@ -285,7 +290,7 @@ module Imports
         awayTeam: fields[:away_team],
         homeTeam: fields[:home_team],
         division: fields[:division],
-        venue: fields[:venue].presence || @default_venue,
+        venue: fields[:venue].presence,
         notes: fields[:notes],
         status: fields[:status].to_s.strip.downcase.presence,
         homeScore: parse_optional_int(fields[:home_score]),
