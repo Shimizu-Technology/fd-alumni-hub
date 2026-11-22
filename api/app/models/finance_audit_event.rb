@@ -6,7 +6,6 @@ class FinanceAuditEvent < ApplicationRecord
   validates :created_at, presence: true
 
   before_validation :set_default_created_at, on: :create
-  before_destroy :prevent_destruction
 
   scope :recent_first, -> { order(created_at: :desc, id: :desc) }
 
@@ -47,9 +46,5 @@ class FinanceAuditEvent < ApplicationRecord
 
   def set_default_created_at
     self.created_at ||= Time.current
-  end
-
-  def prevent_destruction
-    raise ActiveRecord::ReadOnlyRecord, "FinanceAuditEvent is append-only"
   end
 end

@@ -4,7 +4,7 @@ class HostCampaign < ApplicationRecord
   STATUSES = %w[draft active closing archived].freeze
   PUBLIC_STATUSES = %w[active closing archived].freeze
   FEATUREABLE_STATUSES = %w[active closing].freeze
-  SLUG_FORMAT = /\A[a-z0-9-]{3,64}\z/
+  SLUG_FORMAT = /\A[a-z0-9](?:[a-z0-9-]{1,62})[a-z0-9]\z/
   HAFAPASS_CODE_FORMAT = /\A[a-z0-9_-]{1,64}\z/
   GUAM_ZONE = "Pacific/Guam".freeze
 
@@ -29,9 +29,15 @@ class HostCampaign < ApplicationRecord
   validates_https_url :hero_image_url, :golf_url
   validates_https_url :donation_url, allowed_hosts_env: "DONATION_URL_ALLOWED_HOSTS"
   validate :featured_requires_active_or_closing
+  validate :single_featured_campaign
 
   scope :publicly_visible, -> { where(status: PUBLIC_STATUSES) }
   scope :featured_public, -> { where(featured: true, status: FEATUREABLE_STATUSES) }
+
+  def self.resolve_active_for_home
+    base = where(status: FEATUREABLE_STATUSES).includes(:tournament, :class_cohort)
+    base.where(featured: true).first || base.order(updated_at: :desc, id: :desc).first
+  end
 
   def self.resolve_public(slug: nil, year: nil)
     base = publicly_visible.includes(:tournament, :class_cohort)
@@ -140,6 +146,7 @@ class HostCampaign < ApplicationRecord
     self.slug = slug.to_s.strip.downcase if slug.present?
     self.title = title.to_s.strip if title.present?
     self.tagline = tagline.to_s.strip.presence
+    self.description = description.to_s.strip.presence
     self.countdown_label = countdown_label.to_s.strip.presence
     self.hero_image_url = hero_image_url.to_s.strip.presence
     self.donation_url = donation_url.to_s.strip.presence
@@ -155,5 +162,15 @@ class HostCampaign < ApplicationRecord
     return if FEATUREABLE_STATUSES.include?(status)
 
     errors.add(:featured, "can only be enabled when campaign status is active or closing")
+  end
+
+  def single_featured_campaign
+    return unless featured?
+
+    conflict = HostCampaign.where(featured: true)
+    conflict = conflict.where.not(id: id) if persisted?
+    return unless conflict.exists?
+
+    errors.add(:featured, "another campaign is already featured")
   end
 end

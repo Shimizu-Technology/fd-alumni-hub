@@ -41,10 +41,17 @@ class HostCampaignTest < ActiveSupport::TestCase
     campaign.donation_url = "http://insecure.example.com/donate"
     assert_not campaign.valid?
 
+    campaign.donation_url = "https://give.fdaa.org@evil.example.com/donate"
+    assert_not campaign.valid?
+
     campaign.donation_url = "https://give.example.com/co2017"
     campaign.golf_url = "https://fd-golf.shimizu-technology.com"
     campaign.hafapass_organizer_slug = "co2017"
     assert campaign.valid?
+
+    campaign.slug = "---"
+    assert_not campaign.valid?
+    campaign.slug = "2027-class-of-2017"
 
     campaign.hafapass_organizer_slug = "bad slug/.."
     assert_not campaign.valid?
@@ -52,6 +59,25 @@ class HostCampaignTest < ActiveSupport::TestCase
 
     campaign.goal_cents = 0
     assert_not campaign.valid?
+  end
+
+  test "rejects javascript and http URLs on campaign events and posts" do
+    campaign = HostCampaign.create!(
+      tournament: @tournament_2027,
+      class_cohort: @cohort_2017,
+      slug: "2027-class-of-2017",
+      title: "Class of 2017 Host Year",
+      goal_cents: 3_000_000
+    )
+
+    bad_event = campaign.campaign_events.build(title: "Fundraiser", external_url: "javascript:alert(1)", image_url: "http://example.com/img.png")
+    assert_not bad_event.valid?
+    assert_includes bad_event.errors[:external_url], "must be a valid https:// URL"
+    assert_includes bad_event.errors[:image_url], "must be a valid https:// URL"
+
+    bad_post = campaign.campaign_posts.build(title: "Recap", body: "Hello", image_url: "javascript:void(0)")
+    assert_not bad_post.valid?
+    assert_includes bad_post.errors[:image_url], "must be a valid https:// URL"
   end
 
   test "enforces optional DONATION_URL_ALLOWED_HOSTS allowlist" do
@@ -102,16 +128,22 @@ class HostCampaignTest < ActiveSupport::TestCase
     )
     assert c2027.finance_writable?
 
+    second_featured = HostCampaign.new(
+      tournament: @tournament_2028,
+      class_cohort: @cohort_2018,
+      slug: "2028-class-of-2018",
+      title: "Class of 2018 Host Year",
+      status: "active",
+      featured: true,
+      goal_cents: 3_500_000
+    )
+    assert_not second_featured.valid?
+    assert_includes second_featured.errors[:featured], "another campaign is already featured"
+
     assert_raises(ActiveRecord::RecordNotUnique) do
-      HostCampaign.create!(
-        tournament: @tournament_2028,
-        class_cohort: @cohort_2018,
-        slug: "2028-class-of-2018",
-        title: "Class of 2018 Host Year",
-        status: "active",
-        featured: true,
-        goal_cents: 3_500_000
-      )
+      ActiveRecord::Base.transaction(requires_new: true) do
+        second_featured.save!(validate: false)
+      end
     end
 
     # Rollover works smoothly when only the new campaign is featured while prior stays closing
@@ -129,7 +161,7 @@ class HostCampaignTest < ActiveSupport::TestCase
     assert c2027.finance_writable?
   end
 
-  test "prevents cascade deletion across tournament -> campaign -> events/audit and enforces append-only audit trigger" do
+  test "prevents cascade deletion across tournament -> campaign -> events/audit and enforces append-only audit model" do
     campaign = HostCampaign.create!(
       tournament: @tournament_2027,
       class_cohort: @cohort_2017,

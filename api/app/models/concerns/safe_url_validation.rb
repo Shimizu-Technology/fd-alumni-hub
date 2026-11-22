@@ -27,14 +27,16 @@ module SafeUrlValidation
     end
   end
 
+  MAX_URL_LENGTH = 2048
+
   private
 
   def parse_safe_https_uri(raw_value)
     value = raw_value.to_s.strip
-    return nil if value.blank? || value.match?(/[\r\n\t\0]/)
+    return nil if value.blank? || value.length > MAX_URL_LENGTH || value.match?(/[\r\n\t\0]/)
 
     uri = URI.parse(value)
-    return nil unless uri.is_a?(URI::HTTPS) && uri.host.present?
+    return nil unless uri.is_a?(URI::HTTPS) && uri.host.present? && uri.userinfo.blank?
 
     uri
   rescue URI::InvalidURIError

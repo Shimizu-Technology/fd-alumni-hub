@@ -24,7 +24,7 @@ class CampaignEvent < ApplicationRecord
   scope :public_listing, -> { not_archived.where(public_visible: true) }
   scope :upcoming_or_tba, -> {
     where.not(status: %w[completed cancelled])
-      .where("starts_at IS NULL OR starts_at >= ?", Time.current)
+      .where("starts_at IS NULL OR COALESCE(ends_at, starts_at) >= ?", Time.current)
   }
   scope :ordered, -> { order(Arel.sql("starts_at IS NULL, starts_at ASC, position ASC, id ASC")) }
 

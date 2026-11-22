@@ -150,4 +150,32 @@ class PublicHostYearTest < ActionDispatch::IntegrationTest
     assert_equal({ "enabled" => false }, summary["meter"])
     assert_equal @public_event.id.to_s, summary.dig("nextEvent", "id")
   end
+
+  test "resolves default fallback from active/closing to archived while home skips archived campaigns" do
+    @campaign.update!(featured: false, status: "closing")
+    get "/api/v1/public/host-year"
+    assert_response :success
+    assert_equal "2027-class-of-2017", JSON.parse(response.body).dig("campaign", "slug")
+
+    @campaign.update!(status: "archived")
+    get "/api/v1/public/host-year"
+    assert_response :success
+    assert_equal "2027-class-of-2017", JSON.parse(response.body).dig("campaign", "slug")
+
+    # Home should not promote an archived campaign as activeHostCampaign
+    get "/api/v1/public/home"
+    assert_response :success
+    assert_nil JSON.parse(response.body)["activeHostCampaign"]
+  end
+
+  test "public home returns activeHostCampaign even when no tournament is active" do
+    @tournament_2027.update!(status: "cancelled")
+    @tournament_2028.update!(status: "cancelled")
+
+    get "/api/v1/public/home"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_nil body["tournament"]
+    assert_equal "2027-class-of-2017", body.dig("activeHostCampaign", "slug")
+  end
 end

@@ -5,7 +5,7 @@ module Api
         def show
           context = Tournament.home_context
           tournament = Tournament.active_for_public(context)
-          active_host_campaign = HostCampaign.resolve_public&.home_summary_json
+          active_host_campaign = HostCampaign.resolve_active_for_home&.home_summary_json
 
           unless tournament
             return render json: {
