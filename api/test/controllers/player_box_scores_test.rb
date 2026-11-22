@@ -247,17 +247,12 @@ class PlayerBoxScoresTest < ActionDispatch::IntegrationTest
     get_leaders
     assert_empty body["leaders"]
 
-    # Publishing fails while orphaned home_player stat remains, succeeds once removed and replaced
+    # Republishing from the UI automatically prunes orphaned non-participating rows and keeps new team stats
     save_box(user: @publisher, status: "published", entries: [ line(replacement_player, points: 10) ])
-    assert_response :unprocessable_entity
-    assert_match(/non-participating teams/, body.fetch("errors").join)
-
-    save_box(user: @publisher, status: "published", entries: [
-      { rosterEntryId: @home_player.id, remove: true },
-      line(replacement_player, points: 10)
-    ])
     assert_response :success
     assert_equal "published", @game.reload.box_score_status
+    refute @game.player_game_stats.exists?(roster_entry_id: @home_player.id)
+    assert @game.player_game_stats.exists?(roster_entry_id: replacement_player.id)
 
     # Result-path team change also flags needs_review
     second_replacement = team(@tournament, "Class of 2020")

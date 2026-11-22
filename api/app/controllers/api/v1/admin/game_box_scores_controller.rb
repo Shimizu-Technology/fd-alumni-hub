@@ -28,7 +28,10 @@ module Api
             Audit::Context.with(actor: current_user) do
               save_entries!(game)
               publish = params[:status] == "published"
-              validate_publication!(game) if publish
+              if publish
+                game.player_game_stats.where.not(team_id: [ game.home_team_id, game.away_team_id ]).destroy_all
+                validate_publication!(game)
+              end
 
               game.update!(
                 box_score_status: params[:status], box_score_coverage: params[:coverage],
@@ -123,9 +126,6 @@ module Api
           stats = game.player_game_stats.reload
           has_metrics = stats.any? { |stat| PlayerGameStat::METRIC_LIMITS.keys.any? { |metric| !stat.public_send(metric).nil? } }
           raise InvalidBoxScore, "Enter at least one player stat line before publishing." unless has_metrics
-          if stats.any? { |stat| ![ game.home_team_id, game.away_team_id ].include?(stat.team_id) }
-            raise InvalidBoxScore, "Remove player stats from non-participating teams before publishing."
-          end
 
           discrepancies = BoxScores::Discrepancies.call(game, coverage: params[:coverage], stats: stats)
           raise InvalidBoxScore, discrepancies[:warnings].join(" ") if discrepancies[:hasDiscrepancy]

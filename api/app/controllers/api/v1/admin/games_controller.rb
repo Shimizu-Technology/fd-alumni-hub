@@ -206,7 +206,7 @@ module Api
         end
 
         def games_with_associations
-          Game.includes(:division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
+          Game.includes(:tournament, :division_record, :score_updated_by, home_team: :division_record, away_team: :division_record)
         end
 
         def game_params
