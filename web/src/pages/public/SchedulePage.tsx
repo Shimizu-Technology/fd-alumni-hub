@@ -7,7 +7,7 @@ import { useAsync } from '../../lib/hooks'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { externalHref, numericSearchParam } from '../../lib/urls'
 import type { Game, TeamSummary } from '../../lib/types'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function SchedulePage() {
@@ -18,9 +18,6 @@ export function SchedulePage() {
   const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ year, division, phase, teamId }), [year, division, phase, teamId])
 
   const grouped = useMemo(() => groupGamesByDay(data?.games || []), [data?.games])
-
-  if (loading && !data) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
 
   return (
     <div className="page-stack schedule-page">
@@ -39,30 +36,43 @@ export function SchedulePage() {
         <Link className="btn primary" to="/today">Open Today <IconArrowRight /></Link>
       </Panel>
 
-      <Panel className="toolbar-panel schedule-filter-panel">
-        <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
-        <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
-        {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
-      </Panel>
-
-      {grouped.length > 1 && (
-        <nav className="schedule-day-jump" aria-label="Schedule day shortcuts">
-          {grouped.map(([day, games]) => <a key={day} href={`#${dayAnchorId(day)}`}><strong>{shortDayLabel(day)}</strong><span>{games.length}</span></a>)}
-        </nav>
-      )}
-
-      {grouped.length === 0 ? (
-        <EmptyState title="No games match this view" description="Clear filters or check back once organizers load the next schedule." />
+      {loading && !data ? (
+        <LoadingState label="Loading tournament schedule" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Schedule is temporarily unavailable"
+          description="Could not reach the tournament schedule API. Try again or browse tournament history and rules."
+          onRetry={reload}
+          action={<Link className="btn secondary" to="/history">Browse history</Link>}
+        />
       ) : (
-        grouped.map(([day, games]) => (
-          <section className="day-section" key={day} id={dayAnchorId(day)}>
-            <h2>{day}</h2>
-            <div className="game-card-grid">
-              {games.map((game) => <GameCard key={game.id} game={game} />)}
-            </div>
-          </section>
-        ))
+        <>
+          <Panel className="toolbar-panel schedule-filter-panel">
+            <label><span>Team entry</span><select value={teamId} onChange={(event) => setTeamId(event.target.value)}><option value="">All team entries</option>{data?.teams.map((team) => <option key={team.id} value={team.id}>{team.displayName}</option>)}</select></label>
+            <label><span>Division</span><select value={division} onChange={(event) => setDivision(event.target.value)}><option value="">All divisions</option>{data?.divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label><span>Phase</span><select value={phase} onChange={(event) => setPhase(event.target.value)}><option value="">All phases</option>{data?.phases.map((item) => <option key={item} value={item}>{labelPhase(item)}</option>)}</select></label>
+            {(teamId || division || phase) && <button className="btn secondary" type="button" onClick={() => { setTeamId(''); setDivision(''); setPhase('') }}>Clear filters</button>}
+          </Panel>
+
+          {grouped.length > 1 && (
+            <nav className="schedule-day-jump" aria-label="Schedule day shortcuts">
+              {grouped.map(([day, games]) => <a key={day} href={`#${dayAnchorId(day)}`}><strong>{shortDayLabel(day)}</strong><span>{games.length}</span></a>)}
+            </nav>
+          )}
+
+          {grouped.length === 0 ? (
+            <EmptyState title="No games match this view" description="Clear filters or check back once organizers load the next schedule." />
+          ) : (
+            grouped.map(([day, games]) => (
+              <section className="day-section" key={day} id={dayAnchorId(day)}>
+                <h2>{day}</h2>
+                <div className="game-card-grid">
+                  {games.map((game) => <GameCard key={game.id} game={game} />)}
+                </div>
+              </section>
+            ))
+          )}
+        </>
       )}
     </div>
   )

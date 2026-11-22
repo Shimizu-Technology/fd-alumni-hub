@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -12,6 +13,8 @@ import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 type MediaForm = { tournamentId?: string; gameId: string; source: string; title: string; imageUrl: string; articleUrl: string; caption: string; tags: string; takenAt: string }
 
 export function AdminMediaPage() {
+  const auth = useAuthContext()
+  const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, media, games] = await Promise.all([api.adminTournaments(), api.adminMedia(tournamentId || null), api.adminGames(tournamentId || null)])
@@ -33,7 +36,7 @@ export function AdminMediaPage() {
       <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <CreateMediaPanel tournaments={data?.tournaments || []} games={data?.games || []} selectedTournamentId={tournamentId} onSaved={reload} />
       <Panel>
-        {!data?.mediaAssets.length ? <EmptyState title="No media found" /> : <div className="admin-list">{data.mediaAssets.map((asset) => <MediaRow key={asset.id} asset={asset} games={data.games} onSaved={reload} />)}</div>}
+        {!data?.mediaAssets.length ? <EmptyState title="No media found" /> : <div className="admin-list">{data.mediaAssets.map((asset) => <MediaRow key={asset.id} asset={asset} games={data.games} isAdmin={isAdmin} onSaved={reload} />)}</div>}
       </Panel>
     </div>
   )
@@ -80,7 +83,7 @@ function CreateMediaPanel({ tournaments, games, selectedTournamentId, onSaved }:
   return <Panel><div className="section-heading"><h2>Add media</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><MediaFields form={form} setForm={setForm} tournaments={tournaments} games={games} includeTournament /><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create media</button></form></Panel>
 }
 
-function MediaRow({ asset, games, onSaved }: { asset: MediaAsset; games: Game[]; onSaved: () => Promise<void> }) {
+function MediaRow({ asset, games, isAdmin, onSaved }: { asset: MediaAsset; games: Game[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<MediaForm>({ tournamentId: asset.tournamentId, gameId: asset.gameId || '', source: asset.source, title: asset.title, imageUrl: asset.imageUrl, articleUrl: asset.articleUrl || '', caption: asset.caption || '', tags: asset.tags || '', takenAt: toDateInputValue(asset.takenAt) })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -111,7 +114,7 @@ function MediaRow({ asset, games, onSaved }: { asset: MediaAsset; games: Game[];
     }
   }
 
-  return <article className="admin-row-card media-admin-row">{asset.imageUrl && <img src={asset.imageUrl} alt="" loading="lazy" />}<MediaFields form={form} setForm={setForm} games={games} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div></article>
+  return <article className="admin-row-card media-admin-row">{asset.imageUrl && <img src={asset.imageUrl} alt="" loading="lazy" />}<MediaFields form={form} setForm={setForm} games={games} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button>{isAdmin && <button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button>}</div></article>
 }
 
 function MediaFields({ form, setForm, tournaments, games = [], includeTournament = false }: { form: MediaForm; setForm: Dispatch<SetStateAction<MediaForm>>; tournaments?: Tournament[]; games?: Game[]; includeTournament?: boolean }) {

@@ -1,3 +1,4 @@
+require "base64"
 require "uri"
 
 class ClerkAuth
@@ -33,7 +34,10 @@ class ClerkAuth
         decode_options[:verify_aud] = true
       end
 
-      JWT.decode(token, nil, true, decode_options).first
+      payload = JWT.decode(token, nil, true, decode_options).first
+      return nil unless valid_authorized_party?(payload)
+
+      payload
     rescue JWT::DecodeError => e
       Rails.logger.warn("JWT decode error: #{e.message}")
       nil
@@ -64,20 +68,59 @@ class ClerkAuth
       nil
     end
 
+    def expected_issuer
+      configured_issuer || issuer_from_jwks_url || issuer_from_publishable_key
+    end
+
+    def jwks_url
+      explicit = ENV.fetch("CLERK_JWKS_URL", nil).presence
+      return explicit if explicit
+
+      issuer = configured_issuer || issuer_from_publishable_key
+      issuer.present? ? "#{issuer}/.well-known/jwks.json" : nil
+    end
+
+    def authorized_parties
+      raw = ENV.fetch("CLERK_AUTHORIZED_PARTIES", nil).presence
+      return [] unless raw
+
+      raw.split(",").filter_map { |origin| normalize_origin(origin) }.uniq
+    end
+
+    def test_instance?
+      publishable_key = ENV.fetch("CLERK_PUBLISHABLE_KEY", "").strip
+      secret_key = ENV.fetch("CLERK_SECRET_KEY", "").strip
+      issuer = expected_issuer.to_s
+
+      publishable_key.start_with?("pk_test_") ||
+        secret_key.start_with?("sk_test_") ||
+        issuer.include?(".clerk.accounts.dev")
+    end
+
+    def valid_authorized_party?(payload)
+      parties = authorized_parties
+      return true if parties.empty?
+      return true unless payload.key?("azp")
+
+      azp = normalize_origin(payload["azp"])
+      azp.present? && parties.include?(azp)
+    end
+
     private
 
     def fetch_jwks
-      cached = Rails.cache.read(JWKS_CACHE_KEY)
-      return cached if cached.present?
-
       jwks_uri = jwks_url
       return nil unless jwks_uri
+
+      cache_key = "#{JWKS_CACHE_KEY}:#{jwks_uri}"
+      cached = Rails.cache.read(cache_key)
+      return cached if cached.present?
 
       response = HTTParty.get(jwks_uri, timeout: 5)
 
       if response.success?
         jwks = response.parsed_response
-        Rails.cache.write(JWKS_CACHE_KEY, jwks, expires_in: JWKS_CACHE_TTL)
+        Rails.cache.write(cache_key, jwks, expires_in: JWKS_CACHE_TTL)
         jwks
       else
         Rails.logger.error("Failed to fetch Clerk JWKS: #{response.code}")
@@ -88,33 +131,45 @@ class ClerkAuth
       nil
     end
 
-    def jwks_url
-      ENV.fetch("CLERK_JWKS_URL", nil).presence || begin
-        issuer = configured_issuer
-        issuer.present? ? "#{issuer}/.well-known/jwks.json" : nil
-      end
-    end
-
-    def expected_issuer
-      configured_issuer || issuer_from_jwks_url
-    end
-
     def configured_issuer
-      ENV.fetch("CLERK_ISSUER", nil).presence
+      normalize_origin(ENV.fetch("CLERK_ISSUER", nil))
     end
 
     def issuer_from_jwks_url
       raw_url = ENV.fetch("CLERK_JWKS_URL", nil).presence
       return nil unless raw_url
 
-      uri = URI.parse(raw_url)
+      normalize_origin(raw_url)
+    end
+
+    def issuer_from_publishable_key
+      key = ENV.fetch("CLERK_PUBLISHABLE_KEY", "").strip
+      return nil unless key.match?(/\Apk_(?:test|live)_/)
+
+      encoded = key.split("_", 3).last.to_s
+      return nil if encoded.blank?
+
+      padded = encoded + ("=" * ((4 - encoded.length % 4) % 4))
+      domain = Base64.strict_decode64(padded).delete_suffix("$")
+      return nil unless domain.match?(/\A[a-zA-Z0-9.-]+\z/)
+
+      "https://#{domain}"
+    rescue ArgumentError
+      nil
+    end
+
+    def normalize_origin(raw_value)
+      value = raw_value.to_s.strip
+      return nil if value.blank?
+
+      uri = URI.parse(value)
       return nil if uri.scheme.blank? || uri.host.blank?
 
       origin = +"#{uri.scheme}://#{uri.host}"
       origin << ":#{uri.port}" unless uri.port == uri.default_port
       origin
     rescue URI::InvalidURIError => e
-      Rails.logger.warn("Invalid Clerk JWKS URL: #{e.message}")
+      Rails.logger.warn("Invalid Clerk URL: #{e.message}")
       nil
     end
 

@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class MediaAssetsController < BaseController
+        before_action :require_admin!, only: [ :destroy ]
+
         def index
           media_assets = MediaAsset.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest
           media_assets = media_assets.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?

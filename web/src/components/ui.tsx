@@ -51,6 +51,31 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   )
 }
 
+export function SectionUnavailable({
+  title = 'Live data unavailable',
+  description = 'Tournament services are currently unreachable. You can retry or browse tournament info and historical champions.',
+  onRetry,
+  action,
+}: {
+  title?: string
+  description?: string
+  onRetry?: () => void
+  action?: ReactNode
+}) {
+  return (
+    <div className="state-card section-unavailable" role="status">
+      <h2>{title}</h2>
+      <p>{description}</p>
+      {(onRetry || action) && (
+        <div className="row-actions">
+          {onRetry && <button type="button" className="btn secondary" onClick={onRetry}>Retry</button>}
+          {action}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function StatusBadge({ status }: { status?: string | null }) {
   const safe = status || 'unknown'
   return <span className={`status-badge status-${safe}`}>{safe.replace('_', ' ')}</span>

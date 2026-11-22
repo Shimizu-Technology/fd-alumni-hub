@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class SponsorsController < BaseController
+        before_action :require_admin!, only: [ :destroy ]
+
         def index
           sponsors = Sponsor.includes(:tournament).ordered
           sponsors = sponsors.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?

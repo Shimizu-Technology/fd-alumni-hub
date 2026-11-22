@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -16,6 +17,8 @@ type ArticleSort = 'publishedDesc' | 'publishedAsc' | 'title' | 'source'
 type ArticleForm = { tournamentId: string; gameId: string; title: string; source: string; url: string; publishedAt: string; imageUrl: string; excerpt: string }
 
 export function AdminNewsPage() {
+  const auth = useAuthContext()
+  const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [articleQuery, setArticleQuery] = useState('')
   const [articleSort, setArticleSort] = useState<ArticleSort>('publishedDesc')
@@ -57,7 +60,7 @@ export function AdminNewsPage() {
         <ArticleToolbar query={articleQuery} sort={articleSort} onQueryChange={setArticleQuery} onSortChange={setArticleSort} />
         {!data?.articles.length ? <EmptyState title="No articles found" /> : null}
         {data?.articles.length && !visibleArticles.length ? <EmptyState title="No articles match those filters" description="Clear the search to see more coverage links." /> : null}
-        {pagedArticles.length > 0 && <div className="admin-list article-admin-list">{pagedArticles.map((article) => <ArticleRow key={article.id} article={article} games={data?.games || []} onSaved={reload} />)}</div>}
+        {pagedArticles.length > 0 && <div className="admin-list article-admin-list">{pagedArticles.map((article) => <ArticleRow key={article.id} article={article} games={data?.games || []} isAdmin={isAdmin} onSaved={reload} />)}</div>}
         <PaginationControls page={page} pageSize={articlesPageSize} total={visibleArticles.length} onPageChange={setPage} />
       </Panel>
     </div>
@@ -114,7 +117,7 @@ function ArticleToolbar({ query, sort, onQueryChange, onSortChange }: { query: s
   )
 }
 
-function ArticleRow({ article, games, onSaved }: { article: Article; games: Game[]; onSaved: () => Promise<void> }) {
+function ArticleRow({ article, games, isAdmin, onSaved }: { article: Article; games: Game[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<ArticleForm>(articleFormState(article))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -162,11 +165,11 @@ function ArticleRow({ article, games, onSaved }: { article: Article; games: Game
   return (
     <article className="admin-row-card article-admin-card">
       {!editing ? (
-        <ArticleSummary article={article} onEdit={() => setEditing(true)} onDelete={remove} deleting={deleting} />
+        <ArticleSummary article={article} isAdmin={isAdmin} onEdit={() => setEditing(true)} onDelete={remove} deleting={deleting} />
       ) : (
         <>
           <ArticleFields form={form} setForm={setForm} games={games} />
-          <div className="row-actions"><button className="btn secondary" type="button" onClick={cancel} disabled={saving || deleting}>Cancel</button><button className="btn primary" type="button" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save article'}</button><button className="btn danger" type="button" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div>
+          <div className="row-actions"><button className="btn secondary" type="button" onClick={cancel} disabled={saving || deleting}>Cancel</button><button className="btn primary" type="button" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save article'}</button>{isAdmin && <button className="btn danger" type="button" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button>}</div>
         </>
       )}
       {mutationError && <p className="form-error" role="alert">{mutationError}</p>}
@@ -174,7 +177,7 @@ function ArticleRow({ article, games, onSaved }: { article: Article; games: Game
   )
 }
 
-function ArticleSummary({ article, onEdit, onDelete, deleting }: { article: Article; onEdit: () => void; onDelete: () => void; deleting: boolean }) {
+function ArticleSummary({ article, isAdmin, onEdit, onDelete, deleting }: { article: Article; isAdmin: boolean; onEdit: () => void; onDelete: () => void; deleting: boolean }) {
   return (
     <div className="article-summary-card">
       <ArticleImagePreview src={article.imageUrl} title={article.title} compact />
@@ -185,7 +188,7 @@ function ArticleSummary({ article, onEdit, onDelete, deleting }: { article: Arti
         {article.excerpt && <p>{article.excerpt}</p>}
         {article.game && <small>{gameOptionLabel(article.game)}</small>}
       </div>
-      <div className="row-actions article-summary-actions"><button className="btn secondary small" type="button" onClick={onEdit}>Edit</button><button className="btn danger small" type="button" onClick={onDelete} disabled={deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div>
+      <div className="row-actions article-summary-actions"><button className="btn secondary small" type="button" onClick={onEdit}>Edit</button>{isAdmin && <button className="btn danger small" type="button" onClick={onDelete} disabled={deleting}>{deleting ? 'Deleting' : 'Delete'}</button>}</div>
     </div>
   )
 }

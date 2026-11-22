@@ -22,6 +22,29 @@ class Team < ApplicationRecord
     division_record&.name || division
   end
 
+  def special_division?
+    resolved_division.to_s.casecmp?("Special")
+  end
+
+  def fatherson_team?
+    [ display_name, class_year_label ].any? do |label|
+      text = label.to_s
+      text.match?(/\bFS\d*\b/i) || text.match?(/father[\s-]*son/i)
+    end
+  end
+
+  def placeholder_team?
+    [ display_name, class_year_label ].any? do |label|
+      text = label.to_s.strip
+      text.match?(/\A(?:class\s+)?(?:tbd|placeholder|winner\b|loser\b|60s\b)/i) ||
+        text.match?(/\b[WL](?:MP|GP|PP)\d*\b/i)
+    end
+  end
+
+  def excluded_from_standings?
+    special_division? || fatherson_team? || placeholder_team?
+  end
+
   def api_json(include_roster: false)
     payload = {
       id: id.to_s,

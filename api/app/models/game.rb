@@ -33,12 +33,31 @@ class Game < ApplicationRecord
   end
 
   def playoff_phase?
-    notes.to_s.include?("phase=playoff")
+    notes.to_s.include?("phase=playoff") ||
+      bracket_code.to_s.strip.match?(/\A(?:W?(?:MP|GP|PP)|QF|SF|F)\d*\z/i)
   end
 
   def fatherson_phase?
-    notes.to_s.include?("phase=fatherson") || bracket_code.to_s.start_with?("FS") ||
-      home_team&.display_name.to_s.match?(/\bFS\b/i) || away_team&.display_name.to_s.match?(/\bFS\b/i)
+    notes.to_s.include?("phase=fatherson") || bracket_code.to_s.match?(/\AFS/i) ||
+      home_team&.fatherson_team? || away_team&.fatherson_team?
+  end
+
+  def special_division?
+    resolved_division.to_s.casecmp?("Special") ||
+      home_team&.special_division? ||
+      away_team&.special_division?
+  end
+
+  def counts_toward_standings?
+    status == "final" &&
+      home_score.present? &&
+      away_score.present? &&
+      !placeholder? &&
+      !fatherson_phase? &&
+      !playoff_phase? &&
+      !special_division? &&
+      !home_team&.excluded_from_standings? &&
+      !away_team&.excluded_from_standings?
   end
 
   def summary_json

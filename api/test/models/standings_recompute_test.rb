@@ -60,4 +60,113 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     assert_equal 64, standing_2017.points_for
     assert_equal 72, standing_2017.points_against
   end
+
+  test "excludes father-son, placeholder, playoff, and special games and teams from standings" do
+    tournament = Tournament.create!(
+      name: "FD Alumni Basketball Tournament",
+      year: 2026,
+      start_date: Date.new(2026, 7, 3),
+      end_date: Date.new(2026, 7, 24),
+      status: "live"
+    )
+    class_2016 = tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
+    class_2017 = tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
+    fs1 = tournament.teams.create!(class_year_label: "FS1", display_name: "FS1")
+    fs2 = tournament.teams.create!(class_year_label: "FS2", display_name: "FS2")
+    tbd = tournament.teams.create!(class_year_label: "TBD", display_name: "Class TBD", division: "Special")
+    wmp1 = tournament.teams.create!(class_year_label: "WMP1", display_name: "Class WMP1", division: "Maroon")
+    sixties = tournament.teams.create!(class_year_label: "60s", display_name: "Class 60s", division: "Gold")
+
+    # Counts: pool game
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: class_2017,
+      start_time: Time.zone.local(2026, 7, 3, 18, 0),
+      status: "final",
+      home_score: 70,
+      away_score: 65,
+      notes: "phase=pool"
+    )
+    # Excluded: playoff game
+    tournament.games.create!(
+      home_team: class_2017,
+      away_team: class_2016,
+      start_time: Time.zone.local(2026, 7, 18, 19, 0),
+      status: "final",
+      home_score: 80,
+      away_score: 75,
+      notes: "phase=playoff"
+    )
+    # Excluded: father-son game
+    tournament.games.create!(
+      home_team: fs1,
+      away_team: fs2,
+      start_time: Time.zone.local(2026, 7, 5, 15, 40),
+      status: "final",
+      home_score: 50,
+      away_score: 40,
+      bracket_code: "FS01",
+      notes: "phase=fatherson"
+    )
+    # Excluded: placeholder game
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: class_2017,
+      start_time: Time.zone.local(2026, 7, 17, 20, 20),
+      status: "final",
+      home_score: 99,
+      away_score: 1,
+      placeholder: true
+    )
+    # Excluded: special division game
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: tbd,
+      start_time: Time.zone.local(2026, 7, 11, 14, 0),
+      status: "final",
+      home_score: 55,
+      away_score: 45,
+      division: "Special"
+    )
+
+    # Excluded: bracket placeholder team game
+    tournament.games.create!(
+      home_team: class_2016,
+      away_team: wmp1,
+      start_time: Time.zone.local(2026, 7, 19, 19, 0),
+      status: "final",
+      home_score: 60,
+      away_score: 50,
+      bracket_code: "MP9"
+    )
+    # Excluded: 60s exhibition team
+    tournament.games.create!(
+      home_team: sixties,
+      away_team: class_2016,
+      start_time: Time.zone.local(2026, 7, 12, 15, 0),
+      status: "final",
+      home_score: 40,
+      away_score: 42
+    )
+
+    result = Standings::Recompute.call(tournament)
+
+    assert_equal 2, result.teams
+    assert_equal 1, result.games
+    assert_equal 5, result.excluded_teams
+    assert_equal 6, result.excluded_games
+
+    assert_equal [ class_2016.id, class_2017.id ].sort, tournament.standings.pluck(:team_id).sort
+
+    standing_2016 = tournament.standings.find_by!(team: class_2016)
+    standing_2017 = tournament.standings.find_by!(team: class_2017)
+
+    assert_equal 1, standing_2016.wins
+    assert_equal 0, standing_2016.losses
+    assert_equal 70, standing_2016.points_for
+    assert_equal 65, standing_2016.points_against
+
+    assert_equal 0, standing_2017.wins
+    assert_equal 1, standing_2017.losses
+  end
 end

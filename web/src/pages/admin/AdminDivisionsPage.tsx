@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { selectedTournament, tournamentScopedPath, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -21,6 +22,8 @@ type ClassAssignment = {
 type ClassAssignmentIndex = Map<string, Team[]>
 
 export function AdminDivisionsPage() {
+  const auth = useAuthContext()
+  const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const [teamQuery, setTeamQuery] = useState('')
   const [divisionFilter, setDivisionFilter] = useState('')
@@ -67,7 +70,7 @@ export function AdminDivisionsPage() {
         actions={tournament && <Link className="btn primary" to={tournamentScopedPath('/admin/games', tournament.id)}>Build schedule</Link>}
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
-      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} onSaved={reload} />
+      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} isAdmin={isAdmin} onSaved={reload} />
       <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />
       <ClassCoverageBoard key={tournament?.id || 'no-tournament'} tournament={tournament} assignments={classAssignments} />
       <Panel>
@@ -89,7 +92,7 @@ export function AdminDivisionsPage() {
         />
         {!teams.length ? <EmptyState title="No teams found" description="Add the teams that are playing in this tournament before building the schedule." /> : null}
         {teams.length > 0 && !visibleTeams.length ? <EmptyState title="No teams match those filters" description="Clear the search or division filter to see more teams." /> : null}
-        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />)}</div>}
+        {visibleTeams.length > 0 && <div className="admin-list team-card-list">{visibleTeams.map((team) => <EditableTeam key={team.id} team={team} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} isAdmin={isAdmin} onSaved={reload} />)}</div>}
       </Panel>
     </div>
   )
@@ -99,7 +102,7 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
   return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
 }
 
-function DivisionSettingsPanel({ tournament, divisions, allDivisions, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; onSaved: () => Promise<void> }) {
+function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const nextPosition = useMemo(() => Math.max(0, ...allDivisions.map((division) => division.position)) + 1, [allDivisions])
   const [form, setForm] = useState({ name: '', startsYear: '', position: '1' })
   const [saveSuccess, setSaveSuccess] = useState('')
@@ -139,23 +142,25 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, onSaved }:
       <div className="section-heading collapsible-heading">
         <div>
           <h2>Division settings</h2>
-          <p>Rarely changed. Current tournament divisions are shown below.</p>
+          <p>{isAdmin ? 'Rarely changed. Current tournament divisions are shown below.' : 'Configured by administrators. Current tournament divisions are shown below.'}</p>
         </div>
-        <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          {open ? 'Hide settings' : 'Edit settings'}
-        </button>
+        {isAdmin && (
+          <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+            {open ? 'Hide settings' : 'Edit settings'}
+          </button>
+        )}
       </div>
       <div className="division-pill-list" aria-label="Available divisions for selected tournament">
         {divisions.map((division) => <span key={division.id}>{division.name}</span>)}
       </div>
       {saveSuccess && <p className="form-note" role="status">{saveSuccess}</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      {open && (
+      {isAdmin && open && (
         <div className="collapsible-body">
           <form onSubmit={submit} className="stacked-form">
             <p className="form-note">Adding a new division defaults to {tournament ? `${tournament.year} and future tournaments` : 'the selected tournament year'}. Renaming a division updates teams and games assigned to that division; create a new division for future-only changes.</p>
             <FormGrid>
-              <Field label="Division name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Diamond" required /></Field>
+              <Field label="Division name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Platinum" required /></Field>
               <Field label="Starting year"><input type="number" value={form.startsYear} onChange={(event) => setForm({ ...form, startsYear: event.target.value })} placeholder="All years if blank" /></Field>
               <Field label="Display order"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
             </FormGrid>
@@ -428,7 +433,7 @@ function RepresentationSummary({ team }: { team: Team }) {
   )
 }
 
-function EditableTeam({ team, divisions, classOptions, classAssignmentIndex, onSaved }: { team: Team; divisions: Division[]; classOptions: ClassCohortOption[]; classAssignmentIndex: ClassAssignmentIndex; onSaved: () => Promise<void> }) {
+function EditableTeam({ team, divisions, classOptions, classAssignmentIndex, isAdmin, onSaved }: { team: Team; divisions: Division[]; classOptions: ClassCohortOption[]; classAssignmentIndex: ClassAssignmentIndex; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState(teamFormState(team, divisions))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -494,7 +499,7 @@ function EditableTeam({ team, divisions, classOptions, classAssignmentIndex, onS
         </div>
         <div className="row-actions">
           {!editing && <button className="btn secondary small" type="button" onClick={() => setEditing(true)}>Edit team</button>}
-          {!editing && <button className="btn danger small" type="button" onClick={remove} disabled={saving}>{saving ? 'Removing' : 'Delete'}</button>}
+          {isAdmin && !editing && <button className="btn danger small" type="button" onClick={remove} disabled={saving}>{saving ? 'Removing' : 'Delete'}</button>}
         </div>
       </div>
 
@@ -517,7 +522,7 @@ function EditableTeam({ team, divisions, classOptions, classAssignmentIndex, onS
           <div className="row-actions">
             <button className="btn secondary small" type="button" onClick={cancel} disabled={saving}>Cancel</button>
             <button className="btn primary small" type="button" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save team'}</button>
-            <button className="btn danger small" type="button" onClick={remove} disabled={saving}>{saving ? 'Removing' : 'Delete team'}</button>
+            {isAdmin && <button className="btn danger small" type="button" onClick={remove} disabled={saving}>{saving ? 'Removing' : 'Delete team'}</button>}
           </div>
         </div>
       ) : (

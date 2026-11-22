@@ -1,13 +1,16 @@
 # React/Vite frontend deployment for the Rails-backed FD Alumni Basketball Hub.
 # The legacy Next.js app has been archived under archive/legacy-next-app.
+#
+# Configure VITE_SITE_URL in the Netlify UI (e.g. https://fd-alumni.shimizu-technology.com).
+# When unset, Vite falls back to https://fd-alumni-tourney.netlify.app so the
+# existing Netlify deployment keeps valid canonical, robots.txt, and sitemap.xml URLs.
 [build]
   base = "."
   command = "npm ci --include=optional && npm run build"
   publish = "web/dist"
+  ignore = '[ -n "$CACHED_COMMIT_REF" ] && git diff --quiet "$CACHED_COMMIT_REF" "$COMMIT_REF" -- web/ package.json package-lock.json netlify.toml'
 
 [build.environment]
-  # Public production URL used for canonical/SEO metadata in the Vite bundle.
-  VITE_SITE_URL = "https://fd-alumni-tourney.netlify.app"
   # The old Netlify project still has @netlify/plugin-nextjs installed from the UI.
   # Skip that runtime explicitly now that this repo deploys the Vite build.
   NETLIFY_NEXT_PLUGIN_SKIP = "true"

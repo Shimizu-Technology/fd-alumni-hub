@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class ContentIngestItemsController < BaseController
+        before_action :require_admin!
+
         def index
           items = ContentIngestItem.includes(:tournament).order(created_at: :desc)
           items = items.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?

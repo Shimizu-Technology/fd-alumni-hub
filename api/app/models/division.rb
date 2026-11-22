@@ -1,5 +1,5 @@
 class Division < ApplicationRecord
-  DEFAULT_NAMES = %w[Maroon Gold Diamond].freeze
+  DEFAULT_NAMES = %w[Maroon Gold Platinum Special].freeze
 
   has_many :teams, dependent: :nullify
   has_many :games, dependent: :nullify

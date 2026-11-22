@@ -3,14 +3,11 @@ import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { externalHref } from '../../lib/urls'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable } from '../../components/ui'
 import { IconExternal, IconPlay } from '../../components/Icons'
 
 export function WatchPage() {
   const { data, loading, error, reload } = useAsync(() => api.publicSchedule({ phase: '' }), [])
-
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} onRetry={reload} />
 
   const streamGames = (data?.games || []).filter((game) => game.streamUrl)
   const upcoming = (data?.games || []).filter((game) => !game.streamUrl).slice(0, 10)
@@ -32,7 +29,15 @@ export function WatchPage() {
         <a className="btn primary" href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">Open Clutch <IconExternal /></a>
       </Panel>
 
-      {streamGames.length === 0 ? (
+      {loading && !data ? (
+        <LoadingState label="Loading stream links" />
+      ) : error && !data ? (
+        <SectionUnavailable
+          title="Per-game stream links are unavailable"
+          description="Live stream assignments could not be loaded right now. You can still open Clutch directly above."
+          onRetry={reload}
+        />
+      ) : streamGames.length === 0 ? (
         <EmptyState title="No stream links posted yet" description="Check back closer to tipoff, or open Clutch for the latest available tournament broadcasts." />
       ) : (
         <div className="game-card-grid">
@@ -47,7 +52,7 @@ export function WatchPage() {
         </div>
       )}
 
-      {upcoming.length > 0 && (
+      {!error && upcoming.length > 0 && (
         <Panel>
           <div className="section-heading"><h2>Games awaiting stream links</h2></div>
           <div className="compact-list">

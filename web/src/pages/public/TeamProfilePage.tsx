@@ -6,7 +6,7 @@ import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { classRouteKey } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Article, ClassCohort, Game, RosterEntry, Team } from '../../lib/types'
-import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard, StatusBadge } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatCard, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 
 export function TeamProfilePage() {
@@ -17,7 +17,24 @@ export function TeamProfilePage() {
   }, [teamId])
 
   if (loading && !data) return <LoadingState label="Loading team entry profile" />
-  if (error) return <ErrorState message={error} onRetry={reload} />
+  if (error) {
+    return (
+      <div className="page-stack team-profile-page">
+        <PageHeader
+          eyebrow="Team entry"
+          title="Class team profile"
+          description="Team rosters, games, and records require a live API connection."
+          actions={<Link className="btn secondary" to="/history">Back to history <IconArrowRight /></Link>}
+        />
+        <SectionUnavailable
+          title="Team profile is temporarily unavailable"
+          description={error}
+          onRetry={reload}
+          action={<Link className="btn secondary" to="/history">Browse offline champions</Link>}
+        />
+      </div>
+    )
+  }
   if (!data) return <EmptyState title="Team entry profile unavailable" />
 
   const titles = data.titleRecords

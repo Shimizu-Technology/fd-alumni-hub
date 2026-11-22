@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class TeamsController < BaseController
+        before_action :require_admin!, only: [ :destroy ]
+
         def index
           teams = Team.includes(:tournament, :division_record, :roster_entries, team_class_memberships: :class_cohort).order(:tournament_id, :division, :display_name)
           teams = teams.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?

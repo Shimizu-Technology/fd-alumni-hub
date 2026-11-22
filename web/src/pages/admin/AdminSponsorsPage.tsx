@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { api } from '../../lib/api'
+import { useAuthContext } from '../../contexts/AuthContext'
 import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
@@ -10,6 +11,8 @@ import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 type SponsorForm = { tournamentId?: string; name: string; logoUrl: string; targetUrl: string; tier: string; active: boolean; position: string }
 
 export function AdminSponsorsPage() {
+  const auth = useAuthContext()
+  const isAdmin = Boolean(auth.user?.isAdmin)
   const [tournamentId, setTournamentId] = useTournamentSelection()
   const { data, loading, error, reload } = useAsync(async () => {
     const [tournaments, sponsors] = await Promise.all([api.adminTournaments(), api.adminSponsors(tournamentId || null)])
@@ -30,7 +33,7 @@ export function AdminSponsorsPage() {
       <PageHeader eyebrow="Admin" title="Sponsors" description="Manage approved sponsor placements and partner links." />
       <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <CreateSponsorPanel tournaments={data?.tournaments || []} selectedTournamentId={tournamentId} onSaved={reload} />
-      <Panel>{!data?.sponsors.length ? <EmptyState title="No sponsors found" /> : <div className="admin-list">{data.sponsors.map((sponsor) => <SponsorRow key={sponsor.id} sponsor={sponsor} onSaved={reload} />)}</div>}</Panel>
+      <Panel>{!data?.sponsors.length ? <EmptyState title="No sponsors found" /> : <div className="admin-list">{data.sponsors.map((sponsor) => <SponsorRow key={sponsor.id} sponsor={sponsor} isAdmin={isAdmin} onSaved={reload} />)}</div>}</Panel>
     </div>
   )
 }
@@ -76,7 +79,7 @@ function CreateSponsorPanel({ tournaments, selectedTournamentId, onSaved }: { to
   return <Panel><div className="section-heading"><h2>Add sponsor</h2>{message && <span>{message}</span>}</div><form onSubmit={submit}><SponsorFields form={form} setForm={setForm} tournaments={tournaments} includeTournament /><button className="btn primary" type="submit" disabled={!form.tournamentId}>Create sponsor</button></form></Panel>
 }
 
-function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Promise<void> }) {
+function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: boolean; onSaved: () => Promise<void> }) {
   const [form, setForm] = useState<SponsorForm>({ tournamentId: sponsor.tournamentId, name: sponsor.name, logoUrl: sponsor.logoUrl || '', targetUrl: sponsor.targetUrl || '', tier: sponsor.tier || '', active: sponsor.active, position: String(sponsor.position) })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -107,7 +110,7 @@ function SponsorRow({ sponsor, onSaved }: { sponsor: Sponsor; onSaved: () => Pro
     }
   }
 
-  return <article className="admin-row-card sponsor-admin-row">{sponsor.logoUrl && <img src={sponsor.logoUrl} alt="" loading="lazy" />}<SponsorFields form={form} setForm={setForm} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button><button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button></div></article>
+  return <article className="admin-row-card sponsor-admin-row">{sponsor.logoUrl && <img src={sponsor.logoUrl} alt="" loading="lazy" />}<SponsorFields form={form} setForm={setForm} />{mutationError && <p className="form-error" role="alert">{mutationError}</p>}<div className="row-actions"><button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button>{isAdmin && <button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button>}</div></article>
 }
 
 function SponsorFields({ form, setForm, tournaments, includeTournament = false }: { form: SponsorForm; setForm: Dispatch<SetStateAction<SponsorForm>>; tournaments?: Tournament[]; includeTournament?: boolean }) {
