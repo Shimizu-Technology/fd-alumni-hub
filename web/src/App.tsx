@@ -27,6 +27,8 @@ import { ClassProfilePage } from './pages/public/ClassProfilePage'
 import { AdminOverviewPage } from './pages/admin/AdminOverviewPage'
 import { AdminTournamentsPage } from './pages/admin/AdminTournamentsPage'
 import { AdminTournamentDetailPage } from './pages/admin/AdminTournamentDetailPage'
+import { AdminTournamentWizardPage } from './pages/admin/AdminTournamentWizardPage'
+import { AdminScheduleImportPage } from './pages/admin/AdminScheduleImportPage'
 import { AdminGamesPage } from './pages/admin/AdminGamesPage'
 import { AdminGameDayPage } from './pages/admin/AdminGameDayPage'
 import { AdminStandingsPage } from './pages/admin/AdminStandingsPage'
@@ -74,7 +76,9 @@ export function App() {
             <Route path="campaign/finance" element={<RequireCampaignRoute><AdminCampaignFinancePage /></RequireCampaignRoute>} />
             <Route path="campaign/host-year" element={<RequireCampaignRoute><AdminCampaignHostYearPage /></RequireCampaignRoute>} />
             <Route path="tournaments" element={<RequireStaffRoute><AdminTournamentsPage /></RequireStaffRoute>} />
+            <Route path="tournaments/setup" element={<RequireAdminRoute><AdminTournamentWizardPage /></RequireAdminRoute>} />
             <Route path="tournaments/:tournamentId" element={<RequireStaffRoute><AdminTournamentDetailPage /></RequireStaffRoute>} />
+            <Route path="import" element={<RequireStaffRoute><AdminScheduleImportPage /></RequireStaffRoute>} />
             <Route path="games" element={<RequireStaffRoute><AdminGamesPage /></RequireStaffRoute>} />
             <Route path="game-day" element={<RequireStaffRoute><AdminGameDayPage /></RequireStaffRoute>} />
             <Route path="standings" element={<RequireStaffRoute><AdminStandingsPage /></RequireStaffRoute>} />

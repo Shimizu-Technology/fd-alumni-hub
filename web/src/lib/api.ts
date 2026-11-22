@@ -27,6 +27,12 @@ import type {
   PredictionPoll,
   ReceiptPresignResponse,
   RosterEntry,
+  RosterImportCommitResult,
+  RosterImportPreview,
+  RosterImportRow,
+  ScheduleImportCommitResult,
+  ScheduleImportPreview,
+  ScheduleImportRow,
   ScoreCoverage,
   SignedReceiptUrlResponse,
   Sponsor,
@@ -195,7 +201,36 @@ export const api = {
   adminTournaments: () => request<{ tournaments: Tournament[] }>('/admin/tournaments'),
   adminTournament: (id: string) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`),
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
+  adminSetupTournament: (payload: {
+    tournament: { name: string; year: number; startDate: string; endDate: string; status?: string }
+    divisions?: Array<{ name: string; position: number; countsForStandings: boolean; active?: boolean }>
+    hostCampaign?: {
+      title?: string
+      slug?: string
+      goalCents: number
+      hostClassYear?: number
+      classCohortId?: string
+      fdaaUpfrontCents?: number
+      fdaaTicketShareBps?: number
+    } | null
+  }) => request<{ tournament: Tournament; divisions: Division[]; hostCampaign: AdminHostCampaign | null }>('/admin/tournaments/setup', json('POST', payload)),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
+  adminPreviewScheduleImport: (
+    tournamentId: string,
+    payload: { format?: string; content?: string; defaultVenue?: string; rows?: Array<Partial<ScheduleImportRow>> },
+  ) => request<ScheduleImportPreview>(`/admin/tournaments/${tournamentId}/schedule-import/preview`, json('POST', payload)),
+  adminCommitScheduleImport: (
+    tournamentId: string,
+    payload: { rows: Array<Partial<ScheduleImportRow>>; overwriteScores?: boolean; defaultVenue?: string },
+  ) => request<ScheduleImportCommitResult>(`/admin/tournaments/${tournamentId}/schedule-import/commit`, json('POST', payload)),
+  adminPreviewRosterImport: (
+    tournamentId: string,
+    payload: { format?: string; content?: string; rows?: Array<Partial<RosterImportRow>> },
+  ) => request<RosterImportPreview>(`/admin/tournaments/${tournamentId}/roster-import/preview`, json('POST', payload)),
+  adminCommitRosterImport: (
+    tournamentId: string,
+    payload: { rows: Array<Partial<RosterImportRow>> },
+  ) => request<RosterImportCommitResult>(`/admin/tournaments/${tournamentId}/roster-import/commit`, json('POST', payload)),
 
   adminDivisions: (tournamentId?: string | null) => request<{ tournament?: Tournament | null; divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
   adminCreateDivision: (payload: Partial<Division> & { tournamentId?: string | null }) => request<{ division: Division }>(`/admin/divisions${query({ tournamentId: payload.tournamentId })}`, json('POST', { division: payload })),

@@ -67,6 +67,7 @@ const navSections: NavSection[] = [
     label: 'Tournament ops',
     items: [
       { to: '/admin/divisions', label: 'Teams', icon: IconUsers, tournamentScoped: true, access: 'staff' },
+      { to: '/admin/import', label: 'Import', icon: IconDatabase, tournamentScoped: true, access: 'staff' },
       { to: '/admin/games', label: 'Games', icon: IconCalendar, tournamentScoped: true, access: 'staff' },
       { to: '/admin/game-day', label: 'Game Day', icon: IconHome, tournamentScoped: true, access: 'staff' },
       { to: '/admin/standings', label: 'Standings', icon: IconChart, tournamentScoped: true, access: 'staff' },
