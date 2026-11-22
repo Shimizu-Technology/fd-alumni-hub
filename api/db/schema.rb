@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -556,6 +556,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000003) do
     t.index ["team_id"], name: "index_roster_entries_on_team_id"
   end
 
+  create_table "site_publications", force: :cascade do |t|
+    t.integer "version_number", null: false
+    t.string "mode", null: false
+    t.bigint "tournament_id"
+    t.bigint "host_campaign_id"
+    t.jsonb "section_overrides", default: {}, null: false
+    t.string "recap_headline"
+    t.text "recap_summary"
+    t.boolean "handoff_banner_enabled", default: false, null: false
+    t.bigint "published_by_id"
+    t.datetime "published_at", null: false
+    t.bigint "restored_from_id"
+    t.boolean "current", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["current"], name: "index_site_publications_on_current", unique: true, where: "(current = true)"
+    t.index ["host_campaign_id"], name: "index_site_publications_on_host_campaign_id"
+    t.index ["published_by_id"], name: "index_site_publications_on_published_by_id"
+    t.index ["restored_from_id"], name: "index_site_publications_on_restored_from_id"
+    t.index ["tournament_id"], name: "index_site_publications_on_tournament_id"
+    t.index ["version_number"], name: "index_site_publications_on_version_number", unique: true
+  end
+
   create_table "sponsors", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
@@ -692,6 +715,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000003) do
     t.string "status", default: "upcoming", null: false
     t.datetime "updated_at", null: false
     t.integer "year", null: false
+    t.datetime "schedule_published_at"
+    t.integer "schedule_revision", default: 0, null: false
     t.index ["legacy_id"], name: "index_tournaments_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["year", "name"], name: "index_tournaments_on_year_and_name", unique: true
     t.index ["year", "status"], name: "index_tournaments_on_year_and_status"
@@ -762,6 +787,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000003) do
   add_foreign_key "prediction_votes", "prediction_polls", on_delete: :cascade
   add_foreign_key "prediction_votes", "teams", on_delete: :cascade
   add_foreign_key "roster_entries", "teams", on_delete: :cascade
+  add_foreign_key "site_publications", "host_campaigns"
+  add_foreign_key "site_publications", "site_publications", column: "restored_from_id"
+  add_foreign_key "site_publications", "tournaments"
+  add_foreign_key "site_publications", "users", column: "published_by_id", on_delete: :nullify
   add_foreign_key "sponsors", "tournaments", on_delete: :cascade
   add_foreign_key "standings", "teams", on_delete: :cascade
   add_foreign_key "standings", "tournaments", on_delete: :cascade

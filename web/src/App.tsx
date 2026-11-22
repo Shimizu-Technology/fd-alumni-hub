@@ -1,5 +1,8 @@
+import { AdminSiteModePage } from './pages/admin/AdminSiteModePage'
+import { NotFoundPage } from './pages/public/NotFoundPage'
+import { TeamsPage } from './pages/public/TeamsPage'
 import { ClerkProvider } from '@clerk/clerk-react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { BackendAvailabilityProvider } from './hooks/useBackendAvailability'
 import { PublicLayout } from './components/PublicLayout'
@@ -71,9 +74,11 @@ export function App() {
             <Route path="history" element={<HistoryPage />} />
             <Route path="history/:year" element={<HistoryDetailPage />} />
             <Route path="classes/:classKey" element={<ClassProfilePage />} />
+            <Route path="teams" element={<TeamsPage />} />
             <Route path="teams/:teamId" element={<TeamProfilePage />} />
             <Route path="sponsors" element={<SponsorsPage />} />
             <Route path="info" element={<InfoPage />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
           <Route path="admin" element={<AdminLayout />}>
             <Route index element={<AdminIndexRoute staffElement={<AdminOverviewPage />} />} />
@@ -94,11 +99,11 @@ export function App() {
             <Route path="media" element={<RequireCapabilityRoute><AdminMediaPage /></RequireCapabilityRoute>} />
             <Route path="sponsors" element={<RequireCapabilityRoute><AdminSponsorsPage /></RequireCapabilityRoute>} />
             <Route path="campaigns" element={<RequireCapabilityRoute><AdminCampaignsPage /></RequireCapabilityRoute>} />
+            <Route path="site-mode" element={<RequireCapabilityRoute><AdminSiteModePage /></RequireCapabilityRoute>} />
             <Route path="audit" element={<RequireCapabilityRoute><AdminAuditHistoryPage /></RequireCapabilityRoute>} />
             <Route path="people" element={<RequireCapabilityRoute><AdminPeoplePage /></RequireCapabilityRoute>} />
             <Route path="ingest" element={<RequireCapabilityRoute><AdminIngestPage /></RequireCapabilityRoute>} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BackendAvailabilityProvider>

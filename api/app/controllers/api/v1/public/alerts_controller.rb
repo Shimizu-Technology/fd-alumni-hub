@@ -4,7 +4,7 @@ module Api
       class AlertsController < BaseController
         def index
           tournament = current_tournament
-          alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10)
+          alerts = site_context.alerts(tournament)
 
           render json: {
             tournamentId: tournament&.id&.to_s,

@@ -1,30 +1,40 @@
+import { SeasonHero } from '../../components/SeasonHero'
+import { useSiteMode } from '../../contexts/SiteModeContext'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
-import { externalHref, safeHttpsHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import { formatGuamDateTime } from '../../lib/datetime'
-import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../../lib/games'
+import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { staticChampionRecords } from '../../lib/staticChampions'
-import { useMotionOk } from '../../hooks/useMotionOk'
-import { EmptyState, LoadingState, Panel, SectionUnavailable, StatCard } from '../../components/ui'
-import { IconArrowRight, IconCalendar, IconPlay, IconTrophy } from '../../components/Icons'
+import { LoadingState, Panel } from '../../components/ui'
+import { IconArrowRight } from '../../components/Icons'
 import { PredictionPollCard } from '../../components/PredictionPollCard'
+import type { SiteSection } from '../../lib/siteMode'
 import type { Game, GameDayNote, PredictionPoll } from '../../lib/types'
 
 const homeRefreshIntervalMs = 15_000
+const seasonLinks: { section: SiteSection; label: string; to: string }[] = [
+  { section: 'schedule', label: 'Schedule', to: '/schedule' },
+  { section: 'teams', label: 'Teams & Rosters', to: '/teams' },
+  { section: 'standings', label: 'Standings', to: '/standings' },
+  { section: 'bracket', label: 'Playoff Bracket', to: '/bracket' },
+  { section: 'tickets', label: 'Tickets', to: '/tickets' },
+  { section: 'sponsors', label: 'Sponsors', to: '/sponsors' },
+]
 
 export function HomePage() {
   const [voterToken] = useState(readOrCreateVoterToken)
   const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
   const [voteError, setVoteError] = useState('')
-  const motionOk = useMotionOk()
+  const { siteMode: layoutMode, acceptSiteMode } = useSiteMode()
   const { data, loading, error, reload } = useAsync(() => api.publicHome(voterToken), [voterToken])
 
   useEffect(() => {
     setPollOverrides({})
-  }, [data])
+    if (data) acceptSiteMode(data)
+  }, [data, acceptSiteMode])
 
   useEffect(() => {
     if (!data) return undefined
@@ -54,136 +64,47 @@ export function HomePage() {
     }
   }
 
-  const tournamentLabel = data?.tournament ? `${data.tournament.name} ${data.tournament.year}` : 'FD Alumni Tournament Hub'
+  const siteMode = data?.siteMode || layoutMode
+  const { mode, sections, hostCampaign, recap } = siteMode
   const featuredGames = featuredGamesForHome(data?.liveGames || [], data?.todayGames || [])
   const gameDayNote = data?.gameDayNote || null
   const hasGameDayNote = hasHomeGameDayNote(gameDayNote)
-  const heroTournament = data?.upcomingOrLiveTournament || data?.tournament || null
-  const heroStatus = error && !data ? 'Off-season archive' : heroTournament ? `${heroTournament.year} · ${heroTournament.status}` : 'Schedule pending'
-  const heroDates = error && !data
-    ? 'Live schedule and score services are paused between events.'
-    : heroTournament
-      ? formatTournamentWindow(heroTournament)
-      : 'Dates will appear once organizers publish them.'
+  const nextGame = data?.todayGames.find((game) => Date.parse(game.startTime) >= Date.now() && game.status === 'scheduled')
+  const showHostCard = sections.fundraisers && (mode === 'schedule_ready' || (mode === 'tournament_recap' && recap.handoffBannerEnabled))
+  const visibleSeasonLinks = seasonLinks.filter(({ section }) => sections[section])
+  const champions = (data?.championRecords || []).filter((record) => record.championLabel)
 
   return (
     <div className="page-stack">
-      <section className={`hero-card public-hero-card ${motionOk ? 'hero-reveal' : ''}`}>
-        <div className="hero-text">
-          <p className="eyebrow">Central hub · FD Alumni Basketball</p>
-          <h1>Schedules, scores, streams, and stories from The Jungle.</h1>
-          <p>{tournamentLabel}. A clean guide for alumni, families, and fans to follow the tournament while routing tickets, streams, and coverage to the right partners.</p>
-          <div className="hero-actions">
-            <Link className="btn primary" to="/today"><IconCalendar /> Today at The Jungle <IconArrowRight /></Link>
-            <Link className="btn secondary" to="/host-year">Host Year &amp; Fundraisers</Link>
-            <Link className="btn secondary" to="/schedule">Schedule</Link>
-            <Link className="btn secondary" to="/standings"><IconTrophy /> Standings</Link>
-            <Link className="btn secondary" to="/history">History</Link>
-            <Link className="btn secondary" to="/watch"><IconPlay /> Watch</Link>
+      <SeasonHero siteMode={siteMode} tournament={mode === 'fundraising' ? data?.upcomingOrLiveTournament || siteMode.tournament : siteMode.tournament} nextGame={nextGame} />
+      {loading && !data && <LoadingState label="Loading tournament updates" />}
+      {error && !data && (
+        <Panel>
+          <div className="section-heading">
+            <h2>Recent champions</h2>
+            <Link to="/history">Full history <IconArrowRight /></Link>
           </div>
-        </div>
-        <div className="hero-panel">
-          <span>Active tournament</span>
-          <strong>{heroStatus}</strong>
-          <small>{heroDates}</small>
-          <div className="hero-panel-rule" aria-hidden="true" />
-          <small>Game times, ticket links, stream links, and coverage stay organized in one place.</small>
-        </div>
-      </section>
-
-      {loading && !data ? (
-        <LoadingState label="Loading live tournament status" />
-      ) : error && !data ? (
-        <>
-          <section className="split-grid">
-            <Panel>
-              <div className="section-heading home-today-heading">
-                <h2>Today at The Jungle</h2>
-                <Link to="/info">Tournament info</Link>
-              </div>
-              <SectionUnavailable
-                title="Live game-day data is currently offline"
-                description="Schedules, live scores, and game-day polls will return once the API is active."
-                onRetry={reload}
-                action={<Link className="btn secondary" to="/info">Tournament rules &amp; info</Link>}
-              />
-            </Panel>
-
-            <Panel>
-              <div className="section-heading">
-                <h2>Recent champions (offline archive)</h2>
-                <Link to="/history">Full history <IconArrowRight /></Link>
-              </div>
-              <div className="compact-list">
-                {recentOfflineChampions.map((record) => (
-                  <Link key={record.id} to={`/history/${record.year}`} className="compact-row">
-                    <span>{record.label}</span>
-                    <strong>{record.championLabel}</strong>
-                    <small>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || record.source}{record.score ? ` · ${record.score}` : ''}</small>
-                  </Link>
-                ))}
-              </div>
-            </Panel>
-          </section>
-        </>
-      ) : data ? (
+          <div className="compact-list">
+            {recentOfflineChampions.map((record) => (
+              <Link key={record.id} to={`/history/${record.year}`} className="compact-row">
+                <span>{record.label}</span><strong>{record.championLabel}</strong>
+                {record.score && <small>{record.score}</small>}
+              </Link>
+            ))}
+          </div>
+        </Panel>
+      )}
+      {data && (
         <>
           {error && (
             <Panel className="notice-panel">
-              <span>Live refresh failed — showing last loaded data.</span>{' '}
+              <span>Live refresh failed. Showing the last loaded updates.</span>{' '}
               <button type="button" className="btn secondary small" onClick={() => void reload()}>Retry</button>
             </Panel>
           )}
-          {data.activeHostCampaign && (
-            <Panel className="home-host-year-callout">
-              <div className="home-host-year-copy">
-                <p className="eyebrow">
-                  {data.activeHostCampaign.hostClass ? `${data.activeHostCampaign.hostClass.displayName} · ` : ''}Host Year
-                </p>
-                <h2>{data.activeHostCampaign.title}</h2>
-                <p>
-                  {data.activeHostCampaign.tagline || 'Follow host-year fundraisers, tournament tickets, golf registration, and class announcements.'}
-                </p>
-                {data.activeHostCampaign.nextEvent && (
-                  <p className="home-host-year-next">
-                    <strong>Next up:</strong> {data.activeHostCampaign.nextEvent.title}
-                    {data.activeHostCampaign.nextEvent.startsAt
-                      ? ` · ${formatGuamDateTime(data.activeHostCampaign.nextEvent.startsAt)}`
-                      : data.activeHostCampaign.nextEvent.dateLabel
-                        ? ` · ${data.activeHostCampaign.nextEvent.dateLabel}`
-                        : ''}
-                  </p>
-                )}
-              </div>
-              <div className="home-host-year-actions">
-                <Link className="btn primary" to={`/host-year/${data.activeHostCampaign.slug}`}>
-                  Open Host Year <IconArrowRight size={16} />
-                </Link>
-                {safeHttpsHref(data.activeHostCampaign.golfUrl) && (
-                  <a className="btn secondary" href={safeHttpsHref(data.activeHostCampaign.golfUrl) || undefined} target="_blank" rel="noreferrer">
-                    Alumni Golf
-                  </a>
-                )}
-              </div>
-            </Panel>
-          )}
-
-          <div className="stats-grid">
-            <StatCard label="Games today" value={data.todayGames.length} tone="maroon" />
-            <StatCard label="Live now" value={data.liveGames.length} detail={data.liveGames.length ? 'Game in progress' : 'No active games'} tone={data.liveGames.length ? 'live' : 'neutral'} />
-            <StatCard label="Latest news" value={data.latestNews.length} tone="gold" />
-            <StatCard label="Tournament" value={data.tournament?.status?.toUpperCase() || 'READY'} detail={data.tournament?.year ? String(data.tournament.year) : 'Fallback ready'} />
-          </div>
-
-          <section className="split-grid">
+          {sections.tonight && (
             <Panel>
-              <div className="section-heading home-today-heading">
-                <h2>Today at The Jungle</h2>
-                <div className="section-actions">
-                  <Link className="btn secondary small" to="/today">Open Today guide <IconArrowRight /></Link>
-                  <Link to="/schedule">Full schedule</Link>
-                </div>
-              </div>
+              <div className="section-heading"><h2>Game-day updates</h2><Link to="/today">Tonight’s guide</Link></div>
               {hasGameDayNote && (
                 <div className="home-today-note">
                   <div className="home-today-note-grid">
@@ -194,7 +115,7 @@ export function HomePage() {
                   {gameDayNote.sponsorShoutout && <small>{gameDayNote.sponsorShoutout}</small>}
                 </div>
               )}
-              {featuredPoll ? (
+              {featuredPoll && (
                 <div className="home-poll-callout">
                   <div className="home-poll-copy">
                     <span>Fan prediction</span>
@@ -204,15 +125,8 @@ export function HomePage() {
                   {voteError && <p className="form-error" role="alert">{voteError}</p>}
                   <PredictionPollCard poll={featuredPoll} onVote={vote} compact />
                 </div>
-              ) : (
-                <div className="home-poll-teaser">
-                  <strong>Fan predictions</strong>
-                  <span>Polls open from the Today guide on game day. Vote with one tap when matchups are ready.</span>
-                </div>
               )}
-              {featuredGames.length === 0 ? (
-                <EmptyState title="No games scheduled for today" description="Open the Today guide for game-day notes, or check the full schedule for upcoming matchups." action={<Link className="btn secondary" to="/today">See what’s posted today <IconArrowRight /></Link>} />
-              ) : (
+              {featuredGames.length > 0 && (
                 <div className="compact-list">
                   {featuredGames.map((game) => (
                     <Link key={game.id} to="/today" className="compact-row">
@@ -224,41 +138,44 @@ export function HomePage() {
                 </div>
               )}
             </Panel>
-
+          )}
+          {sections.recap && champions.length > 0 && (
+            <Panel>
+              <div className="section-heading"><h2>Champions</h2></div>
+              <div className="compact-list">
+                {champions.map((record) => <div className="compact-row" key={record.id}><span>{record.label}</span><strong>{record.championLabel}</strong>{record.score && <small>{record.score}</small>}</div>)}
+              </div>
+            </Panel>
+          )}
+          {showHostCard && hostCampaign && (
+            <Panel className="home-host-year-callout">
+              <div><h2>{hostCampaign.hostClass?.displayName || hostCampaign.title}</h2>{hostCampaign.tagline && <p>{hostCampaign.tagline}</p>}</div>
+              <Link to={`/host-year/${hostCampaign.slug}`}>Meet the host class <IconArrowRight size={16} /></Link>
+            </Panel>
+          )}
+          {mode === 'tournament_live' && sections.fundraisers && <Link to="/host-year">Host class fundraisers</Link>}
+          {visibleSeasonLinks.length > 0 && (
+            <Panel>
+              <nav className="hero-actions" aria-label="Season resources">
+                {visibleSeasonLinks.map(({ to, label }) => <Link className="btn secondary small" key={to} to={to}>{label}</Link>)}
+              </nav>
+            </Panel>
+          )}
+          {sections.coverage && data.latestNews.length > 0 && (
             <Panel>
               <div className="section-heading"><h2>Latest coverage</h2><Link to="/news">News archive</Link></div>
-              {data.latestNews.length === 0 ? (
-                <EmptyState title="Coverage links coming soon" description="Articles and recaps will appear here as local media and organizers publish updates." />
-              ) : (
-                <div className="compact-list">
-                  {data.latestNews.map((article) => (
-                    <a key={article.id} className="compact-row" href={article.url} target="_blank" rel="noreferrer">
-                      <span>{article.source}</span>
-                      <strong>{article.title}</strong>
-                      {article.excerpt && <small>{article.excerpt}</small>}
-                    </a>
-                  ))}
-                </div>
-              )}
+              <div className="compact-list">
+                {data.latestNews.map((article) => (
+                  <a key={article.id} className="compact-row" href={article.url} target="_blank" rel="noreferrer">
+                    <span>{article.source}</span><strong>{article.title}</strong>
+                    {article.excerpt && <small>{article.excerpt}</small>}
+                  </a>
+                ))}
+              </div>
             </Panel>
-          </section>
+          )}
         </>
-      ) : null}
-
-      <section className="partner-strip">
-        <a href={externalHref(import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net') || undefined} target="_blank" rel="noreferrer">
-          <span>Tickets</span>
-          <strong>Buy tournament tickets through our official ticketing partner when available.</strong>
-        </a>
-        <a href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">
-          <span>Streams</span>
-          <strong>Watch live through Clutch or the approved stream partner for each game.</strong>
-        </a>
-        <div>
-          <span>Coverage</span>
-          <strong>Catch recaps, photos, and local coverage without losing the original source.</strong>
-        </div>
-      </section>
+      )}
     </div>
   )
 }

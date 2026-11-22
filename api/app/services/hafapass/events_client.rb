@@ -210,10 +210,9 @@ module Hafapass
         }
       end
 
-      def for_tickets_page(campaign)
+      def for_tickets_page(campaign, tournament: campaign&.tournament)
         return empty_tickets_payload unless campaign
 
-        tournament = campaign.tournament
         tournament_slug = campaign.hafapass_tournament_organizer_slug.to_s.strip.downcase.presence
         host_slug = campaign.hafapass_organizer_slug.to_s.strip.downcase.presence
         all_tickets_url = all_tickets_url_for(campaign)

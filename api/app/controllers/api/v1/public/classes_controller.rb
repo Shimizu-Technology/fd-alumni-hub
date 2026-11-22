@@ -9,7 +9,7 @@ module Api
           archive = class_archive_for(class_key)
           return render_not_found("Class archive not found") unless archive
 
-          teams = archive.fetch(:teams)
+          teams = archive.fetch(:teams).select { |team| team.tournament.publicly_visible_schedule? }
           title_records = archive.fetch(:title_records)
           related_records = archive.fetch(:related_records)
           games = games_for(teams)

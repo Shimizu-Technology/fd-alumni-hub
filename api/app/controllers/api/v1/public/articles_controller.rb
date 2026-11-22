@@ -9,6 +9,8 @@ module Api
           limit = integer_param(:limit, default: 50, maximum: 200)
           articles = tournament.article_links.includes(game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest.limit(limit)
 
+          articles = articles.where(game_id: nil) unless tournament.publicly_visible_schedule?
+
           render json: {
             tournament: tournament.api_json,
             articles: articles.map(&:api_json)

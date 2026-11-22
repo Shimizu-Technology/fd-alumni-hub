@@ -15,7 +15,7 @@ module Api
         ROUND_ORDER = %w[play_in round_of_16 quarterfinal semifinal final third_place unassigned].freeze
 
         def show
-          tournament = current_tournament
+          tournament = public_schedule_tournament
           return render json: { tournament: nil, divisions: [] } unless tournament
 
           games_scope = tournament.games

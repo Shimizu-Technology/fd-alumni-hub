@@ -16,7 +16,8 @@ Rails.application.routes.draw do
         resources :tournaments, only: [ :index, :show ]
         resources :champions, only: :index
         get "classes/:class_key", to: "classes#show", as: :class_archive
-        resources :teams, only: :show
+        resources :teams, only: [ :index, :show ]
+        get "site-mode", to: "site_mode#show"
         get :schedule, to: "schedule#index"
         get :standings, to: "standings#index"
         get :bracket, to: "bracket#show"
@@ -56,6 +57,10 @@ Rails.application.routes.draw do
       end
 
       namespace :admin do
+        get "site-mode", to: "site_mode#show"
+        %w[preview publish restore].each do |action|
+          post "site-mode/#{action}", to: "site_mode##{action}"
+        end
         resources :audit_events, only: [ :index ] do
           get :export, on: :collection
         end

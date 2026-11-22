@@ -3,7 +3,7 @@ module Api
     module Public
       class ScheduleController < BaseController
         def index
-          tournament = current_tournament
+          tournament = public_schedule_tournament
           return render json: { tournament: nil, games: [], teams: [], divisions: [], phases: [] } unless tournament
 
           games = tournament.games.includes(:division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] }).ordered.to_a

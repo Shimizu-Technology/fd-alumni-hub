@@ -7,7 +7,8 @@ class PublicHomeControllerTest < ActionDispatch::IntegrationTest
       year: 2099,
       start_date: Date.new(2099, 7, 3),
       end_date: Date.new(2099, 7, 24),
-      status: "upcoming"
+      status: "upcoming",
+      schedule_published_at: Time.current
     )
     @away = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
     @home = @tournament.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")

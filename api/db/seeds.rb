@@ -18,6 +18,10 @@ end
 
 if ENV.fetch("FD_SEED_2026_SCHEDULE", "1") == "1"
   result = DataImport::Fd2026ScheduleImport.call
+  season = Tournament.find(result.fetch(:tournamentId))
+  if season.schedule_published_at.nil? && !SitePublication.exists?
+    season.update!(schedule_published_at: Time.current, schedule_revision: 1)
+  end
   puts "Seeded 2026 schedule: #{result[:games]} games, #{result[:teams]} teams, #{result[:skippedRows]} skipped source rows"
 end
 
@@ -26,6 +30,8 @@ if ENV["FD_SEED_DEMO"] == "1"
     record.start_date = Date.new(2026, 7, 3)
     record.end_date = Date.new(2026, 7, 24)
     record.status = "upcoming"
+    record.schedule_published_at = Time.current
+    record.schedule_revision = 1
   end
   tournament.ensure_default_divisions!
 

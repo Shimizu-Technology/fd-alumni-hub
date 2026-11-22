@@ -1,3 +1,4 @@
+import type { SiteMode, SiteModeAdmin, SiteModePreview, SiteModeSettings } from './siteMode'
 import type { AccessDirectory, GrantScope, GrantSelection } from './access'
 import type {
   AdminAuditExportResponse,
@@ -173,8 +174,19 @@ export const api = {
     request(`/admin/users/${id}/access`, json('PATCH', payload)),
   getCurrentUser: () => request<{ user: CurrentUser }>('/me'),
 
+  publicSiteMode: () => request<{ siteMode: SiteMode; alerts: TournamentAlert[] }>('/public/site-mode'),
+  adminSiteMode: () => request<SiteModeAdmin>('/admin/site-mode'),
+  previewSiteMode: (settings: SiteModeSettings, signal?: AbortSignal) =>
+    request<SiteModePreview>('/admin/site-mode/preview', { ...json('POST', settings), signal }),
+  publishSiteMode: (settings: SiteModeSettings) => request('/admin/site-mode/publish', json('POST', settings)),
+  restoreSiteMode: (publicationId: string) => request('/admin/site-mode/restore', json('POST', { publicationId })),
+  publicTeams: (params: { tournamentId?: string | null; year?: number | null; q?: string; division?: string } = {}) =>
+    request<{ tournament: Tournament | null; teams: Team[]; divisions: string[]; schedulePublished: boolean }>(`/public/teams${query(params)}`),
+
   publicHome: (voterToken?: string | null) => request<{
     tournament: Tournament | null
+    siteMode: SiteMode
+    championRecords: TournamentChampion[]
     upcomingOrLiveTournament: Tournament | null
     latestResultsTournament: Tournament | null
     activeHostCampaign?: HomeHostCampaignSummary | null

@@ -4,6 +4,8 @@ module Api
       class PredictionVotesController < BaseController
         def create
           poll = prediction_poll_for_vote(params[:prediction_poll_id])
+          return render_not_found("Prediction poll not found") unless poll.tournament.publicly_visible_schedule?
+
           token = vote_params[:voterToken].to_s.strip
           return render json: { error: "Voter token is required" }, status: :unprocessable_entity if token.blank?
 

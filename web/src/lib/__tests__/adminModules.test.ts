@@ -32,7 +32,15 @@ describe('admin workspace access', () => {
     expect(hasCapability(mixed, 'scores_and_stats', 'edit', { type: 'tournament', id: '2' })).toBe(false)
     const admin = { ...userWith(), isSuperAdmin: true }
     expect(defaultWorkspaceHome(admin)).toBe('/admin')
-    expect(visibleAdminModules(admin)).toHaveLength(9)
+    expect(visibleAdminModules(admin).map((module) => module.key)).toContain('site-mode')
+  })
+
+  it('opens Site Mode only for site-level view access', () => {
+    const scoped = userWith(duty('site_mode_and_settings'))
+    const site = userWith({ ...duty('site_mode_and_settings'), scopeType: 'site', scopeIds: [], allScopes: true })
+    expect(canOpenAdminRoute(scoped, '/admin/site-mode')).toBe(false)
+    expect(canOpenAdminRoute(site, '/admin/site-mode')).toBe(true)
+    expect(defaultWorkspaceHome(site)).toBe('/admin/site-mode')
   })
 
   it('authorizes tournament detail routes against the path tournament ID', () => {

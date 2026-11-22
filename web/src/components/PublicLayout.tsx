@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   IconCalendar,
   IconChart,
@@ -9,9 +9,8 @@ import {
   IconShield,
   IconTicket,
 } from './Icons'
-import { api } from '../lib/api'
 import { externalHref } from '../lib/urls'
-import type { TournamentAlert } from '../lib/types'
+import { SiteModeProvider, useSiteMode } from '../contexts/SiteModeContext'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
 const publicMenuId = 'fd-public-mobile-menu'
@@ -26,9 +25,10 @@ const menuFocusableSelector = [
 
 const navItems = [
   { to: '/', label: 'Home' },
-  { to: '/host-year', label: 'Host Year' },
+  { to: '/host-year', label: 'Fundraisers' },
   { to: '/today', label: 'Today' },
   { to: '/schedule', label: 'Schedule' },
+  { to: '/teams', label: 'Teams' },
   { to: '/bracket', label: 'Bracket' },
   { to: '/standings', label: 'Standings' },
   { to: '/tickets', label: 'Tickets' },
@@ -40,87 +40,24 @@ const navItems = [
   { to: '/sponsors', label: 'Sponsors' },
 ]
 
-function isMoreRoute(pathname: string, isLiveTournament: boolean) {
-  if (pathname === '/') return false
-  const secondTabPrefix = isLiveTournament ? '/today' : '/schedule'
-  return !(
-    pathname.startsWith(secondTabPrefix)
-    || pathname.startsWith('/standings')
-    || pathname.startsWith('/tickets')
-  )
-}
+const bottomIcons = { '/': IconHome, '/today': IconCalendar, '/schedule': IconCalendar, '/tickets': IconTicket, '/history': IconChart }
 
 export function PublicLayout() {
+  return <SiteModeProvider><PublicShell /></SiteModeProvider>
+}
+
+function PublicShell() {
   const [open, setOpen] = useState(false)
-  const [isLiveTournament, setIsLiveTournament] = useState(false)
-  const [alerts, setAlerts] = useState<TournamentAlert[]>([])
+  const { siteMode, alerts } = useSiteMode()
   const location = useLocation()
   const backend = useBackendAvailabilityContext()
-  const menuButtonRef = useRef<HTMLButtonElement | null>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
+  const bottomNavItems = siteMode.mobileBottomNav.filter((item) => item.to !== null)
 
   useEffect(() => {
     setOpen(false)
   }, [location.pathname])
-
-  useEffect(() => {
-    if (backend.status !== 'available') return
-
-    let active = true
-    api.publicTournaments()
-      .then((res) => {
-        if (active) setIsLiveTournament(res.activeTournament?.status === 'live')
-      })
-      .catch(() => {
-        // Non-blocking: default mobile bottom nav slot remains Schedule.
-      })
-
-    return () => {
-      active = false
-    }
-  }, [backend.status])
-
-  useEffect(() => {
-    if (backend.status !== 'available') return
-
-    let active = true
-    const loadAlerts = () => {
-      api.publicAlerts()
-        .then((res) => {
-          if (active) setAlerts(res.alerts || [])
-        })
-        .catch(() => {
-          // Non-blocking: fail silently when offline or unreachable.
-        })
-    }
-
-    loadAlerts()
-    const intervalId = window.setInterval(() => {
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-      loadAlerts()
-    }, 45_000)
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') loadAlerts()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
-    return () => {
-      active = false
-      window.clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
-  }, [backend.status, location.pathname])
-
-  const bottomNavItems = useMemo(() => [
-    { to: '/', label: 'Home', end: true, icon: IconHome },
-    isLiveTournament
-      ? { to: '/today', label: 'Today', end: false, icon: IconCalendar }
-      : { to: '/schedule', label: 'Schedule', end: false, icon: IconCalendar },
-    { to: '/standings', label: 'Standings', end: false, icon: IconChart },
-    { to: '/tickets', label: 'Tickets', end: false, icon: IconTicket },
-  ], [isLiveTournament])
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -168,7 +105,7 @@ export function PublicLayout() {
     }
   }, [open])
 
-  const moreActive = open || isMoreRoute(location.pathname, isLiveTournament)
+  const moreActive = open || !bottomNavItems.some(({ to }) => to === location.pathname || (to !== '/' && location.pathname.startsWith(`${to}/`)))
 
   return (
     <div className="site-shell">
@@ -181,12 +118,8 @@ export function PublicLayout() {
           </span>
         </NavLink>
         <nav className="desktop-nav" aria-label="Primary navigation">
-          {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'}>{item.label}</NavLink>)}
+          {siteMode.navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'}>{item.label}</NavLink>)}
         </nav>
-        <div className="header-actions">
-          <NavLink className="admin-link" to="/admin"><IconShield size={16} /> Admin</NavLink>
-          <button ref={menuButtonRef} className="icon-button menu-button mobile-only" type="button" aria-label="Open menu" aria-expanded={open} aria-controls={publicMenuId} onClick={() => setOpen(true)}><IconMenu /><span>Menu</span></button>
-        </div>
       </header>
 
       {open && (
@@ -201,7 +134,7 @@ export function PublicLayout() {
             <nav className="mobile-menu-links" aria-label="Full menu navigation">
               {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setOpen(false)}>{item.label}</NavLink>)}
             </nav>
-            <NavLink className="mobile-admin-link" to="/admin" onClick={() => setOpen(false)}><IconShield size={16} /> Admin workspace</NavLink>
+            <NavLink className="mobile-admin-link" to="/admin" onClick={() => setOpen(false)}><IconShield size={16} /> Organizer sign in</NavLink>
           </div>
         </div>
       )}
@@ -244,7 +177,11 @@ export function PublicLayout() {
           <p>A central guide to schedule, standings, tickets, streams, tournament info, coverage, sponsors, and tournament history.</p>
           <p className="site-credit">Built by <a href={externalHref('https://shimizu-technology.com') || undefined} target="_blank" rel="noreferrer">Shimizu Technology</a>.</p>
         </div>
+        <nav className="footer-links" aria-label="More tournament pages">
+          {navItems.filter(({ to }) => !siteMode.navItems.some((item) => item.to === to)).map(({ to, label }) => <NavLink key={to} to={to}>{label}</NavLink>)}
+        </nav>
         <div className="footer-links" aria-label="Tournament and partner links">
+          <NavLink to="/admin">Organizer sign in</NavLink>
           <a href={externalHref('https://fatherduenas.com/') || undefined} target="_blank" rel="noreferrer">Father Duenas</a>
           <a href={externalHref(import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net') || undefined} target="_blank" rel="noreferrer">GuamTime</a>
           <a href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">Clutch</a>
@@ -254,12 +191,12 @@ export function PublicLayout() {
 
       <nav className="mobile-bottom-nav" aria-label="Mobile quick navigation">
         {bottomNavItems.map((item) => {
-          const Icon = item.icon
+          const Icon = bottomIcons[item.to as keyof typeof bottomIcons] || IconChart
           return (
             <NavLink
               key={item.to}
-              to={item.to}
-              end={item.end}
+              to={item.to!}
+              end={item.to === '/'}
               className={({ isActive }) => `mobile-bottom-nav-item${isActive ? ' active' : ''}`}
               onClick={() => setOpen(false)}
             >

@@ -7,19 +7,27 @@ module Api
           return render_not_found("Tournament not found") unless tournament
 
           day = requested_date || Time.zone.today
-          games = tournament.games
-            .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
-            .where(start_time: day.beginning_of_day..day.end_of_day)
-            .ordered
-            .to_a
-          note = tournament.game_day_notes.active.find_by(date: day)
-          polls = relevant_polls(tournament, games).to_a
+          games = []
+          polls = []
+          if tournament.publicly_visible_schedule?
+            games = tournament.games
+              .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
+              .where(start_time: day.all_day)
+              .ordered
+              .to_a
+            note = tournament.game_day_notes.active.find_by(date: day)
+            polls = relevant_polls(tournament, games).to_a
+          end
           voter_hash = voter_token_hash
-          alerts = TournamentAlert.for_public_tournament(tournament).active_now.ordered_for_display.limit(10).to_a
-          campaign = HostCampaign
-            .where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES)
-            .order(featured: :desc, updated_at: :desc, id: :desc)
-            .first
+          alerts = site_context.alerts(tournament).to_a
+          campaign = if params[:tournamentId].blank? && params[:year].blank? && site_context.publication
+            site_context.campaign
+          else
+            HostCampaign
+              .where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES)
+              .order(featured: :desc, updated_at: :desc, id: :desc)
+              .first
+          end
           fallback_ticket_url = Hafapass::EventsClient.all_tickets_url_for(campaign)
           last_updated_at = latest_updated_at(note, games, polls, alerts)
 
