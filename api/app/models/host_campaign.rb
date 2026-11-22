@@ -15,6 +15,9 @@ class HostCampaign < ApplicationRecord
   has_many :campaign_posts, dependent: :restrict_with_error
   has_many :campaign_memberships, dependent: :restrict_with_error
   has_many :campaign_invitations, dependent: :restrict_with_error
+  has_many :budget_lines, dependent: :restrict_with_error
+  has_many :pledges, dependent: :restrict_with_error
+  has_many :ledger_entries, dependent: :restrict_with_error
   has_many :finance_audit_events, dependent: :restrict_with_error
 
   before_validation :normalize_fields
@@ -103,7 +106,13 @@ class HostCampaign < ApplicationRecord
     }
   end
 
-  def public_json(meter_raised_cents: 0, meter_updated_at: updated_at)
+  def public_json(meter_raised_cents: nil, meter_updated_at: nil)
+    if public_meter_enabled? && meter_raised_cents.nil?
+      totals = HostCampaigns::FinanceSummary.public_meter_totals(self)
+      meter_raised_cents = totals[:raised_cents]
+      meter_updated_at ||= totals[:updated_at]
+    end
+
     {
       id: id.to_s,
       slug: slug,
@@ -120,7 +129,7 @@ class HostCampaign < ApplicationRecord
       donationUrl: donation_url,
       donationInstructions: donation_instructions,
       golfUrl: golf_url,
-      meter: public_meter_json(raised_cents: meter_raised_cents, updated_at: meter_updated_at)
+      meter: public_meter_json(raised_cents: meter_raised_cents.to_i, updated_at: meter_updated_at || updated_at)
     }
   end
 
@@ -141,7 +150,12 @@ class HostCampaign < ApplicationRecord
     )
   end
 
-  def home_summary_json(meter_raised_cents: 0, meter_updated_at: updated_at)
+  def home_summary_json(meter_raised_cents: nil, meter_updated_at: nil)
+    if public_meter_enabled? && meter_raised_cents.nil?
+      totals = HostCampaigns::FinanceSummary.public_meter_totals(self)
+      meter_raised_cents = totals[:raised_cents]
+      meter_updated_at ||= totals[:updated_at]
+    end
     next_event = campaign_events.public_listing.upcoming_or_tba.ordered.first
 
     {
@@ -154,7 +168,7 @@ class HostCampaign < ApplicationRecord
       countdownLabel: countdown_label,
       donationUrl: donation_url,
       golfUrl: golf_url,
-      meter: public_meter_json(raised_cents: meter_raised_cents, updated_at: meter_updated_at),
+      meter: public_meter_json(raised_cents: meter_raised_cents.to_i, updated_at: meter_updated_at || updated_at),
       nextEvent: next_event&.public_json
     }
   end

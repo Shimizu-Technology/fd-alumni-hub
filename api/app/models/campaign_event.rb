@@ -7,6 +7,7 @@ class CampaignEvent < ApplicationRecord
   HAFAPASS_CODE_FORMAT = /\A[a-z0-9_-]{1,64}\z/
 
   belongs_to :host_campaign
+  has_many :ledger_entries, dependent: :restrict_with_error
 
   before_validation :normalize_fields
 

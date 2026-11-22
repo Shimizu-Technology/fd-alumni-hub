@@ -1,5 +1,7 @@
 class Sponsor < ApplicationRecord
   belongs_to :tournament
+  has_many :pledges, dependent: :restrict_with_error
+  has_many :ledger_entries, dependent: :restrict_with_error
 
   validates :name, presence: true
   validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }

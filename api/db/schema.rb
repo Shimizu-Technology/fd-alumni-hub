@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
+  end
+
+  create_table "budget_lines", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.string "kind", null: false
+    t.string "category", null: false
+    t.bigint "budget_cents", default: 0, null: false
+    t.integer "position", default: 0, null: false
+    t.text "notes"
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "host_campaign_id, kind, lower((category)::text)", name: "index_budget_lines_on_active_category_unique", unique: true, where: "(archived_at IS NULL)"
+    t.index ["host_campaign_id"], name: "index_budget_lines_on_host_campaign_id"
+    t.check_constraint "budget_cents >= 0", name: "chk_budget_lines_budget_cents_non_negative"
+    t.check_constraint "kind::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])", name: "chk_budget_lines_kind"
   end
 
   create_table "campaign_events", force: :cascade do |t|
@@ -279,6 +295,63 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
     t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'active'::character varying::text, 'closing'::character varying::text, 'archived'::character varying::text])", name: "chk_host_campaigns_status"
   end
 
+  create_table "ledger_entries", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.string "entry_type", null: false
+    t.bigint "amount_cents", null: false
+    t.date "entry_date", null: false
+    t.bigint "budget_line_id"
+    t.bigint "campaign_event_id"
+    t.bigint "sponsor_id"
+    t.bigint "pledge_id"
+    t.string "source", null: false
+    t.string "payment_method", null: false
+    t.string "counterparty", null: false
+    t.text "description"
+    t.string "reference_number"
+    t.string "paid_by"
+    t.bigint "paid_by_user_id"
+    t.string "reimbursement_status", default: "not_applicable", null: false
+    t.bigint "reimbursement_approved_by_id"
+    t.date "reimbursed_at"
+    t.string "reimbursement_reference"
+    t.string "receipt_key"
+    t.string "receipt_filename"
+    t.string "receipt_content_type"
+    t.integer "receipt_byte_size"
+    t.bigint "recorded_by_id", null: false
+    t.datetime "voided_at"
+    t.bigint "voided_by_id"
+    t.string "void_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["budget_line_id"], name: "index_ledger_entries_on_budget_line_id"
+    t.index ["campaign_event_id"], name: "index_ledger_entries_on_campaign_event_id"
+    t.index ["host_campaign_id", "entry_type", "voided_at"], name: "index_ledger_entries_on_campaign_type_voided"
+    t.index ["host_campaign_id", "reimbursement_status", "voided_at"], name: "index_ledger_entries_on_campaign_reimbursement_voided"
+    t.index ["host_campaign_id", "voided_at", "entry_date"], name: "index_ledger_entries_on_campaign_voided_date"
+    t.index ["host_campaign_id"], name: "index_ledger_entries_on_host_campaign_id"
+    t.index ["paid_by_user_id"], name: "index_ledger_entries_on_paid_by_user_id"
+    t.index ["pledge_id", "voided_at"], name: "index_ledger_entries_on_pledge_voided"
+    t.index ["pledge_id"], name: "index_ledger_entries_on_pledge_id"
+    t.index ["receipt_key"], name: "index_ledger_entries_on_receipt_key_unique", unique: true, where: "(receipt_key IS NOT NULL)"
+    t.index ["recorded_by_id"], name: "index_ledger_entries_on_recorded_by_id"
+    t.index ["reimbursement_approved_by_id"], name: "index_ledger_entries_on_reimbursement_approved_by_id"
+    t.index ["sponsor_id"], name: "index_ledger_entries_on_sponsor_id"
+    t.index ["voided_by_id"], name: "index_ledger_entries_on_voided_by_id"
+    t.check_constraint "(receipt_key IS NULL) = (receipt_filename IS NULL) AND (receipt_key IS NULL) = (receipt_content_type IS NULL) AND (receipt_key IS NULL) = (receipt_byte_size IS NULL)", name: "chk_ledger_entries_receipt_all_or_nothing"
+    t.check_constraint "(voided_at IS NULL) = (voided_by_id IS NULL) AND (voided_at IS NULL) = (void_reason IS NULL)", name: "chk_ledger_entries_void_consistency"
+    t.check_constraint "amount_cents > 0", name: "chk_ledger_entries_amount_cents_positive"
+    t.check_constraint "entry_type::text <> 'income'::text OR reimbursement_status::text = 'not_applicable'::text AND paid_by_user_id IS NULL", name: "chk_ledger_entries_income_no_reimbursement"
+    t.check_constraint "entry_type::text = 'income'::text AND (source::text = ANY (ARRAY['fundraiser_gross'::character varying, 'fundraiser_net'::character varying, 'sponsorship'::character varying, 'donation'::character varying, 'fdaa_allocation'::character varying, 'ticket_share'::character varying, 'merch'::character varying, 'golf_net'::character varying, 'other_income'::character varying]::text[])) OR entry_type::text = 'expense'::text AND (source::text = ANY (ARRAY['event_expense'::character varying, 'merch_cost'::character varying, 'venue_ops'::character varying, 'refund'::character varying, 'other_expense'::character varying]::text[]))", name: "chk_ledger_entries_source_matches_type"
+    t.check_constraint "entry_type::text = ANY (ARRAY['income'::character varying, 'expense'::character varying]::text[])", name: "chk_ledger_entries_entry_type"
+    t.check_constraint "payment_method::text = ANY (ARRAY['cash'::character varying, 'paypal'::character varying, 'check'::character varying, 'bank_transfer'::character varying, 'fdaa'::character varying, 'hafapass_payout'::character varying, 'golf_payout'::character varying, 'card'::character varying, 'other'::character varying]::text[])", name: "chk_ledger_entries_payment_method"
+    t.check_constraint "receipt_byte_size IS NULL OR receipt_byte_size > 0", name: "chk_ledger_entries_receipt_byte_size_positive"
+    t.check_constraint "reimbursed_at IS NULL OR reimbursement_status::text = 'reimbursed'::text", name: "chk_ledger_entries_reimbursed_at_status"
+    t.check_constraint "reimbursement_approved_by_id IS NULL OR paid_by_user_id IS NULL OR reimbursement_approved_by_id <> paid_by_user_id", name: "chk_ledger_entries_approver_not_payer"
+    t.check_constraint "reimbursement_status::text = ANY (ARRAY['not_applicable'::character varying, 'requested'::character varying, 'approved'::character varying, 'reimbursed'::character varying]::text[])", name: "chk_ledger_entries_reimbursement_status"
+  end
+
   create_table "media_assets", force: :cascade do |t|
     t.string "article_url"
     t.text "caption"
@@ -297,6 +370,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
     t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url"
     t.index ["tournament_id", "source", "taken_at"], name: "index_media_assets_on_tournament_id_and_source_and_taken_at"
     t.index ["tournament_id"], name: "index_media_assets_on_tournament_id"
+  end
+
+  create_table "pledges", force: :cascade do |t|
+    t.bigint "host_campaign_id", null: false
+    t.bigint "sponsor_id"
+    t.string "donor_name", null: false
+    t.string "contact_info"
+    t.string "tier"
+    t.boolean "is_in_kind", default: false, null: false
+    t.bigint "promised_cents", null: false
+    t.date "due_on"
+    t.string "status", default: "promised", null: false
+    t.text "notes"
+    t.bigint "recorded_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["host_campaign_id", "status", "due_on"], name: "index_pledges_on_campaign_status_due"
+    t.index ["host_campaign_id"], name: "index_pledges_on_host_campaign_id"
+    t.index ["recorded_by_id"], name: "index_pledges_on_recorded_by_id"
+    t.index ["sponsor_id"], name: "index_pledges_on_sponsor_id"
+    t.check_constraint "promised_cents > 0", name: "chk_pledges_promised_cents_positive"
+    t.check_constraint "status::text = ANY (ARRAY['promised'::character varying, 'partial'::character varying, 'fulfilled'::character varying, 'cancelled'::character varying]::text[])", name: "chk_pledges_status"
   end
 
   create_table "prediction_polls", force: :cascade do |t|
@@ -476,6 +571,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
 
   add_foreign_key "article_links", "games", on_delete: :nullify
   add_foreign_key "article_links", "tournaments", on_delete: :cascade
+  add_foreign_key "budget_lines", "host_campaigns", on_delete: :restrict
   add_foreign_key "campaign_events", "host_campaigns", on_delete: :restrict
   add_foreign_key "campaign_invitations", "host_campaigns", on_delete: :restrict
   add_foreign_key "campaign_invitations", "users", column: "accepted_by_user_id", on_delete: :restrict
@@ -495,8 +591,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000004) do
   add_foreign_key "games", "tournaments", on_delete: :cascade
   add_foreign_key "host_campaigns", "class_cohorts", on_delete: :restrict
   add_foreign_key "host_campaigns", "tournaments", on_delete: :restrict
+  add_foreign_key "ledger_entries", "budget_lines", on_delete: :restrict
+  add_foreign_key "ledger_entries", "campaign_events", on_delete: :restrict
+  add_foreign_key "ledger_entries", "host_campaigns", on_delete: :restrict
+  add_foreign_key "ledger_entries", "pledges", on_delete: :restrict
+  add_foreign_key "ledger_entries", "sponsors", on_delete: :restrict
+  add_foreign_key "ledger_entries", "users", column: "paid_by_user_id", on_delete: :restrict
+  add_foreign_key "ledger_entries", "users", column: "recorded_by_id", on_delete: :restrict
+  add_foreign_key "ledger_entries", "users", column: "reimbursement_approved_by_id", on_delete: :restrict
+  add_foreign_key "ledger_entries", "users", column: "voided_by_id", on_delete: :restrict
   add_foreign_key "media_assets", "games", on_delete: :nullify
   add_foreign_key "media_assets", "tournaments", on_delete: :cascade
+  add_foreign_key "pledges", "host_campaigns", on_delete: :restrict
+  add_foreign_key "pledges", "sponsors", on_delete: :restrict
+  add_foreign_key "pledges", "users", column: "recorded_by_id", on_delete: :restrict
   add_foreign_key "prediction_polls", "games", on_delete: :cascade
   add_foreign_key "prediction_polls", "tournaments", on_delete: :cascade
   add_foreign_key "prediction_votes", "prediction_polls", on_delete: :cascade
