@@ -25,6 +25,23 @@ jobs:
       - name: Build React/Vite app
         run: npm run build
 
+      - name: Unit tests (Vitest)
+        run: npm test
+
+      - name: Install Playwright Chromium
+        run: npx --workspace @fd/react-web playwright install --with-deps chromium
+
+      - name: E2E smoke tests (Playwright)
+        run: npm run test:e2e
+
+      - name: Upload Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: web/test-results/
+          retention-days: 7
+
   rails_api:
     name: Rails API
     runs-on: ubuntu-latest

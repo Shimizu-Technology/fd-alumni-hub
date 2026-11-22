@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Local quality gate mirroring CI (Playwright E2E runs in CI and locally via `npm run test:e2e`).
+# Note: `bin/bundler-audit` requires network access to refresh the advisory database.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$ROOT_DIR"
 echo "== React/Vite app build =="
 npm run build
 
-echo "== Rails API rubocop =="
+echo "== React/Vite unit tests (Vitest) =="
+npm test
+
+echo "== Rails API Brakeman security scan =="
 cd "$ROOT_DIR/api"
+bundle exec brakeman --no-pager -q
+
+echo "== Rails API bundler-audit =="
+bin/bundler-audit
+
+echo "== Rails API rubocop =="
 bin/rubocop --no-color
 
 echo "== Rails API tests =="
