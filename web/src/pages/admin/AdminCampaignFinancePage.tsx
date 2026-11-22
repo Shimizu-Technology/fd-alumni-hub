@@ -209,12 +209,23 @@ export function AdminCampaignFinancePage() {
   }, [requestedSlug, campaignOptions])
 
   const selectedSlugRef = useRef(selectedSlug)
+  const receiptReqIdRef = useRef(0)
+
   useEffect(() => {
     selectedSlugRef.current = selectedSlug
+    receiptReqIdRef.current += 1
     setReceiptPreview(null)
+    setReceiptLoadingId(null)
     setCsvError('')
     setReceiptError('')
   }, [selectedSlug])
+
+  const handleCloseReceipt = () => {
+    receiptReqIdRef.current += 1
+    setReceiptPreview(null)
+    setReceiptLoadingId(null)
+    setReceiptError('')
+  }
 
   // Core overview + secondary tabs loaded with allSettled so partial failures never crash the ledger
   const overviewQuery = useAsync(async () => {
@@ -250,7 +261,7 @@ export function AdminCampaignFinancePage() {
       entryType: entryTypeFilter || undefined,
       includeVoided,
     })
-    return { slug: selectedSlug, ...res }
+    return { slug: selectedSlug, entryTypeFilter, includeVoided, ...res }
   }, [selectedSlug, entryTypeFilter, includeVoided])
 
   const reloadAll = async () => {
@@ -285,18 +296,21 @@ export function AdminCampaignFinancePage() {
   const handleOpenReceipt = async (entryId: string) => {
     const slugAtStart = selectedSlug
     if (!slugAtStart) return
+    const reqId = ++receiptReqIdRef.current
     setReceiptLoadingId(entryId)
     setReceiptError('')
     try {
       const signed = await api.campaignReceiptUrl(slugAtStart, entryId)
-      if (selectedSlugRef.current !== slugAtStart) return
+      if (receiptReqIdRef.current !== reqId || selectedSlugRef.current !== slugAtStart) return
       setReceiptPreview({ entryId, signed, fetchedAt: Date.now() })
     } catch (err) {
-      if (selectedSlugRef.current === slugAtStart) {
+      if (receiptReqIdRef.current === reqId && selectedSlugRef.current === slugAtStart) {
         setReceiptError(mutationErrorMessage(err, 'Unable to open receipt'))
       }
     } finally {
-      setReceiptLoadingId(null)
+      if (receiptReqIdRef.current === reqId) {
+        setReceiptLoadingId(null)
+      }
     }
   }
 
@@ -325,16 +339,17 @@ export function AdminCampaignFinancePage() {
     )
   }
 
-  if (overviewQuery.loading && (!overviewQuery.data || overviewQuery.data.slug !== selectedSlug)) {
-    return <LoadingState label="Loading campaign finance data" />
-  }
+  const overviewMatchesSlug = Boolean(overviewQuery.data && overviewQuery.data.slug === selectedSlug)
 
-  if (overviewQuery.error && (!overviewQuery.data || overviewQuery.data.slug !== selectedSlug)) {
+  if (overviewQuery.error && !overviewMatchesSlug) {
     return <ErrorState message={overviewQuery.error} onRetry={overviewQuery.reload} />
   }
 
+  if (!overviewMatchesSlug || !overviewQuery.data) {
+    return <LoadingState label="Loading campaign finance data" />
+  }
+
   const data = overviewQuery.data
-  if (!data) return null
 
   const {
     campaign,
@@ -351,9 +366,14 @@ export function AdminCampaignFinancePage() {
     auditError,
   } = data
 
-  const ledgerReady = Boolean(ledgerQuery.data && ledgerQuery.data.slug === selectedSlug)
+  const ledgerReady = Boolean(
+    ledgerQuery.data &&
+    ledgerQuery.data.slug === selectedSlug &&
+    ledgerQuery.data.entryTypeFilter === entryTypeFilter &&
+    ledgerQuery.data.includeVoided === includeVoided
+  )
   const ledgerEntries = ledgerReady ? (ledgerQuery.data?.ledgerEntries || []) : []
-  const ledgerOptions = ledgerReady && ledgerQuery.data
+  const ledgerOptions = ledgerQuery.data && ledgerQuery.data.slug === selectedSlug
     ? ledgerQuery.data.options
     : { budgetLines: [], events: [], pledges: [], sponsors: [], members: [] }
 
@@ -394,7 +414,19 @@ export function AdminCampaignFinancePage() {
       />
 
       {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
-      {receiptError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
+      {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
+      {overviewQuery.error && (
+        <Panel>
+          <div className="section-heading" style={{ marginBottom: 0 }}>
+            <p className="form-error" role="alert" style={{ margin: 0 }}>
+              Totals may be out of date: {overviewQuery.error}
+            </p>
+            <button type="button" className="btn secondary small" onClick={() => void overviewQuery.reload()}>
+              Retry
+            </button>
+          </div>
+        </Panel>
+      )}
 
       {isArchived && (
         <Panel className="state-card">
@@ -477,25 +509,23 @@ export function AdminCampaignFinancePage() {
       </nav>
 
       {tab === 'ledger' && (
-        ledgerQuery.error ? (
-          <ErrorState message={ledgerQuery.error} onRetry={ledgerQuery.reload} />
-        ) : (
-          <LedgerTab
-            key={campaign.slug}
-            campaign={campaign}
-            entries={ledgerEntries}
-            loading={ledgerQuery.loading}
-            options={ledgerOptions}
-            canWrite={canWriteFinance}
-            entryTypeFilter={entryTypeFilter}
-            includeVoided={includeVoided}
-            onEntryTypeFilter={setEntryTypeFilter}
-            onIncludeVoided={setIncludeVoided}
-            onOpenReceipt={handleOpenReceipt}
-            receiptLoadingId={receiptLoadingId}
-            onSaved={reloadAll}
-          />
-        )
+        <LedgerTab
+          key={campaign.slug}
+          campaign={campaign}
+          entries={ledgerEntries}
+          loading={ledgerQuery.loading || (!ledgerReady && !ledgerQuery.error)}
+          ledgerError={ledgerQuery.error}
+          onRetryLedger={ledgerQuery.reload}
+          options={ledgerOptions}
+          canWrite={canWriteFinance}
+          entryTypeFilter={entryTypeFilter}
+          includeVoided={includeVoided}
+          onEntryTypeFilter={setEntryTypeFilter}
+          onIncludeVoided={setIncludeVoided}
+          onOpenReceipt={handleOpenReceipt}
+          receiptLoadingId={receiptLoadingId}
+          onSaved={reloadAll}
+        />
       )}
 
       {tab === 'budget' && (
@@ -562,7 +592,7 @@ export function AdminCampaignFinancePage() {
           refreshing={receiptLoadingId === receiptPreview.entryId}
           error={receiptError}
           onRefresh={() => void handleOpenReceipt(receiptPreview.entryId)}
-          onClose={() => { setReceiptPreview(null); setReceiptError('') }}
+          onClose={handleCloseReceipt}
         />
       )}
     </div>
@@ -684,6 +714,8 @@ function LedgerTab({
   campaign,
   entries,
   loading,
+  ledgerError,
+  onRetryLedger,
   options,
   canWrite,
   entryTypeFilter,
@@ -697,6 +729,8 @@ function LedgerTab({
   campaign: AdminHostCampaign
   entries: LedgerEntryRecord[]
   loading: boolean
+  ledgerError: string | null
+  onRetryLedger: () => Promise<void>
   options: {
     budgetLines: Array<{ id: string; kind: LedgerEntryType; category: string }>
     events: Array<{ id: string; title: string }>
@@ -944,6 +978,18 @@ function LedgerTab({
                 <span>{uploadingReceipt ? 'Uploading receipt…' : receiptFileName ? `Receipt ready: ${receiptFileName}` : 'Attach receipt photo / PDF'}</span>
                 <input className="sr-only" type="file" accept={RECEIPT_UPLOAD_ACCEPT} onChange={handleReceiptSelect} disabled={uploadingReceipt} />
               </label>
+              {receiptUploadToken && !uploadingReceipt && (
+                <button
+                  type="button"
+                  className="btn secondary small"
+                  onClick={() => {
+                    setReceiptUploadToken('')
+                    setReceiptFileName('')
+                  }}
+                >
+                  Remove receipt
+                </button>
+              )}
               <button type="submit" className="btn primary" disabled={saving || uploadingReceipt}>
                 {saving ? 'Recording…' : `Record ${entryType}`}
               </button>
@@ -960,7 +1006,8 @@ function LedgerTab({
           entry={voidingEntry}
           onClose={() => setVoidingEntry(null)}
           onVoided={async () => {
-            setVoidingEntry(null)
+            const targetId = voidingEntry.id
+            setVoidingEntry((prev) => (prev?.id === targetId ? null : prev))
             setMessage('Ledger entry voided and logged in audit trail.')
             await onSaved()
           }}
@@ -983,7 +1030,9 @@ function LedgerTab({
           </div>
         </div>
 
-        {loading ? (
+        {ledgerError ? (
+          <ErrorState message={ledgerError} onRetry={onRetryLedger} />
+        ) : loading ? (
           <LoadingState label="Loading ledger entries" />
         ) : entries.length === 0 ? (
           <EmptyState title="No ledger entries yet" description="Record your first fundraiser payout, sponsorship, or expense above." />
@@ -1447,14 +1496,23 @@ function ReimbursementsTab({
   onSaved: () => Promise<void>
 }) {
   const [references, setReferences] = useState<Record<string, string>>({})
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyIds, setBusyIds] = useState<Record<string, boolean>>({})
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+
+  const setEntryBusy = (id: string, busy: boolean) => {
+    setBusyIds((prev) => {
+      if (busy) return { ...prev, [id]: true }
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
 
   const reimbEntries = entries.filter((e) => !e.voided && e.entryType === 'expense' && e.reimbursementStatus !== 'not_applicable')
 
   const handleApprove = async (entry: LedgerEntryRecord) => {
-    setBusyId(entry.id)
+    setEntryBusy(entry.id, true)
     setError('')
     setMessage('')
     try {
@@ -1462,7 +1520,6 @@ function ReimbursementsTab({
       if (entry.recordedById === currentUserId && isAdmin) {
         const prompted = window.prompt('Admin override reason (required when approving an entry you recorded):')
         if (!prompted?.trim()) {
-          setBusyId(null)
           return
         }
         overrideReason = prompted.trim()
@@ -1473,12 +1530,12 @@ function ReimbursementsTab({
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to approve reimbursement'))
     } finally {
-      setBusyId(null)
+      setEntryBusy(entry.id, false)
     }
   }
 
   const handleMarkReimbursed = async (entry: LedgerEntryRecord) => {
-    setBusyId(entry.id)
+    setEntryBusy(entry.id, true)
     setError('')
     setMessage('')
     try {
@@ -1490,7 +1547,7 @@ function ReimbursementsTab({
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to mark reimbursed'))
     } finally {
-      setBusyId(null)
+      setEntryBusy(entry.id, false)
     }
   }
 
@@ -1536,8 +1593,8 @@ function ReimbursementsTab({
                     isSelfPayer || isRecorderOnly ? (
                       <span className="muted" style={{ fontSize: '0.85rem' }}>A second officer must approve</span>
                     ) : (
-                      <button type="button" className="btn primary small" disabled={busyId === entry.id} onClick={() => void handleApprove(entry)}>
-                        {busyId === entry.id ? 'Approving…' : 'Approve'}
+                      <button type="button" className="btn primary small" disabled={Boolean(busyIds[entry.id])} onClick={() => void handleApprove(entry)}>
+                        {busyIds[entry.id] ? 'Approving…' : 'Approve'}
                       </button>
                     )
                   )}
@@ -1550,8 +1607,8 @@ function ReimbursementsTab({
                         onChange={(e) => setReferences((prev) => ({ ...prev, [entry.id]: e.target.value }))}
                         style={{ maxWidth: '11rem' }}
                       />
-                      <button type="button" className="btn primary small" disabled={busyId === entry.id} onClick={() => void handleMarkReimbursed(entry)}>
-                        {busyId === entry.id ? 'Saving…' : 'Mark reimbursed'}
+                      <button type="button" className="btn primary small" disabled={Boolean(busyIds[entry.id])} onClick={() => void handleMarkReimbursed(entry)}>
+                        {busyIds[entry.id] ? 'Saving…' : 'Mark reimbursed'}
                       </button>
                     </>
                   )}
@@ -1627,6 +1684,13 @@ function ReceiptPreviewModal({
   const isPdf = receipt.contentType === 'application/pdf'
   const isInlineImage = receipt.contentType.startsWith('image/') && !isHeic
 
+  // Restore focus inside the dialog if a focused Refresh button disappears after refreshing
+  useEffect(() => {
+    if (!expired && typeof document !== 'undefined' && panelRef.current && !panelRef.current.contains(document.activeElement)) {
+      closeBtnRef.current?.focus({ preventScroll: true })
+    }
+  }, [expired, fetchedAt])
+
   return (
     <div className="finance-modal-backdrop" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div
@@ -1679,12 +1743,12 @@ function ReceiptPreviewModal({
             )}
 
             {isPdf && (
-              <iframe
-                title={receipt.filename}
-                src={safeUrl}
-                referrerPolicy="no-referrer"
-                style={{ width: '100%', height: '65vh', border: '1px solid var(--line)', borderRadius: '0.75rem' }}
-              />
+              <div className="state-card">
+                <p>PDF receipts open in a new tab using a short-lived signed link so keyboard focus stays in this dialog and mobile viewers render all pages.</p>
+                <a className="btn primary" href={safeUrl} target="_blank" rel="noreferrer">
+                  Open PDF in new tab
+                </a>
+              </div>
             )}
 
             {isHeic && (
@@ -1696,7 +1760,7 @@ function ReceiptPreviewModal({
               </div>
             )}
 
-            {!isHeic && (
+            {isInlineImage && (
               <div className="row-actions">
                 <a className="btn secondary small" href={safeUrl} target="_blank" rel="noreferrer">
                   Open in new tab
