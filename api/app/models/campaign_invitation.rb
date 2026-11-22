@@ -58,7 +58,8 @@ class CampaignInvitation < ApplicationRecord
 
         accepted << membership
       end
-    rescue ActiveRecord::RecordNotUnique
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid => e
+      Rails.logger.warn("Skipped campaign invitation #{invitation.id} during auto-accept: #{e.message}")
       next
     end
 

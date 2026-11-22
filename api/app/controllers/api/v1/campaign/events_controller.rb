@@ -48,6 +48,7 @@ module Api
 
         def archive
           event = @campaign.campaign_events.find(params[:id])
+          return render json: { event: event.admin_json } if event.archived?
 
           CampaignEvent.transaction do
             event.update!(archived_at: Time.current)

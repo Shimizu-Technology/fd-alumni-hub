@@ -279,6 +279,68 @@ class CampaignRbacAndContentTest < ActionDispatch::IntegrationTest
       headers: headers_for(@admin),
       as: :json
     assert_response :created
+    wl_id = JSON.parse(response.body).dig("whitelist", "id")
+
+    # H1: unverified email cannot bootstrap an allowlisted user or hijack an existing user by email
+    get "/api/v1/me", headers: { "Authorization" => "Bearer test_token_clerk_clerk_spoof_1:new-staff@example.com:unverified" }
+    assert_response :unauthorized
+    assert_nil User.find_by(email: "new-staff@example.com")
+
+    unlinked = User.create!(email: "existing-unlinked@example.com", clerk_id: nil, role: "admin")
+    get "/api/v1/me", headers: { "Authorization" => "Bearer test_token_clerk_clerk_hijack_1:existing-unlinked@example.com:unverified" }
+    assert_response :unauthorized
+    assert_nil unlinked.reload.clerk_id
+
+    # M4: revoking whitelist entry syncs matching existing User
+    existing_staff = User.create!(email: "new-staff@example.com", clerk_id: "clerk_new_staff_1", role: "staff")
+    patch "/api/v1/admin/whitelists/#{wl_id}",
+      params: { whitelist: { active: false } },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :success
+    assert_equal false, existing_staff.reload.active?
+
+    # L1: unexpected fields like featured/status return explicit 403 for chair
+    patch "/api/v1/campaign/#{@campaign.slug}/settings",
+      params: { campaign: { featured: false, status: "archived" } },
+      headers: headers_for(@chair),
+      as: :json
+    assert_response :forbidden
+
+    # M3: admin update on archived campaign requires breakGlassReason
+    archived_campaign = HostCampaign.find(new_campaign_id)
+    archived_campaign.update!(status: "archived")
+    patch "/api/v1/admin/campaigns/#{archived_campaign.id}",
+      params: { campaign: { title: "No reason" } },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :unprocessable_entity
+
+    patch "/api/v1/admin/campaigns/#{archived_campaign.id}",
+      params: { campaign: { title: "With reason" }, breakGlassReason: "Post-close fix" },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :success
+
+    # L5 & L6: inactive user rejected on membership grant; deactivated membership loses access; cross-campaign ID returns 404
+    deactivated = User.create!(email: "inactive-u@example.com", clerk_id: "clerk_inactive_u", role: "viewer", active: false)
+    post "/api/v1/admin/campaigns/#{@campaign.id}/memberships",
+      params: { membership: { userId: deactivated.id, role: "board" } },
+      headers: headers_for(@admin),
+      as: :json
+    assert_response :unprocessable_entity
+
+    other_event = archived_campaign.campaign_events.create!(kind: "fundraiser", title: "Other campaign event")
+    patch "/api/v1/campaign/#{@campaign.slug}/events/#{other_event.id}",
+      params: { event: { title: "Cross-campaign IDOR" } },
+      headers: headers_for(@chair),
+      as: :json
+    assert_response :not_found
+
+    membership = CampaignMembership.find_by!(host_campaign: @campaign, user: @board, role: "board")
+    membership.update!(active: false)
+    get "/api/v1/campaign/#{@campaign.slug}/settings", headers: headers_for(@board)
+    assert_response :forbidden
   end
 
   private

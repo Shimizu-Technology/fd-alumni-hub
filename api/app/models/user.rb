@@ -42,8 +42,6 @@ class User < ApplicationRecord
   end
 
   def campaign_memberships_json
-    return [] unless CampaignMembership.table_exists?
-
     memberships = campaign_memberships.active.includes(:host_campaign).order(:host_campaign_id, :role).to_a
     memberships.group_by(&:host_campaign).map do |campaign, rows|
       next unless campaign
@@ -58,8 +56,8 @@ class User < ApplicationRecord
     end.compact
   end
 
-  def api_json
-    {
+  def api_json(include_campaign_memberships: false)
+    payload = {
       id: id.to_s,
       clerkId: clerk_id,
       email: email,
@@ -70,10 +68,11 @@ class User < ApplicationRecord
       active: active,
       isAdmin: is_admin,
       isStaff: is_staff,
-      campaignMemberships: campaign_memberships_json,
       createdAt: created_at&.iso8601,
       updatedAt: updated_at&.iso8601
     }
+    payload[:campaignMemberships] = campaign_memberships_json if include_campaign_memberships
+    payload
   end
 
   private

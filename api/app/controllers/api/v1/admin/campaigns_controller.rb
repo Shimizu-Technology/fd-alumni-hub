@@ -39,6 +39,12 @@ module Api
 
         def update
           campaign = HostCampaign.find(params[:id])
+          reason = break_glass_reason
+
+          if campaign.archived? && reason.blank?
+            return render json: { error: "Archived campaign is read-only; supply breakGlassReason for an audited admin override." },
+              status: :unprocessable_entity
+          end
 
           HostCampaign.transaction do
             campaign.assign_attributes(campaign_params)
@@ -55,6 +61,7 @@ module Api
                 record: campaign,
                 action: "admin_update_campaign",
                 changes: changes,
+                reason: reason,
                 ip_address: request.remote_ip
               )
             end
@@ -65,6 +72,13 @@ module Api
         end
 
         private
+
+        def break_glass_reason
+          params[:breakGlassReason].presence ||
+            params[:break_glass_reason].presence ||
+            params.dig(:campaign, :breakGlassReason).presence ||
+            params.dig(:campaign, :break_glass_reason).presence
+        end
 
         def campaign_params
           raw = params.fetch(:campaign, params)

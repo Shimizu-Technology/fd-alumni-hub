@@ -30,8 +30,11 @@ module Api
 
         def rate_limited?
           cache_key = "campaign_upload_presign:#{current_user.id}:#{Time.current.to_i / 60}"
-          count = Rails.cache.read(cache_key).to_i + 1
-          Rails.cache.write(cache_key, count, expires_in: 90.seconds)
+          count = Rails.cache.increment(cache_key, 1, expires_in: 90.seconds)
+          if count.nil?
+            Rails.cache.write(cache_key, 1, expires_in: 90.seconds, unless_exist: true)
+            count = Rails.cache.read(cache_key).to_i
+          end
           count > PRESIGN_LIMIT_PER_MINUTE
         end
 

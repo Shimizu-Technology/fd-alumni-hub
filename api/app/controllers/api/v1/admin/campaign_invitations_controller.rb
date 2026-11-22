@@ -31,13 +31,19 @@ module Api
           return if performed?
 
           render json: { invitation: invitation.api_json }, status: :created
+        rescue ActiveRecord::RecordNotUnique
+          render json: { errors: [ "Email already has a pending invitation for this campaign role" ] }, status: :unprocessable_entity
         end
 
         def revoke
           invitation = @campaign.campaign_invitations.find(params[:id])
-          return render json: { error: "Invitation is no longer pending" }, status: :unprocessable_entity unless invitation.pending?
 
-          CampaignInvitation.transaction do
+          invitation.with_lock do
+            unless invitation.pending?
+              render json: { error: "Invitation is no longer pending" }, status: :unprocessable_entity
+              return
+            end
+
             invitation.update!(revoked_at: Time.current)
             FinanceAuditEvent.record!(
               campaign: @campaign,

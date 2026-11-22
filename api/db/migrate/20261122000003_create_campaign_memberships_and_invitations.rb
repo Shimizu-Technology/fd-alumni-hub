@@ -43,5 +43,8 @@ class CreateCampaignMembershipsAndInvitations < ActiveRecord::Migration[8.1]
     add_check_constraint :campaign_invitations,
       "role IN ('chair', 'treasurer', 'board')",
       name: "chk_campaign_invitations_role"
+    add_check_constraint :campaign_invitations,
+      "NOT (accepted_at IS NOT NULL AND revoked_at IS NOT NULL)",
+      name: "chk_campaign_invitations_mutually_exclusive_terminal_state"
   end
 end

@@ -89,6 +89,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000003) do
     t.index ["accepted_by_user_id"], name: "index_campaign_invitations_on_accepted_by_user_id"
     t.index ["host_campaign_id"], name: "index_campaign_invitations_on_host_campaign_id"
     t.index ["invited_by_id"], name: "index_campaign_invitations_on_invited_by_id"
+    t.check_constraint "NOT (accepted_at IS NOT NULL AND revoked_at IS NOT NULL)", name: "chk_campaign_invitations_mutually_exclusive_terminal_state"
     t.check_constraint "role::text = ANY (ARRAY['chair'::character varying, 'treasurer'::character varying, 'board'::character varying]::text[])", name: "chk_campaign_invitations_role"
   end
 

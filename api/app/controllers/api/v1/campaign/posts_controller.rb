@@ -49,7 +49,16 @@ module Api
           post = @campaign.campaign_posts.find(params[:id])
 
           CampaignPost.transaction do
-            record_audit!(record: post, action: "delete_post", changes: { "title" => post.title })
+            record_audit!(
+              record: post,
+              action: "delete_post",
+              changes: {
+                "title" => post.title,
+                "body" => post.body,
+                "image_url" => post.image_url,
+                "published_at" => post.published_at&.iso8601
+              }
+            )
             post.destroy!
           end
 

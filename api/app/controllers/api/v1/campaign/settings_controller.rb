@@ -28,6 +28,8 @@ module Api
           donation_instructions
         ].freeze
 
+        IGNORED_RAW_KEYS = %w[campaign_slug controller action format breakGlassReason break_glass_reason campaign].freeze
+
         before_action -> { require_campaign_role!("board", "chair", "treasurer") }, only: [ :show ]
         before_action -> { require_campaign_role!("chair", "treasurer") }, only: [ :update ]
         before_action :require_campaign_writable!, only: [ :update ]
@@ -40,6 +42,11 @@ module Api
         end
 
         def update
+          unknown_raw_keys = unexpected_raw_keys
+          if unknown_raw_keys.any?
+            return render_forbidden("Not permitted to update fields: #{unknown_raw_keys.join(', ')}")
+          end
+
           attrs = extract_settings_attrs
           unauthorized = unauthorized_keys(attrs.keys)
           if unauthorized.any?
@@ -62,6 +69,13 @@ module Api
         end
 
         private
+
+        def unexpected_raw_keys
+          raw = params.fetch(:campaign, params)
+          raw_keys = raw.to_unsafe_h.keys.map(&:to_s) - IGNORED_RAW_KEYS
+          allowed_raw = (CONTENT_KEYS + FINANCE_KEYS + DONATION_KEYS).flat_map { |k| [ k.to_s, k.to_s.camelize(:lower) ] }
+          raw_keys - allowed_raw
+        end
 
         def unauthorized_keys(keys)
           return [] if current_user.admin?

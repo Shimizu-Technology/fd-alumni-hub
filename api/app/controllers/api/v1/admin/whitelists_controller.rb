@@ -11,23 +11,60 @@ module Api
 
         def create
           entry = AdminWhitelist.new(whitelist_params)
-          if entry.save
-            render json: { whitelist: serialize_whitelist(entry) }, status: :created
-          else
-            render_errors(entry)
+          AdminWhitelist.transaction do
+            unless entry.save
+              render_errors(entry)
+              raise ActiveRecord::Rollback
+            end
+
+            sync_matching_user!(entry)
+            log_whitelist_change!("create", entry)
           end
+          return if performed?
+
+          render json: { whitelist: serialize_whitelist(entry) }, status: :created
         end
 
         def update
           entry = AdminWhitelist.find(params[:id])
-          if entry.update(whitelist_params)
-            render json: { whitelist: serialize_whitelist(entry) }
-          else
-            render_errors(entry)
+          incoming = whitelist_params
+
+          if entry.email == current_user.email && (incoming[:active] == false || (incoming[:role].present? && incoming[:role] != "admin"))
+            return render json: { error: "Cannot deactivate or demote your own admin account" }, status: :unprocessable_entity
           end
+
+          AdminWhitelist.transaction do
+            unless entry.update(incoming)
+              render_errors(entry)
+              raise ActiveRecord::Rollback
+            end
+
+            sync_matching_user!(entry)
+            log_whitelist_change!("update", entry)
+          end
+          return if performed?
+
+          render json: { whitelist: serialize_whitelist(entry) }
         end
 
         private
+
+        def sync_matching_user!(entry)
+          user = User.find_by("LOWER(email) = ?", entry.email.downcase)
+          return unless user
+          return if user.id == current_user.id
+
+          updates = {}
+          updates[:role] = entry.role if entry.active? && user.role != entry.role
+          updates[:active] = entry.active? if user.active? != entry.active?
+          user.update!(updates) if updates.any?
+        end
+
+        def log_whitelist_change!(action, entry)
+          Rails.logger.info(
+            "AdminWhitelist #{action} by user_id=#{current_user.id} email=#{entry.email} role=#{entry.role} active=#{entry.active} ip=#{request.remote_ip}"
+          )
+        end
 
         def whitelist_params
           raw = params.fetch(:whitelist, params)

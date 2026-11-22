@@ -15,31 +15,42 @@ module Api
 
         def create
           attrs = membership_params
+          target_user = User.active.find_by(id: attrs[:user_id])
+          unless target_user
+            return render json: { errors: [ "Active user not found" ] }, status: :unprocessable_entity
+          end
+
           membership = @campaign.campaign_memberships.find_or_initialize_by(
-            user_id: attrs[:user_id],
+            user_id: target_user.id,
             role: attrs[:role]
           )
+          was_new = membership.new_record?
           membership.active = true
           membership.invited_by ||= current_user
 
           CampaignMembership.transaction do
+            changes = membership.changes
             unless membership.save
               render_errors(membership)
               raise ActiveRecord::Rollback
             end
 
-            FinanceAuditEvent.record!(
-              campaign: @campaign,
-              actor: current_user,
-              record: membership,
-              action: "membership_grant",
-              changes: { "user_id" => membership.user_id, "role" => membership.role, "active" => membership.active },
-              ip_address: request.remote_ip
-            )
+            if was_new || changes.any?
+              FinanceAuditEvent.record!(
+                campaign: @campaign,
+                actor: current_user,
+                record: membership,
+                action: "membership_grant",
+                changes: { "user_id" => membership.user_id, "role" => membership.role, "active" => membership.active },
+                ip_address: request.remote_ip
+              )
+            end
           end
           return if performed?
 
-          render json: { membership: membership.api_json }, status: :created
+          render json: { membership: membership.api_json }, status: was_new ? :created : :ok
+        rescue ActiveRecord::RecordNotUnique
+          render json: { errors: [ "User already holds this campaign role" ] }, status: :unprocessable_entity
         end
 
         def update

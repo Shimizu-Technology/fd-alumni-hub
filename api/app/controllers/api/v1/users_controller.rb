@@ -4,7 +4,7 @@ module Api
       before_action :authenticate_user!
 
       def me
-        render json: { user: current_user.api_json }
+        render json: { user: current_user.api_json(include_campaign_memberships: true) }
       end
     end
   end
