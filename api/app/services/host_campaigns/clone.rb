@@ -39,7 +39,7 @@ module HostCampaigns
     end
 
     def call
-      Audit::Context.with { perform }
+      Audit::Context.with(actor: @actor, ip_address: @ip_address) { perform }
     end
 
     private def perform
@@ -72,14 +72,13 @@ module HostCampaigns
         []
       end
 
-      # Strict event template allowlist (Design §5.3): NEVER copy dates, HafaPass IDs/slugs/codes, or external/image URLs.
+      # Strict event template allowlist (Design §5.3): Omit dates, descriptions, HafaPass IDs/slugs/codes, and external/image URLs.
       event_templates_spec = if @copy_event_templates
         @source.campaign_events.not_archived.ordered.map do |event|
           {
             kind: event.kind,
             title: event.title,
             venue: event.venue,
-            description: event.description,
             position: event.position,
             date_label: "TBD"
           }

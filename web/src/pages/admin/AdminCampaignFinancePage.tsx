@@ -1,18 +1,20 @@
+import { LedgerEntryDialog } from './finance/LedgerEntryDialog'
+import { LedgerTab } from './finance/LedgerTab'
+import { ReimbursementsTab } from './finance/ReimbursementsTab'
+import { centsToInput, formatUsd, parseDollarsToCents, todayIsoDate, useAccessibleModal } from './finance/financeFields'
 import { hasCapability } from '../../lib/adminModules'
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { safeHttpsHref } from '../../lib/urls'
-import { RECEIPT_UPLOAD_ACCEPT, uploadCampaignReceipt } from '../../lib/uploads'
 import type {
   AdminHostCampaign,
   BudgetLineRecord,
   FinanceAuditEvent,
   FinanceSummary,
-  LedgerEntryRecord,
   LedgerEntryType,
   PledgeRecord,
   PledgeStatus,
@@ -30,75 +32,11 @@ import {
   StatusBadge,
 } from '../../components/ui'
 
-type FinanceTab = 'ledger' | 'budget' | 'pledges' | 'reimbursements' | 'audit' | 'report'
-
-const MAX_DOLLARS = 1_000_000_000 // $1B cap matching backend MAX_CENTS
-const DOLLAR_REGEX = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/
-
-const INCOME_SOURCES = [
-  { value: 'fundraiser_gross', label: 'Fundraiser (Gross)' },
-  { value: 'fundraiser_net', label: 'Fundraiser (Net payout)' },
-  { value: 'sponsorship', label: 'Sponsorship' },
-  { value: 'donation', label: 'Donation' },
-  { value: 'fdaa_allocation', label: 'FDAA Upfront Allocation' },
-  { value: 'ticket_share', label: 'FDAA Ticket Share' },
-  { value: 'merch', label: 'Merch Sales' },
-  { value: 'golf_net', label: 'Golf Tournament (Net)' },
-  { value: 'other_income', label: 'Other Income' },
-]
-
-const EXPENSE_SOURCES = [
-  { value: 'event_expense', label: 'Event Expense' },
-  { value: 'merch_cost', label: 'Merch Cost' },
-  { value: 'venue_ops', label: 'Venue / Ops' },
-  { value: 'refund', label: 'Refund' },
-  { value: 'other_expense', label: 'Other Expense' },
-]
-
-const PAYMENT_METHODS = [
-  { value: 'cash', label: 'Cash' },
-  { value: 'paypal', label: 'PayPal' },
-  { value: 'check', label: 'Check' },
-  { value: 'bank_transfer', label: 'Bank Transfer / ACH' },
-  { value: 'fdaa', label: 'FDAA' },
-  { value: 'hafapass_payout', label: 'HåfaPass Payout' },
-  { value: 'golf_payout', label: 'Golf Payout' },
-  { value: 'card', label: 'Card' },
-  { value: 'other', label: 'Other' },
-]
+const FINANCE_TABS = ['ledger', 'budget', 'pledges', 'reimbursements', 'audit', 'report'] as const
+type FinanceTab = typeof FINANCE_TABS[number]
 
 const PLEDGE_TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Donor', 'In-Kind']
 const PLEDGE_STATUSES: PledgeStatus[] = ['promised', 'partial', 'fulfilled', 'cancelled']
-
-const MODAL_FOCUSABLE = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
-
-function formatUsd(cents: number) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(cents / 100)
-}
-
-function parseDollarsToCents(raw: string, { positive = false }: { positive?: boolean } = {}): { ok: true; value: number } | { ok: false; error: string } {
-  const trimmed = raw.trim().replace(/^\$\s*/, '')
-  if (!trimmed || !DOLLAR_REGEX.test(trimmed)) {
-    return { ok: false, error: 'Enter a valid dollar amount (for example, 250, 1,250.00, or 250.50).' }
-  }
-  const parsed = Number(trimmed.replace(/,/g, ''))
-  if (!Number.isFinite(parsed) || parsed > MAX_DOLLARS || (positive ? parsed <= 0 : parsed < 0)) {
-    return { ok: false, error: positive ? 'Amount must be greater than $0 and within range.' : 'Amount must be non-negative and within range.' }
-  }
-  return { ok: true, value: Math.round(parsed * 100) }
-}
 
 function parsePercentToBps(raw: string): { ok: true; value: number } | { ok: false; error: string } {
   const trimmed = raw.trim().replace(/%$/, '').trim()
@@ -112,73 +50,25 @@ function parsePercentToBps(raw: string): { ok: true; value: number } | { ok: fal
   return { ok: true, value: Math.round(parsed * 100) }
 }
 
-function centsToInput(cents: number) {
-  return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)
-}
-
-function todayIsoDate() {
-  const now = new Date()
-  const offset = now.getTimezoneOffset() * 60_000
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
-}
-
-function useAccessibleModal(open: boolean, onClose: () => void, panelRef: React.RefObject<HTMLDivElement | null>, initialFocusRef: React.RefObject<HTMLElement | null>) {
-  const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
-
-  useEffect(() => {
-    if (!open || typeof document === 'undefined') return
-
-    const previousOverflow = document.body.style.overflow
-    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    document.body.style.overflow = 'hidden'
-    const focusTimer = window.setTimeout(() => {
-      if (initialFocusRef.current) initialFocusRef.current.focus({ preventScroll: true })
-      else panelRef.current?.focus({ preventScroll: true })
-    }, 0)
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onCloseRef.current()
-        return
-      }
-      if (event.key !== 'Tab') return
-      const focusable = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE) || [])
-      if (focusable.length === 0) {
-        event.preventDefault()
-        panelRef.current?.focus({ preventScroll: true })
-        return
-      }
-      const first = focusable[0]
-      const last = focusable[focusable.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus({ preventScroll: true })
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus({ preventScroll: true })
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.clearTimeout(focusTimer)
-      document.body.style.overflow = previousOverflow
-      document.removeEventListener('keydown', onKeyDown)
-      if (previouslyFocused && document.contains(previouslyFocused)) {
-        previouslyFocused.focus({ preventScroll: true })
-      }
-    }
-  }, [open, panelRef, initialFocusRef])
-}
-
 export function AdminCampaignFinancePage() {
   const auth = useAuthContext()
   const isAdmin = Boolean(auth.user?.isSuperAdmin ?? auth.user?.isAdmin)
   const hasScopedLookup = isAdmin || Boolean(auth.user?.capabilities)
   const [searchParams, setSearchParams] = useSearchParams()
-  const [tab, setTab] = useState<FinanceTab>('ledger')
+  const requestedTab = searchParams.get('tab')
+  const tab = FINANCE_TABS.find((section) => section === requestedTab) ?? 'ledger'
+  const action = searchParams.get('action')
+  const entryType = action === 'income' || action === 'expense' ? action : null
+  const [saveNotice, setSaveNotice] = useState<{ slug: string; message: string } | null>(null)
+
+  function setTab(next: FinanceTab, replace = false) {
+    setSearchParams({ campaign: selectedSlug, tab: next }, { replace })
+  }
+
+  function openEntry(next: LedgerEntryType) {
+    setSaveNotice(null)
+    setSearchParams({ campaign: selectedSlug, tab, action: next })
+  }
   const [entryTypeFilter, setEntryTypeFilter] = useState('')
   const [includeVoided, setIncludeVoided] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
@@ -205,7 +95,7 @@ export function AdminCampaignFinancePage() {
 
   const requestedSlug = searchParams.get('campaign')
   const selectedSlug = useMemo(() => {
-    if (requestedSlug && campaignOptions.some((c) => c.slug === requestedSlug)) return requestedSlug
+    if (requestedSlug) return campaignOptions.some((c) => c.slug === requestedSlug) ? requestedSlug : ''
     const preferred = campaignOptions.find((c) => c.status === 'active' || c.status === 'closing')
     return preferred?.slug || campaignOptions[0]?.slug || ''
   }, [requestedSlug, campaignOptions])
@@ -341,6 +231,11 @@ export function AdminCampaignFinancePage() {
     )
   }
 
+  if (requestedSlug && !selectedSlug) {
+    return <EmptyState title="Finance access unavailable" description="You do not have access to the selected campaign."
+      action={<button className="btn secondary" onClick={() => setSearchParams({})}>Open my finance workspace</button>} />
+  }
+
   const overviewMatchesSlug = Boolean(overviewQuery.data && overviewQuery.data.slug === selectedSlug)
 
   if (overviewQuery.error && !overviewMatchesSlug) {
@@ -377,7 +272,7 @@ export function AdminCampaignFinancePage() {
   const ledgerEntries = ledgerReady ? (ledgerQuery.data?.ledgerEntries || []) : []
   const ledgerOptions = ledgerQuery.data && ledgerQuery.data.slug === selectedSlug
     ? ledgerQuery.data.options
-    : { budgetLines: [], events: [], pledges: [], sponsors: [], members: [] }
+    : null
 
   const isArchived = campaign.status === 'archived'
   const financePermission = (action: string, legacyAllowed: boolean) => auth.user?.capabilities
@@ -386,6 +281,7 @@ export function AdminCampaignFinancePage() {
   const canWriteFinance = financePermission('record', roles.includes('treasurer')) && !isArchived
   const canApproveReimbursements = financePermission('approve', roles.includes('chair') || roles.includes('treasurer')) && !isArchived
   const canMarkReimbursed = financePermission('payout', roles.includes('treasurer')) && !isArchived
+  const canViewAudit = isAdmin || hasCapability(auth.user, 'view_audit_log', 'view', { type: 'campaign', id: campaign.id })
   const canViewReceipts = financePermission('view_receipts', true)
 
   return (
@@ -421,6 +317,41 @@ export function AdminCampaignFinancePage() {
           )}
         />
 
+        <div className="row-actions finance-quick-actions" aria-label="Finance actions">
+          {canWriteFinance && (
+            <>
+              <button type="button" className="btn primary" onClick={() => openEntry('income')}>Record money received</button>
+              <button type="button" className="btn primary" onClick={() => openEntry('expense')}>Record expense</button>
+            </>
+          )}
+          <button type="button" className="btn secondary" onClick={() => setTab('reimbursements')}>
+            Reimbursements to review ({summary.pendingReimbursementsCount})
+          </button>
+          <Link className="btn secondary" to={canViewAudit
+            ? `/admin/audit?hostCampaignId=${campaign.id}`
+            : `?campaign=${encodeURIComponent(campaign.slug)}&tab=audit`}>Finance history</Link>
+        </div>
+        {saveNotice?.slug === campaign.slug && <p role="status">{saveNotice.message}</p>}
+        {entryType && canWriteFinance && ledgerQuery.error && !ledgerOptions && (
+          <ErrorState message={ledgerQuery.error} onRetry={ledgerQuery.reload} />
+        )}
+        {entryType && canWriteFinance && !ledgerQuery.error && !ledgerOptions && <LoadingState label="Loading entry options" />}
+        {entryType && canWriteFinance && ledgerOptions && (
+          <LedgerEntryDialog
+            key={`${campaign.slug}:${entryType}:${searchParams.get('eventId') || ''}`}
+            campaignSlug={campaign.slug}
+            entryType={entryType}
+            eventId={searchParams.get('eventId')}
+            options={ledgerOptions}
+            onClose={() => setTab(tab, true)}
+            onRecorded={() => {
+              setSaveNotice({ slug: campaign.slug, message: entryType === 'income' ? 'Money received recorded.' : 'Expense recorded.' })
+              setEntryTypeFilter('')
+              setTab('ledger', true)
+              void reloadAll()
+            }}
+          />
+        )}
         {csvError && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{csvError}</p></Panel>}
         {receiptError && !receiptPreview && <Panel><p className="form-error" role="alert" style={{ margin: 0 }}>{receiptError}</p></Panel>}
         {overviewQuery.error && (
@@ -446,7 +377,7 @@ export function AdminCampaignFinancePage() {
         {!isArchived && !canWriteFinance && (
           <Panel>
             <p className="muted" style={{ margin: 0 }}>
-              <strong>Read-only finance access:</strong> Your role ({roles.join(', ') || 'board'}) can view all totals, receipts, audit logs, and CSV exports.
+              <strong>Viewing finance:</strong> Your access allows you to review the ledger and totals.
               {canApproveReimbursements ? ' You can also approve out-of-pocket reimbursements.' : ''}
             </p>
           </Panel>
@@ -528,7 +459,6 @@ export function AdminCampaignFinancePage() {
           loading={ledgerQuery.loading || (!ledgerReady && !ledgerQuery.error)}
           ledgerError={ledgerQuery.error}
           onRetryLedger={ledgerQuery.reload}
-          options={ledgerOptions}
           canWrite={canWriteFinance}
           entryTypeFilter={entryTypeFilter}
           includeVoided={includeVoided}
@@ -919,476 +849,6 @@ function FinanceSettingsPanel({
   )
 }
 
-function LedgerTab({
-  campaign,
-  entries,
-  loading,
-  ledgerError,
-  onRetryLedger,
-  options,
-  canWrite,
-  entryTypeFilter,
-  includeVoided,
-  onEntryTypeFilter,
-  onIncludeVoided,
-  onOpenReceipt,
-  receiptLoadingId,
-  onSaved,
-}: {
-  campaign: AdminHostCampaign
-  entries: LedgerEntryRecord[]
-  loading: boolean
-  ledgerError: string | null
-  onRetryLedger: () => Promise<void>
-  options: {
-    budgetLines: Array<{ id: string; kind: LedgerEntryType; category: string }>
-    events: Array<{ id: string; title: string }>
-    pledges: Array<{ id: string; donorName: string; status: string }>
-    sponsors: Array<{ id: string; name: string }>
-    members: Array<{ id: string; fullName: string; email: string }>
-  }
-  canWrite: boolean
-  entryTypeFilter: string
-  includeVoided: boolean
-  onEntryTypeFilter: (value: string) => void
-  onIncludeVoided: (value: boolean) => void
-  onOpenReceipt?: (entryId: string) => Promise<void>
-  receiptLoadingId: string | null
-  onSaved: () => Promise<void>
-}) {
-  const [entryType, setEntryType] = useState<LedgerEntryType>('income')
-  const [amountDollars, setAmountDollars] = useState('')
-  const [entryDate, setEntryDate] = useState(todayIsoDate())
-  const [source, setSource] = useState('fundraiser_gross')
-  const [paymentMethod, setPaymentMethod] = useState('cash')
-  const [counterparty, setCounterparty] = useState('')
-  const [budgetLineId, setBudgetLineId] = useState('')
-  const [campaignEventId, setCampaignEventId] = useState('')
-  const [sponsorId, setSponsorId] = useState('')
-  const [pledgeId, setPledgeId] = useState('')
-  const [description, setDescription] = useState('')
-  const [referenceNumber, setReferenceNumber] = useState('')
-  const [paidBy, setPaidBy] = useState('')
-  const [paidByUserId, setPaidByUserId] = useState('')
-  const [requestReimbursement, setRequestReimbursement] = useState(false)
-  const [receiptUploadToken, setReceiptUploadToken] = useState('')
-  const [receiptFileName, setReceiptFileName] = useState('')
-  const [uploadingReceipt, setUploadingReceipt] = useState(false)
-  const [attachingEntryId, setAttachingEntryId] = useState<string | null>(null)
-  const [voidingEntry, setVoidingEntry] = useState<LedgerEntryRecord | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-
-  const availableSources = entryType === 'income' ? INCOME_SOURCES : EXPENSE_SOURCES
-  const matchingBudgetLines = options.budgetLines.filter((l) => l.kind === entryType)
-
-  const handleEntryTypeChange = (next: LedgerEntryType) => {
-    setEntryType(next)
-    setSource(next === 'income' ? 'fundraiser_gross' : 'event_expense')
-    setBudgetLineId('')
-    if (next === 'income') {
-      setPaidBy('')
-      setPaidByUserId('')
-      setRequestReimbursement(false)
-    } else {
-      setPledgeId('')
-    }
-  }
-
-  const handleReceiptSelect = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    setUploadingReceipt(true)
-    setError('')
-    try {
-      const token = await uploadCampaignReceipt({ file, campaignSlug: campaign.slug })
-      setReceiptUploadToken(token)
-      setReceiptFileName(file.name)
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to upload receipt'))
-    } finally {
-      setUploadingReceipt(false)
-    }
-  }
-
-  const handleAttachReceiptToExisting = async (entryId: string, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    setAttachingEntryId(entryId)
-    setError('')
-    setMessage('')
-    try {
-      const token = await uploadCampaignReceipt({ file, campaignSlug: campaign.slug })
-      await api.campaignUpdateLedgerEntry(campaign.slug, entryId, { receiptUploadToken: token })
-      setMessage('Receipt attached.')
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to attach receipt'))
-    } finally {
-      setAttachingEntryId(null)
-    }
-  }
-
-  const handleCreate = async (event: FormEvent) => {
-    event.preventDefault()
-    if (!canWrite) return
-    const amountParsed = parseDollarsToCents(amountDollars, { positive: true })
-    if (!amountParsed.ok) {
-      setError(`Amount: ${amountParsed.error}`)
-      return
-    }
-    const amountCents = amountParsed.value
-    setSaving(true)
-    setMessage('')
-    setError('')
-    try {
-      const payload: Record<string, unknown> = {
-        entryType,
-        amountCents,
-        entryDate: entryDate || undefined,
-        source,
-        paymentMethod,
-        counterparty: counterparty.trim(),
-        budgetLineId: budgetLineId || null,
-        campaignEventId: campaignEventId || null,
-        sponsorId: sponsorId || null,
-        pledgeId: entryType === 'income' ? (pledgeId || null) : null,
-        description: description.trim() || null,
-        referenceNumber: referenceNumber.trim() || null,
-        paidBy: entryType === 'expense' ? (paidBy.trim() || null) : null,
-        paidByUserId: entryType === 'expense' ? (paidByUserId || null) : null,
-        reimbursementStatus: entryType === 'expense' && requestReimbursement ? 'requested' : 'not_applicable',
-      }
-      if (receiptUploadToken) payload.receiptUploadToken = receiptUploadToken
-
-      await api.campaignCreateLedgerEntry(campaign.slug, payload)
-      setAmountDollars('')
-      setCounterparty('')
-      setDescription('')
-      setReferenceNumber('')
-      setPaidBy('')
-      setPaidByUserId('')
-      setRequestReimbursement(false)
-      setReceiptUploadToken('')
-      setReceiptFileName('')
-      setMessage(`${entryType === 'income' ? 'Income' : 'Expense'} recorded.`)
-      await onSaved()
-    } catch (err) {
-      const msg = mutationErrorMessage(err, 'Unable to record ledger entry')
-      if (receiptUploadToken && /token|expired/i.test(msg)) {
-        setReceiptUploadToken('')
-        setReceiptFileName('')
-        setError(`${msg} Please re-attach the receipt and try again.`)
-      } else {
-        setError(msg)
-      }
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="page-stack">
-      {canWrite && (
-        <Panel>
-          <div className="section-heading">
-            <h2>Quick add {entryType === 'income' ? 'income' : 'expense'}</h2>
-            <div className="row-actions">
-              <button type="button" className={`btn small ${entryType === 'income' ? 'primary' : 'secondary'}`} onClick={() => handleEntryTypeChange('income')}>
-                + Income
-              </button>
-              <button type="button" className={`btn small ${entryType === 'expense' ? 'primary' : 'secondary'}`} onClick={() => handleEntryTypeChange('expense')}>
-                − Expense
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handleCreate}>
-            <FormGrid>
-              <Field label="Amount (USD)">
-                <input inputMode="decimal" value={amountDollars} onChange={(e) => setAmountDollars(e.target.value)} required placeholder="250.00" />
-              </Field>
-              <Field label="Date">
-                <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} required />
-              </Field>
-              <Field label="Source">
-                <select value={source} onChange={(e) => setSource(e.target.value)}>
-                  {availableSources.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              </Field>
-              <Field label="Payment method">
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                  {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </Field>
-              <Field label={entryType === 'income' ? 'Payer / Donor / Event' : 'Vendor / Payee'}>
-                <input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} required placeholder={entryType === 'income' ? 'Antigu Night Door / Bank of Guam' : 'Cost-U-Less / DJ'} />
-              </Field>
-              <Field label="Budget line (optional)">
-                <select value={budgetLineId} onChange={(e) => setBudgetLineId(e.target.value)}>
-                  <option value="">None</option>
-                  {matchingBudgetLines.map((l) => <option key={l.id} value={l.id}>{l.category}</option>)}
-                </select>
-              </Field>
-              <Field label="Fundraiser event (optional)">
-                <select value={campaignEventId} onChange={(e) => setCampaignEventId(e.target.value)}>
-                  <option value="">None</option>
-                  {options.events.map((ev) => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
-                </select>
-              </Field>
-              <Field label="Sponsor (optional)">
-                <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)}>
-                  <option value="">None</option>
-                  {options.sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </Field>
-              {entryType === 'income' && (
-                <Field label="Apply to cash pledge (optional)">
-                  <select value={pledgeId} onChange={(e) => setPledgeId(e.target.value)}>
-                    <option value="">None</option>
-                    {options.pledges.map((p) => <option key={p.id} value={p.id}>{p.donorName} ({p.status})</option>)}
-                  </select>
-                </Field>
-              )}
-              <Field label="Reference # (check / PayPal / transfer)">
-                <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="CHK-1024" />
-              </Field>
-              {entryType === 'expense' && (
-                <>
-                  <Field label="Paid out-of-pocket by (member account)">
-                    <select value={paidByUserId} onChange={(e) => setPaidByUserId(e.target.value)}>
-                      <option value="">Paid directly from class account</option>
-                      {options.members.map((m) => <option key={m.id} value={m.id}>{m.fullName} ({m.email})</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Paid by display name (if external)">
-                    <input value={paidBy} onChange={(e) => setPaidBy(e.target.value)} placeholder="Name of person who fronted cash" />
-                  </Field>
-                </>
-              )}
-            </FormGrid>
-
-            <Field label="Notes / description">
-              <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-            </Field>
-
-            {entryType === 'expense' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.5rem' }}>
-                <input type="checkbox" checked={requestReimbursement} onChange={(e) => setRequestReimbursement(e.target.checked)} />
-                <span>Request reimbursement (requires second-officer approval)</span>
-              </label>
-            )}
-
-            <div className="row-actions" style={{ marginTop: '0.75rem', flexWrap: 'wrap' }}>
-              <label className="btn secondary small file-upload-btn">
-                <span>{uploadingReceipt ? 'Uploading receipt…' : receiptFileName ? `Receipt ready: ${receiptFileName}` : 'Attach receipt photo / PDF'}</span>
-                <input className="sr-only" type="file" accept={RECEIPT_UPLOAD_ACCEPT} onChange={handleReceiptSelect} disabled={uploadingReceipt} />
-              </label>
-              {receiptUploadToken && !uploadingReceipt && (
-                <button
-                  type="button"
-                  className="btn secondary small"
-                  onClick={() => {
-                    setReceiptUploadToken('')
-                    setReceiptFileName('')
-                  }}
-                >
-                  Remove receipt
-                </button>
-              )}
-              <button type="submit" className="btn primary" disabled={saving || uploadingReceipt}>
-                {saving ? 'Recording…' : `Record ${entryType}`}
-              </button>
-            </div>
-            {message && <p role="status" style={{ marginTop: '0.6rem' }}>{message}</p>}
-            {error && <p className="form-error" role="alert">{error}</p>}
-          </form>
-        </Panel>
-      )}
-
-      {voidingEntry && (
-        <VoidEntryModal
-          campaignSlug={campaign.slug}
-          entry={voidingEntry}
-          onClose={() => setVoidingEntry(null)}
-          onVoided={async () => {
-            const targetId = voidingEntry.id
-            setVoidingEntry((prev) => (prev?.id === targetId ? null : prev))
-            setMessage('Ledger entry voided and logged in audit trail.')
-            await onSaved()
-          }}
-        />
-      )}
-
-      <Panel>
-        <div className="section-heading">
-          <h2>Ledger entries ({entries.length})</h2>
-          <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-            <select aria-label="Filter by entry type" value={entryTypeFilter} onChange={(e) => onEntryTypeFilter(e.target.value)}>
-              <option value="">All types</option>
-              <option value="income">Income only</option>
-              <option value="expense">Expense only</option>
-            </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.9rem' }}>
-              <input type="checkbox" checked={includeVoided} onChange={(e) => onIncludeVoided(e.target.checked)} />
-              <span>Show voided</span>
-            </label>
-          </div>
-        </div>
-
-        {ledgerError ? (
-          <ErrorState message={ledgerError} onRetry={onRetryLedger} />
-        ) : loading ? (
-          <LoadingState label="Loading ledger entries" />
-        ) : entries.length === 0 ? (
-          <EmptyState title="No ledger entries yet" description="Record your first fundraiser payout, sponsorship, or expense above." />
-        ) : (
-          <div className="admin-list">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="compact-admin-row"
-                style={{
-                  padding: '0.85rem 0',
-                  borderBottom: '1px solid var(--line)',
-                  opacity: entry.voided ? 0.65 : 1,
-                }}
-              >
-                <div>
-                  <strong>
-                    {entry.entryType === 'income' ? '+' : '−'}{formatUsd(entry.amountCents)} · {entry.counterparty}
-                  </strong>{' '}
-                  <span className="pill">{entry.source.replace(/_/g, ' ')}</span>{' '}
-                  {entry.voided && <span className="status-badge status-cancelled">voided</span>}
-                  {entry.reimbursementStatus !== 'not_applicable' && (
-                    <> <StatusBadge status={entry.reimbursementStatus} /></>
-                  )}
-                  <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-                    {entry.entryDate} · {entry.paymentMethod.replace(/_/g, ' ')}
-                    {entry.budgetLineCategory ? ` · ${entry.budgetLineCategory}` : ''}
-                    {entry.campaignEventTitle ? ` · ${entry.campaignEventTitle}` : ''}
-                    {entry.pledgeDonorName ? ` · Pledge: ${entry.pledgeDonorName}` : ''}
-                  </p>
-                  {entry.description && <p style={{ margin: '0.25rem 0 0', fontSize: '0.92rem' }}>{entry.description}</p>}
-                  {entry.voided && entry.voidReason && (
-                    <p className="form-error" style={{ margin: '0.2rem 0 0', fontSize: '0.86rem' }}>
-                      Voided: {entry.voidReason} ({entry.voidedByName || 'Officer'})
-                    </p>
-                  )}
-                </div>
-
-                <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                  {entry.hasReceipt ? (
-                    onOpenReceipt && (
-                      <button
-                        type="button"
-                        className="btn secondary small"
-                        disabled={receiptLoadingId === entry.id}
-                        onClick={() => void onOpenReceipt(entry.id)}
-                      >
-                        {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
-                      </button>
-                    )
-                  ) : (
-                    canWrite && !entry.voided && (
-                      <label className="btn secondary small file-upload-btn">
-                        <span>{attachingEntryId === entry.id ? 'Uploading…' : 'Add receipt'}</span>
-                        <input
-                          className="sr-only"
-                          type="file"
-                          accept={RECEIPT_UPLOAD_ACCEPT}
-                          onChange={(e) => void handleAttachReceiptToExisting(entry.id, e)}
-                          disabled={attachingEntryId === entry.id}
-                        />
-                      </label>
-                    )
-                  )}
-                  {canWrite && !entry.voided && (
-                    <button type="button" className="btn secondary small" onClick={() => setVoidingEntry(entry)}>
-                      Void
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-    </div>
-  )
-}
-
-function VoidEntryModal({
-  campaignSlug,
-  entry,
-  onClose,
-  onVoided,
-}: {
-  campaignSlug: string
-  entry: LedgerEntryRecord
-  onClose: () => void
-  onVoided: () => Promise<void>
-}) {
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  useAccessibleModal(true, onClose, panelRef, inputRef)
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault()
-    if (!reason.trim()) return
-    setSaving(true)
-    setError('')
-    try {
-      await api.campaignVoidLedgerEntry(campaignSlug, entry.id, reason.trim())
-      await onVoided()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to void ledger entry'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="finance-modal-backdrop" role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div
-        ref={panelRef}
-        className="panel finance-modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Void ledger entry ${entry.id}`}
-        tabIndex={-1}
-      >
-        <div className="section-heading">
-          <h2>Void ledger entry #{entry.id}</h2>
-          <button type="button" className="btn secondary small" onClick={onClose}>Cancel</button>
-        </div>
-        <p className="muted" style={{ margin: 0 }}>
-          Voiding preserves audit history instead of deleting: <strong>{entry.counterparty}</strong> · {formatUsd(entry.amountCents)} ({entry.entryDate}).
-        </p>
-        <form onSubmit={handleSubmit}>
-          <Field label="Reason for void (required)">
-            <input ref={inputRef} value={reason} onChange={(e) => setReason(e.target.value)} required placeholder="Duplicate entry / entered wrong amount" />
-          </Field>
-          {error && <p className="form-error" role="alert">{error}</p>}
-          <div className="row-actions" style={{ marginTop: '0.75rem' }}>
-            <button type="button" className="btn secondary" onClick={onClose}>Keep entry</button>
-            <button type="submit" className="btn primary" disabled={saving || !reason.trim()}>
-              {saving ? 'Voiding…' : 'Confirm void'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
 function BudgetTab({
   campaign,
   summary,
@@ -1682,144 +1142,6 @@ function PledgesTab({
         )}
       </Panel>
     </div>
-  )
-}
-
-function ReimbursementsTab({
-  campaign,
-  entries,
-  currentUserId,
-  canApprove,
-  canMarkReimbursed,
-  receiptLoadingId,
-  onOpenReceipt,
-  onSaved,
-}: {
-  campaign: AdminHostCampaign
-  entries: LedgerEntryRecord[]
-  currentUserId: string
-  canApprove: boolean
-  canMarkReimbursed: boolean
-  receiptLoadingId: string | null
-  onOpenReceipt?: (entryId: string) => Promise<void>
-  onSaved: () => Promise<void>
-}) {
-  const [references, setReferences] = useState<Record<string, string>>({})
-  const [busyIds, setBusyIds] = useState<Record<string, boolean>>({})
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-
-  const setEntryBusy = (id: string, busy: boolean) => {
-    setBusyIds((prev) => {
-      if (busy) return { ...prev, [id]: true }
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-  }
-
-  const reimbEntries = entries.filter((e) => !e.voided && e.entryType === 'expense' && e.reimbursementStatus !== 'not_applicable')
-
-  const handleApprove = async (entry: LedgerEntryRecord) => {
-    setEntryBusy(entry.id, true)
-    setError('')
-    setMessage('')
-    try {
-      await api.campaignApproveReimbursement(campaign.slug, entry.id)
-      setMessage(`Approved reimbursement for ${entry.counterparty}.`)
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to approve reimbursement'))
-    } finally {
-      setEntryBusy(entry.id, false)
-    }
-  }
-
-  const handleMarkReimbursed = async (entry: LedgerEntryRecord) => {
-    setEntryBusy(entry.id, true)
-    setError('')
-    setMessage('')
-    try {
-      await api.campaignMarkReimbursed(campaign.slug, entry.id, {
-        reimbursementReference: references[entry.id]?.trim() || undefined,
-      })
-      setMessage(`Marked ${entry.counterparty} as reimbursed.`)
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to mark reimbursed'))
-    } finally {
-      setEntryBusy(entry.id, false)
-    }
-  }
-
-  return (
-    <Panel>
-      <h2>Reimbursement approval queue ({reimbEntries.length})</h2>
-      <p className="muted">Separation of duties: neither the out-of-pocket payer nor the officer who recorded the expense can self-approve.</p>
-      {message && <p role="status">{message}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
-
-      {reimbEntries.length === 0 ? (
-        <EmptyState title="No reimbursement requests" description="Expenses marked for reimbursement appear here for second-officer approval and payout tracking." />
-      ) : (
-        <div className="admin-list">
-          {reimbEntries.map((entry) => {
-            const isSelfPayer = Boolean(entry.paidByUserId && entry.paidByUserId === currentUserId)
-            const isRecorderOnly = entry.recordedById === currentUserId
-            return (
-              <div key={entry.id} className="compact-admin-row" style={{ padding: '0.85rem 0', borderBottom: '1px solid var(--line)' }}>
-                <div>
-                  <strong>{formatUsd(entry.amountCents)} · {entry.counterparty}</strong>{' '}
-                  <StatusBadge status={entry.reimbursementStatus} />
-                  <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                    Paid by: {entry.paidByUserName || entry.paidBy || 'Unspecified'} · {entry.entryDate}
-                    {entry.reimbursementApprovedByName ? ` · Approved by ${entry.reimbursementApprovedByName}` : ''}
-                    {entry.reimbursedAt ? ` · Reimbursed ${entry.reimbursedAt}` : ''}
-                    {entry.reimbursementReference ? ` (${entry.reimbursementReference})` : ''}
-                  </p>
-                </div>
-
-                <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                  {entry.hasReceipt && onOpenReceipt && (
-                    <button
-                      type="button"
-                      className="btn secondary small"
-                      disabled={receiptLoadingId === entry.id}
-                      onClick={() => void onOpenReceipt?.(entry.id)}
-                    >
-                      {receiptLoadingId === entry.id ? 'Opening…' : 'View receipt'}
-                    </button>
-                  )}
-                  {entry.reimbursementStatus === 'requested' && canApprove && (
-                    isSelfPayer || isRecorderOnly ? (
-                      <span className="muted" style={{ fontSize: '0.85rem' }}>A second officer must approve</span>
-                    ) : (
-                      <button type="button" className="btn primary small" disabled={Boolean(busyIds[entry.id])} onClick={() => void handleApprove(entry)}>
-                        {busyIds[entry.id] ? 'Approving…' : 'Approve'}
-                      </button>
-                    )
-                  )}
-                  {entry.reimbursementStatus === 'approved' && canMarkReimbursed && (
-                    <>
-                      <input
-                        aria-label={`Reimbursement reference for ${entry.counterparty}`}
-                        placeholder="Check / transfer ref"
-                        value={references[entry.id] || ''}
-                        onChange={(e) => setReferences((prev) => ({ ...prev, [entry.id]: e.target.value }))}
-                        style={{ maxWidth: '11rem' }}
-                      />
-                      <button type="button" className="btn primary small" disabled={Boolean(busyIds[entry.id])} onClick={() => void handleMarkReimbursed(entry)}>
-                        {busyIds[entry.id] ? 'Saving…' : 'Mark reimbursed'}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </Panel>
   )
 }
 

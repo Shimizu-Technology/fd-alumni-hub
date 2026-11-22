@@ -14,9 +14,7 @@ module HostCampaigns
       closeout = HostCampaigns::CloseoutCheck.call(@campaign)
 
       champions = if @tournament
-        TournamentChampion
-          .where(tournament_id: @tournament.id)
-          .or(TournamentChampion.where(tournament_id: nil, year: @tournament.year))
+        TournamentChampion.for_tournament(@tournament)
           .completed
           .includes(tournament_champion_credits: :class_cohort)
           .ordered

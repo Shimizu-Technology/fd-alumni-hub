@@ -365,7 +365,167 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     assert_includes JSON.parse(response.body)["errors"].first, "already exists"
   end
 
+  test "handoff status scopes checklist access and officer identities independently" do
+    outgoing_chair = User.create!(email: "outgoing-chair@example.com", role: "viewer")
+    @campaign.update!(status: "active")
+    @campaign.campaign_memberships.create!(user: outgoing_chair, role: "chair")
+    @campaign.campaign_invitations.create!(email: "private-treasurer@example.com", role: "treasurer", invited_by: @admin)
+    grant = PermissionGrant.create!(user: @outsider, email: @outsider.email, scope_type: "campaign", scope_id: @campaign.id,
+      capability: "fundraisers_and_sponsors", actions: [ "view" ], granted_by: @admin, accepted_at: Time.current)
+
+    get handoff_path(@campaign), headers: headers_for(@outsider)
+    assert_response :ok
+    assert_nil response.parsed_body.dig("onboarding", "officers")
+    assert_equal false, response.parsed_body["canPrepareNextYear"]
+    assert_equal "no-store", response.headers["Cache-Control"]
+    get handoff_path(@campaign), headers: headers_for(@board)
+    assert_response :ok
+    assert_nil response.parsed_body.dig("onboarding", "officers")
+    get handoff_path(@campaign), headers: headers_for(outgoing_chair)
+    assert_response :ok
+    assert_equal "private-treasurer@example.com", response.parsed_body.dig("onboarding", "officers", 1, "invitations", 0, "email")
+
+    grant.update!(revoked_at: Time.current)
+    get handoff_path(@campaign), headers: headers_for(@outsider)
+    assert_response :forbidden
+    get handoff_path(@campaign), headers: headers_for(@staff)
+    assert_response :forbidden
+    get handoff_path(@campaign)
+    assert_response :unauthorized
+  end
+
+  test "Class of 2017 to Class of 2018 handoff keeps independent finances, access, publication, and archive" do
+    @campaign.campaign_invitations.create!(email: "outgoing-only@example.com", role: "chair", invited_by: @admin)
+    @campaign.pending_receipt_uploads.create!(uploaded_by: @admin, s3_key: "private/outgoing/pending.pdf",
+      original_filename: "pending.pdf", expected_content_type: "application/pdf")
+    @pending_expense.update!(receipt_key: "private/outgoing/attached.pdf", receipt_filename: "attached.pdf",
+      receipt_content_type: "application/pdf", receipt_byte_size: 256)
+    @campaign.ledger_entries.create!(entry_type: "expense", source: "other_expense", amount_cents: 1_000,
+      payment_method: "other", counterparty: "Missing receipt", recorded_by: @admin)
+
+    post "/api/v1/admin/campaigns/#{@campaign.id}/clone", params: {
+      tournament: { name: "FD Alumni 2028", year: 2028, startDate: "2028-06-23", endDate: "2028-07-14" },
+      hostClassYear: 2018, goalCents: 4_000_000
+    }, headers: headers_for(@admin), as: :json
+    assert_response :created
+    incoming = HostCampaign.find(response.parsed_body.dig("campaign", "id"))
+    assert incoming.draft?
+    assert_equal @cohort_18.id, incoming.class_cohort_id
+    assert_equal 1, response.parsed_body["createdEvents"]
+    assert_equal 1, response.parsed_body["createdBudgetLines"]
+    %i[ledger_entries pending_receipt_uploads pledges campaign_memberships campaign_invitations].each do |relation|
+      assert_empty incoming.public_send(relation)
+    end
+    assert_nil incoming.description
+    assert_nil incoming.donation_url
+    assert_nil incoming.hafapass_organizer_slug
+    assert_nil incoming.hafapass_distribution_code
+    template = incoming.campaign_events.first
+    assert_nil template.description
+    assert_nil template.hafapass_distribution_code
+    assert_nil template.hafapass_event_id
+    assert_nil template.external_url
+
+    get "/api/v1/public/host-year", params: { slug: incoming.slug }
+    assert_response :not_found
+
+    chair = invite_and_verify(incoming, "chair")
+    treasurer = invite_and_verify(incoming, "treasurer")
+    get handoff_path(incoming), headers: headers_for(chair)
+    assert_response :ok
+    onboarding = response.parsed_body.fetch("onboarding")
+    assert_equal [ true, true ], onboarding.fetch("officers").pluck("accepted")
+    assert_includes onboarding.dig("officers", 1, "members", 0, "actions", "finance_and_reimbursements"), "payout"
+    assert onboarding["fundingAssumptionsPresent"]
+    assert onboarding["firstFundraiserCreated"]
+    assert_not onboarding["firstFundraiserScheduled"]
+    assert_not onboarding["publicCopyConfigured"]
+
+    get handoff_path(incoming), headers: headers_for(@board)
+    assert_response :forbidden
+    get handoff_path(@campaign), headers: headers_for(treasurer)
+    assert_response :forbidden
+    get handoff_path(@campaign), headers: headers_for(@board)
+    assert_response :ok
+    outgoing = response.parsed_body
+    assert_equal({ "id" => incoming.id.to_s, "title" => incoming.title, "slug" => incoming.slug, "status" => "draft",
+      "tournamentYear" => 2028, "hasAccess" => false }, outgoing.fetch("relatedNextCampaign"))
+    assert_equal %w[pending_reimbursements unfinalized_games], outgoing.dig("closeout", "blockers").pluck("code")
+    assert_equal %w[missing_receipts open_cash_pledges missing_champions], outgoing.dig("closeout", "warnings").pluck("code")
+
+    patch "/api/v1/admin/campaigns/#{incoming.id}", params: { campaign: { status: "active" } }, headers: headers_for(@admin), as: :json
+    assert_response :ok
+    get "/api/v1/public/host-year", params: { slug: incoming.slug }
+    assert_response :ok
+    assert_equal incoming.id.to_s, response.parsed_body.dig("campaign", "id")
+    assert_equal "closing", @campaign.reload.status
+
+    entries_path = "/api/v1/campaign/#{incoming.slug}/ledger-entries"
+    post entries_path, params: { ledgerEntry: {
+      entryType: "expense", amountCents: 7_500, source: "event_expense", paymentMethod: "card",
+      counterparty: "Fixture venue", paidByUserId: treasurer.id, reimbursementStatus: "requested"
+    } }, headers: headers_for(treasurer), as: :json
+    assert_response :created
+    entry = response.parsed_body.dig("ledgerEntry", "id")
+    post "#{entries_path}/#{entry}/approve-reimbursement", headers: headers_for(treasurer), as: :json
+    assert_response :forbidden
+    post "#{entries_path}/#{entry}/approve-reimbursement", headers: headers_for(chair), as: :json
+    assert_response :ok
+    post "#{entries_path}/#{entry}/mark-reimbursed", headers: headers_for(chair), as: :json
+    assert_response :forbidden
+    post "#{entries_path}/#{entry}/mark-reimbursed", params: { reimbursementReference: "Fixture payout" }, headers: headers_for(treasurer), as: :json
+    assert_response :ok
+    assert_equal "reimbursed", response.parsed_body.dig("ledgerEntry", "reimbursementStatus")
+
+    post "/api/v1/admin/tournaments/#{@tournament.id}/champions", params: {
+      champion: { bracket: "maroon", championLabel: "Class of 2017", runnerUpLabel: "Class of 2018", score: "75–68" }
+    }, headers: headers_for(@admin), as: :json
+    assert_response :created
+    archive_path = "/api/v1/admin/campaigns/#{@campaign.id}/archive"
+    post archive_path, headers: headers_for(@admin), as: :json
+    assert_response :unprocessable_entity
+    assert_equal 1, response.parsed_body.dig("closeoutCheck", "championsRecordedCount")
+    post archive_path, params: { forceReason: "Board recorded exceptions", completeTournament: true }, headers: headers_for(@admin), as: :json
+    assert_response :ok
+    assert @campaign.reload.archived?
+    assert_equal "active", incoming.reload.status
+    assert_equal "Board recorded exceptions", @campaign.finance_audit_events.find_by!(action: "archive_campaign").reason
+    assert AuditEvent.exists?(host_campaign_id: @campaign.id, actor_id: @admin.id, action: "campaign_archived", reason: "Board recorded exceptions")
+
+    get "/api/v1/campaign/#{@campaign.slug}/finance/final-report", headers: headers_for(@board)
+    assert_response :ok
+    assert_equal @campaign.id.to_s, response.parsed_body.dig("campaign", "id")
+    assert_equal "Class of 2017", response.parsed_body.dig("tournamentOutcomes", "champions", 0, "championLabel")
+    patch "/api/v1/campaign/#{@campaign.slug}/settings", params: { tagline: "After archive" }, headers: headers_for(@admin), as: :json
+    assert_response :unprocessable_entity
+    get entries_path, headers: headers_for(@board)
+    assert_response :forbidden
+  end
+
   private
+
+  def handoff_path(campaign)
+    "/api/v1/admin/campaigns/#{campaign.id}/handoff-status"
+  end
+
+  def invite_and_verify(campaign, role)
+    email = "incoming-#{role}@example.com"
+    post "/api/v1/admin/campaigns/#{campaign.id}/invitations", params: {
+      invitation: { email: email, role: role }
+    }, headers: headers_for(@admin), as: :json
+    assert_response :created
+    assert_equal "pending", response.parsed_body.dig("invitation", "status")
+
+    clerk = "clerk_incoming_#{role}"
+    get "/api/v1/me", headers: { "Authorization" => "Bearer test_token_clerk_#{clerk}:#{email}:unverified" }
+    assert_response :unauthorized
+    assert campaign.campaign_invitations.pending_for_email(email).exists?
+
+    get "/api/v1/me", headers: { "Authorization" => "Bearer test_token_clerk_#{clerk}:#{email}:verified" }
+    assert_response :ok
+    assert_not campaign.campaign_invitations.pending_for_email(email).exists?
+    User.find_by!(email: email)
+  end
 
   def headers_for(user)
     { "Authorization" => "Bearer test_token_#{user.id}" }

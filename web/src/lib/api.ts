@@ -16,6 +16,7 @@ import type {
   CampaignCloneResponse,
   CampaignCloseoutCheck,
   CampaignFinalReport,
+  CampaignHandoffStatus,
   CampaignInvitationRecord,
   CampaignMembershipRecord,
   CampaignRole,
@@ -61,6 +62,7 @@ import type {
   Tournament,
   TournamentAlert,
   TournamentChampion,
+  TournamentChampionPayload,
 } from './types'
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1').replace(/\/$/, '')
@@ -373,7 +375,7 @@ export const api = {
     request<{ updated: number; games: Game[] }>('/admin/links/bulk', json('PATCH', { updates })),
 
   campaignSettings: (campaignSlug: string) =>
-    request<{ campaign: AdminHostCampaign; roles: string[] }>(`/campaign/${encodeURIComponent(campaignSlug)}/settings`),
+    request<{ campaign: AdminHostCampaign; roles: string[]; canManageDonationLinks?: boolean }>(`/campaign/${encodeURIComponent(campaignSlug)}/settings`),
   campaignUpdateSettings: (campaignSlug: string, payload: Record<string, unknown>) =>
     request<{ campaign: AdminHostCampaign }>(`/campaign/${encodeURIComponent(campaignSlug)}/settings`, json('PATCH', { campaign: payload })),
   campaignPresignImageUpload: (campaignSlug: string, payload: { filename: string; contentType: string; byteSize: number }) =>
@@ -406,6 +408,18 @@ export const api = {
       `/admin/campaigns/${id}`,
       json('PATCH', breakGlassReason ? { campaign: payload, breakGlassReason } : { campaign: payload }),
     ),
+  adminCampaignHandoffStatus: (id: string) =>
+    request<CampaignHandoffStatus>(`/admin/campaigns/${id}/handoff-status`),
+  adminTournamentChampions: (tournamentId: string) =>
+    request<{ champions: TournamentChampion[] }>(`/admin/tournaments/${tournamentId}/champions`),
+  adminChampionTeamOptions: (tournamentId: string) =>
+    request<{ teams: string[] }>(`/admin/tournaments/${tournamentId}/champions/team-options`),
+  adminCreateTournamentChampion: (tournamentId: string, champion: TournamentChampionPayload) =>
+    request<{ champion: TournamentChampion }>(`/admin/tournaments/${tournamentId}/champions`, json('POST', { champion })),
+  adminUpdateTournamentChampion: (tournamentId: string, id: string, champion: TournamentChampionPayload) =>
+    request<{ champion: TournamentChampion }>(`/admin/tournaments/${tournamentId}/champions/${id}`, json('PATCH', { champion })),
+  adminDeleteTournamentChampion: (tournamentId: string, id: string) =>
+    request<void>(`/admin/tournaments/${tournamentId}/champions/${id}`, json('DELETE')),
   adminCampaignCloseoutCheck: (id: string) =>
     request<CampaignCloseoutCheck>(`/admin/campaigns/${id}/closeout-check`),
   adminArchiveCampaign: (id: string, payload: { forceReason?: string | null; completeTournament?: boolean } = {}) =>

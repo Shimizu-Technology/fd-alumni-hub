@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { SeasonHero } from '../../components/SeasonHero'
 import { LoadingState, Panel, SectionUnavailable } from '../../components/ui'
 import { api } from '../../lib/api'
@@ -20,14 +21,26 @@ function draftFrom({ current, siteMode, campaigns }: SiteModeAdmin): SiteModeSet
 }
 
 export function AdminSiteModePage() {
+  const [params] = useSearchParams()
   const { data, error, reload } = useAsync(api.adminSiteMode)
   if (!data) return error ? <SectionUnavailable title="Site Mode is unavailable" description={error} onRetry={reload} /> : <LoadingState label="Loading Site Mode" />
-  return <SiteModeEditor key={data.current?.id || 'initial'} configuration={data} reload={reload} />
+  const initial = draftFrom(data)
+  const tournament = data.tournaments.find((entry) => entry.id === params.get('tournamentId'))
+  const hostCampaign = data.campaigns.find((entry) => entry.id === params.get('hostCampaignId'))
+  if (data.current?.mode !== 'tournament_recap' || data.current.tournamentId !== tournament?.id) {
+    if (params.get('mode') === 'tournament_recap' && tournament) {
+      Object.assign(initial, { mode: 'tournament_recap', tournamentId: tournament.id, recapHeadline: '', recapSummary: '', sectionOverrides: {} })
+    }
+  }
+  if (params.get('mode') === 'fundraising' && hostCampaign) {
+    Object.assign(initial, { mode: 'fundraising', hostCampaignId: hostCampaign.id, sectionOverrides: {} })
+  }
+  return <SiteModeEditor key={`${data.current?.id || 'initial'}:${params.toString()}`} initial={initial} configuration={data} reload={reload} />
 }
 
-function SiteModeEditor({ configuration, reload }: { configuration: SiteModeAdmin; reload: () => Promise<void> }) {
+function SiteModeEditor({ configuration, initial, reload }: { configuration: SiteModeAdmin; initial: SiteModeSettings; reload: () => Promise<void> }) {
   const { siteMode, tournaments, campaigns, actions, history, suggestedMode } = configuration
-  const [draft, setDraft] = useState(() => draftFrom(configuration))
+  const [draft, setDraft] = useState(initial)
   const [preview, setPreview] = useState<SiteModePreview | null>(null)
   const [phone, setPhone] = useState(true)
   const [error, setError] = useState('')

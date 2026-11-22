@@ -61,3 +61,13 @@ it('lets a view-only organizer preview without publishing or restoring', async (
   expect(screen.getByRole('button', { name: 'Publish change' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Restore version 1' })).toBeDisabled()
 })
+
+it('opens the linked season as a recap draft without publishing', async () => {
+  const { preview, publish } = mockRequests()
+  render(<MemoryRouter initialEntries={['/admin/site-mode?mode=tournament_recap&tournamentId=10']}><AdminSiteModePage /></MemoryRouter>)
+  expect(await screen.findByRole('button', { name: /Tournament Recap/i })).toHaveAttribute('aria-pressed', 'true')
+  await waitFor(() => expect(preview).toHaveBeenLastCalledWith(expect.objectContaining({
+    mode: 'tournament_recap', tournamentId: '10', publishSchedule: false,
+  }), expect.any(AbortSignal)))
+  expect(publish).not.toHaveBeenCalled()
+})

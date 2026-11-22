@@ -62,7 +62,7 @@ module SiteMode
     def champion_records
       return TournamentChampion.none unless tournament
 
-      TournamentChampion.completed.where(year: tournament.year).includes(tournament_champion_credits: :class_cohort).ordered
+      TournamentChampion.for_tournament(tournament).completed.includes(tournament_champion_credits: :class_cohort).ordered
     end
 
     def sections
