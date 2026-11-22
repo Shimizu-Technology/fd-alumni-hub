@@ -229,8 +229,11 @@ module Games
 
     def flag_box_score_for_review
       return unless @game.box_score_status == "published"
-      return unless %w[home_score away_score status].any? { |field| @game.will_save_change_to_attribute?(field) }
-      return if @game.status == "final" && !BoxScores::Discrepancies.call(@game)[:hasDiscrepancy]
+      return unless %w[home_score away_score status result_outcome home_team_id away_team_id].any? { |field| @game.will_save_change_to_attribute?(field) }
+
+      team_changed = @game.will_save_change_to_home_team_id? || @game.will_save_change_to_away_team_id?
+      missing_official_score = @game.home_score.nil? || @game.away_score.nil?
+      return if @game.status == "final" && !team_changed && !missing_official_score && !BoxScores::Discrepancies.call(@game)[:hasDiscrepancy]
 
       @game.box_score_status = "needs_review"
     end

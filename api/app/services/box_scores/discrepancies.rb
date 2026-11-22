@@ -18,6 +18,8 @@ module BoxScores
     def self.warning(side, points, official, coverage)
       if coverage == "full_box_score" && points != official
         "#{side} player points must match the official score for a full box score."
+      elsif coverage == "selected_scorers" && official.nil? && points.positive?
+        "#{side} player points cannot be published on a game without an official score."
       elsif coverage == "selected_scorers" && official && points > official
         "#{side} player points exceed the official score."
       end

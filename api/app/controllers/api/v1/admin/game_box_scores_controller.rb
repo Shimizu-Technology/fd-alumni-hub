@@ -81,13 +81,17 @@ module Api
           entries.each do |id, row|
             player = roster[id]
             stat = existing[id]
-            raise InvalidBoxScore, "Player must be on a participating roster." unless player
             unless [ nil, false, true ].include?(row[:remove])
               raise InvalidBoxScore, "Remove must be true or false."
             end
+            if row[:remove]
+              stat&.destroy!
+              next
+            end
+            raise InvalidBoxScore, "Player must be on a participating roster." unless player
 
-            attrs = row[:remove] ? nil : stat_attributes(row)
-            if !attrs || attrs.values.all?(&:nil?)
+            attrs = stat_attributes(row)
+            if attrs.values.all?(&:nil?)
               stat&.destroy!
               next
             end
@@ -117,7 +121,11 @@ module Api
 
         def validate_publication!(game)
           stats = game.player_game_stats.reload
-          raise InvalidBoxScore, "Enter at least one player line before publishing." if stats.empty?
+          has_metrics = stats.any? { |stat| PlayerGameStat::METRIC_LIMITS.keys.any? { |metric| !stat.public_send(metric).nil? } }
+          raise InvalidBoxScore, "Enter at least one player stat line before publishing." unless has_metrics
+          if stats.any? { |stat| ![ game.home_team_id, game.away_team_id ].include?(stat.team_id) }
+            raise InvalidBoxScore, "Remove player stats from non-participating teams before publishing."
+          end
 
           discrepancies = BoxScores::Discrepancies.call(game, coverage: params[:coverage], stats: stats)
           raise InvalidBoxScore, discrepancies[:warnings].join(" ") if discrepancies[:hasDiscrepancy]

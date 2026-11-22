@@ -211,6 +211,9 @@ class PlayerBoxScoresTest < ActionDispatch::IntegrationTest
     correct(status: "scheduled")
     assert_equal "needs_review", @game.reload.box_score_status
     assert_equal "scheduled", @game.status
+    refute @game.publicly_visible_box_score?
+    get public_path
+    assert_response :not_found
 
     %w[postponed cancelled].each do |outcome|
       correct(status: "final", home_score: 8, away_score: 15)
@@ -219,7 +222,55 @@ class PlayerBoxScoresTest < ActionDispatch::IntegrationTest
       correct(result_outcome: outcome)
       assert_equal [ outcome, "needs_review", nil, nil ],
         @game.reload.attributes.values_at("status", "box_score_status", "home_score", "away_score")
+      get public_path
+      assert_response :not_found
     end
+
+    # Scoreless forfeit flags published selected-scorers stats for review
+    correct(status: "final", home_score: 20, away_score: 15)
+    save_box(user: @publisher, status: "published", entries: [ line(@home_player, points: 9) ])
+    assert_response :success
+    correct(status: "final", result_outcome: "forfeit", official_winner_team_id: @home.id, home_score: nil, away_score: nil)
+    assert_equal "needs_review", @game.reload.box_score_status
+  end
+
+  test "changing teams on a final game flags its published box score and allows removing orphaned player rows" do
+    replacement_team = team(@tournament, "Class of 2019")
+    replacement_player = replacement_team.roster_entries.create!(name: "Replacement Scorer", jersey_number: "99")
+    save_box(user: @publisher, status: "published", entries: [ line(@home_player, points: 10), line(@away_player, points: 8) ])
+    assert_response :success
+
+    # Schedule-only update changing home team flags needs_review
+    patch "/api/v1/admin/games/#{@game.id}", params: { game: { homeTeamId: replacement_team.id } }, headers: headers(@staff), as: :json
+    assert_response :success
+    assert_equal "needs_review", @game.reload.box_score_status
+    get_leaders
+    assert_empty body["leaders"]
+
+    # Publishing fails while orphaned home_player stat remains, succeeds once removed and replaced
+    save_box(user: @publisher, status: "published", entries: [ line(replacement_player, points: 10) ])
+    assert_response :unprocessable_entity
+    assert_match(/non-participating teams/, body.fetch("errors").join)
+
+    save_box(user: @publisher, status: "published", entries: [
+      { rosterEntryId: @home_player.id, remove: true },
+      line(replacement_player, points: 10)
+    ])
+    assert_response :success
+    assert_equal "published", @game.reload.box_score_status
+
+    # Result-path team change also flags needs_review
+    second_replacement = team(@tournament, "Class of 2020")
+    res = Games::RecordResult.call(@game.reload, { home_score: 20, away_score: 15, status: "final", lock_version: @game.lock_version, reason: "Team fix" },
+      actor: @staff, schedule_attributes: { home_team_id: second_replacement.id })
+    assert res.ok?
+    assert_equal "needs_review", @game.reload.box_score_status
+  end
+
+  test "notes-only player lines cannot be published without numeric metrics" do
+    save_box(user: @publisher, status: "published", entries: [ line(@home_player, notes: "Did not play") ])
+    assert_response :unprocessable_entity
+    assert_match(/at least one player stat line/, body.fetch("errors").join)
   end
 
   test "leaders default to full box scores when available and compare coverage for the chosen metric and scope" do

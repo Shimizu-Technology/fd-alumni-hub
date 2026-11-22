@@ -164,7 +164,7 @@ class Game < ApplicationRecord
   end
 
   def publicly_visible_box_score?
-    %w[published needs_review].include?(box_score_status) &&
+    status == "final" && %w[published needs_review].include?(box_score_status) &&
       tournament.enable_player_stats? && tournament.publicly_visible_schedule?
   end
 
