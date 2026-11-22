@@ -60,6 +60,7 @@ class SiteModeResolverTest < ActiveSupport::TestCase
       refute connection.column_exists?(:tournaments, :schedule_revision)
 
       migration.migrate(:up)
+      connection.clear_cache!
       assert connection.table_exists?(:site_publications)
       assert connection.column_exists?(:tournaments, :schedule_revision)
       [ live, completed, scheduled ].each do |season|
@@ -73,5 +74,8 @@ class SiteModeResolverTest < ActiveSupport::TestCase
       assert AuditEvent.exists?(record_type: "SitePublication", record_id: publication.id.to_s, area: "site_mode")
       raise ActiveRecord::Rollback
     end
+  ensure
+    # Queries prepared against the re-added columns are invalid after the schema rollback.
+    connection&.clear_cache!
   end
 end

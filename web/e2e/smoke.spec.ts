@@ -31,6 +31,7 @@ const OFFLINE_ROUTES = [
   { path: '/bracket', expectedHeading: /Playoff bracket/i },
   { path: '/standings', expectedHeading: /Standings/i },
   { path: '/tickets', expectedHeading: /Tournament Tickets/i },
+  { path: '/info', expectedHeading: /Venue & Rules/i },
   { path: '/sponsors', expectedHeading: /Tournament support/i },
   { path: '/teams', expectedHeading: /Teams & Rosters/i },
   { path: '/unknown-page', expectedHeading: /Page not found/i },
@@ -423,6 +424,31 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(page.locator('main')).toContainText('Tournament tickets')
     const todayOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(todayOverflow).toBeLessThanOrEqual(1)
+
+    await page.route('**/api/v1/public/today?**', (route) => {
+      const date = new URL(route.request().url()).searchParams.get('date')
+      const restDay = date === '2027-07-11'
+      return route.fulfill({
+        headers: { 'access-control-allow-origin': '*' },
+        json: {
+          date, requestedDate: date, resolvedDate: date, isRestDay: restDay,
+          nextScheduledDate: restDay ? '2027-07-12' : null,
+          games: [], predictionPolls: [], linkedCampaignEvents: [], updates: [],
+          gameDayNote: { menuItems: restDay ? [] : [{ name: 'BBQ plate', price: '$12', available: false }] },
+        },
+      })
+    })
+    await page.getByLabel('Guam date').fill('2027-07-11')
+    await expect(page.getByRole('heading', { name: 'Rest day at The Jungle' })).toBeVisible()
+    await page.getByRole('button', { name: /Next scheduled night/ }).click()
+    await expect(page).toHaveURL(/date=2027-07-12/)
+    await expect(page.getByText('BBQ plate')).toBeVisible()
+    await expect(page.getByText('Sold out')).toBeVisible()
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await expect(page.getByLabel('Guam date')).toHaveValue('2027-07-12')
+    await expect(page.getByText('BBQ plate')).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1)
+
 
     expect(pageErrors).toEqual([])
     expect(consoleErrors).toEqual([])

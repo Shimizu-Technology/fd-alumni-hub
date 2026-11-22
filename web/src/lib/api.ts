@@ -27,6 +27,9 @@ import type {
   FinanceSummary,
   Game,
   GameDayNote,
+  TonightPayload,
+  TournamentUpdate,
+  InfoGuide,
   HomeHostCampaignSummary,
   HostYearResponse,
   IngestItem,
@@ -200,17 +203,9 @@ export const api = {
   publicHostYear: (params: { slug?: string | null; year?: number | null } = {}) =>
     request<HostYearResponse>(`/public/host-year${query(params)}`),
   publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>
-    request<{
-      tournament: Tournament | null
-      date: string
-      gameDayNote: GameDayNote | null
-      alerts?: TournamentAlert[]
-      fallbackTicketUrl?: string | null
-      games: Game[]
-      predictionPolls: PredictionPoll[]
-      sponsors: Sponsor[]
-      lastUpdatedAt: string | null
-    }>(`/public/today${query(params)}`, voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
+    request<TonightPayload>(`/public/today${query(params)}`, voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
+  publicInfo: (params: { tournamentId?: string; year?: string } = {}) =>
+    request<{ tournament: Tournament; infoGuide: InfoGuide }>(`/public/info${query(params)}`),
   publicVotePrediction: (pollId: string, payload: { teamId: string; voterToken: string }) =>
     request<{ predictionPoll: PredictionPoll }>(`/public/prediction-polls/${pollId}/vote`, json('POST', { predictionVote: payload })),
 
@@ -295,8 +290,21 @@ export const api = {
     gameDayNote: GameDayNote | null
     games: Game[]
     predictionPolls: PredictionPoll[]
+    infoGuide: InfoGuide
   }>(`/admin/game-day-notes${query(params)}`),
   adminSaveGameDayNote: (payload: Partial<GameDayNote>) => request<{ gameDayNote: GameDayNote }>(`/admin/game-day-notes${query({ tournamentId: payload.tournamentId })}`, json('POST', { gameDayNote: payload })),
+  adminPreviewNight: (tournamentId: string, date: string) =>
+    request<TonightPayload>(`/admin/game-day-notes/preview${query({ tournamentId, date })}`),
+  adminCopyPreviousMenu: (tournamentId: string, date: string, lockVersion?: number | null) =>
+    request<{ gameDayNote: GameDayNote }>(`/admin/game-day-notes/copy-previous${query({ tournamentId, date })}`, json('POST', { lockVersion })),
+  adminSaveInfoGuide: (tournamentId: string, infoGuide: InfoGuide) =>
+    request<{ infoGuide: InfoGuide }>(`/admin/game-day-notes/info-guide${query({ tournamentId })}`, json('PATCH', { infoGuide })),
+  adminTournamentUpdates: (tournamentId: string) =>
+    request<{ updates: TournamentUpdate[] }>(`/admin/tournament-updates${query({ tournamentId })}`),
+  adminSaveTournamentUpdate: (tournamentId: string, update: Partial<TournamentUpdate>) =>
+    request<{ update: TournamentUpdate }>(`/admin/tournament-updates${update.id ? `/${update.id}` : ''}${query({ tournamentId })}`, json(update.id ? 'PATCH' : 'POST', { update })),
+  adminDeleteTournamentUpdate: (id: string) =>
+    request<void>(`/admin/tournament-updates/${id}`, { method: 'DELETE' }),
   adminAlerts: (tournamentId?: string | null) => request<{ alerts: TournamentAlert[] }>(`/admin/alerts${query({ tournamentId })}`),
   adminCreateAlert: (payload: Partial<TournamentAlert>) => request<{ alert: TournamentAlert }>('/admin/alerts', json('POST', { alert: payload })),
   adminUpdateAlert: (id: string, payload: Partial<TournamentAlert>) => request<{ alert: TournamentAlert }>(`/admin/alerts/${id}`, json('PATCH', { alert: payload })),

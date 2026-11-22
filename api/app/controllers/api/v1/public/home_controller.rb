@@ -31,7 +31,7 @@ module Api
           games_scope = tournament.games.includes(:division_record, { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] })
           today_games = games_scope.where(start_time: today_range).ordered.limit(20).to_a
           live_games = games_scope.where(status: "live").ordered.limit(10).to_a
-          game_day_note = tournament.game_day_notes.find_by(date: Time.zone.today, active: true)
+          game_day_note = tournament.game_day_notes.active.find_by(date: Time.zone.today, status: "published")
           polls = relevant_polls(tournament, today_games).to_a
 
           render json: {

@@ -107,7 +107,7 @@ module SiteMode
         {
           "fundraisers" => campaign.present?,
           "tonight" => games.where(start_time: today.all_day).exists? || games.where(status: "live").exists? ||
-            (!!tournament && schedule_published? && tournament.game_day_notes.active.exists?(date: today)),
+            (!!tournament && schedule_published? && tournament.game_day_notes.active.exists?(date: today, status: "published")),
           "schedule" => games.exists?,
           "teams" => schedule_published? && tournament.teams.exists?,
           "standings" => schedule_published? && (tournament.standings.exists? || games.pool_games.where.not(home_score: nil).where.not(away_score: nil).exists?),

@@ -1,151 +1,97 @@
 import { useAuthContext } from '../../contexts/AuthContext'
 import { hasCapability } from '../../lib/adminModules'
-import { Link } from 'react-router-dom'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useMemo, useState, type FormEvent } from 'react'
 import { api } from '../../lib/api'
-import { selectedTournament, tournamentScopedPath, useTournamentSelection } from '../../lib/admin'
-import { formatGuamDate, formatGuamDateTime, toDateInputValue, toLocalDateTimeInputValue } from '../../lib/datetime'
+import { tournamentScopedPath } from '../../lib/admin'
+import { formatGuamDate, formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
-import type { AlertSeverity, Game, GameDayNote, PredictionPoll, Tournament, TournamentAlert } from '../../lib/types'
+import type { AlertSeverity, Game, PredictionPoll, Tournament, TournamentAlert } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
-const gameDayRefreshIntervalMs = 10_000
+import { NightEditor } from './tonight/NightEditor'
+import { UpdatesPanel } from './tonight/UpdatesPanel'
+import { InfoGuideEditor } from './tonight/InfoGuideEditor'
 
 export function AdminGameDayPage() {
-  const { user } = useAuthContext()
-  const [tournamentId, setTournamentId] = useTournamentSelection()
-  const [date, setDate] = useState('')
-  const setup = useAsync(async () => {
-    const [tournaments, games] = await Promise.all([
-      api.adminTournaments("tonights_menu_and_news"),
-      api.adminGames(tournamentId || null),
-    ])
-    return { tournaments: tournaments.tournaments, allGames: games.games }
-  }, [tournamentId])
-  const gameDayOptions = useMemo(() => scheduledGameDayOptions(setup.data?.allGames || []), [setup.data?.allGames])
-  const gameDayQueryDate = date || gameDayOptions[0] || ''
-  const gameDayState = useAsync(async () => {
-    if (!tournamentId || !gameDayQueryDate) return emptyGameDayPayload(gameDayQueryDate)
-
-    return api.adminGameDay({ tournamentId, date: gameDayQueryDate })
-  }, [tournamentId, gameDayQueryDate])
-
-  useEffect(() => {
-    if (!tournamentId && setup.data?.tournaments[0]?.id) setTournamentId(setup.data.tournaments[0].id)
-  }, [setup.data?.tournaments, tournamentId, setTournamentId])
-
-  useEffect(() => {
-    if (!date && gameDayOptions[0]) setDate(gameDayOptions[0])
-  }, [date, gameDayOptions])
-
-  useEffect(() => {
-    if (!gameDayState.data || !gameDayQueryDate) return undefined
-
-    const intervalId = window.setInterval(() => {
-      void gameDayState.reload()
-    }, gameDayRefreshIntervalMs)
-
-    return () => window.clearInterval(intervalId)
-  }, [gameDayQueryDate, gameDayState.data, gameDayState.reload])
-
-  if ((setup.loading && !setup.data) || (gameDayState.loading && !gameDayState.data)) return <LoadingState label="Loading game-day controls" />
-  if (setup.error && !setup.data) return <ErrorState message={setup.error} onRetry={setup.reload} />
-  if (gameDayState.error && !gameDayState.data) return <ErrorState message={gameDayState.error} onRetry={gameDayState.reload} />
+  const [search, setSearch] = useSearchParams()
+  const tournamentId = search.get('tournamentId') || ''
+  const date = search.get('date') || ''
+  const setTournament = (id: string) => setSearch((current) => {
+    const next = new URLSearchParams(current)
+    next.set('tournamentId', id)
+    next.delete('date')
+    return next
+  })
+  const setDate = (value: string) => setSearch((current) => {
+    const next = new URLSearchParams(current)
+    if (value) next.set('date', value)
+    else next.delete('date')
+    return next
+  })
+  const setup = useAsync(() => api.adminTournaments('tonights_menu_and_news'))
+  if (setup.loading && !setup.data) return <LoadingState label="Loading tournaments" />
+  if (setup.error) return <ErrorState message={setup.error} onRetry={setup.reload} />
 
   const tournaments = setup.data?.tournaments || []
-  const tournament = selectedTournament(tournaments, tournamentId) || gameDayState.data?.tournament || null
-  const scope = tournament ? { type: 'tournament', id: tournament.id } : undefined
-  const canPublish = Boolean(tournament && hasCapability(user, 'tonights_menu_and_news', 'publish', scope))
-  const canAlertSiteWide = hasCapability(user, 'tonights_menu_and_news', 'alert_site_wide', { type: 'site', id: '' })
-  const gameDay = gameDayState.data
-  const selectedDate = date || gameDay?.date || gameDayQueryDate || ''
-  const gameDayNote = gameDay?.date === selectedDate ? gameDay?.gameDayNote || null : null
+  const tournament = tournaments.find((item) => item.id === tournamentId) ||
+    tournaments.find((item) => item.status === 'live') || tournaments[0]
+  if (!tournament) return <EmptyState title="No tournaments available" />
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader
-        eyebrow="Admin"
-        title="Game-day operations"
-        description="Maintain Today at The Jungle notes, roster readiness, and lightweight prediction voting for the selected tournament day."
-        actions={<Link className="btn secondary" to="/today">View Today page</Link>}
-      />
-
-      <Panel className="toolbar-panel game-day-toolbar-panel">
-        <label><span>Tournament</span><select value={tournament?.id || ''} onChange={(event) => setTournamentId(event.target.value)}>{tournaments.map((item) => <option key={item.id} value={item.id}>{item.year} · {item.name}</option>)}</select></label>
-        <label><span>Game day</span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-        {gameDayOptions.length > 0 && (
-          <div className="game-day-date-jump" aria-label="Scheduled game-day shortcuts">
-            {gameDayOptions.map((option) => <button key={option} type="button" className={option === selectedDate ? 'selected' : ''} onClick={() => setDate(option)}>{formatGuamDate(option, { weekday: 'short', year: undefined })}</button>)}
-          </div>
-        )}
+      <PageHeader title="Tonight’s page" />
+      <Panel className="toolbar-panel">
+        <Field label="Tournament">
+          <select value={tournament.id} onChange={(event) => setTournament(event.target.value)}>
+            {tournaments.map((item) => <option key={item.id} value={item.id}>{item.year} · {item.name}</option>)}
+          </select>
+        </Field>
       </Panel>
-
-      {canPublish ? <GameDayNoteForm tournament={tournament} date={selectedDate} note={gameDayNote} onSaved={gameDayState.reload} />
-        : <Panel><h2>Tonight’s notes</h2>{gameDayNote
-          ? <><p>{gameDayNote.foodMenu}</p><p>{gameDayNote.announcement}</p></>
-          : <p>No notes for this date.</p>}</Panel>}
-      <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
-      {canPublish && <PredictionAdminPanel tournament={tournament} games={gameDay?.games || []} polls={gameDay?.predictionPolls || []} onSaved={gameDayState.reload} />}
+      <TournamentNight key={tournament.id} tournament={tournament} date={date} setDate={setDate} />
     </div>
   )
 }
 
-function emptyGameDayPayload(date: string) {
-  return { tournament: null as Tournament | null, date, gameDayNote: null as GameDayNote | null, games: [] as Game[], predictionPolls: [] as PredictionPoll[] }
+function TournamentNight({ tournament, date, setDate }: { tournament: Tournament; date: string; setDate: (date: string) => void }) {
+  const { user } = useAuthContext()
+  const scope = { type: 'tournament', id: tournament.id }
+  const canEdit = hasCapability(user, 'tonights_menu_and_news', 'edit', scope)
+  const canPublish = hasCapability(user, 'tonights_menu_and_news', 'publish', scope)
+  const canAlertSiteWide = hasCapability(user, 'tonights_menu_and_news', 'alert_site_wide', { type: 'site', id: '' })
+  const canEditGuide = canPublish || hasCapability(user, 'site_mode_and_settings', 'edit')
+  const games = useAsync(() => api.adminGames(tournament.id), [tournament.id])
+  const today = toLocalDateTimeInputValue(new Date().toISOString()).slice(0, 10)
+  const gameDays = scheduledGameDayOptions(games.data?.games || [])
+  const selectedDate = date || (tournament.status === 'live' ? today : gameDays.find((day) => day >= today) || today)
+  const night = useAsync(() => api.adminGameDay({ tournamentId: tournament.id, date: selectedDate }), [tournament.id, selectedDate])
+  const data = night.data?.date === selectedDate ? night.data : null
+
+  if (games.loading && !games.data) return <LoadingState label="Loading schedule" />
+  return (
+    <>
+      <Panel className="toolbar-panel game-day-toolbar-panel">
+        <Field label="Game night (Guam)"><input type="date" value={selectedDate} onChange={(event) => setDate(event.target.value)} /></Field>
+        <Link className="btn secondary" to={tournamentScopedPath('/today', tournament.id, { date: selectedDate })}>Open public night</Link>
+        {games.error && <ErrorState message={games.error} onRetry={games.reload} />}
+      </Panel>
+      {night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : !data ? <LoadingState label="Loading game night" /> : (
+        <NightEditor key={selectedDate} tournamentId={tournament.id} date={selectedDate} note={data.gameDayNote} canEdit={canEdit} canPublish={canPublish} />
+      )}
+      <UpdatesPanel tournamentId={tournament.id} date={selectedDate} canEdit={canEdit} canPublish={canPublish} />
+      <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
+      {data?.infoGuide && <InfoGuideEditor tournamentId={tournament.id} guide={data.infoGuide} canEdit={canEditGuide} />}
+      {canPublish && <details><summary>Optional fan polls</summary>
+        <PredictionAdminPanel tournament={tournament} games={data?.games || []} polls={data?.predictionPolls || []} onSaved={night.reload} />
+      </details>}
+    </>
+  )
 }
 
 function scheduledGameDayOptions(games: Game[]) {
   return Array.from(new Set(games.map((game) => toLocalDateTimeInputValue(game.startTime).slice(0, 10)).filter(Boolean))).sort()
-}
-
-function GameDayNoteForm({ tournament, date, note, onSaved }: { tournament: Tournament | null; date: string; note: GameDayNote | null; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ hostClass: '', foodMenu: '', announcement: '', sponsorShoutout: '', active: true })
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-
-  useEffect(() => {
-    setForm({
-      hostClass: note?.hostClass || '',
-      foodMenu: note?.foodMenu || '',
-      announcement: note?.announcement || '',
-      sponsorShoutout: note?.sponsorShoutout || '',
-      active: note?.active ?? true,
-    })
-  }, [date, note?.id, note?.updatedAt])
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setSaving(true)
-    setMessage('')
-    try {
-      if (!tournament) throw new Error('Choose a tournament first')
-      await api.adminSaveGameDayNote({ tournamentId: tournament.id, date: toDateInputValue(date), ...form })
-      setMessage('Game-day note saved')
-      await onSaved()
-    } catch (err) {
-      setMessage(mutationErrorMessage(err, 'Unable to save game-day note'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Panel>
-      <div className="section-heading"><h2>Today page facts</h2>{message && <span>{message}</span>}</div>
-      <form onSubmit={submit}>
-        <FormGrid>
-          <Field label="Host class"><input value={form.hostClass} onChange={(event) => setForm({ ...form, hostClass: event.target.value })} placeholder="Class of 2006" /></Field>
-          <Field label="Food / menu"><input value={form.foodMenu} onChange={(event) => setForm({ ...form, foodMenu: event.target.value })} placeholder="BBQ, drinks, concessions" /></Field>
-          <label className="check-field"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /> Show on public Today page</label>
-          <Field label="Announcement"><textarea value={form.announcement} onChange={(event) => setForm({ ...form, announcement: event.target.value })} placeholder="Parking, tipoff, door, or schedule notes" rows={3} /></Field>
-          <Field label="Sponsor shoutout"><textarea value={form.sponsorShoutout} onChange={(event) => setForm({ ...form, sponsorShoutout: event.target.value })} placeholder="Optional sponsor or partner note" rows={3} /></Field>
-        </FormGrid>
-        <button className="btn primary" type="submit" disabled={saving || !date}>{saving ? 'Saving' : 'Save Today info'}</button>
-      </form>
-    </Panel>
-  )
 }
 
 function PredictionAdminPanel({ tournament, games, polls, onSaved }: { tournament: Tournament | null; games: Game[]; polls: PredictionPoll[]; onSaved: () => Promise<void> }) {
@@ -247,7 +193,7 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
         title: title.trim(),
         message: message.trim(),
         active: true,
-        expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+        expiresAt: expiresAt ? guamLocalDateTimeInputToIso(expiresAt) : null,
       })
       setTitle('')
       setMessage('')
@@ -266,7 +212,7 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
     setNotice('')
     try {
       await api.adminUpdateAlert(alert.id, { active: !alert.active })
-      setNotice(alert.active ? 'Alert hidden' : 'Alert activated')
+      setNotice(alert.active ? 'Alert removed' : 'Alert activated')
       await reload()
     } catch (err) {
       setFormError(mutationErrorMessage(err, 'Unable to update alert'))
@@ -291,10 +237,10 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
   return (
     <Panel>
       <div className="section-heading">
-        <h2>Site-wide storm &amp; schedule alerts</h2>
+        <h2>Post an urgent alert</h2>
         {notice && <span role="status">{notice}</span>}
       </div>
-      <p className="muted">Active alerts display immediately at the top of every public page for typhoon delays, power outages, or schedule changes.</p>
+      <p className="muted">Use urgent alerts for typhoon delays, power outages, and sudden schedule changes. Choose who needs to see the banner.</p>
 
       {(canPublish || canAlertSiteWide) && <form onSubmit={createAlert} className="stacked-form">
         <FormGrid>
@@ -314,7 +260,7 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
           <Field label="Title">
             <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={140} placeholder="Typhoon delay — Games pushed 1 hour" required />
           </Field>
-          <Field label="Auto-expire (optional)">
+          <Field label="Expiry (Guam time, optional)">
             <input type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} />
           </Field>
           <Field label="Message">
@@ -338,7 +284,7 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
               <div>
                 <div className="game-card-top">
                   <span className={`tournament-alert-pill tournament-alert-pill--${alert.severity}`}>{alert.severity}</span>
-                  <StatusBadge status={alert.active ? 'live' : 'cancelled'} />
+                  <StatusBadge status={alertDisplayStatus(alert)} />
                   <small className="muted">{alert.tournamentId ? 'Tournament alert' : 'Site-wide'}</small>
                 </div>
                 <strong>{alert.title}</strong>
@@ -346,8 +292,8 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
                 {alert.expiresAt && <small className="muted">Expires {formatGuamDateTime(alert.expiresAt)}</small>}
               </div>
               {(alert.tournamentId ? canPublish : canAlertSiteWide) && <div className="row-actions">
-                <button type="button" className="btn secondary small" onClick={() => void toggleAlert(alert)}>
-                  {alert.active ? 'Hide' : 'Activate'}
+                <button type="button" className={`btn small ${alert.active ? 'danger' : 'secondary'}`} onClick={() => void toggleAlert(alert)}>
+                  {alert.active ? 'Remove alert' : 'Activate'}
                 </button>
                 <button type="button" className="btn danger small" onClick={() => void removeAlert(alert)}>
                   Delete
@@ -359,4 +305,12 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
       )}
     </Panel>
   )
+}
+
+function alertDisplayStatus(alert: TournamentAlert) {
+  const now = Date.now()
+  if (!alert.active) return 'removed'
+  if (alert.expiresAt && Date.parse(alert.expiresAt) <= now) return 'expired'
+  if (alert.startsAt && Date.parse(alert.startsAt) > now) return 'scheduled'
+  return 'live'
 }

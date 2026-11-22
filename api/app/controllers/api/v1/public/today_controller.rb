@@ -6,65 +6,21 @@ module Api
           tournament = current_tournament
           return render_not_found("Tournament not found") unless tournament
 
-          day = requested_date || Time.zone.today
-          games = []
-          polls = []
-          if tournament.publicly_visible_schedule?
-            games = tournament.games
-              .includes(:division_record, home_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ], away_team: [ :division_record, :roster_entries, { team_class_memberships: :class_cohort } ])
-              .where(start_time: day.all_day)
-              .ordered
-              .to_a
-            note = tournament.game_day_notes.active.find_by(date: day)
-            polls = relevant_polls(tournament, games).to_a
-          end
-          voter_hash = voter_token_hash
-          alerts = site_context.alerts(tournament).to_a
+          day = params[:date].blank? ? Time.zone.today : Tonight::Payload.parse_date(params[:date])
           campaign = if params[:tournamentId].blank? && params[:year].blank? && site_context.publication
             site_context.campaign
           else
-            HostCampaign
-              .where(tournament_id: tournament.id, status: HostCampaign::FEATUREABLE_STATUSES)
-              .order(featured: :desc, updated_at: :desc, id: :desc)
-              .first
+            Tonight::Payload.campaign_for(tournament)
           end
-          fallback_ticket_url = Hafapass::EventsClient.all_tickets_url_for(campaign)
-          last_updated_at = latest_updated_at(note, games, polls, alerts)
+          campaign = nil if campaign && campaign.tournament_id != tournament.id
 
-          render json: {
-            tournament: tournament.api_json,
-            date: day.iso8601,
-            gameDayNote: note&.api_json,
-            alerts: alerts.map(&:api_json),
-            fallbackTicketUrl: fallback_ticket_url,
-            games: games.map { |game| game.api_json(include_rosters: true) },
-            predictionPolls: polls.map { |poll| poll.api_json(voter_token_hash: voter_hash) },
-            sponsors: tournament.sponsors.active.ordered_by_tier.limit(4).map(&:api_json),
-            lastUpdatedAt: last_updated_at&.iso8601
-          }
+          render json: Tonight::Payload.call(tournament: tournament, day: day, campaign: campaign,
+            alerts: site_context.alerts(tournament).to_a, voter_hash: voter_token_hash)
+        rescue ArgumentError
+          render json: { errors: [ "Date must be a valid YYYY-MM-DD date" ] }, status: :unprocessable_entity
         end
 
         private
-
-        def requested_date
-          return nil if params[:date].blank?
-
-          Date.iso8601(params[:date])
-        rescue ArgumentError
-          nil
-        end
-
-        def relevant_polls(tournament, games)
-          game_ids = games.map(&:id)
-          tournament.prediction_polls
-            .includes(:prediction_votes, { tournament: { teams: [ :division_record, { team_class_memberships: :class_cohort } ] } }, game: [ { home_team: [ :division_record, { team_class_memberships: :class_cohort } ] }, { away_team: [ :division_record, { team_class_memberships: :class_cohort } ] } ])
-            .where("poll_type = ? OR game_id IN (?)", "tournament", game_ids.presence || [ nil ])
-            .ordered
-        end
-
-        def latest_updated_at(*record_groups)
-          record_groups.flatten.compact.filter_map(&:updated_at).max
-        end
 
         def voter_token_hash
           token = request.headers["X-FD-Voter-Token"].to_s.strip

@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { PredictionPoll } from '../lib/types'
 
-export function PredictionPollCard({ poll, onVote, compact = false }: { poll: PredictionPoll; onVote: (poll: PredictionPoll, teamId: string) => Promise<void>; compact?: boolean }) {
+export function PredictionPollCard({ poll, onVote, compact = false }: { poll: PredictionPoll; onVote?: (poll: PredictionPoll, teamId: string) => Promise<void>; compact?: boolean }) {
   const [savingTeamId, setSavingTeamId] = useState<string | null>(null)
 
   const choose = async (teamId: string) => {
+    if (!onVote) return
+
     setSavingTeamId(teamId)
     try {
       await onVote(poll, teamId)
@@ -21,7 +23,7 @@ export function PredictionPollCard({ poll, onVote, compact = false }: { poll: Pr
       </div>
       <div className="prediction-options">
         {poll.options.map((option) => (
-          <button key={option.teamId} type="button" className={option.selected ? 'selected' : ''} onClick={() => choose(option.teamId)} disabled={!poll.open || savingTeamId !== null}>
+          <button key={option.teamId} type="button" className={option.selected ? 'selected' : ''} onClick={() => choose(option.teamId)} disabled={!onVote || !poll.open || savingTeamId !== null}>
             <span>{option.displayName}</span>
             <small>{option.percent ?? 0}% · {option.votes ?? 0} votes</small>
           </button>

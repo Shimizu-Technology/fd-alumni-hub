@@ -40,8 +40,8 @@ export function SiteModeProvider({ children }: { children: ReactNode }) {
     let active = true
     const refresh = () => {
       if (document.visibilityState === 'hidden') return
-      api.publicAlerts().then(({ alerts }) => {
-        if (active) setAlerts(alerts)
+      api.publicSiteMode().then((payload) => {
+        if (active) acceptSiteMode(payload)
       }).catch(() => {})
     }
     const interval = window.setInterval(refresh, 45_000)
@@ -51,7 +51,7 @@ export function SiteModeProvider({ children }: { children: ReactNode }) {
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [status])
+  }, [acceptSiteMode, status])
 
   return (
     <SiteModeContext.Provider value={{ siteMode: resolved || offlineSiteMode, alerts, acceptSiteMode }}>

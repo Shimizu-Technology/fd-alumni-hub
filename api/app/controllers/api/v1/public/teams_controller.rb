@@ -11,7 +11,7 @@ module Api
           division = params[:division].to_s.strip
           search = params[:q].to_s.strip.downcase
           teams = teams.select { |team| team.resolved_division.to_s.casecmp?(division) } if division.present?
-          teams = teams.select { |team| team.display_name.downcase.include?(search) || team.class_year_label.include?(search) } if search.present?
+          teams = teams.select { |team| team.display_name.downcase.include?(search) || team.class_year_label.to_s.downcase.include?(search) } if search.present?
 
           render json: { tournament: tournament.api_json, teams: teams.map(&:api_json), divisions: divisions, schedulePublished: true }
         end

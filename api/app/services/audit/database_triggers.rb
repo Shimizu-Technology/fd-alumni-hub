@@ -1,7 +1,7 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 5
+    TRIGGER_VERSION = 6
 
     RECORD_TYPES = {
       users: "User",
@@ -23,6 +23,7 @@ module Audit
       tournament_champion_credits: "TournamentChampionCredit",
       game_day_notes: "GameDayNote",
       tournament_alerts: "TournamentAlert",
+      tournament_updates: "TournamentUpdate",
       article_links: "ArticleLink",
       media_assets: "MediaAsset",
       sponsors: "Sponsor",
@@ -278,6 +279,9 @@ module Audit
           WHEN 'game_day_notes' THEN
             audit_area := 'content';
             label := coalesce('Game-day notes for ' || (record_data->>'date'), 'Game-day notes #' || (record_data->>'id'));
+          WHEN 'tournament_updates' THEN
+            audit_area := 'content';
+            label := record_data->>'title';
           WHEN 'tournament_alerts' THEN
             audit_area := 'content';
             label := coalesce(nullif(record_data->>'title', ''), 'Tournament alert #' || (record_data->>'id'));
