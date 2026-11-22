@@ -74,6 +74,11 @@ class AdminUploadsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "AWS4-HMAC-SHA256", fields.fetch("X-Amz-Algorithm")
     assert fields.fetch("X-Amz-Signature").present?
 
+    event = AuditEvent.find_by!(action: "image_upload_presigned", tournament_id: @tournament.id)
+    assert_equal({ "expiresIn" => body.fetch("expiresIn"), "maxBytes" => body.fetch("maxBytes") }, event.metadata_json)
+    refute_includes event.api_json.to_json, body.fetch("uploadUrl")
+    refute_includes event.api_json.to_json, fields.fetch("X-Amz-Signature")
+
     policy = JSON.parse(Base64.decode64(fields.fetch("Policy")))
     assert_includes policy.fetch("conditions"), [ "content-length-range", 1, 10.megabytes ]
     assert_includes policy.fetch("conditions"), [ "starts-with", "$Content-Type", "image/" ]

@@ -99,6 +99,10 @@ module Api
           end
 
           filename = "#{@campaign.slug}-ledger-#{LedgerEntry.guam_today.iso8601}.csv"
+          Audit::Context.set_actor!(current_user, roles: current_campaign_roles)
+          Audit::EventRecorder.record!(area: "finance", action: "ledger_exported",
+            record: @campaign, summary: "Exported the campaign ledger as CSV",
+            metadata: { entryCount: entries.length, format: "csv" })
           send_data csv_body,
             filename: filename,
             type: "text/csv; charset=utf-8",

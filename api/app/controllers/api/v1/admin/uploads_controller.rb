@@ -13,6 +13,9 @@ module Api
             purpose: upload[:purpose]
           )
 
+          Audit::EventRecorder.record!(area: "content", action: "image_upload_presigned",
+            record: tournament, summary: "Issued an image upload authorization",
+            metadata: { expiresIn: result[:expiresIn], maxBytes: result[:maxBytes] })
           render json: result
         rescue ActiveRecord::RecordNotFound
           render json: { error: "invalid tournamentId" }, status: :bad_request

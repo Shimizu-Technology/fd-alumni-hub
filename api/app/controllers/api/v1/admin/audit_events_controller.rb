@@ -20,9 +20,27 @@ module Api
             auditEvents: events.map(&:api_json),
             nextCursor: has_more ? encode_cursor(events.last) : nil
           }
-          payload[:filterOptions] = filter_options if params[:cursor].blank?
+          if params[:cursor].blank?
+            payload[:filterOptions] = filter_options
+            payload[:checkpointSummary] = Audit::CheckpointService.summary
+          end
 
           render json: payload
+        rescue ArgumentError, RangeError
+          render json: { error: "Invalid audit history filter or cursor." }, status: :bad_request
+        end
+
+        def export
+          response.headers["Cache-Control"] = "no-store"
+          limit = params[:limit].nil? ? 1000 : integer_param(params[:limit]).clamp(1, 1000)
+          events = filtered_events.order(occurred_at: :desc, id: :desc).limit(limit + 1).to_a
+          truncated = events.length > limit
+          events.pop if truncated
+          render json: {
+            auditEvents: Audit::Redactor.call(events.map(&:api_json)),
+            latestCheckpoint: Audit::CheckpointService.latest&.api_json,
+            truncated: truncated
+          }
         rescue ArgumentError, RangeError
           render json: { error: "Invalid audit history filter or cursor." }, status: :bad_request
         end

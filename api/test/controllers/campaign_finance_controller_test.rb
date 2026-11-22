@@ -411,6 +411,11 @@ class CampaignFinanceControllerTest < ActionDispatch::IntegrationTest
     assert_equal "no-store", response.headers["Cache-Control"]
     assert response.body.b.start_with?("\xEF\xBB\xBF".b), "CSV must start with UTF-8 BOM"
 
+    event = AuditEvent.find_by!(action: "ledger_exported", host_campaign_id: @campaign.id)
+    assert_equal [ "finance", @board.id, "GET" ], [ event.area, event.actor_id, event.http_method ]
+    assert_includes event.actor_role, "board"
+    assert_equal({ "entryCount" => 2, "format" => "csv" }, event.metadata_json)
+
     csv_text = response.body.force_encoding("UTF-8").delete_prefix("\uFEFF")
     rows = CSV.parse(csv_text, headers: true)
     assert_equal 2, rows.length

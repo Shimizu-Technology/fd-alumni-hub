@@ -60,6 +60,8 @@ export function AdminAuditHistoryPage() {
   const [retry, setRetry] = useState(0)
   const [data, setData] = useState<AdminAuditResponse>()
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string>()
   const [error, setError] = useState<string>()
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export function AdminAuditHistoryPage() {
         if (abort.signal.aborted) return
         setData((previous) => ({
           ...page,
+          checkpointSummary: page.checkpointSummary ?? previous?.checkpointSummary,
           filterOptions: page.filterOptions ?? previous?.filterOptions,
           auditEvents: cursor ? [...(previous?.auditEvents ?? []), ...page.auditEvents] : page.auditEvents,
         }))
@@ -90,6 +93,25 @@ export function AdminAuditHistoryPage() {
     setCursor(null)
   }
 
+  async function exportHistory() {
+    setExporting(true)
+    setExportError(undefined)
+    try {
+      const payload = await api.adminAuditExport(filters)
+      const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'audit-history.json'
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (cause) {
+      setExportError(cause instanceof Error ? cause.message : 'Unable to export audit history.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const checkpoint = data?.checkpointSummary
   const options = data?.filterOptions
   const scope = filters.tournament_id ? `season:${filters.tournament_id}` : filters.host_campaign_id ? `campaign:${filters.host_campaign_id}` : ''
   const events = data?.auditEvents ?? []
@@ -99,6 +121,18 @@ export function AdminAuditHistoryPage() {
     <div className="page-stack admin-page audit-history">
       <PageHeader title="Audit History" description="See what changed, who made the change, and when it happened. Times are in Guam." />
       <Panel className="audit-filters">
+        <div className="audit-checkpoint">
+          {checkpoint && <span>
+            {checkpoint.createdAt
+              ? `Checkpoint #${checkpoint.latestCheckpointId} · ${formatGuamDate(checkpoint.createdAt)} · ${formatGuamTime(checkpoint.createdAt)} · ${checkpoint.coveredEventCount.toLocaleString()} covered`
+              : 'No checkpoint yet'}
+            {' · '}{checkpoint.uncheckpointedEventCount.toLocaleString()} awaiting checkpoint
+          </span>}
+          <button type="button" className="btn secondary small" disabled={exporting} onClick={exportHistory}>
+            {exporting ? 'Exporting…' : 'Export JSON'}
+          </button>
+        </div>
+        {exportError && <p role="alert">{exportError}</p>}
         <form className="audit-search" role="search" onSubmit={(event) => {
           event.preventDefault()
           replaceFilters({ ...filters, q: search.trim() })

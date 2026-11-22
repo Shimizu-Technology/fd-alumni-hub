@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000001) do
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
+  end
+
+  create_table "audit_checkpoints", force: :cascade do |t|
+    t.bigint "first_audit_event_id", null: false
+    t.bigint "last_audit_event_id", null: false
+    t.bigint "event_count", null: false
+    t.string "previous_digest"
+    t.string "chain_digest", null: false
+    t.string "hmac_signature"
+    t.datetime "created_at", null: false
+    t.index ["last_audit_event_id"], name: "index_audit_checkpoints_on_last_audit_event_id", unique: true
   end
 
   create_table "audit_events", force: :cascade do |t|

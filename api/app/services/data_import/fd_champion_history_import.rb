@@ -13,6 +13,10 @@ module DataImport
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       records = JSON.parse(path.read)
       imported = 0
 

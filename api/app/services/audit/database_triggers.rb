@@ -1,7 +1,7 @@
 module Audit
   module DatabaseTriggers
     # Bump when changing trigger SQL. Kept in sync on deploy via db:prepare and db:migrate.
-    TRIGGER_VERSION = 2
+    TRIGGER_VERSION = 3
 
     RECORD_TYPES = {
       users: "User",
@@ -9,35 +9,77 @@ module Audit
       campaign_memberships: "CampaignMembership",
       campaign_invitations: "CampaignInvitation",
       host_campaigns: "HostCampaign",
-      games: "Game"
+      games: "Game",
+      tournaments: "Tournament",
+      divisions: "Division",
+      teams: "Team",
+      roster_entries: "RosterEntry",
+      class_cohorts: "ClassCohort",
+      team_class_memberships: "TeamClassMembership",
+      standings: "Standing",
+      tournament_champions: "TournamentChampion",
+      tournament_champion_credits: "TournamentChampionCredit",
+      game_day_notes: "GameDayNote",
+      tournament_alerts: "TournamentAlert",
+      article_links: "ArticleLink",
+      media_assets: "MediaAsset",
+      sponsors: "Sponsor",
+      prediction_polls: "PredictionPoll",
+      prediction_votes: "PredictionVote",
+      content_ingest_items: "ContentIngestItem",
+      budget_lines: "BudgetLine",
+      campaign_events: "CampaignEvent",
+      campaign_posts: "CampaignPost",
+      pledges: "Pledge",
+      ledger_entries: "LedgerEntry",
+      pending_receipt_uploads: "PendingReceiptUpload",
+      hafapass_event_snapshots: "HafapassEventSnapshot"
     }.freeze
+
+    ORIGINAL_TABLES = %i[users admin_whitelists campaign_memberships campaign_invitations host_campaigns games].freeze
 
     def self.install!(connection = ActiveRecord::Base.connection)
       return unless connection.table_exists?(:audit_events)
 
       connection.transaction do
+        version = connection.table_exists?(:audit_checkpoints) ? TRIGGER_VERSION : 2
         connection.execute(REDACT_SQL)
+        connection.execute(REDACT_CHANGES_SQL)
         connection.execute(CAPTURE_SQL)
         # Blocks accidental app-level UPDATE, DELETE, and TRUNCATE.
         # Full tamper resistance against DBA-level DDL requires a non-owner runtime DB role.
         connection.execute(<<~SQL)
           CREATE OR REPLACE FUNCTION fd_audit_immutable() RETURNS trigger LANGUAGE plpgsql AS $$
           BEGIN
-            RAISE EXCEPTION 'audit_events is append-only and cannot be modified or deleted';
+            RAISE EXCEPTION '% is append-only and cannot be modified or deleted', TG_TABLE_NAME;
           END;
           $$;
-          DROP TRIGGER IF EXISTS fd_audit_immutable ON audit_events;
-          CREATE TRIGGER fd_audit_immutable BEFORE UPDATE OR DELETE ON audit_events
-            FOR EACH ROW EXECUTE FUNCTION fd_audit_immutable();
-          DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON audit_events;
-          CREATE TRIGGER fd_audit_immutable_truncate BEFORE TRUNCATE ON audit_events
-            FOR EACH STATEMENT EXECUTE FUNCTION fd_audit_immutable();
         SQL
 
-        RECORD_TYPES.each do |table, record_type|
+        %i[audit_events audit_checkpoints].each do |table|
+          next unless connection.table_exists?(table)
+
           connection.execute(<<~SQL)
-            DROP TRIGGER IF EXISTS fd_audit_capture ON #{table};
-            CREATE TRIGGER fd_audit_capture AFTER INSERT OR UPDATE OR DELETE ON #{table}
+            DROP TRIGGER IF EXISTS fd_audit_immutable ON #{table};
+            CREATE TRIGGER fd_audit_immutable BEFORE UPDATE OR DELETE ON #{table}
+              FOR EACH ROW EXECUTE FUNCTION fd_audit_immutable();
+            DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON #{table};
+            CREATE TRIGGER fd_audit_immutable_truncate BEFORE TRUNCATE ON #{table}
+              FOR EACH STATEMENT EXECUTE FUNCTION fd_audit_immutable();
+          SQL
+        end
+
+        RECORD_TYPES.each do |table, record_type|
+          next unless connection.table_exists?(table)
+
+          connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture ON #{table}")
+          connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture_delete ON #{table}")
+          next if version == 2 && !ORIGINAL_TABLES.include?(table)
+
+          connection.execute(<<~SQL)
+            CREATE TRIGGER fd_audit_capture AFTER INSERT OR UPDATE ON #{table}
+              FOR EACH ROW EXECUTE FUNCTION fd_audit_capture(#{connection.quote(record_type)});
+            CREATE TRIGGER fd_audit_capture_delete BEFORE DELETE ON #{table}
               FOR EACH ROW EXECUTE FUNCTION fd_audit_capture(#{connection.quote(record_type)});
           SQL
         end
@@ -46,13 +88,17 @@ module Audit
 
     def self.uninstall!(connection)
       RECORD_TYPES.each_key do |table|
+        next unless connection.table_exists?(table)
+
         connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture ON #{table}")
+        connection.execute("DROP TRIGGER IF EXISTS fd_audit_capture_delete ON #{table}")
       end
       connection.execute(<<~SQL)
         DROP TRIGGER IF EXISTS fd_audit_immutable ON audit_events;
         DROP TRIGGER IF EXISTS fd_audit_immutable_truncate ON audit_events;
         DROP FUNCTION IF EXISTS fd_audit_immutable();
         DROP FUNCTION IF EXISTS fd_audit_capture();
+        DROP FUNCTION IF EXISTS fd_audit_redact_changes(jsonb, jsonb, jsonb, jsonb);
         DROP FUNCTION IF EXISTS fd_audit_redact(jsonb);
       SQL
     end
@@ -69,8 +115,9 @@ module Audit
               key,
               CASE
                 WHEN regexp_replace(lower(key), '[^a-z0-9]', '', 'g') ~
-                  '(token|secret|password|signedurl|receiptkey|clerkid|lastscoremutationdigest|authorization|apikey|distributioncode)'
-                THEN CASE WHEN value = 'null'::jsonb THEN 'null'::jsonb ELSE '"[Redacted]"'::jsonb END
+                  '(voter.*(token|hash|key)|iphash|objectkey|storagekey|s3key|token|secret|password|signedurl|receiptkey|clerkid|lastscoremutationdigest|authorization|apikey|distributioncode)'
+                THEN CASE WHEN value IN ('null'::jsonb, '"[Redacted · changed]"'::jsonb)
+                  THEN value ELSE '"[Redacted]"'::jsonb END
                 ELSE fd_audit_redact(value)
               END
             ), '{}')
@@ -90,12 +137,42 @@ module Audit
       $$;
     SQL
 
+    # Compare raw values only in PostgreSQL. The ledger receives sanitized values.
+    REDACT_CHANGES_SQL = <<~'SQL'.freeze
+      CREATE OR REPLACE FUNCTION fd_audit_redact_changes(
+        old_raw jsonb, new_raw jsonb, old_clean jsonb, new_clean jsonb
+      ) RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
+        SELECT CASE
+          WHEN old_raw IS NOT DISTINCT FROM new_raw THEN new_clean
+          WHEN old_clean = '"[Redacted]"'::jsonb AND new_clean = old_clean
+            THEN '"[Redacted · changed]"'::jsonb
+          WHEN jsonb_typeof(new_clean) = 'object' AND jsonb_typeof(old_clean) = 'object' THEN (
+            SELECT coalesce(jsonb_object_agg(key,
+              fd_audit_redact_changes(old_raw->key, new_raw->key, old_clean->key, value)), '{}')
+            FROM jsonb_each(new_clean)
+          )
+          WHEN jsonb_typeof(new_clean) = 'array' AND jsonb_typeof(old_clean) = 'array' THEN (
+            SELECT coalesce(jsonb_agg(fd_audit_redact_changes(
+              old_raw->(ordinal - 1)::int, new_raw->(ordinal - 1)::int,
+              old_clean->(ordinal - 1)::int, value) ORDER BY ordinal), '[]')
+            FROM jsonb_array_elements(new_clean) WITH ORDINALITY AS entries(value, ordinal)
+          )
+          ELSE new_clean
+        END
+      $$;
+    SQL
+
     CAPTURE_SQL = <<~SQL.freeze
       CREATE OR REPLACE FUNCTION fd_audit_capture() RETURNS trigger LANGUAGE plpgsql AS $$
       DECLARE
         old_data jsonb := '{}';
         new_data jsonb := '{}';
         record_data jsonb;
+        ignored_columns text[] := ARRAY['updated_at', 'lock_version'];
+        operation text := coalesce(nullif(current_setting('app.audit_operation_id', true), ''),
+          'tx-' || pg_current_xact_id()::text);
+        parent_type text;
+        parent_id bigint;
         audit_area text;
         label text;
         subject text;
@@ -109,8 +186,10 @@ module Audit
         verb text;
         description text;
       BEGIN
-        IF TG_OP = 'UPDATE' AND
-          to_jsonb(OLD) - ARRAY['updated_at', 'lock_version'] = to_jsonb(NEW) - ARRAY['updated_at', 'lock_version'] THEN
+        IF TG_TABLE_NAME = 'hafapass_event_snapshots' THEN
+          ignored_columns := ignored_columns || ARRAY['refreshing_until', 'fetched_at', 'last_error_at'];
+        END IF;
+        IF TG_OP = 'UPDATE' AND to_jsonb(OLD) - ignored_columns = to_jsonb(NEW) - ignored_columns THEN
           RETURN NULL;
         END IF;
 
@@ -122,6 +201,10 @@ module Audit
         END IF;
 
         record_data := CASE WHEN TG_OP = 'DELETE' THEN old_data ELSE new_data END;
+        IF TG_TABLE_NAME = 'prediction_votes' AND nullif(current_setting('app.audit_actor_id', true), '') IS NULL THEN
+          actor_type := 'anonymous';
+          actor_label := 'Anonymous';
+        END IF;
         campaign_id := (record_data->>'host_campaign_id')::bigint;
         season_id := (record_data->>'tournament_id')::bigint;
         audit_action := CASE TG_OP WHEN 'INSERT' THEN 'create' WHEN 'UPDATE' THEN 'update' ELSE 'delete' END;
@@ -151,6 +234,78 @@ module Audit
               description := format('%s changed %s status from %s to %s', actor_label, label,
                 replace(old_data->>'status', '_', ' '), replace(new_data->>'status', '_', ' '));
             END IF;
+          WHEN 'tournaments' THEN
+            audit_area := 'schedule';
+            label := coalesce(nullif(record_data->>'name', ''), 'Tournament #' || (record_data->>'id'));
+          WHEN 'divisions' THEN
+            audit_area := 'schedule';
+            label := coalesce(nullif(record_data->>'name', ''), 'Division #' || (record_data->>'id'));
+          WHEN 'teams' THEN
+            audit_area := 'schedule';
+            label := coalesce(nullif(record_data->>'display_name', ''), 'Team #' || (record_data->>'id'));
+          WHEN 'roster_entries' THEN
+            audit_area := 'schedule';
+            label := coalesce(nullif(record_data->>'name', ''), 'Roster entry #' || (record_data->>'id'));
+          WHEN 'class_cohorts' THEN
+            audit_area := 'schedule';
+            label := coalesce(nullif(record_data->>'display_name', ''), 'Class cohort #' || (record_data->>'id'));
+          WHEN 'team_class_memberships' THEN
+            audit_area := 'schedule';
+            label := 'Team class membership #' || (record_data->>'id');
+          WHEN 'standings' THEN
+            audit_area := 'schedule';
+            label := 'Standing #' || (record_data->>'id');
+          WHEN 'tournament_champions' THEN
+            audit_area := 'history';
+            label := coalesce(nullif(record_data->>'champion_label', ''), 'Tournament champion #' || (record_data->>'id'));
+          WHEN 'tournament_champion_credits' THEN
+            audit_area := 'history';
+            label := 'Champion credit #' || (record_data->>'id');
+          WHEN 'game_day_notes' THEN
+            audit_area := 'content';
+            label := coalesce('Game-day notes for ' || (record_data->>'date'), 'Game-day notes #' || (record_data->>'id'));
+          WHEN 'tournament_alerts' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'title', ''), 'Tournament alert #' || (record_data->>'id'));
+          WHEN 'article_links' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'title', ''), 'Article #' || (record_data->>'id'));
+          WHEN 'media_assets' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'title', ''), 'Media asset #' || (record_data->>'id'));
+          WHEN 'sponsors' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'name', ''), 'Sponsor #' || (record_data->>'id'));
+          WHEN 'prediction_polls' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'question', ''), 'Prediction poll #' || (record_data->>'id'));
+          WHEN 'prediction_votes' THEN
+            audit_area := 'content';
+            label := 'Prediction vote #' || (record_data->>'id');
+          WHEN 'content_ingest_items' THEN
+            audit_area := 'content';
+            label := coalesce(nullif(record_data->>'title', ''), 'Content ingest item #' || (record_data->>'id'));
+          WHEN 'hafapass_event_snapshots' THEN
+            audit_area := 'campaigns';
+            label := coalesce('HafaPass snapshot for ' || nullif(record_data->>'organizer_slug', ''), 'HafaPass snapshot #' || (record_data->>'id'));
+          WHEN 'campaign_events' THEN
+            audit_area := 'campaigns';
+            label := coalesce(nullif(record_data->>'title', ''), 'Campaign event #' || (record_data->>'id'));
+          WHEN 'campaign_posts' THEN
+            audit_area := 'campaigns';
+            label := coalesce(nullif(record_data->>'title', ''), 'Campaign post #' || (record_data->>'id'));
+          WHEN 'budget_lines' THEN
+            audit_area := 'finance';
+            label := coalesce(nullif(record_data->>'category', ''), 'Budget line #' || (record_data->>'id'));
+          WHEN 'pledges' THEN
+            audit_area := 'finance';
+            label := coalesce(nullif(record_data->>'donor_name', ''), 'Pledge #' || (record_data->>'id'));
+          WHEN 'ledger_entries' THEN
+            audit_area := 'finance';
+            label := 'Ledger entry #' || (record_data->>'id');
+          WHEN 'pending_receipt_uploads' THEN
+            audit_area := 'finance';
+            label := 'Receipt upload #' || (record_data->>'id');
           ELSE
             audit_area := 'access';
             label := record_data->>'email';
@@ -161,8 +316,46 @@ module Audit
             subject := 'access for ' || label;
         END CASE;
 
+        label := coalesce(nullif(label, ''), TG_ARGV[0] || ' #' || (record_data->>'id'));
+        subject := coalesce(subject, label);
+
+        IF TG_TABLE_NAME = 'tournaments' THEN
+          season_id := (record_data->>'id')::bigint;
+        ELSIF TG_TABLE_NAME IN ('roster_entries', 'team_class_memberships') THEN
+          parent_type := 'Team';
+          parent_id := (record_data->>'team_id')::bigint;
+          SELECT tournament_id INTO season_id FROM teams WHERE id = parent_id;
+        ELSIF TG_TABLE_NAME = 'prediction_votes' THEN
+          parent_type := 'PredictionPoll';
+          parent_id := (record_data->>'prediction_poll_id')::bigint;
+          SELECT tournament_id INTO season_id FROM prediction_polls WHERE id = parent_id;
+        ELSIF TG_TABLE_NAME = 'tournament_champion_credits' THEN
+          parent_type := 'TournamentChampion';
+          parent_id := (record_data->>'tournament_champion_id')::bigint;
+          SELECT tournament_id INTO season_id FROM tournament_champions WHERE id = parent_id;
+        ELSIF TG_TABLE_NAME = 'hafapass_event_snapshots' THEN
+          -- A snapshot can serve multiple campaigns. Assign a campaign only when unambiguous.
+          SELECT CASE WHEN count(*) = 1 THEN min(id) END,
+                 CASE WHEN count(DISTINCT tournament_id) = 1 THEN min(tournament_id) END
+          INTO campaign_id, season_id FROM host_campaigns
+          WHERE hafapass_organizer_slug = record_data->>'organizer_slug'
+             OR hafapass_tournament_organizer_slug = record_data->>'organizer_slug';
+        END IF;
+
+        IF season_id IS NULL AND parent_id IS NOT NULL AND TG_OP = 'DELETE' THEN
+          -- A cascaded DELETE can run after its parent row has disappeared.
+          SELECT tournament_id INTO season_id FROM audit_events
+          WHERE operation_id = operation AND after_json = '{}'::jsonb
+            AND record_type = parent_type AND record_id = parent_id::text
+          ORDER BY id DESC LIMIT 1;
+        END IF;
+
         IF season_id IS NULL AND campaign_id IS NOT NULL THEN
           SELECT tournament_id INTO season_id FROM host_campaigns WHERE id = campaign_id;
+        END IF;
+
+        IF TG_OP = 'UPDATE' THEN
+          new_data := fd_audit_redact_changes(to_jsonb(OLD), to_jsonb(NEW), old_data, new_data);
         END IF;
 
         INSERT INTO audit_events (
@@ -170,7 +363,7 @@ module Audit
           area, action, record_type, record_id, record_label, tournament_id, host_campaign_id,
           summary, before_json, after_json, reason, request_id, http_method, route_path, ip_address
         ) VALUES (
-          coalesce(nullif(current_setting('app.audit_operation_id', true), ''), 'tx-' || pg_current_xact_id()::text),
+          operation,
           actor_type, nullif(current_setting('app.audit_actor_id', true), '')::bigint,
           actor_name, actor_email, nullif(current_setting('app.audit_actor_role', true), ''),
           audit_area, coalesce(nullif(current_setting('app.audit_action_override', true), ''), audit_action),
@@ -183,6 +376,9 @@ module Audit
           fd_audit_redact(to_jsonb(nullif(current_setting('app.audit_route_path', true), ''))) #>> '{}',
           nullif(current_setting('app.audit_ip_address', true), '')
         );
+        IF TG_OP = 'DELETE' THEN
+          RETURN OLD;
+        END IF;
         RETURN NULL;
       END;
       $$;

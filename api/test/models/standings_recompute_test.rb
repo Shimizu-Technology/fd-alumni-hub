@@ -66,6 +66,13 @@ class StandingsRecomputeTest < ActiveSupport::TestCase
     assert_equal 64, standing_2017.points_for
     assert_equal 72, standing_2017.points_against
 
+    latest = AuditEvent.last.id
+    Standings::Recompute.call(tournament)
+    rows = AuditEvent.where("id > ?", latest).where(record_type: "Standing")
+    assert_equal %w[delete delete create create], rows.order(:id).pluck(:action)
+    assert_equal 1, rows.distinct.count(:operation_id)
+    assert_equal [ tournament.id ], rows.distinct.pluck(:tournament_id)
+
     coverage = Standings::Coverage.for(tournament)
     assert_equal 1, coverage[:scoredPoolGames]
     assert_equal 3, coverage[:totalPoolGames]

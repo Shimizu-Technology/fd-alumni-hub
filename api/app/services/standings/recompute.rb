@@ -50,6 +50,10 @@ module Standings
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       recompute_plan = nil
 
       @tournament.with_lock do
