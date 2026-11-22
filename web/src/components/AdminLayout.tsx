@@ -37,7 +37,7 @@ type NavItem = {
   icon: IconComponent
   end?: boolean
   tournamentScoped?: boolean
-  access: 'campaign' | 'staff' | 'admin'
+  access: 'campaign' | 'scorekeeper' | 'staff' | 'admin'
 }
 
 type NavSection = {
@@ -66,6 +66,7 @@ const navSections: NavSection[] = [
   {
     label: 'Tournament ops',
     items: [
+      { to: '/admin/scorekeeper', label: 'Scorekeeper', icon: IconTrophy, tournamentScoped: true, access: 'scorekeeper' },
       { to: '/admin/divisions', label: 'Teams', icon: IconUsers, tournamentScoped: true, access: 'staff' },
       { to: '/admin/import', label: 'Import', icon: IconDatabase, tournamentScoped: true, access: 'staff' },
       { to: '/admin/games', label: 'Games', icon: IconCalendar, tournamentScoped: true, access: 'staff' },
@@ -93,6 +94,11 @@ const navSections: NavSection[] = [
   },
 ]
 
+export function hasScorekeeperAccess(user: CurrentUser | null | undefined) {
+  if (!user) return false
+  return Boolean(user.isAdmin || user.isStaff || user.isScorekeeper || user.canScoreGames || user.role === 'scorekeeper')
+}
+
 export function hasCampaignAccess(user: CurrentUser | null | undefined) {
   if (!user) return false
   return user.isAdmin || Boolean(user.campaignMemberships && user.campaignMemberships.length > 0)
@@ -100,6 +106,7 @@ export function hasCampaignAccess(user: CurrentUser | null | undefined) {
 
 export function defaultWorkspaceHome(user: CurrentUser | null | undefined) {
   if (user?.isStaff) return '/admin'
+  if (hasScorekeeperAccess(user)) return '/admin/scorekeeper'
   const roles = new Set((user?.campaignMemberships || []).flatMap((m) => m.roles))
   if (roles.has('treasurer') || roles.has('board')) return '/admin/campaign/finance'
   return '/admin/campaign/host-year'
@@ -108,6 +115,7 @@ export function defaultWorkspaceHome(user: CurrentUser | null | undefined) {
 function displayUserRole(user: CurrentUser) {
   if (user.isAdmin) return 'Admin'
   if (user.isStaff) return 'Staff'
+  if (hasScorekeeperAccess(user)) return 'Scorekeeper'
   const roles = Array.from(new Set((user.campaignMemberships || []).flatMap((m) => m.roles)))
   if (roles.length === 0) return 'Member'
   return roles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(' · ')
@@ -223,12 +231,14 @@ function UtilityLink({ to, label, icon: Icon, collapsed, onNavigate }: { to: str
 
 function visibleNavSections(user: CurrentUser) {
   const canCampaign = hasCampaignAccess(user)
+  const canScore = hasScorekeeperAccess(user)
   return navSections
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
         if (item.access === 'admin') return user.isAdmin
         if (item.access === 'staff') return user.isStaff
+        if (item.access === 'scorekeeper') return canScore
         return canCampaign
       }),
     }))
@@ -254,7 +264,11 @@ function SidebarContent({
   const sections = visibleNavSections(user)
   const userRole = displayUserRole(user)
   const homePath = defaultWorkspaceHome(user)
-  const subtitle = user.isStaff ? 'Tournament workspace' : 'Host Year workspace'
+  const subtitle = user.isStaff
+    ? 'Tournament workspace'
+    : hasScorekeeperAccess(user)
+      ? 'Scorekeeper console'
+      : 'Host Year workspace'
 
   useEffect(() => setCollapseTooltipVisible(false), [collapsed])
 
@@ -338,6 +352,25 @@ export function RequireAdminRoute({ children }: { children: ReactNode }) {
           <IconShield size={32} />
           <h2>Admin access required</h2>
           <p>Only administrators can access system campaign, people, and archive tools.</p>
+          <Link className="btn secondary" to={defaultWorkspaceHome(auth.user)}>Back to workspace</Link>
+        </Panel>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+export function RequireScorekeeperRoute({ children }: { children: ReactNode }) {
+  const auth = useAuthContext()
+
+  if (!hasScorekeeperAccess(auth.user)) {
+    return (
+      <div className="page-stack admin-page">
+        <Panel className="state-card">
+          <IconShield size={32} />
+          <h2>Scorekeeper access required</h2>
+          <p>Live score entry requires a scorekeeper, staff, or admin account.</p>
           <Link className="btn secondary" to={defaultWorkspaceHome(auth.user)}>Back to workspace</Link>
         </Panel>
       </div>
@@ -480,7 +513,7 @@ export function AdminLayout() {
     )
   }
 
-  const hasAccess = Boolean(auth.user && (auth.user.isStaff || hasCampaignAccess(auth.user)))
+  const hasAccess = Boolean(auth.user && (auth.user.isStaff || hasScorekeeperAccess(auth.user) || hasCampaignAccess(auth.user)))
 
   if (!hasAccess || !auth.user) {
     return (
@@ -502,7 +535,11 @@ export function AdminLayout() {
   const closeMobileNav = () => setMobileOpen(false)
   const userName = auth.user.fullName
   const userRole = displayUserRole(auth.user)
-  const workspaceSubtitle = auth.user.isStaff ? 'Tournament workspace' : 'Host Year workspace'
+  const workspaceSubtitle = auth.user.isStaff
+    ? 'Tournament workspace'
+    : hasScorekeeperAccess(auth.user)
+      ? 'Scorekeeper console'
+      : 'Host Year workspace'
 
   return (
     <div className="admin-shell">

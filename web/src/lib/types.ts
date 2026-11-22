@@ -572,7 +572,7 @@ export type CampaignInvitationRecord = {
 export type AdminWhitelistRecord = {
   id: string
   email: string
-  role: 'admin' | 'staff' | 'viewer'
+  role: 'admin' | 'staff' | 'scorekeeper' | 'viewer'
   active: boolean
   notes: string | null
   createdAt?: string
@@ -737,6 +737,8 @@ export type CurrentUser = {
   active: boolean
   isAdmin: boolean
   isStaff: boolean
+  isScorekeeper?: boolean
+  canScoreGames?: boolean
   campaignMemberships?: UserCampaignMembership[]
 }
 

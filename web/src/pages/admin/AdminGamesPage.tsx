@@ -4,6 +4,7 @@ import { selectedTournament, useTournamentSelection } from '../../lib/admin'
 import { useAsync } from '../../lib/hooks'
 import { formatGuamDateTime, guamLocalDateTimeInputToIso, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, divisionNameById, gameResultLabel, teamDivision } from '../../lib/games'
+import { createMutationId } from '../../lib/scoreQueue'
 import { normalizeHttpsInput, safeHttpsHref } from '../../lib/urls'
 import type { BracketRound, Division, Game, GamePhase, GameStatus, Team, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
@@ -300,12 +301,13 @@ function EditableGame({ game, divisions, onSaved }: { game: Game; divisions: Div
     setConflict(false)
     try {
       const nextStatus = statusOverride || form.status
-      await api.adminUpdateGame(game.id, {
+      await api.adminScoreGame(game.id, {
         status: nextStatus,
         statusNote: form.statusNote.trim() || null,
         homeScore: form.homeScore === '' ? null : Number(form.homeScore),
         awayScore: form.awayScore === '' ? null : Number(form.awayScore),
         lockVersion: game.lockVersion,
+        clientMutationId: createMutationId(),
       })
       if (statusOverride) setForm((current) => ({ ...current, status: statusOverride }))
       await onSaved()

@@ -1,7 +1,14 @@
+require "digest"
+
 module Api
   module V1
     module Admin
       class GamesController < BaseController
+        SCOREKEEPER_ALLOWED_TOURNAMENT_STATUSES = %w[live upcoming].freeze
+
+        skip_before_action :require_staff!, only: [ :index, :show, :score ]
+        before_action :require_scorekeeper_or_staff!, only: [ :index, :show, :score ]
+
         def index
           games = games_with_associations.ordered
           games = games.where(tournament_id: params[:tournamentId]) if params[:tournamentId].present?
@@ -67,7 +74,160 @@ module Api
           render json: { errors: [ "A game with that game number or bracket feeder slot already exists." ] }, status: :unprocessable_entity
         end
 
+        def score
+          game = Game.includes(:tournament).find(params[:id])
+          incoming = score_params
+          client_mutation_id = incoming[:client_mutation_id].to_s.strip.presence
+          force_overwrite = ActiveModel::Type::Boolean.new.cast(incoming[:force_overwrite]) == true
+
+          if client_mutation_id.present? && !client_mutation_id.match?(Game::MUTATION_ID_FORMAT)
+            return render json: { errors: [ "clientMutationId must be 8-64 alphanumeric, dash, or underscore characters" ] }, status: :unprocessable_entity
+          end
+
+          next_home_score = incoming.key?(:home_score) ? parse_optional_score(incoming[:home_score]) : game.home_score
+          next_away_score = incoming.key?(:away_score) ? parse_optional_score(incoming[:away_score]) : game.away_score
+          if next_home_score == :invalid || next_away_score == :invalid
+            return render json: { errors: [ "Scores must be whole numbers between 0 and 300" ] }, status: :unprocessable_entity
+          end
+
+          next_status = incoming.key?(:status) ? incoming[:status].to_s.strip.downcase : game.status
+          next_status_note = incoming.key?(:status_note) ? incoming[:status_note].to_s.strip.presence : game.status_note
+          payload_digest = compute_score_digest(
+            home_score: next_home_score,
+            away_score: next_away_score,
+            status: next_status,
+            status_note: next_status_note
+          )
+
+          # Check idempotent replay BEFORE scorekeeper final-game guardrails so a dropped
+          # response after finalizing safely replays as 200 OK instead of 403 Forbidden.
+          if client_mutation_id.present? && game.last_score_mutation_id == client_mutation_id
+            return render_mutation_id_match(game, payload_digest)
+          end
+
+          unless current_user.staff?
+            unless SCOREKEEPER_ALLOWED_TOURNAMENT_STATUSES.include?(game.tournament&.status)
+              return render_forbidden("Scorekeepers can only enter scores for live or upcoming tournaments.")
+            end
+
+            if game.status == "final"
+              return render_forbidden("Finalized games can only be edited or reopened by tournament staff or admins.")
+            end
+          end
+
+          if next_status == "final" && (next_home_score.nil? || next_away_score.nil?)
+            return render json: { errors: [ "Both home and away scores are required to finalize a game." ] }, status: :unprocessable_entity
+          end
+
+          lock_version_present = incoming.key?(:lock_version)
+          lock_version_param = incoming[:lock_version]
+          if !force_overwrite && lock_version_present && !lock_version_param.nil? && lock_version_param.to_s.strip != ""
+            parsed_version = parse_lock_version(lock_version_param)
+            return render json: { errors: [ "lockVersion must be a non-negative integer" ] }, status: :unprocessable_entity unless parsed_version
+
+            game.lock_version = parsed_version
+          end
+
+          was_final = (game.status == "final")
+          game.home_score = next_home_score
+          game.away_score = next_away_score
+          game.status = next_status
+          game.status_note = next_status_note
+          game.score_updated_by = current_user
+          game.score_updated_at = Time.current
+          if client_mutation_id.present?
+            game.last_score_mutation_id = client_mutation_id
+            game.last_score_mutation_digest = payload_digest
+          end
+
+          if game.save
+            should_recompute = game.pool_phase? && (was_final || game.status == "final")
+            recompute = should_recompute ? Standings::Recompute.call(game.tournament) : nil
+            advancement = (game.status == "final" && game.next_game_id.present?) ? advance_bracket_winner_safely(game) : nil
+
+            render json: {
+              game: games_with_associations.find(game.id).api_json(include_score_audit: true),
+              idempotentReplay: false,
+              recompute: recompute && { teams: recompute.teams, games: recompute.games },
+              bracketAdvancement: advancement&.api_json
+            }.compact
+          else
+            render_errors(game)
+          end
+        rescue ActiveRecord::StaleObjectError
+          fresh = Game.find(game.id)
+          if client_mutation_id.present? && fresh.last_score_mutation_id == client_mutation_id
+            return render_mutation_id_match(fresh, payload_digest)
+          end
+
+          render json: {
+            error: "Score was updated by another user. Review the latest score before continuing.",
+            currentGame: games_with_associations.find(fresh.id).api_json(include_score_audit: true)
+          }, status: :conflict
+        end
+
         private
+
+        def render_mutation_id_match(game, payload_digest)
+          serialized = games_with_associations.find(game.id).api_json(include_score_audit: true)
+          if game.last_score_mutation_digest == payload_digest
+            render json: { game: serialized, idempotentReplay: true }
+          else
+            render json: {
+              error: "Mutation ID reused with different score payload.",
+              currentGame: serialized
+            }, status: :conflict
+          end
+        end
+
+        def compute_score_digest(home_score:, away_score:, status:, status_note:)
+          canonical = {
+            awayScore: away_score,
+            homeScore: home_score,
+            status: status,
+            statusNote: status_note
+          }
+          Digest::SHA256.hexdigest(canonical.to_json)
+        end
+
+        def parse_optional_score(value)
+          return nil if value.nil? || value.to_s.strip == ""
+          return value if value.is_a?(Integer)
+          return :invalid unless value.to_s.strip.match?(/\A\d+\z/)
+
+          value.to_s.strip.to_i
+        end
+
+        def score_params
+          allowed_keys = %i[
+            home_score homeScore
+            away_score awayScore
+            status
+            status_note statusNote
+            lock_version lockVersion
+            force_overwrite forceOverwrite
+            client_mutation_id clientMutationId
+          ]
+
+          merged = {}
+          [ params[:game], params, params[:score] ].each do |source|
+            next unless source.is_a?(ActionController::Parameters)
+
+            source.permit(*allowed_keys).to_h.each do |key, value|
+              merged[key.to_sym] = value
+            end
+          end
+
+          attrs = {}
+          assign_param(attrs, merged, :home_score, :home_score, :homeScore)
+          assign_param(attrs, merged, :away_score, :away_score, :awayScore)
+          assign_param(attrs, merged, :status, :status)
+          assign_param(attrs, merged, :status_note, :status_note, :statusNote)
+          assign_param(attrs, merged, :lock_version, :lock_version, :lockVersion)
+          assign_param(attrs, merged, :force_overwrite, :force_overwrite, :forceOverwrite)
+          assign_param(attrs, merged, :client_mutation_id, :client_mutation_id, :clientMutationId)
+          attrs
+        end
 
         def with_bracket_lock_if_needed(tournament, attrs)
           if tournament && (attrs.key?(:next_game_id) || attrs.key?(:next_game_slot))

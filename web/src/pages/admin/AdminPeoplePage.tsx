@@ -45,7 +45,7 @@ export function AdminPeoplePage() {
   const [assignUserId, setAssignUserId] = useState('')
   const [assignRole, setAssignRole] = useState<CampaignRole>('board')
   const [wlEmail, setWlEmail] = useState('')
-  const [wlRole, setWlRole] = useState<'admin' | 'staff'>('staff')
+  const [wlRole, setWlRole] = useState<'admin' | 'staff' | 'scorekeeper'>('staff')
   const [wlNotes, setWlNotes] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -139,7 +139,7 @@ export function AdminPeoplePage() {
     }
   }
 
-  const handleUpdateWhitelist = async (id: string, email: string, payload: { active?: boolean; role?: 'admin' | 'staff' | 'viewer' }) => {
+  const handleUpdateWhitelist = async (id: string, email: string, payload: { active?: boolean; role?: 'admin' | 'staff' | 'scorekeeper' | 'viewer' }) => {
     if (payload.role === 'admin' && !window.confirm(`Grant full system Admin role to ${email}?`)) return
     if (payload.active === false && !window.confirm(`Deactivate site-wide allowlist entry for ${email}?`)) return
     setBusy(true)
@@ -301,7 +301,8 @@ export function AdminPeoplePage() {
               <input type="email" value={wlEmail} onChange={(e) => setWlEmail(e.target.value)} required placeholder="staff@example.com" />
             </Field>
             <Field label="Site role">
-              <select value={wlRole} onChange={(e) => setWlRole(e.target.value as 'admin' | 'staff')}>
+              <select value={wlRole} onChange={(e) => setWlRole(e.target.value as 'admin' | 'staff' | 'scorekeeper')}>
+                <option value="scorekeeper">Scorekeeper (game-night scoring only)</option>
                 <option value="staff">Staff (tournament ops)</option>
                 <option value="admin">Admin (full system)</option>
               </select>
@@ -327,9 +328,10 @@ export function AdminPeoplePage() {
                   aria-label={`Site role for ${wl.email}`}
                   value={wl.role}
                   disabled={busy}
-                  onChange={(e) => void handleUpdateWhitelist(wl.id, wl.email, { role: e.target.value as 'admin' | 'staff' | 'viewer' })}
+                  onChange={(e) => void handleUpdateWhitelist(wl.id, wl.email, { role: e.target.value as 'admin' | 'staff' | 'scorekeeper' | 'viewer' })}
                 >
                   <option value="viewer">Viewer</option>
+                  <option value="scorekeeper">Scorekeeper</option>
                   <option value="staff">Staff</option>
                   <option value="admin">Admin</option>
                 </select>

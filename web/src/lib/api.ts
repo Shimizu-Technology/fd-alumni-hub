@@ -276,7 +276,24 @@ export const api = {
 
   adminGames: (tournamentId?: string | null) => request<{ games: Game[] }>(`/admin/games${query({ tournamentId })}`),
   adminCreateGame: (payload: Partial<Game>) => request<{ game: Game }>('/admin/games', json('POST', { game: payload })),
-  adminUpdateGame: (id: string, payload: Partial<Game>) => request<{ game: Game; recompute?: { teams: number; games: number } }>(`/admin/games/${id}`, json('PATCH', { game: payload })),
+  adminUpdateGame: (id: string, payload: Partial<Game>) => request<{ game: Game; recompute?: { teams: number; games: number }; bracketAdvancement?: { advanced: boolean; reason?: string; nextGameId?: string; slot?: string; winnerTeamId?: string } }>(`/admin/games/${id}`, json('PATCH', { game: payload })),
+  adminScoreGame: (
+    id: string,
+    payload: {
+      homeScore?: number | null
+      awayScore?: number | null
+      status?: Game['status']
+      statusNote?: string | null
+      lockVersion?: number
+      forceOverwrite?: boolean
+      clientMutationId?: string
+    },
+  ) => request<{
+    game: Game
+    idempotentReplay?: boolean
+    recompute?: { teams: number; games: number }
+    bracketAdvancement?: { advanced: boolean; reason?: string; nextGameId?: string; slot?: string; winnerTeamId?: string }
+  }>(`/admin/games/${id}/score`, json('PATCH', payload)),
 
   adminStandings: (tournamentId?: string | null) => request<{ tournament: Tournament | null; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings${query({ tournamentId })}`),
   adminRecomputeStandings: (tournamentId?: string | null) => request<{ tournament: Tournament; recompute: { teams: number; games: number }; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings/recompute${query({ tournamentId })}`, json('POST')),
@@ -360,9 +377,9 @@ export const api = {
   adminRevokeCampaignInvitation: (campaignId: string, id: string) =>
     request<{ invitation: CampaignInvitationRecord }>(`/admin/campaigns/${campaignId}/invitations/${id}/revoke`, json('POST')),
   adminWhitelists: () => request<{ whitelists: AdminWhitelistRecord[] }>('/admin/whitelists'),
-  adminCreateWhitelist: (payload: { email: string; role: 'admin' | 'staff' | 'viewer'; notes?: string | null; active?: boolean }) =>
+  adminCreateWhitelist: (payload: { email: string; role: 'admin' | 'staff' | 'scorekeeper' | 'viewer'; notes?: string | null; active?: boolean }) =>
     request<{ whitelist: AdminWhitelistRecord }>('/admin/whitelists', json('POST', { whitelist: payload })),
-  adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff' | 'viewer'; active?: boolean; notes?: string | null }) =>
+  adminUpdateWhitelist: (id: string, payload: { role?: 'admin' | 'staff' | 'scorekeeper' | 'viewer'; active?: boolean; notes?: string | null }) =>
     request<{ whitelist: AdminWhitelistRecord }>(`/admin/whitelists/${id}`, json('PATCH', { whitelist: payload })),
 
   campaignFinanceSummary: (campaignSlug: string) =>

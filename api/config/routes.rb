@@ -80,7 +80,9 @@ Rails.application.routes.draw do
         resources :game_day_notes, path: "game-day-notes", only: [ :index, :create, :update ]
         resources :alerts, only: [ :index, :create, :update, :destroy ]
         resources :prediction_polls, path: "prediction-polls", only: [ :index, :create, :update ]
-        resources :games, only: [ :index, :show, :create, :update ]
+        resources :games, only: [ :index, :show, :create, :update ] do
+          patch :score, on: :member
+        end
         resources :articles, only: [ :index, :show, :create, :update, :destroy ]
         resources :media_assets, path: "media-assets", only: [ :index, :show, :create, :update, :destroy ]
         resources :sponsors, only: [ :index, :show, :create, :update, :destroy ]

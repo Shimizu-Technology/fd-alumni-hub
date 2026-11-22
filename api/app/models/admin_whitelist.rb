@@ -1,5 +1,5 @@
 class AdminWhitelist < ApplicationRecord
-  ROLES = %w[admin staff viewer].freeze
+  ROLES = %w[admin staff scorekeeper viewer].freeze
 
   before_validation :normalize_email
 
