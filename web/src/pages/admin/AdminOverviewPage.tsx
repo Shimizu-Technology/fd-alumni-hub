@@ -14,7 +14,7 @@ export function AdminOverviewPage() {
       <div className="split-grid">
         {modules.map(({ key, path, label, icon: Icon }) => (
           <Panel key={key}>
-            <Link className="flex items-center gap-3 font-semibold" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
+            <Link className="admin-work-link" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
               <Icon size={20} /> {label}
             </Link>
           </Panel>

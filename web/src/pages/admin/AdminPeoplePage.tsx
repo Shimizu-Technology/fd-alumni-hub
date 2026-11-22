@@ -451,8 +451,8 @@ export function AdminPeoplePage() {
     }
     for (const row of rows) scopes.set(`${row.scopeType}:${row.scopeId}`, { email: personEmail, scopeType: row.scopeType, scopeId: row.scopeId })
     return [...scopes].map(([key, scope]) => (
-      <div key={key} className="mt-3 border-t border-slate-200 pt-3">
-        <strong className="capitalize">{scopeName(scope.scopeType, scope.scopeId)}</strong>
+      <div key={key} className="people-scope-block">
+        <strong className="people-scope-title">{scopeName(scope.scopeType, scope.scopeId)}</strong>
         <ul>
           {rows.filter((row) => row.scopeType === scope.scopeType && row.scopeId === scope.scopeId).map((row) => (
             <li key={row.id}>{accessLabel(row.capability)} · {row.actions.map(actionLabel).join(', ')}</li>
@@ -461,8 +461,8 @@ export function AdminPeoplePage() {
             <li key={membership.campaignId}>Campaign membership · {membership.roles.join(', ')}</li>
           ))}
         </ul>
-        {canEdit(scope.scopeType, scope.scopeId) && <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className="btn secondary" disabled={busy} onClick={() => {
+        {canEdit(scope.scopeType, scope.scopeId) && <div className="people-chip-row">
+          <button type="button" className="btn secondary small" disabled={busy} onClick={() => {
             setEmail(personEmail)
             setScopeType(scope.scopeType)
             setScopeId(scope.scopeId || '')
@@ -471,7 +471,7 @@ export function AdminPeoplePage() {
               .map(({ capability, actions }) => ({ capability, actions })))
             document.getElementById('grant-email')?.focus()
           }}>Edit scoped grants</button>
-          <button type="button" className="btn secondary" disabled={busy}
+          <button type="button" className="btn secondary small" disabled={busy}
             onClick={() => removeScope(scope)}>{scope.scopeType === 'site' ? 'Remove whole-site grants' : "Remove this season/campaign’s access"}</button>
         </div>}
       </div>
@@ -514,11 +514,11 @@ export function AdminPeoplePage() {
                 </select>
               </Field>}
             </FormGrid>
-            <fieldset className="my-4">
+            <fieldset className="people-presets">
               <legend>Presets</legend>
-              <div className="flex flex-wrap gap-2">
+              <div className="people-chip-row">
                 {directory.presets.map((preset) => (
-                  <button type="button" className="btn secondary" key={preset.key} aria-pressed={presetKey === preset.key}
+                  <button type="button" className="btn secondary small" key={preset.key} aria-pressed={presetKey === preset.key}
                     onClick={() => {
                       if (!preset.scopeTypes.includes(scopeType)) {
                         setScopeType(preset.scopeTypes[0])
@@ -530,13 +530,13 @@ export function AdminPeoplePage() {
                 ))}
               </div>
             </fieldset>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="people-capabilities-grid">
               {Object.entries(directory.capabilities).filter(([capability]) => scopeType !== 'site' || capability !== 'view_audit_log').map(([capability, actions]) => (
-                <fieldset className="rounded border border-slate-200 p-3" key={capability}>
+                <fieldset className="people-capability-card" key={capability}>
                   <legend>{accessLabel(capability)}</legend>
-                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  <div className="people-actions-row">
                     {actions.filter((action) => capability !== 'view_audit_log' || action !== 'export').map((action) => (
-                      <label className="flex items-center gap-1 capitalize" key={action}>
+                      <label className="people-checkbox-label" key={action}>
                         <input type="checkbox" checked={grants.some((grant) => grant.capability === capability && grant.actions.includes(action))}
                           onChange={() => toggleAction(capability, action)} />
                         {actionLabel(action)}
@@ -546,7 +546,7 @@ export function AdminPeoplePage() {
                 </fieldset>
               ))}
             </div>
-            <p aria-live="polite" className="my-4">
+            <p aria-live="polite" className="people-summary-line">
               {grants.length ? `${subject} can ${new Intl.ListFormat('en').format(grants.map(describeGrant))} for ${scopeName(scopeType, scopeId)}.` : 'Choose a preset or select actions.'}
             </p>
             <button className="btn primary" disabled={busy || !grants.length || !canEdit(scopeType, scopeId || null)}>Save access</button>
@@ -558,16 +558,16 @@ export function AdminPeoplePage() {
         {directory.users.map((person) => {
           const last = person.superAdmin && person.active && directory.activeSuperAdminCount === 1
           return (
-            <article key={person.id} className="my-3 rounded border border-slate-200 p-4">
+            <article key={person.id} className="people-person-card">
               <h3>{person.fullName}</h3>
               <p>{person.email} · {person.active ? 'Active' : 'Deactivated'}{person.superAdmin ? ' · Super Admin' : ''}</p>
               {scopeGroups(person.email, person.grants, person.campaignMemberships)}
-              {superAdmin && <div className="mt-3 flex flex-wrap gap-2">
-                <button className="btn secondary" disabled={busy || last} onClick={() => {
+              {superAdmin && <div className="people-chip-row">
+                <button className="btn secondary small" disabled={busy || last} onClick={() => {
                   if (!window.confirm(`${person.superAdmin ? 'Remove' : 'Grant'} Super Admin access for ${person.email}?`)) return
                   void mutate(() => api.updateUserAccess(person.id, { superAdmin: !person.superAdmin }), 'Super Admin access updated.')
                 }}>{person.superAdmin ? 'Demote Super Admin' : 'Promote to Super Admin'}</button>
-                <button className="btn secondary" disabled={busy || last} onClick={() => {
+                <button className="btn secondary small" disabled={busy || last} onClick={() => {
                   if (!window.confirm(person.active ? `Deactivate ${person.email}’s account? This blocks sign-in across all seasons and campaigns.` : `Reactivate ${person.email}’s account?`)) return
                   void mutate(() => api.updateUserAccess(person.id, { active: !person.active }), 'Account status updated.')
                 }}>{person.active ? 'Deactivate account' : 'Reactivate account'}</button>
@@ -576,7 +576,7 @@ export function AdminPeoplePage() {
           )
         })}
         {[...new Set(directory.pendingInvites.map((grant) => grant.email))].map((pendingEmail) => (
-          <article key={pendingEmail} className="my-3 rounded border border-slate-200 p-4">
+          <article key={pendingEmail} className="people-person-card">
             <h3>{pendingEmail} · Pending</h3>
             {scopeGroups(pendingEmail, directory.pendingInvites.filter((grant) => grant.email === pendingEmail))}
           </article>

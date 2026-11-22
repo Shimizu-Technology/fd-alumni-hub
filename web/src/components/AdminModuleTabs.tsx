@@ -9,10 +9,10 @@ export function AdminModuleTabs({ path, user, tournamentId }: { path: string; us
   if (tabs.length < 2) return null
 
   return (
-    <nav aria-label={module?.label} className="mb-5 flex flex-wrap gap-1 border-b border-slate-200 pb-2">
+    <nav aria-label={module?.label} className="admin-module-tabs">
       {tabs.map((tab) => (
         <NavLink key={tab.path} end to={module?.tournamentScoped && canOpenAdminRoute(user, tab.path, tournamentId) ? tournamentScopedPath(tab.path, tournamentId) : tab.path}
-          className={({ isActive }) => `rounded px-3 py-2 text-sm font-semibold ${isActive ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
+          className={({ isActive }) => `admin-module-tab${isActive ? ' is-active' : ''}`}>
           {tab.label}
         </NavLink>
       ))}

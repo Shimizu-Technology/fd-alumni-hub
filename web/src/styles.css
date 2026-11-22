@@ -2632,3 +2632,150 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   .rafters-banner { scroll-snap-align: start; }
   .broadcast-games:has(> :nth-child(2)) { grid-auto-columns: min(87%, 18rem); }
 }
+
+.admin-module-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1.15rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-module-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: .45rem .95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--fd-maroon);
+  font-size: .9rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admin-module-tab.is-active {
+  background: var(--fd-maroon);
+  border-color: var(--fd-maroon);
+  color: #fff;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-module-tab { min-height: 36px; }
+  .admin-module-tab:not(.is-active):hover { border-color: rgba(111, 29, 53, .38); background: var(--fd-maroon-50); }
+}
+
+.admin-work-link {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 44px;
+  font-weight: 800;
+  color: var(--fd-maroon-900);
+  text-decoration: none;
+}
+
+.people-presets {
+  margin: 1rem 0;
+  padding: 0;
+  border: 0;
+}
+
+.people-presets legend {
+  margin-bottom: .5rem;
+  font-size: .82rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fd-maroon);
+}
+
+.people-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .65rem;
+}
+
+.people-chip-row button[aria-pressed="true"] {
+  background: var(--fd-maroon);
+  border-color: var(--fd-maroon);
+  color: #fff;
+}
+
+.people-capabilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: .85rem;
+  margin-top: .75rem;
+}
+
+.people-capability-card {
+  margin: 0;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: .85rem;
+  background: #fffdf9;
+}
+
+.people-capability-card legend {
+  padding-inline: .3rem;
+  font-weight: 800;
+  color: var(--fd-maroon-900);
+}
+
+.people-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+}
+
+.people-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 36px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.people-checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  accent-color: var(--fd-maroon);
+}
+
+.people-summary-line {
+  margin: 1rem 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.people-person-card {
+  margin: .85rem 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #fffdf9;
+}
+
+.people-person-card h3 {
+  margin: 0 0 .25rem;
+}
+
+.people-scope-block {
+  margin-top: .75rem;
+  padding-top: .75rem;
+  border-top: 1px solid var(--line);
+}
+
+.people-scope-title {
+  display: block;
+  margin-bottom: .35rem;
+  color: var(--fd-maroon-900);
+}
