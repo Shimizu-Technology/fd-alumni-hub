@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_23_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -38,11 +38,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.datetime "updated_at", null: false
     t.string "url", null: false
     t.bigint "game_id"
+    t.string "kind", default: "recap", null: false
+    t.string "division_slug"
+    t.integer "photo_count"
     t.index ["game_id"], name: "index_article_links_on_game_id"
     t.index ["legacy_id"], name: "index_article_links_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["tournament_id", "published_at"], name: "index_article_links_on_tournament_id_and_published_at"
     t.index ["tournament_id", "url"], name: "index_article_links_on_tournament_id_and_url", unique: true
     t.index ["tournament_id"], name: "index_article_links_on_tournament_id"
+    t.check_constraint "kind::text = ANY (ARRAY['preview'::character varying, 'recap'::character varying, 'playoffs'::character varying, 'championship'::character varying, 'history'::character varying, 'event_page'::character varying]::text[])", name: "article_links_kind"
   end
 
   create_table "audit_checkpoints", force: :cascade do |t|
@@ -313,6 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.string "box_score_coverage"
     t.datetime "box_score_published_at"
     t.bigint "box_score_updated_by_id"
+    t.jsonb "top_performers_json", default: [], null: false
     t.index "tournament_id, lower((game_number)::text)", name: "index_games_on_tournament_game_number_unique", unique: true, where: "(game_number IS NOT NULL)"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
     t.index ["box_score_updated_by_id"], name: "index_games_on_box_score_updated_by_id"
@@ -450,7 +455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.string "article_url"
     t.text "caption"
     t.datetime "created_at", null: false
-    t.string "image_url", null: false
+    t.string "image_url"
     t.string "legacy_id"
     t.string "source", null: false
     t.string "tags"
@@ -459,11 +464,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "game_id"
+    t.string "media_type", default: "photo", null: false
+    t.string "video_url"
+    t.string "video_provider"
+    t.string "external_video_id"
+    t.integer "duration_seconds"
+    t.string "division_slug"
     t.index ["game_id"], name: "index_media_assets_on_game_id"
     t.index ["legacy_id"], name: "index_media_assets_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
+    t.index ["tournament_id", "external_video_id"], name: "index_media_assets_on_tournament_and_external_video_id", unique: true, where: "(external_video_id IS NOT NULL)"
     t.index ["tournament_id", "image_url"], name: "index_media_assets_on_tournament_id_and_image_url"
     t.index ["tournament_id", "source", "taken_at"], name: "index_media_assets_on_tournament_id_and_source_and_taken_at"
     t.index ["tournament_id"], name: "index_media_assets_on_tournament_id"
+    t.check_constraint "media_type::text = ANY (ARRAY['photo'::character varying, 'video'::character varying, 'gallery'::character varying]::text[])", name: "media_assets_media_type"
   end
 
   create_table "pending_receipt_uploads", force: :cascade do |t|
@@ -779,8 +792,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.integer "position", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "mvp_name"
+    t.string "mvp_note"
+    t.string "source_url"
+    t.bigint "recap_article_id"
+    t.bigint "highlight_video_id"
     t.index ["bracket", "year"], name: "index_tournament_champions_on_bracket_and_year"
     t.index ["champion_key"], name: "index_tournament_champions_on_champion_key"
+    t.index ["highlight_video_id"], name: "index_tournament_champions_on_highlight_video_id"
+    t.index ["recap_article_id"], name: "index_tournament_champions_on_recap_article_id"
     t.index ["slug"], name: "index_tournament_champions_on_slug", unique: true
     t.index ["tournament_id"], name: "index_tournament_champions_on_tournament_id"
     t.index ["year", "position"], name: "index_tournament_champions_on_year_and_position"
@@ -816,6 +836,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
     t.integer "schedule_revision", default: 0, null: false
     t.jsonb "info_guide_json", default: {}, null: false
     t.boolean "enable_player_stats", default: false, null: false
+    t.string "host_class_label"
+    t.bigint "host_class_cohort_id"
+    t.integer "edition_number"
+    t.string "theme"
+    t.index ["host_class_cohort_id"], name: "index_tournaments_on_host_class_cohort_id"
     t.index ["legacy_id"], name: "index_tournaments_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["year", "name"], name: "index_tournaments_on_year_and_name", unique: true
     t.index ["year", "status"], name: "index_tournaments_on_year_and_status"
@@ -914,7 +939,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000007) do
   add_foreign_key "tournament_alerts", "users", column: "updated_by_id", on_delete: :nullify
   add_foreign_key "tournament_champion_credits", "class_cohorts", on_delete: :cascade
   add_foreign_key "tournament_champion_credits", "tournament_champions", on_delete: :cascade
+  add_foreign_key "tournament_champions", "article_links", column: "recap_article_id", on_delete: :nullify
+  add_foreign_key "tournament_champions", "media_assets", column: "highlight_video_id", on_delete: :nullify
   add_foreign_key "tournament_champions", "tournaments", on_delete: :nullify
   add_foreign_key "tournament_updates", "tournaments", on_delete: :cascade
   add_foreign_key "tournament_updates", "users", column: "author_id", on_delete: :nullify
+  add_foreign_key "tournaments", "class_cohorts", column: "host_class_cohort_id", on_delete: :nullify
 end

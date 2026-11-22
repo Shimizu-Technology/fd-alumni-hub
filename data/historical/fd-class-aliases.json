@@ -39,6 +39,18 @@
       "classes": ["2008", "2015"],
       "source": "Organizer/player confirmation",
       "notes": "815 is shorthand for 08/15, representing Classes 2008 and 2015."
+    },
+    {
+      "label": "60s",
+      "classes": [],
+      "source": "Tournament archive",
+      "notes": "Father-son tournament team."
+    },
+    {
+      "label": "Summer Sixteen",
+      "classes": ["2016"],
+      "source": "Tournament archive",
+      "notes": "Host class label for the Class of 2016."
     }
   ]
 }

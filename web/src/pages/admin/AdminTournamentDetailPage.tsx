@@ -132,8 +132,8 @@ function TournamentDashboard({ data, canEdit }: { data: TournamentDashboardData;
           {mediaAssets.length === 0 ? <EmptyState title="No media" description="Attach photos or imported media for this tournament." /> : (
             <div className="tournament-media-preview">
               {mediaAssets.slice(0, 6).map((asset) => (
-                <a key={asset.id} href={asset.articleUrl || asset.imageUrl} target="_blank" rel="noreferrer" title={asset.title}>
-                  <img src={asset.imageUrl} alt="" loading="lazy" />
+                <a key={asset.id} href={asset.videoUrl || asset.articleUrl || asset.imageUrl || undefined} target="_blank" rel="noreferrer" title={asset.title}>
+                  {asset.imageUrl ? <img src={asset.imageUrl} alt="" loading="lazy" /> : asset.title}
                 </a>
               ))}
             </div>

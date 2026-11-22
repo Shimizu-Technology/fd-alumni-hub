@@ -9,6 +9,7 @@ class Game < ApplicationRecord
   NEXT_GAME_SLOTS = %w[home away].freeze
   MUTATION_ID_FORMAT = /\A[a-zA-Z0-9_-]{8,64}\z/
   MAX_BRACKET_DEPTH = 8
+  ARCHIVE_GAME_PREFIX = "fd-historical-game-"
   BOX_SCORE_STATUSES = %w[none draft published needs_review].freeze
   BOX_SCORE_COVERAGES = %w[selected_scorers full_box_score].freeze
 
@@ -187,6 +188,8 @@ class Game < ApplicationRecord
       streamUrl: external_url(stream_url),
       ticketUrl: external_url(ticket_url),
       notes: notes,
+      dateOnly: legacy_id.to_s.start_with?(ARCHIVE_GAME_PREFIX) && start_time == start_time&.beginning_of_day,
+      topPerformers: top_performers_json || [],
       divisionId: division_id&.to_s,
       division: resolved_division,
       bracketCode: bracket_code,

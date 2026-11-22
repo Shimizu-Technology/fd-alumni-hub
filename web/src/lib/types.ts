@@ -29,6 +29,10 @@ export type Tournament = {
   startDate: string
   endDate: string
   status: TournamentStatus
+  hostClassLabel?: string | null
+  hostClassCohortId?: string | null
+  editionNumber?: number | null
+  theme?: string | null
   enablePlayerStats?: boolean
   createdAt?: string
   updatedAt?: string
@@ -170,6 +174,8 @@ export type Game = {
   streamUrl: string | null
   ticketUrl: string | null
   notes: string | null
+  dateOnly?: boolean
+  topPerformers?: string[]
   divisionId?: string | null
   division: string | null
   bracketCode: string | null
@@ -256,6 +262,8 @@ export type Standing = {
   team: TeamSummary
 }
 
+export type ArticleKind = 'preview' | 'recap' | 'playoffs' | 'championship' | 'history' | 'event_page'
+
 export type Article = {
   id: string
   tournamentId: string
@@ -267,6 +275,9 @@ export type Article = {
   publishedAt: string | null
   imageUrl: string | null
   excerpt: string | null
+  kind?: ArticleKind
+  divisionSlug?: string | null
+  photoCount?: number | null
   createdAt?: string
   updatedAt?: string
 }
@@ -278,7 +289,14 @@ export type MediaAsset = {
   game?: RelatedGameSummary | null
   source: string
   title: string
-  imageUrl: string
+  imageUrl: string | null
+  mediaType?: 'photo' | 'video' | 'gallery'
+  videoUrl?: string | null
+  videoProvider?: string | null
+  externalVideoId?: string | null
+  embedUrl?: string | null
+  durationSeconds?: number | null
+  divisionSlug?: string | null
   articleUrl: string | null
   caption: string | null
   tags: string | null
@@ -380,6 +398,11 @@ export type TournamentChampion = {
   primary: boolean
   status: 'completed' | 'cancelled' | 'research_pending' | 'upcoming' | 'unknown'
   source: string
+  sourceUrl?: string | null
+  mvpName?: string | null
+  mvpNote?: string | null
+  recapArticleId?: string | null
+  highlightVideoId?: string | null
   notes: string | null
   position: number
   createdAt?: string

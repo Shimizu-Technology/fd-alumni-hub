@@ -8,6 +8,10 @@ module DataImport
       new(path).call
     end
 
+    def self.lock_archive!
+      TournamentChampion.connection.execute("SELECT pg_advisory_xact_lock(214923, 9)")
+    end
+
     def initialize(path)
       @path = Pathname(path)
     end
@@ -21,8 +25,9 @@ module DataImport
       imported = 0
 
       TournamentChampion.transaction do
+        self.class.lock_archive!
         records.each_with_index do |source, index|
-          champion = TournamentChampion.find_or_initialize_by(slug: slug_for(source))
+          champion = champion_for(source)
           champion.assign_attributes(attributes_for(source, index))
           champion.save!
           imported += 1
@@ -44,6 +49,19 @@ module DataImport
 
     attr_reader :path
 
+    def champion_for(source)
+      slug = slug_for(source)
+      existing = TournamentChampion.find_by(slug: slug)
+      return existing if existing
+
+      if source["bracket"] == "maroon" && source["primary"] && source["editionLabel"].blank?
+        legacy = TournamentChampion.primary_titles.find_by(slug: source.fetch("year").to_s, year: source.fetch("year"), bracket: "overall")
+        return legacy if legacy
+      end
+
+      TournamentChampion.new(slug: slug)
+    end
+
     def attributes_for(source, index)
       year = Integer(source.fetch("year"))
       champion_label = source["champion"].to_s.strip
@@ -59,6 +77,9 @@ module DataImport
         runner_up_label: runner_up_label,
         runner_up_key: TournamentChampion.canonical_key(source["runnerUpKey"].presence || runner_up_label),
         score: source["score"].to_s.strip.presence,
+        mvp_name: source["mvpName"],
+        mvp_note: source["mvpNote"],
+        source_url: source["sourceUrl"],
         bracket: source["bracket"].presence || "overall",
         primary: source.key?("primary") ? source["primary"] : true,
         status: source["status"].presence || "completed",

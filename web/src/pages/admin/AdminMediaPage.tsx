@@ -84,7 +84,7 @@ function CreateMediaPanel({ tournaments, games, selectedTournamentId, onSaved }:
 }
 
 function MediaRow({ asset, games, isAdmin, onSaved }: { asset: MediaAsset; games: Game[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState<MediaForm>({ tournamentId: asset.tournamentId, gameId: asset.gameId || '', source: asset.source, title: asset.title, imageUrl: asset.imageUrl, articleUrl: asset.articleUrl || '', caption: asset.caption || '', tags: asset.tags || '', takenAt: toDateInputValue(asset.takenAt) })
+  const [form, setForm] = useState<MediaForm>({ tournamentId: asset.tournamentId, gameId: asset.gameId || '', source: asset.source, title: asset.title, imageUrl: asset.imageUrl || '', articleUrl: asset.articleUrl || '', caption: asset.caption || '', tags: asset.tags || '', takenAt: toDateInputValue(asset.takenAt) })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [mutationError, setMutationError] = useState('')

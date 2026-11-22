@@ -10,25 +10,31 @@ class AddOptionalPlayerStatsTest < ActiveSupport::TestCase
     game = tournament.games.create!(home_team: home, away_team: away, start_time: Time.current)
     db = ActiveRecord::Base.connection
 
-    ActiveRecord::Migration.suppress_messages do
-      migration = AddOptionalPlayerStats.new
-      migration.migrate(:down)
-      refute db.table_exists?(:player_game_stats)
-      refute db.column_exists?(:games, :box_score_status)
-      refute db.column_exists?(:tournaments, :enable_player_stats)
-      db.execute("UPDATE games SET venue = 'Rollback court' WHERE id = #{game.id}")
-      assert AuditEvent.where(record_type: "Game", record_id: game.id.to_s).exists?(action: "update")
-      migration.migrate(:up)
+    db.transaction(requires_new: true) do
+      ActiveRecord::Migration.suppress_messages do
+        migration = AddOptionalPlayerStats.new
+        migration.migrate(:down)
+        refute db.table_exists?(:player_game_stats)
+        refute db.column_exists?(:games, :box_score_status)
+        refute db.column_exists?(:tournaments, :enable_player_stats)
+        db.execute("UPDATE games SET venue = 'Rollback court' WHERE id = #{game.id}")
+        assert AuditEvent.where(record_type: "Game", record_id: game.id.to_s).exists?(action: "update")
+        migration.migrate(:up)
+      end
+
+      db.clear_cache!
+      assert_equal false, tournament.reload.enable_player_stats?
+      assert_equal "none", game.reload.box_score_status
+      row = PlayerGameStat.create!(game: game, team: home, roster_entry: player, points: 0)
+      event = AuditEvent.find_by!(record_type: "PlayerGameStat", record_id: row.id.to_s)
+      assert_equal [ tournament.id, "results", "create", 0 ],
+        [ event.tournament_id, event.area, event.action, event.after_json["points"] ]
+
+      row.destroy!
+      assert AuditEvent.where(record_type: "PlayerGameStat", record_id: row.id.to_s, tournament_id: tournament.id).exists?(action: "delete")
+      raise ActiveRecord::Rollback
     end
-
-    assert_equal false, tournament.reload.enable_player_stats?
-    assert_equal "none", game.reload.box_score_status
-    row = PlayerGameStat.create!(game: game, team: home, roster_entry: player, points: 0)
-    event = AuditEvent.find_by!(record_type: "PlayerGameStat", record_id: row.id.to_s)
-    assert_equal [ tournament.id, "results", "create", 0 ],
-      [ event.tournament_id, event.area, event.action, event.after_json["points"] ]
-
-    row.destroy!
-    assert AuditEvent.where(record_type: "PlayerGameStat", record_id: row.id.to_s, tournament_id: tournament.id).exists?(action: "delete")
+  ensure
+    db&.clear_cache!
   end
 end

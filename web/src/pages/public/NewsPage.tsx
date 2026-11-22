@@ -4,6 +4,7 @@ import { useAsync } from '../../lib/hooks'
 import { formatGuamDate } from '../../lib/datetime'
 import { gameOptionLabel } from '../../lib/games'
 import { EmptyState, LoadingState, PageHeader, SectionUnavailable } from '../../components/ui'
+import { ArticleBadges } from '../../components/ArchiveBadges'
 import { IconExternal } from '../../components/Icons'
 
 export function NewsPage() {
@@ -35,6 +36,7 @@ export function NewsPage() {
               <div>
                 <span>{article.source} · {article.publishedAt ? formatGuamDate(article.publishedAt) : 'Date pending'}</span>
                 <h2>{article.title}</h2>
+                <ArticleBadges article={article} />
                 {article.game && <small>{gameOptionLabel(article.game)}</small>}
                 {article.excerpt && <p>{article.excerpt}</p>}
                 <small>Read source <IconExternal /></small>

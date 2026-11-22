@@ -4,7 +4,7 @@ module SafeUrlValidation
   extend ActiveSupport::Concern
 
   class_methods do
-    def validates_https_url(*attributes, allowed_hosts_env: nil, if_changed: false)
+    def validates_https_url(*attributes, allowed_hosts_env: nil, if_changed: false, strict: false)
       attributes.each do |attribute|
         validate do
           next if if_changed && !will_save_change_to_attribute?(attribute.to_s)
@@ -13,7 +13,7 @@ module SafeUrlValidation
           next if value.blank?
 
           uri = parse_safe_https_uri(value)
-          unless uri
+          unless uri && (!strict || uri.is_a?(URI::HTTPS))
             errors.add(attribute, "must be a valid https:// URL")
             next
           end
