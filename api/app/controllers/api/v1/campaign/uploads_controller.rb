@@ -19,6 +19,9 @@ module Api
             purpose: "campaign"
           )
 
+          Audit::EventRecorder.record!(area: "content", action: "image_upload_presigned",
+            record: @campaign, summary: "Issued an image upload authorization",
+            metadata: { expiresIn: result[:expiresIn], maxBytes: result[:maxBytes] })
           render json: result
         rescue PublicImageUploadPresigner::ConfigurationError => e
           render json: { error: e.message }, status: :service_unavailable

@@ -44,6 +44,14 @@ class PublicTodayAndPredictionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal @away.id.to_s, JSON.parse(response.body).dig("predictionPoll", "selectedTeamId")
     assert_equal 1, @poll.prediction_votes.count
+    vote = @poll.prediction_votes.first
+    event = AuditEvent.find_by!(record_type: "PredictionVote", record_id: vote.id.to_s, action: "create")
+    assert_equal "anonymous", event.actor_type
+    assert_nil event.actor_id
+    assert_equal @poll.tournament_id, event.tournament_id
+    assert_equal "[Redacted]", event.after_json["voter_token_hash"]
+    refute_includes event.api_json.to_json, vote.voter_token_hash
+    refute_includes event.api_json.to_json, "device-123"
 
     post "/api/v1/public/prediction-polls/#{@poll.id}/vote",
       params: { predictionVote: { voterToken: "device-123", teamId: @home.id } },

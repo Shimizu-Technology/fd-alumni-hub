@@ -102,6 +102,10 @@ module Hafapass
       end
 
       def refresh_snapshot!(organizer_slug, http_get: nil)
+        Audit::Context.with { perform_snapshot_refresh(organizer_slug, http_get: http_get) }
+      end
+
+      private def perform_snapshot_refresh(organizer_slug, http_get:)
         slug = organizer_slug.to_s.strip.downcase
         return nil unless slug.match?(HostCampaign::HAFAPASS_CODE_FORMAT)
 

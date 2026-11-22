@@ -16,3 +16,17 @@ namespace :audit do
     Audit::LegacyFinanceSync.backfill!
   end
 end
+
+namespace :audit do
+  desc "Checkpoint all committed audit events"
+  task checkpoint: :environment do
+    puts JSON.pretty_generate(Audit::CheckpointService.create!&.api_json)
+  end
+
+  desc "Verify the audit checkpoint chain"
+  task verify_checkpoints: :environment do
+    result = Audit::CheckpointService.verify!
+    puts JSON.pretty_generate(result)
+    abort "Audit checkpoint verification failed" unless result[:valid]
+  end
+end

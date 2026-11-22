@@ -90,6 +90,7 @@ class AdminImportsControllerTest < ActionDispatch::IntegrationTest
       as: :json
     rows = JSON.parse(response.body).fetch("rows")
 
+    latest_audit_id = AuditEvent.last.id
     # First commit by staff succeeds
     post "/api/v1/admin/tournaments/#{@tournament.id}/schedule-import/commit",
       params: { rows: rows },
@@ -99,6 +100,11 @@ class AdminImportsControllerTest < ActionDispatch::IntegrationTest
     commit_body = JSON.parse(response.body)
     assert_equal 2, commit_body["createdTeams"]
     assert_equal 1, commit_body["createdGames"]
+
+    audit_rows = AuditEvent.where("id > ?", latest_audit_id).where(tournament_id: @tournament.id)
+    assert_includes audit_rows.pluck(:record_type), "Game"
+    assert_equal 2, audit_rows.where(record_type: "Team").count
+    assert_equal 1, audit_rows.distinct.count(:operation_id)
 
     # Record a final score on G1
     game = @tournament.games.find_by!(game_number: "G1")

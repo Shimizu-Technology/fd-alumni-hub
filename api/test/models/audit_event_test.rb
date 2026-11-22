@@ -170,6 +170,84 @@ class AuditEventTest < ActiveSupport::TestCase
     end
   end
 
+  test "alert deletion retains the entire before snapshot" do
+    alert = TournamentAlert.create!(tournament: @tournament, title: "Court change", message: "Use the south court")
+    original = alert.attributes
+    alert.destroy!
+
+    event = AuditEvent.last
+    assert_equal [ "content", "delete", "TournamentAlert", @tournament.id ], [ event.area, event.action, event.record_type, event.tournament_id ]
+    assert_equal original.keys.sort, event.before_json.keys.sort
+    assert_equal "Use the south court", event.before_json["message"]
+    assert_empty event.after_json
+  end
+
+  test "database cascades capture all team children in one scoped operation" do
+    team = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017")
+    team.team_class_memberships.find_or_create_by!(class_cohort: @cohort)
+    team.roster_entries.create!(name: "Player One")
+    @tournament.standings.create!(team: team)
+    poll = PredictionPoll.create!(tournament: @tournament, poll_type: "tournament", question: "Who wins?")
+    poll.prediction_votes.create!(team: team, voter_token_hash: "secret-vote-hash")
+    first_id = AuditEvent.last.id
+
+    Team.where(id: team.id).delete_all
+
+    rows = AuditEvent.where("id > ?", first_id)
+    assert_equal %w[PredictionVote RosterEntry Standing Team TeamClassMembership], rows.pluck(:record_type).sort
+    assert_equal [ "delete" ], rows.distinct.pluck(:action)
+    assert_equal [ @tournament.id ], rows.distinct.pluck(:tournament_id)
+    assert_equal 1, rows.distinct.count(:operation_id)
+    vote_delete = rows.find_by!(record_type: "PredictionVote")
+    assert_equal "system", vote_delete.actor_type
+  end
+
+  test "anonymous prediction votes drop ip_address and request_id from audit history" do
+    team = @tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018")
+    poll = PredictionPoll.create!(tournament: @tournament, poll_type: "tournament", question: "Champion?")
+    Audit::Context.with(request_id: "vote-req-1", http_method: "POST", route_path: "/api/v1/public/prediction_votes", ip_address: "203.0.113.9") do
+      poll.prediction_votes.create!(team: team, voter_token_hash: "secret-voter-hash")
+    end
+
+    event = AuditEvent.where(record_type: "PredictionVote", action: "create").last
+    assert_equal "anonymous", event.actor_type
+    assert_nil event.ip_address
+    assert_nil event.request_id
+    assert_equal "[Redacted]", event.after_json["voter_token_hash"]
+    refute_includes event.after_json.to_json, "secret-voter-hash"
+  end
+
+  test "sensitive field rotations identify the change without storing raw values" do
+    campaign = create_campaign
+    @actor.update!(clerk_id: "old-private-clerk")
+    campaign.update!(hafapass_distribution_code: "old-private-code", hero_image_url: "https://example.test/img?sig=old-private")
+    @actor.update!(clerk_id: "new-private-clerk")
+    assert_redacted_rotation(AuditEvent.last, "clerk_id")
+
+    campaign.update!(hafapass_distribution_code: "new-private-code", hero_image_url: "https://example.test/img?sig=new-private")
+    assert_redacted_rotation(AuditEvent.last, "hafapass_distribution_code")
+    assert_redacted_rotation(AuditEvent.last, "hero_image_url")
+  end
+
+  test "HafaPass captures payload and error changes while ignoring lease and sync timestamps" do
+    snapshot = HafapassEventSnapshot.create!(organizer_slug: "audit-snapshot")
+    assert_no_difference("AuditEvent.count") do
+      snapshot.acquire_refresh_lease!
+      snapshot.reload.update!(fetched_at: Time.current, last_error_at: Time.current)
+    end
+    assert_difference("AuditEvent.count", 2) do
+      snapshot.update!(payload_json: [ { "title" => "Golf" } ])
+      snapshot.update!(last_error: "Unavailable")
+    end
+    assert_equal "Unavailable", AuditEvent.last.after_json["last_error"]
+  end
+
+  def assert_redacted_rotation(event, field)
+    assert_equal "[Redacted]", event.before_json[field]
+    assert_equal "[Redacted · changed]", event.after_json[field]
+    refute_match(/(?:old|new)-private/, event.api_json.to_json)
+  end
+
   private
 
   def create_campaign

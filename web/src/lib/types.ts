@@ -970,7 +970,15 @@ export type AdminAuditFilters = {
 
 export type AuditFilterOption = { id: string; label: string }
 
+export type AuditCheckpointSummary = {
+  latestCheckpointId: string | null
+  createdAt: string | null
+  coveredEventCount: number
+  uncheckpointedEventCount: number
+}
+
 export type AdminAuditResponse = {
+  checkpointSummary?: AuditCheckpointSummary
   auditEvents: AuditEvent[]
   nextCursor: string | null
   filterOptions?: {
@@ -979,4 +987,10 @@ export type AdminAuditResponse = {
     tournaments: AuditFilterOption[]
     campaigns: AuditFilterOption[]
   }
+}
+
+export type AdminAuditExportResponse = {
+  auditEvents: AuditEvent[]
+  latestCheckpoint: Record<string, unknown> | null
+  truncated: boolean
 }

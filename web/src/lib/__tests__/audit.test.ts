@@ -15,6 +15,14 @@ describe('auditFieldDiff', () => {
     expect(auditFieldLabel('tournament_id')).toBe('Tournament ID')
   })
 
+  it('shows a sensitive field rotation when only the redaction marker changes', () => {
+    expect(auditFieldDiff({
+      before: { clerk_id: '[Redacted]', upload_token: '[Redacted]' },
+      after: { clerk_id: '[Redacted · changed]', upload_token: '[Redacted]' },
+      legacySource: null,
+    })).toEqual([{ field: 'clerk_id', before: '[Redacted]', after: '[Redacted · changed]' }])
+  })
+
   it('uses finance change pairs and preserves archive warning lists', () => {
     expect(auditFieldDiff({
       before: {},

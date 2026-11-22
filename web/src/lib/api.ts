@@ -1,4 +1,5 @@
 import type {
+  AdminAuditExportResponse,
   AdminAuditFilters,
   AdminAuditResponse,
   AdminCampaignEvent,
@@ -158,6 +159,8 @@ function query(params: Record<string, string | number | null | undefined>) {
 }
 
 export const api = {
+  adminAuditExport: (params: AdminAuditFilters = {}) =>
+    request<AdminAuditExportResponse>(`/admin/audit_events/export${query(params)}`),
   adminAuditEvents: (params: AdminAuditFilters = {}, signal?: AbortSignal) =>
     request<AdminAuditResponse>(`/admin/audit_events${query(params)}`, { signal }),
 

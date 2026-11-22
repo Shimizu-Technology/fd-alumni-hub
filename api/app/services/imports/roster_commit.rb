@@ -19,6 +19,10 @@ module Imports
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       raise Imports::RosterParser::ParseError, "At least one roster row is required to commit" unless @rows.is_a?(Array) && @rows.any?
 
       created = 0

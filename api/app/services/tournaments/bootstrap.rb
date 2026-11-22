@@ -35,6 +35,10 @@ module Tournaments
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       ActiveRecord::Base.transaction do
         tournament = resolve_or_create_tournament!
         divisions = configure_divisions!(tournament)

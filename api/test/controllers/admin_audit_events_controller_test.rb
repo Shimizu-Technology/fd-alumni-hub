@@ -26,6 +26,46 @@ class AdminAuditEventsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "no-store", response.headers["Cache-Control"]
   end
 
+  test "filtered export requires admin and excludes private request data" do
+    checkpoint = Audit::CheckpointService.create!
+    AuditEvent.create!(area: "content", action: "update", record_type: "Game", record_id: "1",
+      operation_id: "campaign-audit", summary: "Historical event", after_json: { "objectKey" => "private-object-key" })
+
+    get "#{PATH}/export"
+    assert_response :unauthorized
+    get "#{PATH}/export", headers: auth_headers(@staff)
+    assert_response :forbidden
+    get "#{PATH}/export", headers: auth_headers(@admin), params: { operation_id: "campaign-audit" }
+    assert_response :success
+    assert_equal "no-store", response.headers["Cache-Control"]
+    assert_equal checkpoint.id.to_s, response.parsed_body.dig("latestCheckpoint", "id")
+    assert_equal 3, response.parsed_body.fetch("auditEvents").size
+    %w[ip_address ipAddress 192.0.2.1 token=private private-object-key].each { |value| refute_includes response.body, value }
+
+    export_event = AuditEvent.find_by!(area: "access", action: "audit_exported")
+    assert_equal @admin.id, export_event.actor_id
+    assert_equal 3, export_event.metadata_json["exportedCount"]
+
+    get PATH, headers: auth_headers(@admin)
+    assert_equal checkpoint.event_count, response.parsed_body.dig("checkpointSummary", "coveredEventCount")
+    assert_equal 2, response.parsed_body.dig("checkpointSummary", "uncheckpointedEventCount")
+  end
+
+  test "export continues across multiple batches when row limit exceeds batch size" do
+    rows = 55.times.map do |i|
+      {
+        area: "content", action: "update", record_type: "Game", record_id: (i + 100).to_s,
+        operation_id: "batch-export-op", summary: "Batch event #{i}", occurred_at: Time.current
+      }
+    end
+    AuditEvent.insert_all!(rows)
+
+    get "#{PATH}/export", headers: auth_headers(@admin), params: { operation_id: "batch-export-op", limit: 52 }
+    assert_response :success
+    assert_equal 52, response.parsed_body.fetch("auditEvents").size
+    assert_equal true, response.parsed_body.fetch("truncated")
+  end
+
   test "supports combined filters and treats search punctuation literally" do
     get PATH, headers: auth_headers(@admin), params: {
       area: "campaigns", q: "gOLD drive 100%", actor_id: @admin.id, operation_id: "campaign-audit",

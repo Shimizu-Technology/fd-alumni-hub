@@ -20,9 +20,60 @@ module Api
             auditEvents: events.map(&:api_json),
             nextCursor: has_more ? encode_cursor(events.last) : nil
           }
-          payload[:filterOptions] = filter_options if params[:cursor].blank?
+          if params[:cursor].blank?
+            payload[:filterOptions] = filter_options
+            payload[:checkpointSummary] = Audit::CheckpointService.summary
+          end
 
           render json: payload
+        rescue ArgumentError, RangeError
+          render json: { error: "Invalid audit history filter or cursor." }, status: :bad_request
+        end
+
+        EXPORT_BATCH_SIZE = 50
+        MAX_EXPORT_BYTES = 5.megabytes
+
+        def export
+          response.headers["Cache-Control"] = "no-store"
+          limit = params[:limit].nil? ? 1000 : integer_param(params[:limit]).clamp(1, 1000)
+          events = filtered_events.order(occurred_at: :desc, id: :desc).limit(limit + 1).to_a
+          truncated = events.length > limit
+          events.pop if truncated
+
+          exported = []
+          total_bytes = 0
+          byte_capped = false
+          events.each_slice(EXPORT_BATCH_SIZE) do |slice|
+            redacted_slice = Audit::Redactor.call(slice.map(&:api_json))
+            redacted_slice.each do |entry|
+              entry_bytes = entry.to_json.bytesize
+              if exported.any? && (total_bytes + entry_bytes) > MAX_EXPORT_BYTES
+                byte_capped = true
+                break
+              end
+              exported << entry
+              total_bytes += entry_bytes
+            end
+            break if byte_capped
+          end
+          truncated ||= byte_capped
+
+          Audit::EventRecorder.record!(
+            area: "access",
+            action: "audit_exported",
+            record_type: "AuditEvent",
+            record_id: "export",
+            tournament_id: params[:tournament_id].present? ? integer_param(params[:tournament_id]) : nil,
+            host_campaign_id: params[:host_campaign_id].present? ? integer_param(params[:host_campaign_id]) : nil,
+            summary: "#{current_user.full_name} exported audit history",
+            metadata: { exportedCount: exported.size, truncated: truncated }
+          )
+
+          render json: {
+            auditEvents: exported,
+            latestCheckpoint: Audit::CheckpointService.latest&.api_json,
+            truncated: truncated
+          }
         rescue ArgumentError, RangeError
           render json: { error: "Invalid audit history filter or cursor." }, status: :bad_request
         end

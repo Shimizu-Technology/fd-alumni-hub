@@ -39,6 +39,10 @@ module HostCampaigns
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       target_tournament = resolve_existing_target_tournament!
       validate_new_tournament_year! unless target_tournament
 

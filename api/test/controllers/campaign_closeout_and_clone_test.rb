@@ -287,6 +287,10 @@ class CampaignCloseoutAndCloneTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
 
     cloned = HostCampaign.find(body.dig("campaign", "id"))
+    audit_rows = AuditEvent.where(host_campaign_id: cloned.id, action: "create")
+    assert_equal %w[BudgetLine CampaignEvent HostCampaign], audit_rows.pluck(:record_type).sort
+    assert_equal 1, audit_rows.distinct.count(:operation_id)
+    assert_equal [ cloned.tournament_id ], audit_rows.distinct.pluck(:tournament_id)
     assert_equal "upcoming", cloned.tournament.status
     assert_equal "draft", cloned.status
     assert_equal false, cloned.featured

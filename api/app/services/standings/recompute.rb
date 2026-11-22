@@ -50,6 +50,10 @@ module Standings
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       recompute_plan = nil
 
       @tournament.with_lock do
@@ -83,14 +87,20 @@ module Standings
           counted_games: recompute_plan.counted_games
         )
 
-        @tournament.standings.delete_all
+        existing_by_team_id = @tournament.standings.index_by(&:team_id)
+        eligible_team_ids = recompute_plan.eligible_teams.map(&:id)
+        stale_team_ids = existing_by_team_id.keys - eligible_team_ids
+        @tournament.standings.where(team_id: stale_team_ids).delete_all if stale_team_ids.any?
+
         recompute_plan.eligible_teams.each do |team|
-          @tournament.standings.create!(
-            rows_by_team_id.fetch(team.id).merge(
-              team: team,
-              division_rank: ranks_by_team_id[team.id]
-            )
-          )
+          attrs = rows_by_team_id.fetch(team.id).merge(division_rank: ranks_by_team_id[team.id])
+          existing = existing_by_team_id[team.id]
+          if existing
+            existing.assign_attributes(attrs)
+            existing.save! if existing.changed?
+          else
+            @tournament.standings.create!(attrs.merge(team: team))
+          end
         end
       end
 

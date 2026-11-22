@@ -14,6 +14,10 @@ module DataImport
     end
 
     def call
+      Audit::Context.with { perform }
+    end
+
+    private def perform
       payload = JSON.parse(path.read)
       games = payload.fetch("games")
       source = payload.fetch("source")
