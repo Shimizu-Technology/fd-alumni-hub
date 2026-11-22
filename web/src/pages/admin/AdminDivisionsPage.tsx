@@ -70,7 +70,7 @@ export function AdminDivisionsPage() {
         actions={tournament && <Link className="btn primary" to={tournamentScopedPath('/admin/games', tournament.id)}>Build schedule</Link>}
       />
       <TournamentFilter tournaments={tournaments} value={tournament?.id || ''} onChange={setTournamentId} />
-      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} isAdmin={isAdmin} onSaved={reload} />
+      <DivisionSettingsPanel tournament={tournament} divisions={divisions} allDivisions={allDivisions} loading={loading} isAdmin={isAdmin} onSaved={reload} />
       <CreateTeamPanel tournament={tournament} teamsCount={teams.length} divisions={divisions} classOptions={classOptions} classAssignmentIndex={classAssignmentIndex} onSaved={reload} />
       <ClassCoverageBoard key={tournament?.id || 'no-tournament'} tournament={tournament} assignments={classAssignments} />
       <Panel>
@@ -102,16 +102,24 @@ function TournamentFilter({ tournaments, value, onChange }: { tournaments: Tourn
   return <Panel className="toolbar-panel"><label><span>Tournament</span><select value={value} onChange={(event) => onChange(event.target.value)}>{tournaments.map((tournament) => <option key={tournament.id} value={tournament.id}>{tournament.year} · {tournament.name}</option>)}</select></label></Panel>
 }
 
-function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; isAdmin: boolean; onSaved: () => Promise<void> }) {
-  const nextPosition = useMemo(() => Math.max(0, ...allDivisions.map((division) => division.position)) + 1, [allDivisions])
-  const [form, setForm] = useState({ name: '', startsYear: '', position: '1' })
+function DivisionSettingsPanel({ tournament, divisions, allDivisions, loading, isAdmin, onSaved }: { tournament: Tournament | null; divisions: Division[]; allDivisions: Division[]; loading: boolean; isAdmin: boolean; onSaved: () => Promise<void> }) {
+  const scopedDivisions = useMemo(
+    () => (tournament ? divisions.filter((division) => !division.tournamentId || division.tournamentId === tournament.id) : []),
+    [divisions, tournament],
+  )
+  const scopedAllDivisions = useMemo(
+    () => (tournament ? allDivisions.filter((division) => !division.tournamentId || division.tournamentId === tournament.id) : []),
+    [allDivisions, tournament],
+  )
+  const nextPosition = useMemo(() => Math.max(0, ...scopedAllDivisions.map((division) => division.position)) + 1, [scopedAllDivisions])
+  const [form, setForm] = useState({ name: '', position: '1', countsForStandings: true })
   const [saveSuccess, setSaveSuccess] = useState('')
   const [saveError, setSaveError] = useState('')
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    setForm((current) => ({ ...current, startsYear: tournament ? String(tournament.year) : '', position: String(nextPosition) }))
-  }, [nextPosition, tournament?.year])
+    setForm((current) => ({ ...current, position: String(nextPosition) }))
+  }, [nextPosition])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -124,12 +132,13 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
 
     try {
       await api.adminCreateDivision({
+        tournamentId: tournament.id,
         name: form.name,
-        startsYear: form.startsYear ? Number(form.startsYear) : null,
         position: Number(form.position || nextPosition),
+        countsForStandings: form.countsForStandings,
         active: true,
       })
-      setForm((current) => ({ ...current, name: '', position: String(nextPosition + 1) }))
+      setForm({ name: '', position: String(nextPosition + 1), countsForStandings: true })
       setSaveSuccess('Division added')
       await onSaved()
     } catch (err) {
@@ -142,7 +151,7 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
       <div className="section-heading collapsible-heading">
         <div>
           <h2>Division settings</h2>
-          <p>{isAdmin ? 'Rarely changed. Current tournament divisions are shown below.' : 'Configured by administrators. Current tournament divisions are shown below.'}</p>
+          <p>{isAdmin ? 'Divisions are scoped to the selected tournament so historical years never change.' : 'Configured by administrators for the selected tournament.'}</p>
         </div>
         {isAdmin && (
           <button className="btn secondary small" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
@@ -151,30 +160,39 @@ function DivisionSettingsPanel({ tournament, divisions, allDivisions, isAdmin, o
         )}
       </div>
       <div className="division-pill-list" aria-label="Available divisions for selected tournament">
-        {divisions.map((division) => <span key={division.id}>{division.name}</span>)}
+        {loading ? <span className="muted">Loading divisions…</span> : scopedDivisions.map((division) => (
+          <span key={division.id}>
+            {division.name}{division.countsForStandings === false ? ' (Non-standings)' : ''}
+          </span>
+        ))}
       </div>
       {saveSuccess && <p className="form-note" role="status">{saveSuccess}</p>}
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
-      {isAdmin && open && (
+      {isAdmin && open && !loading && (
         <div className="collapsible-body">
           <form onSubmit={submit} className="stacked-form">
-            <p className="form-note">Adding a new division defaults to {tournament ? `${tournament.year} and future tournaments` : 'the selected tournament year'}. Renaming a division updates teams and games assigned to that division; create a new division for future-only changes.</p>
+            <p className="form-note">Divisions created here apply only to {tournament ? `${tournament.year} · ${tournament.name}` : 'the selected tournament'}. Uncheck "Counts for standings" for exhibition or Special divisions.</p>
             <FormGrid>
               <Field label="Division name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Platinum" required /></Field>
-              <Field label="Starting year"><input type="number" value={form.startsYear} onChange={(event) => setForm({ ...form, startsYear: event.target.value })} placeholder="All years if blank" /></Field>
               <Field label="Display order"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
+              <label className="check-field"><input type="checkbox" checked={form.countsForStandings} onChange={(event) => setForm({ ...form, countsForStandings: event.target.checked })} /> Counts for standings</label>
             </FormGrid>
             <button className="btn secondary" type="submit">Add division</button>
           </form>
-          {allDivisions.length > 0 && <div className="admin-list compact-admin-list">{allDivisions.map((division) => <EditableDivision key={division.id} division={division} onSaved={onSaved} />)}</div>}
+          {scopedAllDivisions.length > 0 && <div className="admin-list compact-admin-list">{scopedAllDivisions.map((division) => <EditableDivision key={division.id} division={division} tournamentId={tournament?.id} onSaved={onSaved} />)}</div>}
         </div>
       )}
     </Panel>
   )
 }
 
-function EditableDivision({ division, onSaved }: { division: Division; onSaved: () => Promise<void> }) {
-  const [form, setForm] = useState({ name: division.name, startsYear: division.startsYear?.toString() || '', position: String(division.position), active: division.active })
+function EditableDivision({ division, tournamentId, onSaved }: { division: Division; tournamentId?: string; onSaved: () => Promise<void> }) {
+  const [form, setForm] = useState({
+    name: division.name,
+    position: String(division.position),
+    active: division.active,
+    countsForStandings: division.countsForStandings !== false,
+  })
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
 
@@ -182,12 +200,16 @@ function EditableDivision({ division, onSaved }: { division: Division; onSaved: 
     setSaving(true)
     setSaveError('')
     try {
-      await api.adminUpdateDivision(division.id, {
-        name: form.name,
-        startsYear: form.startsYear ? Number(form.startsYear) : null,
-        position: Number(form.position || 0),
-        active: form.active,
-      })
+      await api.adminUpdateDivision(
+        division.id,
+        {
+          name: form.name,
+          position: Number(form.position || 0),
+          active: form.active,
+          countsForStandings: form.countsForStandings,
+        },
+        division.tournamentId || tournamentId,
+      )
       await onSaved()
     } catch (err) {
       setSaveError(mutationErrorMessage(err, 'Unable to save division'))
@@ -200,11 +222,11 @@ function EditableDivision({ division, onSaved }: { division: Division; onSaved: 
     <article className="admin-row-card compact-admin-row">
       <FormGrid>
         <Field label="Name"><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></Field>
-        <Field label="Starting year"><input type="number" value={form.startsYear} onChange={(event) => setForm({ ...form, startsYear: event.target.value })} placeholder="All years" /></Field>
         <Field label="Order"><input type="number" value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} /></Field>
       </FormGrid>
+      <label className="check-field"><input type="checkbox" checked={form.countsForStandings} onChange={(event) => setForm({ ...form, countsForStandings: event.target.checked })} /> Counts for standings</label>
       <label className="check-field"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} /> Active</label>
-      <StatusBadge status={division.available ? 'available' : 'future'} />
+      <StatusBadge status={division.active ? 'active' : 'inactive'} />
       {saveError && <p className="form-error" role="alert">{saveError}</p>}
       <button className="btn secondary small" onClick={save} disabled={saving}>{saving ? 'Saving' : 'Save division'}</button>
     </article>

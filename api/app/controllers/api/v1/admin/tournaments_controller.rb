@@ -18,7 +18,11 @@ module Api
           tournament = Tournament.new(tournament_params)
 
           if tournament.save
-            render json: { tournament: tournament.api_json }, status: :created
+            tournament.ensure_default_divisions! if seed_default_divisions?
+            render json: {
+              tournament: tournament.api_json,
+              divisions: tournament.divisions.ordered.map { |division| division.api_json(tournament: tournament) }
+            }, status: :created
           else
             render_errors(tournament)
           end
@@ -42,11 +46,23 @@ module Api
           render json: {
             tournament: tournament.api_json,
             recompute: { teams: result.teams, games: result.games },
-            standings: tournament.standings.ranked.map(&:api_json)
+            standings: tournament.standings.ranked.map(&:api_json),
+            scoreCoverage: Standings::Coverage.for(tournament)
           }
         end
 
         private
+
+        def seed_default_divisions?
+          raw = params.fetch(:tournament, params)
+          flag = raw[:seedDefaultDivisions]
+          flag = raw[:seed_default_divisions] if flag.nil?
+          flag = params[:seedDefaultDivisions] if flag.nil?
+          flag = params[:seed_default_divisions] if flag.nil?
+          return true if flag.nil?
+
+          ActiveModel::Type::Boolean.new.cast(flag)
+        end
 
         def tournament_params
           raw = params.fetch(:tournament, params)

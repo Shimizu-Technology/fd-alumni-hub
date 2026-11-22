@@ -13,6 +13,7 @@ import type {
   ClassProfile,
   CurrentUser,
   Division,
+  DivisionStandingsGroup,
   FinanceAuditEvent,
   FinanceSummary,
   Game,
@@ -176,8 +177,8 @@ export const api = {
   publicTeam: (id: string) => request<{ tournament: Tournament; team: Team; standing: Standing | null; games: Game[]; articles: Article[]; titleRecords: TournamentChampion[] }>(`/public/teams/${id}`),
   publicSchedule: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; phase?: string | null; teamId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; games: Game[]; teams: Team[]; divisions: string[]; phases: string[] }>(`/public/schedule${query(params)}`),
-  publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null } = {}) =>
-    request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
+  publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; divisionId?: string | null } = {}) =>
+    request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
   publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
     request<{ tournament: Tournament | null; articles: Article[] }>(`/public/articles${query(params)}`),
   publicMedia: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
@@ -196,9 +197,9 @@ export const api = {
   adminCreateTournament: (payload: Partial<Tournament>) => request<{ tournament: Tournament }>('/admin/tournaments', json('POST', { tournament: payload })),
   adminUpdateTournament: (id: string, payload: Partial<Tournament>) => request<{ tournament: Tournament }>(`/admin/tournaments/${id}`, json('PATCH', { tournament: payload })),
 
-  adminDivisions: (tournamentId?: string | null) => request<{ divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
+  adminDivisions: (tournamentId?: string | null) => request<{ tournament?: Tournament | null; divisions: Division[]; allDivisions: Division[] }>(`/admin/divisions${query({ tournamentId })}`),
   adminCreateDivision: (payload: Partial<Division> & { tournamentId?: string | null }) => request<{ division: Division }>(`/admin/divisions${query({ tournamentId: payload.tournamentId })}`, json('POST', { division: payload })),
-  adminUpdateDivision: (id: string, payload: Partial<Division>) => request<{ division: Division }>(`/admin/divisions/${id}`, json('PATCH', { division: payload })),
+  adminUpdateDivision: (id: string, payload: Partial<Division>, tournamentId?: string | null) => request<{ division: Division }>(`/admin/divisions/${id}${query({ tournamentId })}`, json('PATCH', { division: payload })),
   adminClassCohorts: () => request<{ classCohorts: ClassCohort[] }>('/admin/class-cohorts'),
 
   adminTeams: (tournamentId?: string | null) => request<{ teams: Team[] }>(`/admin/teams${query({ tournamentId })}`),
@@ -226,8 +227,8 @@ export const api = {
   adminCreateGame: (payload: Partial<Game>) => request<{ game: Game }>('/admin/games', json('POST', { game: payload })),
   adminUpdateGame: (id: string, payload: Partial<Game>) => request<{ game: Game; recompute?: { teams: number; games: number } }>(`/admin/games/${id}`, json('PATCH', { game: payload })),
 
-  adminStandings: (tournamentId?: string | null) => request<{ tournament: Tournament | null; standings: Standing[]; scoreCoverage: ScoreCoverage }>(`/admin/standings${query({ tournamentId })}`),
-  adminRecomputeStandings: (tournamentId?: string | null) => request<{ tournament: Tournament; recompute: { teams: number; games: number }; standings: Standing[]; scoreCoverage: ScoreCoverage }>(`/admin/standings/recompute${query({ tournamentId })}`, json('POST')),
+  adminStandings: (tournamentId?: string | null) => request<{ tournament: Tournament | null; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings${query({ tournamentId })}`),
+  adminRecomputeStandings: (tournamentId?: string | null) => request<{ tournament: Tournament; recompute: { teams: number; games: number }; standings: Standing[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/admin/standings/recompute${query({ tournamentId })}`, json('POST')),
 
   adminArticles: (tournamentId?: string | null) => request<{ articles: Article[] }>(`/admin/articles${query({ tournamentId })}`),
   adminCreateArticle: (payload: Partial<Article>) => request<{ article: Article }>('/admin/articles', json('POST', { article: payload })),
@@ -260,7 +261,7 @@ export const api = {
     missingStreams: Game[]
     missingScores: Game[]
   }>(`/admin/missing-links${query({ tournamentId })}`),
-  adminBulkLinks: (updates: Array<{ id: string; ticketUrl?: string | null; streamUrl?: string | null }>) =>
+  adminBulkLinks: (updates: Array<{ id: string; ticketUrl?: string | null; streamUrl?: string | null; lockVersion?: number }>) =>
     request<{ updated: number; games: Game[] }>('/admin/links/bulk', json('PATCH', { updates })),
 
   campaignSettings: (campaignSlug: string) =>

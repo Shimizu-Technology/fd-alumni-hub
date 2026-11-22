@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_22_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -181,8 +181,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tournament_id", null: false
+    t.boolean "counts_for_standings", default: true, null: false
+    t.index "tournament_id, lower((name)::text)", name: "index_divisions_on_tournament_and_lower_name", unique: true
     t.index ["active", "starts_year", "position"], name: "index_divisions_on_active_and_starts_year_and_position"
-    t.index ["slug"], name: "index_divisions_on_slug", unique: true
+    t.index ["tournament_id", "active", "position"], name: "index_divisions_on_tournament_active_position"
+    t.index ["tournament_id", "slug"], name: "index_divisions_on_tournament_and_slug", unique: true
+    t.index ["tournament_id"], name: "index_divisions_on_tournament_id"
   end
 
   create_table "finance_audit_events", force: :cascade do |t|
@@ -235,15 +240,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.datetime "updated_at", null: false
     t.string "venue"
     t.bigint "division_id"
+    t.string "phase", default: "pool", null: false
+    t.string "game_number"
+    t.string "bracket_round"
+    t.integer "bracket_slot"
+    t.bigint "next_game_id"
+    t.string "next_game_slot"
+    t.string "status_note"
+    t.integer "lock_version", default: 0, null: false
+    t.string "last_score_mutation_id"
+    t.string "last_score_mutation_digest"
+    t.bigint "score_updated_by_id"
+    t.datetime "score_updated_at"
+    t.index "tournament_id, lower((game_number)::text)", name: "index_games_on_tournament_game_number_unique", unique: true, where: "(game_number IS NOT NULL)"
     t.index ["away_team_id"], name: "index_games_on_away_team_id"
     t.index ["division_id"], name: "index_games_on_division_id"
     t.index ["home_team_id"], name: "index_games_on_home_team_id"
     t.index ["legacy_id"], name: "index_games_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
+    t.index ["next_game_id", "next_game_slot"], name: "index_games_on_next_game_slot_unique", unique: true, where: "(next_game_id IS NOT NULL)"
+    t.index ["next_game_id"], name: "index_games_on_next_game_id"
+    t.index ["score_updated_by_id"], name: "index_games_on_score_updated_by_id"
     t.index ["status"], name: "index_games_on_status"
     t.index ["tournament_id", "division"], name: "index_games_on_tournament_id_and_division"
+    t.index ["tournament_id", "division_id", "phase", "bracket_round", "bracket_slot"], name: "index_games_on_tournament_bracket"
+    t.index ["tournament_id", "phase", "start_time"], name: "index_games_on_tournament_phase_start"
     t.index ["tournament_id", "placeholder"], name: "index_games_on_tournament_id_and_placeholder"
     t.index ["tournament_id", "start_time"], name: "index_games_on_tournament_id_and_start_time"
     t.index ["tournament_id"], name: "index_games_on_tournament_id"
+    t.check_constraint "bracket_round IS NULL OR (bracket_round::text = ANY (ARRAY['play_in'::character varying, 'round_of_16'::character varying, 'quarterfinal'::character varying, 'semifinal'::character varying, 'final'::character varying, 'third_place'::character varying]::text[]))", name: "chk_games_bracket_round"
+    t.check_constraint "bracket_slot IS NULL OR bracket_slot > 0", name: "chk_games_bracket_slot_positive"
+    t.check_constraint "next_game_id IS NULL OR (next_game_slot::text = ANY (ARRAY['home'::character varying, 'away'::character varying]::text[]))", name: "chk_games_next_game_slot_consistency"
+    t.check_constraint "next_game_id IS NULL OR next_game_id <> id", name: "chk_games_next_game_not_self"
+    t.check_constraint "phase::text = ANY (ARRAY['pool'::character varying, 'playoff'::character varying, 'fatherson'::character varying, 'exhibition'::character varying]::text[])", name: "chk_games_phase"
+    t.check_constraint "status::text = ANY (ARRAY['scheduled'::character varying, 'live'::character varying, 'final'::character varying, 'delayed'::character varying, 'postponed'::character varying, 'cancelled'::character varying]::text[])", name: "chk_games_status"
   end
 
   create_table "hafapass_event_snapshots", force: :cascade do |t|
@@ -482,8 +511,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
     t.bigint "tournament_id", null: false
     t.datetime "updated_at", null: false
     t.integer "wins", default: 0, null: false
+    t.integer "division_rank"
     t.index ["legacy_id"], name: "index_standings_on_legacy_id", unique: true, where: "(legacy_id IS NOT NULL)"
     t.index ["team_id"], name: "index_standings_on_team_id"
+    t.index ["tournament_id", "division_rank"], name: "index_standings_on_tournament_division_rank"
     t.index ["tournament_id", "team_id"], name: "index_standings_on_tournament_id_and_team_id", unique: true
     t.index ["tournament_id", "wins", "losses"], name: "index_standings_on_tournament_id_and_wins_and_losses"
     t.index ["tournament_id"], name: "index_standings_on_tournament_id"
@@ -600,13 +631,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_22_000006) do
   add_foreign_key "campaign_posts", "host_campaigns", on_delete: :restrict
   add_foreign_key "campaign_posts", "users", column: "author_id", on_delete: :restrict
   add_foreign_key "content_ingest_items", "tournaments", on_delete: :cascade
+  add_foreign_key "divisions", "tournaments", on_delete: :cascade
   add_foreign_key "finance_audit_events", "host_campaigns", on_delete: :restrict
   add_foreign_key "finance_audit_events", "users", column: "actor_id", on_delete: :restrict
   add_foreign_key "game_day_notes", "tournaments", on_delete: :cascade
   add_foreign_key "games", "divisions", on_delete: :nullify
+  add_foreign_key "games", "games", column: "next_game_id", on_delete: :nullify
   add_foreign_key "games", "teams", column: "away_team_id"
   add_foreign_key "games", "teams", column: "home_team_id"
   add_foreign_key "games", "tournaments", on_delete: :cascade
+  add_foreign_key "games", "users", column: "score_updated_by_id", on_delete: :nullify
   add_foreign_key "host_campaigns", "class_cohorts", on_delete: :restrict
   add_foreign_key "host_campaigns", "tournaments", on_delete: :restrict
   add_foreign_key "ledger_entries", "budget_lines", on_delete: :restrict

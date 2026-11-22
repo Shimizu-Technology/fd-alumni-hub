@@ -13,7 +13,7 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
       end_date: Date.new(2027, 7, 16),
       status: "upcoming"
     )
-    @division = Division.create!(name: "Maroon", position: 1)
+    @division = @tournament.divisions.create!(name: "Maroon", position: 1)
     @team_a = @tournament.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division_record: @division)
     @team_b = @tournament.teams.create!(class_year_label: "2018", display_name: "Class of 2018", division_record: @division)
     @removable_team = @tournament.teams.create!(class_year_label: "2019", display_name: "Class of 2019", division_record: @division)
@@ -198,13 +198,13 @@ class AdminAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     post "/api/v1/admin/divisions",
-      params: { division: { name: "Legends", position: 9 } },
+      params: { tournamentId: @tournament.id, division: { name: "Legends", position: 9 } },
       headers: headers_for(@admin),
       as: :json
     assert_response :created
 
     patch "/api/v1/admin/divisions/#{@division.id}",
-      params: { division: { position: 2 } },
+      params: { tournamentId: @tournament.id, division: { position: 2 } },
       headers: headers_for(@admin),
       as: :json
     assert_response :success

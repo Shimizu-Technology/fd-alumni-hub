@@ -50,34 +50,47 @@ module Standings
     end
 
     def call
-      recompute_plan = plan
+      recompute_plan = nil
 
-      rows_by_team_id = recompute_plan.eligible_teams.to_h do |team|
-        [ team.id, { wins: 0, losses: 0, points_for: 0, points_against: 0 } ]
-      end
+      @tournament.with_lock do
+        recompute_plan = plan
 
-      recompute_plan.counted_games.each do |game|
-        home = rows_by_team_id[game.home_team_id]
-        away = rows_by_team_id[game.away_team_id]
-
-        home[:points_for] += game.home_score
-        home[:points_against] += game.away_score
-        away[:points_for] += game.away_score
-        away[:points_against] += game.home_score
-
-        if game.home_score > game.away_score
-          home[:wins] += 1
-          away[:losses] += 1
-        elsif game.away_score > game.home_score
-          away[:wins] += 1
-          home[:losses] += 1
+        rows_by_team_id = recompute_plan.eligible_teams.to_h do |team|
+          [ team.id, { wins: 0, losses: 0, points_for: 0, points_against: 0 } ]
         end
-      end
 
-      Standing.transaction do
+        recompute_plan.counted_games.each do |game|
+          home = rows_by_team_id[game.home_team_id]
+          away = rows_by_team_id[game.away_team_id]
+
+          home[:points_for] += game.home_score
+          home[:points_against] += game.away_score
+          away[:points_for] += game.away_score
+          away[:points_against] += game.home_score
+
+          if game.home_score > game.away_score
+            home[:wins] += 1
+            away[:losses] += 1
+          elsif game.away_score > game.home_score
+            away[:wins] += 1
+            home[:losses] += 1
+          end
+        end
+
+        ranks_by_team_id = Standings::Ranker.rank_by_division(
+          eligible_teams: recompute_plan.eligible_teams,
+          rows_by_team_id: rows_by_team_id,
+          counted_games: recompute_plan.counted_games
+        )
+
         @tournament.standings.delete_all
         recompute_plan.eligible_teams.each do |team|
-          @tournament.standings.create!(rows_by_team_id.fetch(team.id).merge(team: team))
+          @tournament.standings.create!(
+            rows_by_team_id.fetch(team.id).merge(
+              team: team,
+              division_rank: ranks_by_team_id[team.id]
+            )
+          )
         end
       end
 

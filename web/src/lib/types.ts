@@ -1,13 +1,17 @@
 export type TournamentStatus = 'upcoming' | 'live' | 'completed' | 'cancelled'
-export type GameStatus = 'scheduled' | 'live' | 'final'
+export type GameStatus = 'scheduled' | 'live' | 'final' | 'delayed' | 'postponed' | 'cancelled'
+export type GamePhase = 'pool' | 'playoff' | 'fatherson' | 'exhibition'
+export type BracketRound = 'play_in' | 'round_of_16' | 'quarterfinal' | 'semifinal' | 'final' | 'third_place'
 export type IngestStatus = 'pending' | 'approved' | 'rejected'
 export type IngestKind = 'article' | 'media'
 
 export type Division = {
   id: string
+  tournamentId?: string
   name: string
   slug: string
-  startsYear: number | null
+  countsForStandings?: boolean
+  startsYear?: number | null
   position: number
   active: boolean
   available?: boolean
@@ -99,6 +103,9 @@ export type Game = {
   startTime: string
   venue: string | null
   status: GameStatus
+  statusNote?: string | null
+  phase?: GamePhase
+  gameNumber?: string | null
   homeScore: number | null
   awayScore: number | null
   streamUrl: string | null
@@ -107,6 +114,13 @@ export type Game = {
   divisionId?: string | null
   division: string | null
   bracketCode: string | null
+  bracketRound?: BracketRound | null
+  bracketSlot?: number | null
+  nextGameId?: string | null
+  nextGameSlot?: 'home' | 'away' | null
+  lockVersion?: number
+  scoreUpdatedAt?: string | null
+  scoreUpdatedByName?: string | null
   placeholder?: boolean
   createdAt?: string
   updatedAt?: string
@@ -118,6 +132,7 @@ export type Standing = {
   id: string
   tournamentId: string
   teamId: string
+  rank?: number | null
   wins: number
   losses: number
   pointsFor: number
@@ -217,9 +232,17 @@ export type IngestItem = {
 }
 
 export type ScoreCoverage = {
+  scoredPoolGames?: number
+  totalPoolGames?: number
   scoredGames: number
   totalGames: number
   percent: number
+}
+
+export type DivisionStandingsGroup = {
+  division: Division
+  standings: Standing[]
+  scoreCoverage: ScoreCoverage
 }
 
 export type TournamentChampion = {
