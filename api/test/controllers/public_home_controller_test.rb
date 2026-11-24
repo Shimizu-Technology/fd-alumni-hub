@@ -28,4 +28,14 @@ class PublicHomeControllerTest < ActionDispatch::IntegrationTest
     assert_equal @poll.id.to_s, body.dig("predictionPolls", 0, "id")
     assert_nil body.dig("predictionPolls", 0, "resultsVisible")
   end
+  test "schedule-ready home previews future scheduled games only" do
+    future = @tournament.games.create!(home_team: @home, away_team: @away, start_time: 2.days.from_now, status: "scheduled")
+    @game.update!(start_time: 1.day.ago)
+    @tournament.games.create!(home_team: @home, away_team: @away, start_time: 1.day.from_now, status: "cancelled")
+
+    get "/api/v1/public/home"
+    assert_response :success
+    assert_equal "schedule_ready", response.parsed_body.dig("siteMode", "mode")
+    assert_equal [ future.id.to_s ], response.parsed_body.fetch("schedulePreview").pluck("id")
+  end
 end

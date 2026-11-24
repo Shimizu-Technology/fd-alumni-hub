@@ -1012,7 +1012,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
 .host-events-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
   gap: 16px;
 }
 
@@ -2308,7 +2308,8 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   background: var(--surface);
 }
 
-.find-class h2, .jungle-rafters h2, .broadcast-strip h2 { margin: 0; letter-spacing: -.04em; }
+.find-class h2, .jungle-rafters h2, .broadcast-strip h1 { margin: 0; letter-spacing: -.04em; }
+.broadcast-strip h1 { font-size: clamp(1.35rem, 3vw, 2rem); }
 .find-class-controls { display: grid; gap: .95rem; }
 .find-class-controls label { display: grid; gap: .35rem; font-weight: 800; }
 .find-class-controls select {
@@ -2779,3 +2780,124 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   margin-bottom: .35rem;
   color: var(--fd-maroon-900);
 }
+
+.fundraiser-detail, .host-year-page, .home-tonight-panel { overflow-wrap: anywhere; }
+.host-event-media { display: block; }
+.host-event-media img { display: block; aspect-ratio: 16 / 9; }
+.fundraiser-card-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.fundraiser-raised { align-self: flex-start; }
+.fundraiser-back { justify-self: start; }
+.fundraiser-detail-header, .fundraiser-detail-content, .fundraiser-recap {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  align-content: start;
+}
+.fundraiser-detail-content h1, .fundraiser-detail-content p, .fundraiser-recap p { margin: 0; }
+.fundraiser-copy { white-space: pre-line; line-height: 1.6; }
+.fundraiser-cover {
+  display: block;
+  width: 100%;
+  max-height: 36rem;
+  object-fit: contain;
+  border-radius: .75rem;
+  background: var(--surface-soft, #faf6f3);
+}
+@media (min-width: 740px) {
+  .fundraiser-detail-header:has(.fundraiser-cover) { grid-template-columns: minmax(0, 1fr) minmax(0, .85fr); }
+}
+.fundraiser-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr));
+  gap: .75rem;
+}
+.fundraiser-photo-grid figure, .recap-lightbox figure { margin: 0; min-width: 0; }
+.fundraiser-photo-grid figcaption, .recap-lightbox figcaption { padding-top: .4rem; }
+.fundraiser-photo-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: .65rem;
+  cursor: zoom-in;
+  touch-action: manipulation;
+}
+.fundraiser-photo-button img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.recap-lightbox {
+  box-sizing: border-box;
+  position: fixed;
+  width: min(calc(100% - 1.5rem), 60rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+  padding: clamp(.75rem, 3vw, 1.5rem);
+  border: 0;
+  border-radius: 1rem;
+  background: #24151a;
+  color: #fff;
+}
+.recap-lightbox::backdrop { background: rgb(18 9 12 / 82%); }
+.recap-lightbox-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.recap-lightbox-toolbar .btn { min-height: 44px; touch-action: manipulation; }
+.recap-lightbox figure { margin-block: .75rem; }
+.recap-lightbox img {
+  display: block;
+  width: 100%;
+  height: min(60dvh, 38rem);
+  object-fit: contain;
+}
+.home-tonight-panel { display: grid; gap: .8rem; }
+.home-tonight-panel .home-today-note { margin: 0; text-decoration: none; }
+.home-tipoff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: .65rem;
+}
+.home-tipoff {
+  display: grid;
+  align-content: start;
+  gap: .3rem;
+  padding: .85rem;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--fd-maroon);
+  border-radius: .65rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+.home-tipoff:hover { background: #fffaf0; }
+.home-tipoff span { color: var(--fd-maroon); font-size: .85rem; font-weight: 800; }
+.home-tipoff small { color: var(--ink-muted); }
+.broadcast-empty { margin-block: .75rem 0; }
+.admin-event-flyer, .admin-event-recap {
+  display: grid;
+  gap: .75rem;
+  padding: .85rem;
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+  overflow-wrap: anywhere;
+}
+.admin-event-flyer { margin-block: .85rem; }
+.admin-event-recap { margin: .5rem 0 .9rem; }
+.admin-event-recap h3, .admin-event-recap p { margin: 0; }
+.admin-event-thumbnail {
+  display: block;
+  width: min(100%, 10rem);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: .5rem;
+}
+.admin-event-photos > div { display: grid; gap: .4rem; min-width: 0; }
+.admin-event-flyer input, .admin-event-recap input { min-width: 0; }

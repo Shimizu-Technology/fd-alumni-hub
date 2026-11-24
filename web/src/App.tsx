@@ -12,6 +12,7 @@ import {
   AdminLayout,
 } from './components/AdminLayout'
 import { HomePage } from './pages/public/HomePage'
+import { FundraiserDetailPage } from './pages/public/FundraiserDetailPage'
 import { HostYearPage } from './pages/public/HostYearPage'
 import { TodayPage } from './pages/public/TodayPage'
 import { SchedulePage } from './pages/public/SchedulePage'
@@ -63,6 +64,8 @@ export function App() {
             <Route index element={<HomePage />} />
             <Route path="host-year" element={<HostYearPage />} />
             <Route path="host-year/:slug" element={<HostYearPage />} />
+            <Route path="host-year/events/:id" element={<FundraiserDetailPage />} />
+            <Route path="fundraisers/:id" element={<FundraiserDetailPage />} />
             <Route path="today" element={<TodayPage />} />
             <Route path="schedule" element={<SchedulePage />} />
             <Route path="bracket" element={<BracketPage />} />

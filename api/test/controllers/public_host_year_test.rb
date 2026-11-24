@@ -151,6 +151,60 @@ class PublicHostYearTest < ActionDispatch::IntegrationTest
     assert_equal @public_event.id.to_s, summary.dig("nextEvent", "id")
   end
 
+  test "host year and home share a fundraising payload without tournament tickets" do
+    @campaign.update!(hafapass_organizer_slug: "host-class", hafapass_tournament_organizer_slug: "tournament")
+    @public_event.update!(starts_at: 1.day.ago, hafapass_event_id: "matched", recap_notes: "Thank you!")
+    HafapassEventSnapshot.create!(organizer_slug: "host-class", fetched_at: Time.current, payload_json: [
+      hp_event("matched", "host-class"),
+      hp_event("host-fundraiser", "host-class"),
+      hp_event("pass-flag", "host-class", pass: true)
+    ])
+    HafapassEventSnapshot.create!(organizer_slug: "tournament", fetched_at: Time.current, payload_json: [
+      hp_event("tournament-night", "tournament")
+    ])
+
+    get "/api/v1/public/host-year", params: { slug: @campaign.slug }
+    assert_response :success
+    host_year = response.parsed_body
+    assert_equal [ "host-fundraiser" ], host_year.dig("hafapass", "events").pluck("id")
+    assert_equal "completed", host_year.dig("events", 0, "status")
+    assert_equal "Thank you!", host_year.dig("events", 0, "recapNotes")
+    assert_equal "matched", host_year.dig("events", 0, "hafapass", "id")
+
+    get "/api/v1/public/home"
+    assert_response :success
+    assert_equal host_year, response.parsed_body["hostYear"]
+    assert_nil response.parsed_body.dig("activeHostCampaign", "nextEvent")
+
+    publication = SitePublication.create!(mode: "fundraising", tournament: @tournament_2027, host_campaign: @campaign,
+      section_overrides: { "fundraisers" => "hide" }, version_number: 1, current: true, published_at: Time.current)
+    get "/api/v1/public/home"
+    assert_response :success
+    refute response.parsed_body.key?("hostYear")
+
+    publication.update!(mode: "schedule_ready", section_overrides: {})
+    get "/api/v1/public/home"
+    assert_response :success
+    refute response.parsed_body.key?("hostYear")
+    assert_includes response.parsed_body.dig("siteMode", "navItems").pluck("to"), "/host-year"
+
+    get "/api/v1/public/host-year"
+    assert_response :success
+    assert_equal %w[host-fundraiser pass-flag tournament-night], response.parsed_body.dig("hafapass", "events").pluck("id")
+  end
+
+  test "shared organizer keeps class fundraisers while hiding explicit passes" do
+    @campaign.update!(hafapass_organizer_slug: "shared", hafapass_tournament_organizer_slug: "shared")
+    HafapassEventSnapshot.create!(organizer_slug: "shared", fetched_at: Time.current, payload_json: [
+      hp_event("shared-fundraiser", "shared"),
+      hp_event("shared-pass", "shared", pass: true)
+    ])
+
+    get "/api/v1/public/host-year"
+    assert_response :success
+    assert_equal [ "shared-fundraiser" ], response.parsed_body.dig("hafapass", "events").pluck("id")
+  end
+
   test "resolves default fallback from active/closing to archived while home skips archived campaigns" do
     @campaign.update!(featured: false, status: "closing")
     get "/api/v1/public/host-year"
@@ -177,5 +231,10 @@ class PublicHostYearTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     assert_nil body["tournament"]
     assert_equal "2027-class-of-2017", body.dig("activeHostCampaign", "slug")
+  end
+  private
+
+  def hp_event(id, organizer, pass: false)
+    { "id" => id, "slug" => id, "title" => id, "organizerSlug" => organizer, "isPass" => pass, "ticketState" => "on_sale" }
   end
 end

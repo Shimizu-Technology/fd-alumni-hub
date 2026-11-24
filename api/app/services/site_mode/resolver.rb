@@ -124,8 +124,8 @@ module SiteMode
     def desktop_keys
       case mode
       when "fundraising" then %i[home fundraisers history]
-      when "schedule_ready" then [ :home, :schedule, :teams, :tickets, (:bracket if sections["bracket"]), :history ].compact
-      when "tournament_live" then %i[tonight schedule standings bracket tickets history]
+      when "schedule_ready" then [ :home, :schedule, :teams, :tickets, (:bracket if sections["bracket"]), (:fundraisers if sections["fundraisers"]), :history ].compact
+      when "tournament_live" then [ :tonight, :schedule, :standings, :bracket, :tickets, (:fundraisers if sections["fundraisers"]), :history ].compact
       when "tournament_recap" then [ :recap, :history, (:fundraisers if sections["fundraisers"]) ].compact
       end
     end
@@ -133,8 +133,8 @@ module SiteMode
     def mobile_keys
       case mode
       when "fundraising" then %i[home fundraisers history]
-      when "schedule_ready" then %i[home schedule tickets]
-      when "tournament_live" then %i[tonight schedule tickets]
+      when "schedule_ready" then [ :home, :schedule, :tickets, (:fundraisers if sections["fundraisers"]) ].compact
+      when "tournament_live" then [ :tonight, :schedule, :tickets, (:fundraisers if sections["fundraisers"]) ].compact
       when "tournament_recap" then %i[recap history]
       end
     end

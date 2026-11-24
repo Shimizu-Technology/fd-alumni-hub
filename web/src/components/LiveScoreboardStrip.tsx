@@ -25,23 +25,24 @@ function gameLabel(game: Game) {
   return game.dateOnly || !Number.isFinite(Date.parse(game.startTime)) ? 'Tip-off TBA' : formatGuamTime(game.startTime)
 }
 
-export function LiveScoreboardStrip({ games }: { games: Game[] }) {
+export function LiveScoreboardStrip({ games, showEmpty = false }: { games: Game[]; showEmpty?: boolean }) {
   const headingId = useId()
   const motionOk = useMotionOk()
 
-  if (!games.length) return null
+  if (!games.length && !showEmpty) return null
 
   return (
     <section className="broadcast-strip" aria-labelledby={headingId}>
       <div className="broadcast-head">
-        <h2 id={headingId}>The Jungle Scoreboard</h2>
+        <h1 id={headingId}>The Jungle Scoreboard</h1>
         <nav aria-label="Scoreboard links">
           <Link to="/today">Today</Link>
           <Link to="/tickets">Tickets</Link>
           <Link to="/schedule">Schedule</Link>
         </nav>
       </div>
-      <ul className="broadcast-games" aria-label="Tonight's games" tabIndex={games.length > 1 ? 0 : undefined}>
+      {!games.length && <p className="broadcast-empty">Scores will appear when games tip off.</p>}
+      {games.length > 0 && <ul className="broadcast-games" aria-label="Tonight's games" tabIndex={games.length > 1 ? 0 : undefined}>
         {games.map((game) => (
           <li key={game.id} className="broadcast-game">
             <span className={`broadcast-status broadcast-status--${game.status}`}>{gameLabel(game)}</span>
@@ -55,7 +56,7 @@ export function LiveScoreboardStrip({ games }: { games: Game[] }) {
             </div>
           </li>
         ))}
-      </ul>
+      </ul>}
     </section>
   )
 }

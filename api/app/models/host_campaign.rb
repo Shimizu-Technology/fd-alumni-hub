@@ -157,7 +157,8 @@ class HostCampaign < ApplicationRecord
       meter_raised_cents = totals[:raised_cents]
       meter_updated_at ||= totals[:updated_at]
     end
-    next_event = campaign_events.public_listing.upcoming_or_tba.ordered.first
+    now = Time.current
+    next_event = campaign_events.public_listing.upcoming_or_tba(now).ordered.first
 
     summary = {
       slug: slug,
@@ -169,7 +170,7 @@ class HostCampaign < ApplicationRecord
       countdownLabel: countdown_label,
       donationUrl: donation_url,
       golfUrl: golf_url,
-      nextEvent: next_event&.public_json
+      nextEvent: next_event&.public_json(now)
     }
     summary[:meter] = public_meter_json(raised_cents: meter_raised_cents.to_i, updated_at: meter_updated_at || updated_at) if include_meter
     summary

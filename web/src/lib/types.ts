@@ -490,6 +490,8 @@ export type PublicHostCampaign = {
   meter: HostCampaignMeter
 }
 
+export type RecapPhoto = { url: string; caption?: string }
+
 export type PublicCampaignEvent = {
   id: string
   kind: CampaignEventKind
@@ -506,6 +508,10 @@ export type PublicCampaignEvent = {
   externalUrl: string | null
   ctaLabel: string | null
   status: CampaignEventStatus
+  recapNotes: string | null
+  recapHighlights: string | null
+  raisedDisplay: string | null
+  recapPhotos: RecapPhoto[]
   position: number
   hafapass?: HafapassEventSummary | null
 }
@@ -654,7 +660,15 @@ export type AdminHostCampaign = PublicHostCampaign & {
   updatedAt?: string
 }
 
+export type FundraiserDetailResponse = {
+  event: PublicCampaignEvent
+  campaign: PublicHostCampaign
+  hafapass: Omit<HostYearResponse['hafapass'], 'events'>
+}
+
 export type AdminCampaignEvent = PublicCampaignEvent & {
+  storedStatus: CampaignEventStatus
+  autoCompleted: boolean
   hostCampaignId: string
   publicVisible: boolean
   goalCents: number | null

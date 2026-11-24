@@ -322,15 +322,18 @@ function FundraiserTicketCard({
   item: PublicTicketFundraiserItem
   fallbackHref: string | null
 }) {
-  const buyHref = safeHttpsHref(item.buyUrl) || fallbackHref
+  const closed = item.status === 'completed' || item.status === 'cancelled'
+  const buyHref = closed || item.ticketState === 'cancelled' ? null : safeHttpsHref(item.buyUrl) || fallbackHref
   const visibleState = !item.stale || item.ticketState === 'cancelled' ? item.ticketState : null
-  const priceLabel = !item.stale ? formatTicketPrice(item.minAllInPriceCents) : null
+  const priceLabel = !closed && !item.stale ? formatTicketPrice(item.minAllInPriceCents) : null
 
   return (
     <article className="panel ticket-card">
       <div className="ticket-card-badges">
         <span className="division-pill">{item.kind === 'golf' ? 'Golf tournament' : 'Host fundraiser'}</span>
-        {item.stale && visibleState !== 'cancelled' ? (
+        {closed ? (
+          <StatusBadge status={item.status} />
+        ) : item.stale && visibleState !== 'cancelled' ? (
           <span className="status-badge upcoming">Check live availability on HåfaPass</span>
         ) : visibleState ? (
           <span className={`status-badge ${ticketBadgeClass(visibleState)}`}>

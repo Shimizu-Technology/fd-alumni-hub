@@ -83,7 +83,9 @@ module Api
             :status,
             :public_visible, :publicVisible,
             :goal_cents, :goalCents,
-            :position
+            :position,
+            :recap_notes, :recapNotes, :recap_highlights, :recapHighlights, :raised_display, :raisedDisplay,
+            recap_photos: [ :url, :caption ], recapPhotos: [ :url, :caption ]
           )
 
           attrs = {}
@@ -104,7 +106,44 @@ module Api
           assign_param(attrs, permitted, :public_visible, :public_visible, :publicVisible)
           assign_param(attrs, permitted, :goal_cents, :goal_cents, :goalCents)
           assign_param(attrs, permitted, :position, :position)
+          assign_param(attrs, permitted, :recap_notes, :recap_notes, :recapNotes)
+          assign_param(attrs, permitted, :recap_highlights, :recap_highlights, :recapHighlights)
+          assign_param(attrs, permitted, :raised_display, :raised_display, :raisedDisplay)
+          photo_key = %i[recap_photos recapPhotos].find { |key| raw.key?(key) }
+          attrs[:recap_photos] = recap_photos_param(photo_key, raw[photo_key], permitted[photo_key]) if photo_key
           attrs
+        end
+
+        def recap_photos_param(photo_key, raw_photos, permitted_photos)
+          # Check unmunged JSON when available because Rails deep-munge strips [null] into [].
+          unmunged = unmunged_recap_photos(photo_key)
+          if !unmunged.nil?
+            return unless unmunged.is_a?(Array) && unmunged.all? { |photo| photo.is_a?(Hash) &&
+              photo["url"].is_a?(String) && (photo["caption"].nil? || photo["caption"].is_a?(String)) }
+
+            return permitted_photos.is_a?(Array) ? permitted_photos.map(&:to_h) : []
+          end
+
+          # Strong parameters drop malformed entries. Preserve rejection of the entire update.
+          return unless raw_photos.is_a?(Array) && raw_photos.all? { |photo| photo.is_a?(ActionController::Parameters) &&
+            photo[:url].is_a?(String) && (photo[:caption].nil? || photo[:caption].is_a?(String)) }
+
+          permitted_photos.map(&:to_h)
+        end
+
+        def unmunged_recap_photos(photo_key)
+          return nil unless request.content_mime_type&.json?
+
+          raw_body = request.raw_post
+          return nil if raw_body.blank?
+
+          parsed = JSON.parse(raw_body)
+          container = parsed.is_a?(Hash) && parsed["event"].is_a?(Hash) ? parsed["event"] : parsed
+          return nil unless container.is_a?(Hash) && container.key?(photo_key.to_s)
+
+          container[photo_key.to_s]
+        rescue JSON::ParserError
+          nil
         end
       end
     end
