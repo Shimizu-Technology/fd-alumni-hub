@@ -23,7 +23,7 @@ const RECEIPT_EXTENSION_TYPES: Record<string, string> = {
   pdf: 'application/pdf',
 }
 
-export type AdminImageUploadPurpose = 'article-image' | 'ingest-image' | 'media-asset' | 'sponsor-logo' | 'admin'
+export type AdminImageUploadPurpose = 'article-image' | 'ingest-image' | 'media-asset' | 'sponsor-logo' | 'tonight-photo' | 'admin'
 
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -37,7 +37,9 @@ const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   avif: 'image/avif',
 }
 
-export async function uploadAdminImage({ file, tournamentId, purpose }: { file: File; tournamentId: string; purpose: AdminImageUploadPurpose }) {
+export async function uploadAdminImage({ file, tournamentId, purpose, signal }: {
+  file: File; tournamentId: string; purpose: AdminImageUploadPurpose; signal?: AbortSignal
+}) {
   const contentType = imageContentType(file)
   validateImageFile(file, contentType)
 
@@ -47,9 +49,9 @@ export async function uploadAdminImage({ file, tournamentId, purpose }: { file: 
     contentType,
     byteSize: file.size,
     purpose,
-  })
+  }, signal)
 
-  await uploadToS3(presign, file)
+  await uploadToS3(presign, file, signal)
   return presign.publicUrl
 }
 
@@ -105,12 +107,12 @@ function validateImageFile(file: File, contentType: string) {
   if (!contentType.startsWith('image/')) throw new Error('Choose an image file')
 }
 
-async function uploadToS3(presign: Pick<AdminImageUploadPresign, 'uploadUrl' | 'fields'>, file: File) {
+async function uploadToS3(presign: Pick<AdminImageUploadPresign, 'uploadUrl' | 'fields'>, file: File, signal?: AbortSignal) {
   const form = new FormData()
   Object.entries(presign.fields).forEach(([key, value]) => form.append(key, value))
   form.append('file', file, file.name)
 
-  const response = await fetch(presign.uploadUrl, { method: 'POST', body: form })
+  const response = await fetch(presign.uploadUrl, { method: 'POST', body: form, signal })
   if (response.ok) return
 
   const text = await response.text().catch(() => '')

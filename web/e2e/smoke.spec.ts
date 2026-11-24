@@ -265,7 +265,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await context.close()
   })
 
-  test('online mocked /bracket and /today render storm alert banner, mobile round switcher, scores, and delay note', async ({ browser }) => {
+  test('Tonight and Bracket keep game-night controls and matchups usable from phone to desktop', async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
     const page = await context.newPage()
     const { pageErrors, consoleErrors } = attachErrorCollectors(page)
@@ -372,6 +372,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
         }),
       }),
     )
+    const scheduledDates = ['2027-07-12', '2027-07-14', '2027-07-15', '2027-07-16', '2027-07-17', '2027-07-18']
     await page.route('**/api/v1/public/today*', (route) =>
       route.fulfill({
         status: 200,
@@ -380,7 +381,15 @@ test.describe('FD Alumni Hub smoke suite', () => {
         body: JSON.stringify({
           tournament: { id: '1', name: 'FD Alumni 2027', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'live' },
           date: '2027-07-12',
-          gameDayNote: null,
+          scheduledDates,
+          gameDayNote: {
+            hostSpotlight: { headline: 'Meet tonight’s hosts', photoUrl: '/icon-192.png' },
+            photos: [
+              { url: '/icon-192.png', caption: 'Opening-night flyer' },
+              { url: '/icon-512.png', caption: 'Team introductions' },
+              { url: '//untrusted.example/flyer.png' },
+            ],
+          },
           alerts: [],
           fallbackTicketUrl: 'https://hafapass.shimizu-technology.com/go/fd2027',
           games: [
@@ -419,15 +428,55 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(mobileRound).not.toContainText('Winner MQF2')
     await page.getByRole('button', { name: /Semifinals/i }).click()
     await expect(mobileRound).toContainText('Winner MQF2')
-    const bracketOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-    expect(bracketOverflow).toBeLessThanOrEqual(1)
+    const pageOverflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 844 })
+      const mobile = width !== 1440
+      await expect(page.locator('.bracket-desktop-grid')).toHaveCount(mobile ? 0 : 1)
+      await expect(page.locator('.bracket-mobile-round')).toHaveCount(mobile ? 1 : 0)
+      await expect(page.locator('.bracket-round-pills')).toHaveCount(mobile ? 1 : 0)
+      await expect(page.locator('.bracket-card')).toHaveCount(mobile ? 1 : 2)
+      await expect(page.getByText('MSF1', { exact: true })).toHaveCount(1)
+      expect(await pageOverflow()).toBe(0)
+    }
 
     await page.goto('/today', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('main')).toContainText('39 – 42')
     await expect(page.locator('main')).toContainText('Delayed 60 minutes due to power flicker')
     await expect(page.locator('main')).toContainText('Tournament tickets')
-    const todayOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-    expect(todayOverflow).toBeLessThanOrEqual(1)
+    await expect(page.getByRole('button', { name: 'Mon, Jul 12' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByLabel('Guam date')).toBeHidden()
+    for (const heading of [/Special Events/, /Organizer Updates/, /Food & Drink Menu/, /Linked Fundraisers/, /^Sponsors$/]) {
+      await expect(page.locator('main').getByRole('heading', { name: heading })).toHaveCount(0)
+    }
+
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 844 })
+      expect(await pageOverflow()).toBe(0)
+      await expect(page.getByRole('button', { name: /Open photo or flyer/ })).toHaveCount(2)
+      const opener = page.getByRole('button', { name: /Open photo or flyer 1, Opening-night flyer/ })
+      await opener.click()
+      const lightbox = page.getByRole('dialog', { name: 'Tonight’s Photos & Flyers' })
+      await expect(lightbox).toHaveAttribute('aria-modal', 'true')
+      await expect(lightbox.getByRole('button', { name: 'Close' })).toBeFocused()
+      await expect(lightbox.getByText('Opening-night flyer')).toBeVisible()
+      await page.keyboard.press('ArrowRight')
+      await expect(lightbox.getByText('Team introductions')).toBeVisible()
+      await page.keyboard.press('ArrowLeft')
+      await expect(lightbox.getByText('Opening-night flyer')).toBeVisible()
+      await lightbox.getByRole('button', { name: 'Next' }).click()
+      await expect(lightbox.getByText('Team introductions')).toBeVisible()
+      await lightbox.getByRole('button', { name: 'Previous' }).click()
+      await expect(lightbox.getByText('Opening-night flyer')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(lightbox).toBeHidden()
+      await expect(opener).toBeFocused()
+      await opener.click()
+      await page.mouse.click(1, 1)
+      await expect(lightbox).toBeHidden()
+      await expect(opener).toBeFocused()
+    }
+    await page.setViewportSize({ width: 320, height: 844 })
 
     await page.route('**/api/v1/public/today?**', (route) => {
       const date = new URL(route.request().url()).searchParams.get('date')
@@ -435,13 +484,18 @@ test.describe('FD Alumni Hub smoke suite', () => {
       return route.fulfill({
         headers: { 'access-control-allow-origin': '*' },
         json: {
-          date, requestedDate: date, resolvedDate: date, isRestDay: restDay,
+          date, scheduledDates, requestedDate: date, resolvedDate: date, isRestDay: restDay,
           nextScheduledDate: restDay ? '2027-07-12' : null,
           games: [], predictionPolls: [], linkedCampaignEvents: [], updates: [],
-          gameDayNote: { menuItems: restDay ? [] : [{ name: 'BBQ plate', price: '$12', available: false }] },
+          gameDayNote: restDay ? null : { menuItems: [{ name: 'BBQ plate', price: '$12', available: false }] },
         },
       })
     })
+    await page.getByRole('button', { name: 'Wed, Jul 14' }).click()
+    await expect(page).toHaveURL(/date=2027-07-14/)
+    await expect(page.getByRole('button', { name: 'Wed, Jul 14' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByText('BBQ plate')).toBeVisible()
+    await page.getByText('Other date', { exact: true }).click()
     await page.getByLabel('Guam date').fill('2027-07-11')
     await expect(page.getByRole('heading', { name: 'Rest day at The Jungle' })).toBeVisible()
     await page.getByRole('button', { name: /Next scheduled night/ }).click()
@@ -449,7 +503,7 @@ test.describe('FD Alumni Hub smoke suite', () => {
     await expect(page.getByText('BBQ plate')).toBeVisible()
     await expect(page.getByText('Sold out')).toBeVisible()
     await page.reload({ waitUntil: 'domcontentloaded' })
-    await expect(page.getByLabel('Guam date')).toHaveValue('2027-07-12')
+    await expect(page.getByRole('button', { name: 'Mon, Jul 12' })).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByText('BBQ plate')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1)
 

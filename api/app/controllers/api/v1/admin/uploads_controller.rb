@@ -4,9 +4,12 @@ module Api
       class UploadsController < BaseController
         def presign
           upload = upload_params
-          capability = %w[sponsor sponsor-logo].include?(upload[:purpose]) ? "fundraisers_and_sponsors" : "history_and_media"
+          capability = case upload[:purpose]
+          when "sponsor", "sponsor-logo" then "fundraisers_and_sponsors"
+          when "tonight", "tonight-photo", "game-day" then "tonights_menu_and_news"
+          else "history_and_media"
+          end
           return unless authorize_tournament!(capability, "edit", upload[:tournament_id])
-
 
           tournament = Tournament.find(upload[:tournament_id])
           result = PublicImageUploadPresigner.call(

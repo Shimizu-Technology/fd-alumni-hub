@@ -17,6 +17,7 @@ module Api
           render json: {
             tournament: tournament.api_json, date: date.iso8601, gameDayNote: note&.api_json,
             games: games.map(&:api_json), predictionPolls: prediction_polls_for_admin.map(&:api_json),
+            scheduledDates: Tonight::Payload.scheduled_dates(tournament, preview: true),
             infoGuide: Tonight::InfoGuide.for(tournament)
           }
         end
@@ -141,7 +142,7 @@ module Api
 
         def note_params
           raw = raw_note_params
-          permitted = raw.permit(:host_class, :hostClass, :food_menu, :foodMenu, :announcement, :sponsor_shoutout, :sponsorShoutout, :active)
+          permitted = raw.permit(:host_class, :hostClass, :food_menu, :foodMenu, :announcement, :sponsor_shoutout, :sponsorShoutout, :active, photos: %i[url caption])
 
           attrs = {}
           assign_param(attrs, permitted, :host_class, :host_class, :hostClass)
@@ -157,7 +158,25 @@ module Api
             # Validate the full shape in the model so invalid or private keys are rejected.
             attrs[column] = structured.fetch(key) { structured[column] }
           end
+          if raw.key?(:photos)
+            photos = unmunged_photos(structured[:photos])
+            # Strong parameters can strip malformed rows and unsupported keys.
+            permitted_photos = permitted[:photos]
+            permitted_rows = permitted_photos.map(&:to_h) if permitted_photos.is_a?(Array)
+            attrs[:photos] = photos == permitted_rows ? permitted_rows : nil
+          end
           attrs
+        end
+
+        def unmunged_photos(fallback)
+          return fallback unless request.content_mime_type&.json? && request.raw_post.present?
+
+          # Rails deep-munge strips null entries before strong parameters run.
+          body = JSON.parse(request.raw_post)
+          container = body["gameDayNote"] || body["game_day_note"] || body if body.is_a?(Hash)
+          container.is_a?(Hash) ? container.fetch("photos", fallback) : fallback
+        rescue JSON::ParserError
+          fallback
         end
 
         def parse_date(value)

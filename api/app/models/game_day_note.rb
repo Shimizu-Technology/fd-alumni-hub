@@ -23,6 +23,7 @@ class GameDayNote < ApplicationRecord
       menuItems: menu_items,
       specialEvents: special_events,
       hostSpotlight: host_spotlight,
+      photos: photos,
       status: status,
       publishedAt: published_at&.iso8601,
       lockVersion: lock_version,
@@ -36,6 +37,7 @@ class GameDayNote < ApplicationRecord
   def validate_structured_copy
     errors.add(:menu_items, "must contain valid menu items") unless TonightCopy.valid_rows?(menu_items, TonightCopy::MENU, "name")
     errors.add(:special_events, "must contain valid events") unless TonightCopy.valid_rows?(special_events, TonightCopy::EVENT, "title")
+    errors.add(:photos, "must contain up to 16 valid photos") unless TonightCopy.valid_rows?(photos, TonightCopy::PHOTO, "url", max: 16)
     errors.add(:host_spotlight, "must contain valid public spotlight copy") unless TonightCopy.valid_object?(host_spotlight, TonightCopy::SPOTLIGHT)
   end
 end

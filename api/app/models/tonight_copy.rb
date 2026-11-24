@@ -2,6 +2,7 @@ module TonightCopy
   MENU = { "name" => 140, "price" => 40, "category" => 80, "available" => :boolean, "notes" => 500 }.freeze
   EVENT = { "title" => 180, "timeLabel" => 80, "description" => 1000, "campaignEventId" => 40 }.freeze
   SPOTLIGHT = { "hostClassLabel" => 80, "headline" => 180, "body" => 2000, "photoUrl" => :url, "hostCampaignId" => 40 }.freeze
+  PHOTO = { "url" => :url, "caption" => 240 }.freeze
   GUIDE = {
     "venueName" => 180, "venueAddress" => 280, "ticketSourceName" => 80, "ticketSourceUrl" => :url,
     "ticketSummary" => 1200, "doorInfo" => 1200, "eligibilityHighlights" => :list,
@@ -29,8 +30,8 @@ module TonightCopy
     false
   end
 
-  def self.valid_rows?(rows, fields, required_key)
-    rows.is_a?(Array) && rows.size <= 100 && rows.all? do |row|
+  def self.valid_rows?(rows, fields, required_key, max: 100)
+    rows.is_a?(Array) && rows.size <= max && rows.all? do |row|
       valid_object?(row, fields) && row[required_key].present?
     end
   end

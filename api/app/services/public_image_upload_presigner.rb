@@ -19,6 +19,9 @@ class PublicImageUploadPresigner
     "campaign-hero" => "campaigns",
     "campaign-event" => "campaigns",
     "campaign-post" => "campaigns",
+    "tonight" => "tonight",
+    "tonight-photo" => "tonight",
+    "game-day" => "tonight",
     "admin" => "admin"
   }.freeze
 

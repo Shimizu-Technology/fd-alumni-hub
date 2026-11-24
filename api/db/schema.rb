@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_24_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -277,6 +277,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_24_000001) do
     t.string "status", default: "published", null: false
     t.datetime "published_at"
     t.integer "lock_version", default: 0, null: false
+    t.jsonb "photos", default: [], null: false
     t.index ["date", "active"], name: "index_game_day_notes_on_date_and_active"
     t.index ["tournament_id", "date"], name: "index_game_day_notes_on_tournament_id_and_date", unique: true
     t.index ["tournament_id"], name: "index_game_day_notes_on_tournament_id"

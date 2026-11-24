@@ -357,7 +357,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .today-game-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(18rem, .72fr); gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1.2rem; background: #fff; box-shadow: 0 12px 34px rgba(66,16,31,.06); }
 .today-game-card--no-poll { grid-template-columns: 1fr; }
 .today-game-main { display: grid; align-content: start; gap: .75rem; }
-.today-game-main h2 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: -.045em; }
+.today-game-main h3 { margin: 0; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: -.045em; }
 .today-game-main p { margin: 0; color: var(--muted); font-weight: 700; }
 .roster-details { border-top: 1px solid var(--line); padding-top: .75rem; }
 .roster-details summary { color: var(--fd-maroon); cursor: pointer; font-weight: 900; }
@@ -1601,11 +1601,6 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   font-size: .8em;
 }
 
-.bracket-round-pills,
-.bracket-mobile-round {
-  display: none;
-}
-
 .bracket-desktop-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
@@ -1696,6 +1691,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   font-size: .82rem;
 }
 
+/* Keep in sync with the media query in BracketPage.tsx. */
 @media (max-width: 960px) {
   .bracket-round-pills {
     display: flex;
@@ -1713,9 +1709,6 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
     color: var(--fd-maroon);
   }
 
-  .bracket-desktop-grid {
-    display: none;
-  }
 }
 
 
@@ -1979,6 +1972,67 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
 .public-hero-card[aria-label="Season overview"] { grid-template-columns: minmax(0, 1fr); }
 
+.today-page { grid-template-columns: minmax(0, 1fr); }
+.today-date-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  min-width: 0;
+}
+.game-night-dates {
+  display: flex;
+  flex: 1 1 100%;
+  gap: .5rem;
+  min-width: 0;
+  overflow-x: auto;
+  padding: .25rem .2rem .6rem;
+}
+.game-night-date {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fd-maroon);
+  padding: .5rem .85rem;
+  min-height: 44px;
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.game-night-date[aria-pressed="true"] {
+  background: var(--fd-maroon);
+  border-color: var(--fd-maroon);
+  color: white;
+}
+.game-night-date:focus-visible { outline-offset: 1px; }
+.today-other-date { color: var(--muted); font-size: .88rem; }
+.today-other-date summary { width: fit-content; padding-block: .45rem; cursor: pointer; }
+.today-other-date label { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.today-other-date input { max-width: 100%; }
+.tonight-guide, .tonight-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 1rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 900px) {
+  .tonight-guide--split { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
+}
+.tonight-column h2 { margin: 0 0 .75rem; }
+.tonight-column .prediction-grid { grid-template-columns: minmax(0, 1fr); }
+.tonight-scores .today-game-card { grid-template-columns: minmax(0, 1fr); }
+.tonight-scores .today-game-main { grid-template-columns: minmax(0, 1fr); }
+.tonight-host-class { color: var(--fd-maroon); font-weight: 850; }
+.tonight-entry-list { display: grid; gap: .65rem; }
+.tonight-entry-list article + article { border-top: 1px solid var(--line); padding-top: .65rem; }
+.tonight-entry-list h3, .tonight-entry-list p { margin: 0; }
+.tonight-entry-list p { margin-top: .25rem; }
+.tonight-sponsors { display: flex; flex-wrap: wrap; gap: .5rem 1rem; padding: 0; list-style: none; }
+
 .today-menu {
   list-style: none;
   padding: 0;
@@ -1986,6 +2040,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
 .today-menu li {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
@@ -1994,6 +2049,10 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   overflow-wrap: anywhere;
 }
 
+.today-menu li > div { flex: 1 1 9rem; min-width: 0; }
+.today-menu li p { margin: .25rem 0 0; }
+.today-menu li strong + span { margin-inline-start: .35rem; }
+.today-menu li:last-child { border-bottom: 0; padding-bottom: 0; }
 .today-menu small {
   display: block;
 }
@@ -2013,6 +2072,18 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   object-fit: contain;
   object-position: left;
 }
+
+.night-spotlight-preview { display: block; width: min(100%, 14rem); margin-block: .5rem; }
+.night-editor-fieldset input[type="file"] { min-width: 0; width: 100%; }
+.night-photo-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: .75rem;
+  padding: 0;
+  list-style: none;
+}
+.night-photo-editor li { display: grid; justify-items: start; min-width: 0; gap: .5rem; }
+.night-photo-editor li img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .5rem; }
 
 .night-editor-fieldset {
   min-width: 0;

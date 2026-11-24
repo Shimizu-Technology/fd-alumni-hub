@@ -123,3 +123,77 @@ it('keeps routine posts and urgent alerts distinct and removes a live alert in o
   expect(await urgent.findByRole('button', { name: 'Activate' })).toBeInTheDocument()
   expect(screen.getByText('Optional fan polls').closest('details')).not.toHaveAttribute('open')
 })
+
+it('uploads spotlight and gallery images, retains successful files in the draft, and saves captions', async () => {
+  const presign = vi.spyOn(api, 'adminPresignImageUpload').mockImplementation(async ({ filename }) => ({
+    uploadUrl: `https://s3.example.test/${filename}`, fields: { Policy: 'test-policy' },
+    publicUrl: `https://cdn.example.test/${filename}`, key: filename, maxBytes: 10_000_000, expiresIn: 60,
+  }))
+  const putFile = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => new Response(null, {
+    status: String(url).endsWith('denied.png') ? 403 : 204,
+  }))
+  const save = vi.spyOn(api, 'adminSaveGameDayNote').mockImplementation(async (draft) => ({ gameDayNote: { ...note, ...draft } }))
+  const image = (name: string) => new File(['image'], name, { type: 'image/png' })
+
+  const view = open()
+  const spotlight = await screen.findByLabelText('Upload photo')
+  expect(screen.queryByText(/Legacy menu/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Legacy announcement/)).not.toBeInTheDocument()
+  fireEvent.change(spotlight, { target: { files: [image('host.png')] } })
+  expect(screen.getByRole('button', { name: /^Save draft ·/ })).toBeDisabled()
+  expect(await screen.findByAltText('Spotlight photo preview')).toHaveAttribute('src', 'https://cdn.example.test/host.png')
+  fireEvent.click(screen.getByRole('button', { name: 'Remove spotlight photo' }))
+  expect(screen.queryByAltText('Spotlight photo preview')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Upload photo'), { target: { files: [image('new-host.png')] } })
+  await screen.findByLabelText('Replace photo')
+
+  fireEvent.change(screen.getByLabelText(/Upload photos or flyers/), {
+    target: { files: [image('flyer.png'), image('denied.png'), image('remove.png')] },
+  })
+  expect(await screen.findByText(/Could not upload denied.png/)).toBeInTheDocument()
+  expect(screen.getAllByLabelText(/Caption for image/)).toHaveLength(2)
+  fireEvent.click(screen.getByRole('button', { name: 'Remove image 2' }))
+  fireEvent.change(screen.getByLabelText('Caption for image 1'), { target: { value: 'Tonight’s flyer' } })
+  view.unmount()
+
+  open()
+  expect(await screen.findByDisplayValue('Tonight’s flyer')).toBeInTheDocument()
+  expect(screen.getByAltText('Spotlight photo preview')).toHaveAttribute('src', 'https://cdn.example.test/new-host.png')
+  expect(presign).toHaveBeenCalledTimes(5)
+  expect(presign).toHaveBeenCalledWith(expect.objectContaining({ tournamentId: '1', purpose: 'tonight-photo', filename: 'flyer.png' }), expect.any(AbortSignal))
+  expect(putFile).toHaveBeenCalledWith('https://s3.example.test/flyer.png', expect.objectContaining({
+    method: 'POST', body: expect.any(FormData),
+  }))
+  fireEvent.click(screen.getByRole('button', { name: /^Save draft ·/ }))
+  const photos = [{ url: 'https://cdn.example.test/flyer.png', caption: 'Tonight’s flyer' }]
+  await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({
+    hostSpotlight: { photoUrl: 'https://cdn.example.test/new-host.png' }, photos,
+  })))
+  expect(await screen.findByText('Draft saved')).toBeInTheDocument()
+})
+
+it('opens a scheduled night in one click, cancels an in-flight upload, and exposes existing legacy copy', async () => {
+  const alternative = '2032-07-03'
+  const original = await api.adminGameDay()
+  vi.mocked(api.adminGameDay).mockImplementation(async ({ date: selected } = {}) => ({
+    ...original,
+    date: selected || date,
+    scheduledDates: [alternative],
+    gameDayNote: selected === alternative ? { ...note, date: alternative, foodMenu: 'Legacy BBQ', announcement: 'Use the west lot' } : null,
+  }))
+  const presign = vi.spyOn(api, 'adminPresignImageUpload').mockImplementation((_payload, signal) =>
+    new Promise((_resolve, reject) => signal?.addEventListener('abort', () => reject(signal.reason), { once: true })),
+  )
+
+  open()
+  const spotlight = await screen.findByLabelText('Upload photo')
+  fireEvent.change(spotlight, { target: { files: [new File(['image'], 'host.png', { type: 'image/png' })] } })
+  const shortcut = screen.getByRole('button', { name: 'Sat, Jul 3' })
+  fireEvent.click(shortcut)
+
+  expect(await screen.findByDisplayValue('Legacy BBQ')).toBeInTheDocument()
+  expect(screen.getByText('Legacy announcement & sponsor copy')).toBeInTheDocument()
+  expect(shortcut).toHaveAttribute('aria-pressed', 'true')
+  expect(presign.mock.calls[0][1]?.aborted).toBe(true)
+  expect(localStorage.getItem(`fd-tonight-draft:1:${date}`)).toBeNull()
+})

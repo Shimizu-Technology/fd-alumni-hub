@@ -108,6 +108,7 @@ export type TonightPayload = {
   requestedDate: string
   resolvedDate: string
   nextScheduledDate: string | null
+  scheduledDates?: string[]
   isRestDay: boolean
   gameDayNote: GameDayNote | null
   alerts?: TournamentAlert[]
@@ -126,6 +127,7 @@ export type GameDayNote = {
   menuItems?: MenuItem[]
   specialEvents?: SpecialEvent[]
   hostSpotlight?: HostSpotlight
+  photos?: Array<{ url: string; caption?: string }>
   status?: 'draft' | 'published'
   publishedAt?: string | null
   lockVersion?: number | null
