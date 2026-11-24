@@ -111,64 +111,79 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
 
   return (
     <div className="page-stack host-year-page">
-      <section className={`hero-card public-hero-card host-hero-card ${motionOk ? 'hero-reveal' : ''}`}>
-        <div className="hero-text">
-          <p className="eyebrow">
-            {campaign.hostClass ? `${campaign.hostClass.displayName} · ` : ''}
-            {campaign.tournament ? `${campaign.tournament.year} Host Year` : 'Host Year'}
-          </p>
-          <h1>{campaign.title}</h1>
-          {campaign.tagline && <p className="host-hero-tagline">{campaign.tagline}</p>}
-          {campaign.description && <p>{campaign.description}</p>}
+      <div className={campaign.meter.enabled ? 'host-arena-hero-grid' : 'host-arena-hero-single'}>
+        <section className={`hero-card public-hero-card host-hero-card ${motionOk ? 'hero-reveal' : ''}`}>
+          <div className="hero-text">
+            <p className="eyebrow">
+              {campaign.hostClass ? `${campaign.hostClass.displayName} · ` : ''}
+              {campaign.tournament ? `${campaign.tournament.year} Host Year` : 'Host Year'}
+            </p>
+            <h1>{campaign.title}</h1>
+            {campaign.tagline && <p className="host-hero-tagline">{campaign.tagline}</p>}
+            {campaign.description && <p>{campaign.description}</p>}
 
-          <div className="hero-actions">
-            {donateHref && (
-              <a className="btn primary" href={donateHref} target="_blank" rel="noreferrer">
-                Support &amp; Donate <IconExternal size={15} />
-              </a>
-            )}
-            {allTicketsHref && (
-              <a className={`btn ${donateHref ? 'secondary' : 'primary'}`} href={allTicketsHref} target="_blank" rel="noreferrer">
-                Tickets on HåfaPass <IconExternal size={15} />
-              </a>
-            )}
-            {golfHref && (
-              <a className="btn secondary" href={golfHref} target="_blank" rel="noreferrer">
-                Alumni Golf <IconExternal size={15} />
-              </a>
-            )}
-            <Link className="btn secondary" to="/sponsors">
-              Sponsors <IconArrowRight size={15} />
-            </Link>
+            <div className="hero-actions">
+              {donateHref && (
+                <a className="btn primary" href={donateHref} target="_blank" rel="noreferrer">
+                  Support &amp; Donate <IconExternal size={15} />
+                </a>
+              )}
+              {allTicketsHref && (
+                <a className={`btn ${donateHref ? 'secondary' : 'primary'}`} href={allTicketsHref} target="_blank" rel="noreferrer">
+                  Tickets on HåfaPass <IconExternal size={15} />
+                </a>
+              )}
+              {golfHref && (
+                <a className="btn primary" href={golfHref} target="_blank" rel="noreferrer">
+                  Alumni Golf <IconExternal size={15} />
+                </a>
+              )}
+              <Link className="btn secondary" to="/sponsors">
+                Sponsors <IconArrowRight size={15} />
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className="hero-panel host-countdown-panel">
-          {heroImageHref && (
-            <img className="host-hero-thumb" src={heroImageHref} alt="" />
-          )}
-          <span>{campaign.countdownLabel || 'Countdown to tip-off'}</span>
-          {countdown ? (
-            countdown.reached ? (
-              <strong>Tournament time!</strong>
+          <div className="hero-panel host-countdown-panel">
+            {heroImageHref && (
+              <img className="host-hero-thumb" src={heroImageHref} alt="" />
+            )}
+            <span>{campaign.countdownLabel || 'Countdown to tip-off'}</span>
+            {countdown ? (
+              countdown.reached ? (
+                <strong>Tournament time!</strong>
+              ) : (
+                <div
+                  className="host-countdown-grid"
+                  role="group"
+                  aria-label={`Countdown: ${countdown.days} days, ${countdown.hours} hours, ${countdown.minutes} minutes`}
+                >
+                  <div><strong>{countdown.days}</strong><small>Days</small></div>
+                  <div><strong>{countdown.hours}</strong><small>Hours</small></div>
+                  <div><strong>{countdown.minutes}</strong><small>Min</small></div>
+                </div>
+              )
             ) : (
-              <div
-                className="host-countdown-grid"
-                role="group"
-                aria-label={`Countdown: ${countdown.days} days, ${countdown.hours} hours, ${countdown.minutes} minutes`}
-              >
-                <div><strong>{countdown.days}</strong><small>Days</small></div>
-                <div><strong>{countdown.hours}</strong><small>Hours</small></div>
-                <div><strong>{countdown.minutes}</strong><small>Min</small></div>
-              </div>
-            )
-          ) : (
-            <strong>Dates TBA</strong>
-          )}
-        </div>
-      </section>
+              <strong>Dates TBA</strong>
+            )}
+          </div>
+        </section>
 
-      {campaign.meter.enabled && <HardwoodCourtMeter key={campaign.id} meter={campaign.meter} />}
+        {campaign.meter.enabled && <HardwoodCourtMeter key={campaign.id} meter={campaign.meter} />}
+      </div>
+
+      {pastEvents.length > 0 && (
+        <section className="host-section">
+          <div className="section-heading">
+            <h2>Completed &amp; past fundraisers</h2>
+          </div>
+          <div className={`host-events-grid ${pastEvents.length === 1 ? 'host-events-grid--spotlight' : 'host-events-grid--two'}`}>
+            {pastEvents.map((event) => (
+              <CampaignEventCard key={event.id} event={event} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="host-section">
         <div className="section-heading">
@@ -182,7 +197,7 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
             description="Check back soon for upcoming host nights and golf registration."
           />
         ) : (
-          <div className="host-events-grid">
+          <div className="host-events-grid host-events-grid--two">
             {upcomingEvents.map((event, index) => (
               <RevealOnScroll key={event.id} delayMs={Math.min(index * 55, 220)}>
                 <CampaignEventCard event={event} />
@@ -191,19 +206,6 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
           </div>
         )}
       </section>
-
-      {pastEvents.length > 0 && (
-        <section className="host-section">
-          <div className="section-heading">
-            <h2>Completed &amp; past fundraisers</h2>
-          </div>
-          <div className="host-events-grid">
-            {pastEvents.map((event) => (
-              <CampaignEventCard key={event.id} event={event} />
-            ))}
-          </div>
-        </section>
-      )}
       <Panel className="host-donate-panel">
         <div className="section-heading"><h2>Ways to donate &amp; sponsor</h2></div>
         {campaign.donationInstructions && <p className="fundraiser-copy">{campaign.donationInstructions}</p>}

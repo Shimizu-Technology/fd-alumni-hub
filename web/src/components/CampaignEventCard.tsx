@@ -82,7 +82,7 @@ export function CampaignEventCard({ event }: { event: PublicCampaignEvent }) {
   const imageHref = safeHttpsHref(event.imageUrl) || (completed ? safeHttpsHref(event.recapPhotos?.[0]?.url) : null)
 
   return (
-    <article className={`host-event-card panel ${event.kind === 'golf' ? 'host-event-card--golf' : ''}`}>
+    <article className={`host-event-card panel ${event.kind === 'golf' ? 'host-event-card--golf' : ''} ${completed ? 'host-event-card--completed' : ''}`}>
       {imageHref && (
         <Link to={detailHref} className="host-event-media" aria-label={event.title}>
           <img src={imageHref} alt="" loading="lazy" />
@@ -96,7 +96,7 @@ export function CampaignEventCard({ event }: { event: PublicCampaignEvent }) {
         {event.description && <p className="host-event-description fundraiser-card-description">{event.description}</p>}
         {!isClosedFundraiser(event) && event.hafapass?.stale && <p className="muted-note">{event.hafapass.availabilityLabel}</p>}
         <div className="host-event-actions row-actions">
-          <Link className="btn secondary small" to={detailHref}>
+          <Link className={`btn ${completed ? 'primary' : 'secondary'} small`} to={detailHref}>
             {completed ? 'View recap & photos' : 'Event details'} <IconArrowRight size={14} />
           </Link>
           <FundraiserTicketAction event={event} />

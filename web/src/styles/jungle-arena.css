@@ -1,0 +1,1563 @@
+/* ==========================================================================
+   FD Alumni Basketball Hub — Unified Theme
+   Public: Direction 1 "The Jungle Arena" (Dark Broadcast & Hardwood Lights)
+   Admin:  Option C "High-Contrast Arena Command" (Obsidian + Slate + Oxblood)
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+  --arena-display: 'Barlow Condensed', 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --arena-sans: 'Plus Jakarta Sans', 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Unified Dark Arena Tokens */
+  --fd-maroon: #8a1939;
+  --fd-maroon-800: #6e142d;
+  --fd-maroon-900: #3d0918;
+  --fd-maroon-50: rgba(138, 25, 57, 0.24);
+  --fd-gold: #e6b84c;
+  --fd-gold-hi: #f4c44e;
+  --fd-gold-100: rgba(230, 184, 76, 0.16);
+  --fd-gold-line: rgba(230, 184, 76, 0.36);
+
+  --ink: #f7f3ee;
+  --ink-2: #dad1d5;
+  --ink-muted: #b3a4ab;
+  --muted: #b3a4ab;
+  --line: rgba(255, 240, 232, 0.13);
+  --line-strong: rgba(255, 240, 232, 0.22);
+  --border: rgba(255, 240, 232, 0.13);
+
+  --paper: #0c0709;
+  --surface: #170e12;
+  --surface-strong: #201319;
+  --surface-soft: #11090c;
+
+  --danger: #f87171;
+  --success: #4ade80;
+
+  font-family: var(--arena-sans);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--fd-gold-hi);
+  outline-offset: 2px;
+}
+
+/* Display Typography — Public Arena */
+.site-shell h1,
+.site-shell h2,
+.site-shell .brand strong,
+.site-shell .stat-card strong,
+.site-shell .timeline-year,
+.site-shell .title-history-row strong,
+.site-shell .host-countdown-grid strong,
+.site-shell .host-meter-percent {
+  font-family: var(--arena-display);
+  letter-spacing: 0.01em;
+}
+
+.site-shell h1,
+.site-shell h2,
+.site-shell h3,
+.site-shell .btn {
+  font-family: var(--arena-sans);
+}
+
+.site-shell .hero-text h1,
+.site-shell .page-header h1,
+.site-shell .section-heading h2,
+.site-shell .host-meter-head h2,
+.site-shell .archive-hero h2,
+.site-shell .team-profile-hero h2,
+.site-shell .find-class h2,
+.site-shell .jungle-rafters h2,
+.site-shell .host-event-card h3,
+.site-shell .class-legacy-card h3,
+.site-shell .brand strong {
+  font-family: var(--arena-display);
+  text-transform: uppercase;
+  letter-spacing: 0.015em;
+}
+
+/* ==========================================================================
+   PUBLIC SHELL — THE JUNGLE ARENA
+   ========================================================================== */
+
+.site-shell {
+  background:
+    radial-gradient(960px 480px at 80% -60px, rgba(152, 29, 63, 0.42), transparent 65%),
+    radial-gradient(640px 380px at 10% 8%, rgba(230, 184, 76, 0.11), transparent 62%),
+    var(--paper);
+  color: var(--ink);
+}
+
+.site-shell::before {
+  display: none;
+}
+
+.site-header {
+  background: rgba(12, 7, 9, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+  padding: 0.72rem clamp(1rem, 4vw, 2.75rem);
+}
+
+.brand-crest {
+  width: 2.65rem;
+  height: 2.65rem;
+  border-radius: 0.7rem;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(230, 184, 76, 0.48), 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.brand-crest img {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.public-brand strong {
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.brand small {
+  color: var(--fd-gold);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  margin-top: 2px;
+}
+
+.desktop-nav {
+  gap: 0.3rem;
+}
+
+.desktop-nav a,
+.admin-link {
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.52rem 0.92rem;
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+
+.desktop-nav a.active {
+  color: #fff;
+  background: var(--fd-maroon-800);
+  box-shadow: inset 0 0 0 1px var(--fd-gold-line);
+}
+
+.desktop-nav a:hover,
+.admin-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.site-footer {
+  background: #090507;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.site-footer p {
+  color: var(--ink-muted);
+}
+
+.site-footer .site-credit {
+  color: #8c7b83;
+}
+
+.site-credit a,
+.footer-links {
+  color: var(--fd-gold);
+}
+
+/* Mobile Menu Drawer (Dark Arena) */
+.mobile-menu {
+  background: rgba(6, 3, 5, 0.72);
+}
+
+.mobile-menu-panel {
+  background: #160c10;
+  border: 1px solid var(--fd-gold-line);
+  color: var(--ink);
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.65);
+}
+
+.mobile-menu-head {
+  border-bottom-color: var(--line);
+}
+
+.mobile-menu-head strong {
+  color: #fff;
+  font-family: var(--arena-display);
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mobile-menu-head small {
+  color: var(--fd-gold);
+}
+
+.icon-button {
+  background: var(--surface-strong);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.mobile-menu-panel a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.mobile-menu-panel a.active {
+  background: var(--fd-maroon-800);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--fd-gold-line);
+}
+
+.mobile-admin-link {
+  border: 1px solid var(--fd-gold-line);
+  background: rgba(230, 184, 76, 0.1);
+  color: var(--fd-gold) !important;
+}
+
+/* Mobile Bottom Nav (Dark Arena) */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    background: rgba(12, 7, 9, 0.95);
+    border-top: 1px solid var(--fd-gold-line);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.55);
+  }
+
+  .mobile-bottom-nav-item {
+    color: var(--ink-muted);
+  }
+
+  .mobile-bottom-nav-item.active {
+    color: var(--fd-gold);
+    background: rgba(230, 184, 76, 0.1);
+  }
+
+  .mobile-bottom-nav-item:focus-visible {
+    outline-color: var(--fd-gold);
+  }
+}
+
+/* ==========================================================================
+   BUTTONS & CORE SURFACES (PUBLIC)
+   ========================================================================== */
+
+.btn {
+  border-radius: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.btn.primary {
+  background: var(--fd-gold);
+  color: #190c10;
+  box-shadow: 0 10px 26px rgba(230, 184, 76, 0.22);
+}
+
+.btn.primary:hover {
+  background: var(--fd-gold-hi);
+}
+
+.btn.secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: var(--fd-gold-line);
+}
+
+.btn.ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid var(--line-strong);
+}
+
+.btn.danger {
+  background: rgba(239, 68, 68, 0.16);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+}
+
+.panel,
+.state-card,
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+  color: var(--ink);
+}
+
+.error-state {
+  background: rgba(127, 29, 29, 0.22);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.spinner {
+  border-color: rgba(255, 255, 255, 0.14);
+  border-top-color: var(--fd-gold);
+}
+
+.eyebrow,
+.archive-kicker {
+  color: var(--fd-gold);
+  letter-spacing: 0.14em;
+  font-weight: 800;
+}
+
+.site-shell .page-header {
+  background: linear-gradient(135deg, rgba(110, 20, 45, 0.56) 0%, rgba(23, 14, 18, 0.96) 66%);
+  border: 1px solid var(--fd-gold-line);
+  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.42);
+}
+
+.site-shell .page-header .eyebrow {
+  color: var(--fd-gold);
+}
+
+.site-shell .page-header h1 {
+  color: #fff;
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  line-height: 0.96;
+}
+
+.site-shell .page-header p {
+  color: var(--ink-2);
+}
+
+.section-heading h2 {
+  color: #fff;
+  font-size: clamp(1.65rem, 2.8vw, 2.15rem);
+  line-height: 1;
+}
+
+.section-heading a,
+.section-heading span {
+  color: var(--fd-gold);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+/* Inputs & Controls on Dark Surfaces */
+input,
+select,
+textarea {
+  background: #120b0e;
+  border: 1px solid var(--line-strong);
+  color: #fff;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(230, 184, 76, 0.36);
+  border-color: var(--fd-gold);
+}
+
+/* ==========================================================================
+   DIRECTION 1 HERO + INTEGRATED SCOREBOARD METER
+   ========================================================================== */
+
+.host-arena-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.hero-card {
+  background:
+    linear-gradient(135deg, rgba(110, 20, 45, 0.78) 0%, rgba(22, 12, 16, 0.97) 64%),
+    var(--surface);
+  color: #fff;
+  border: 1px solid var(--fd-gold-line);
+  border-radius: 1.35rem;
+  padding: clamp(1.4rem, 3.2vw, 2.25rem);
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.48);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.public-hero-card::before {
+  height: 3px;
+  background: linear-gradient(90deg, var(--fd-gold), var(--fd-maroon));
+}
+
+.hero-card::after {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 330 280'%3E%3Cg fill='none' stroke='%23e6b84c' stroke-width='2'%3E%3Cpath d='M8 8h314v264H8zM322 28h-68a112 112 0 0 0 0 224h68M322 96H232v88h90M232 96a44 44 0 0 0 0 88M296 116v48M8 86a54 54 0 0 1 0 108'/%3E%3Ccircle cx='282' cy='140' r='8'/%3E%3C/g%3E%3C/svg%3E") no-repeat right -1.2rem center / 96% auto;
+  opacity: 0.14;
+}
+
+.hero-card .eyebrow {
+  color: var(--fd-gold);
+  margin-bottom: 0.55rem;
+}
+
+.hero-text h1 {
+  color: #fff;
+  font-size: clamp(2.65rem, 5.4vw, 4.25rem);
+  line-height: 0.94;
+  margin-bottom: 0.65rem;
+}
+
+.hero-text p.host-hero-tagline {
+  color: var(--fd-gold);
+  font-weight: 700;
+  font-size: 1.02rem;
+  margin: 0 0 0.55rem;
+}
+
+.hero-text p:not(.eyebrow):not(.host-hero-tagline) {
+  color: var(--ink-2);
+  font-size: 0.98rem;
+  line-height: 1.56;
+  margin: 0;
+}
+
+.hero-actions {
+  margin-top: 1.25rem;
+  gap: 0.65rem;
+}
+
+.hero-panel {
+  background: rgba(10, 5, 7, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  color: #fff;
+  box-shadow: none;
+}
+
+.hero-panel.host-countdown-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.1rem;
+  padding: 0.9rem 1.1rem;
+  margin-top: 1.35rem;
+}
+
+.hero-panel span {
+  color: var(--fd-gold);
+  font-size: 0.7rem;
+  letter-spacing: 0.13em;
+}
+
+.hero-panel strong {
+  color: #fff;
+}
+
+.hero-panel small {
+  color: var(--ink-muted);
+}
+
+.hero-panel-rule {
+  background: var(--line);
+}
+
+.host-countdown-grid {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.host-countdown-grid > div {
+  background: #1d1116;
+  border: 1px solid rgba(230, 184, 76, 0.3);
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  min-width: 3.7rem;
+}
+
+.host-countdown-grid strong {
+  font-size: 1.65rem;
+  line-height: 1;
+  color: #fff;
+}
+
+.host-countdown-grid small {
+  color: var(--ink-muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+}
+
+/* Hardwood Court Scoreboard Panel */
+.host-meter-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.35rem;
+  padding: clamp(1.25rem, 2.5vw, 1.75rem);
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.host-meter-head h2 {
+  font-size: clamp(1.75rem, 2.6vw, 2.35rem);
+  color: #fff;
+  line-height: 1;
+}
+
+.host-meter-percent {
+  font-size: 2rem;
+  color: var(--fd-gold);
+  line-height: 1;
+}
+
+.host-meter-court {
+  width: 100%;
+  border: 1px solid var(--fd-gold-line);
+  border-radius: 0.85rem;
+  background: #23161b;
+}
+
+.host-meter-track {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.host-meter-fill {
+  background: linear-gradient(90deg, #981d3f, var(--fd-gold));
+}
+
+.host-meter-foot {
+  color: var(--ink-muted);
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.host-meter-foot small {
+  color: #8c7b83;
+}
+
+/* ==========================================================================
+   FUNDRAISERS: SPOTLIGHT RECAP + BALANCED 2x2 UPCOMING GRID
+   ========================================================================== */
+
+.host-events-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.host-events-grid--spotlight {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.host-event-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1.15rem;
+  padding: 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 38px rgba(0, 0, 0, 0.32);
+}
+
+.host-event-card--golf {
+  border-color: var(--fd-gold-line);
+  background: linear-gradient(155deg, rgba(230, 184, 76, 0.09) 0%, var(--surface) 60%);
+}
+
+.host-event-card h3 {
+  font-size: 1.55rem;
+  line-height: 1.05;
+  margin: 0.2rem 0 0;
+  color: #fff;
+}
+
+.host-event-card h3 a:hover {
+  color: var(--fd-gold);
+}
+
+.host-event-meta {
+  color: var(--fd-gold);
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.host-event-description {
+  color: var(--ink-2);
+  font-size: 0.93rem;
+}
+
+.division-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  background: var(--fd-gold-100);
+  color: var(--fd-gold);
+  border: 1px solid var(--fd-gold-line);
+}
+
+.host-price-pill,
+.section-heading .host-price-pill {
+  background: var(--fd-gold);
+  color: #190c10;
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.75rem;
+}
+
+/* Uncropped Spotlight Card for Completed Fundraiser */
+.host-events-grid--spotlight .host-event-card--completed {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 1.6rem;
+  align-items: center;
+  background: linear-gradient(125deg, #211017 0%, #150b0f 100%);
+  border: 1px solid var(--fd-gold-line);
+  padding: 1.4rem;
+}
+
+.host-events-grid--spotlight .host-event-card--completed > .host-event-body:only-child {
+  grid-column: 1 / -1;
+}
+
+.host-events-grid--spotlight .host-event-media {
+  background: #090507;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+
+.host-events-grid--spotlight .host-event-media img {
+  width: 100%;
+  height: auto;
+  max-height: 26rem;
+  aspect-ratio: auto;
+  object-fit: contain;
+  border-radius: 0;
+}
+
+.host-events-grid--spotlight .host-event-card--completed h3 {
+  font-size: clamp(1.75rem, 3vw, 2.3rem);
+}
+
+.host-events-grid--spotlight .fundraiser-card-description {
+  -webkit-line-clamp: 5;
+}
+
+/* News/Class Posts — Uncropped Vertical Flyers */
+.host-post-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.host-post-head h3 {
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.host-post-head small {
+  color: var(--ink-muted);
+}
+
+.host-post-media {
+  background: #090507;
+  border-radius: 0.9rem;
+  border: 1px solid var(--line);
+  padding: 0.75rem;
+  margin-bottom: 0.9rem;
+  display: flex;
+  justify-content: center;
+}
+
+.host-post-media img {
+  width: auto;
+  max-width: 100%;
+  max-height: 24rem;
+  object-fit: contain;
+  border-radius: 0.6rem;
+}
+
+.host-post-body p {
+  color: var(--ink-2);
+}
+
+.host-donate-panel {
+  background: linear-gradient(135deg, #1d1016, #140b0f);
+  border: 1px solid var(--fd-gold-line);
+}
+
+/* Fundraiser Detail Page */
+.fundraiser-back {
+  color: var(--fd-gold);
+  font-weight: 700;
+}
+
+.fundraiser-cover {
+  background: #090507;
+  border: 1px solid var(--line);
+}
+
+.fundraiser-photo-grid figcaption {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   STATUS BADGES, HISTORY, ARCHIVE, GAMES, STANDINGS, BRACKETS, SPONSORS
+   ========================================================================== */
+
+.status-badge {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+
+.status-live,
+.status-available,
+.status-badge.live {
+  background: rgba(52, 211, 153, 0.16);
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.42);
+}
+
+.status-final,
+.status-completed,
+.status-approved,
+.status-badge.completed {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+  border-color: rgba(74, 222, 128, 0.38);
+}
+
+.status-scheduled,
+.status-upcoming,
+.status-pending,
+.status-unknown,
+.status-future,
+.status-badge.upcoming,
+.status-delayed,
+.status-postponed {
+  background: rgba(230, 184, 76, 0.16);
+  color: var(--fd-gold);
+  border-color: rgba(230, 184, 76, 0.36);
+}
+
+.status-cancelled,
+.status-rejected,
+.status-result-pending,
+.status-badge.cancelled {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.42);
+}
+
+.status-research-pending {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-muted);
+}
+
+/* Stat Cards */
+.stat-card strong {
+  color: #fff;
+  font-size: clamp(1.85rem, 3.8vw, 2.75rem);
+}
+
+.stat-card span {
+  color: var(--ink-muted);
+}
+
+.stat-maroon {
+  background: linear-gradient(135deg, #6e142d, #360815);
+  border-color: var(--fd-gold-line);
+}
+
+.stat-gold {
+  background: linear-gradient(135deg, rgba(230, 184, 76, 0.2), rgba(23, 14, 18, 0.96));
+  border-color: var(--fd-gold-line);
+}
+
+.stat-gold strong,
+.stat-gold span {
+  color: var(--fd-gold);
+}
+
+.stat-live {
+  background: rgba(16, 85, 58, 0.25);
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.stat-live strong {
+  color: #6ee7b7;
+}
+
+/* Compact Lists, Games, Articles, Videos, Sponsors, History, Archive */
+.compact-row,
+.game-card,
+.standing-mobile-card,
+.article-card,
+.gallery-card,
+.sponsor-card,
+.timeline-row,
+.video-card,
+.today-game-card,
+.archive-media-strip article,
+.workboard-card,
+.ticket-card,
+.archive-record {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.3);
+}
+
+.compact-row:hover,
+.archive-link-card:hover,
+.timeline-link-row:hover,
+.workboard-card:hover {
+  border-color: var(--fd-gold-line);
+}
+
+.compact-row span,
+.game-card-top span,
+.standing-mobile-card span,
+.article-card span,
+.gallery-card span,
+.article-card small,
+.gallery-card a,
+.timeline-year,
+.timeline-link-row > svg,
+.archive-game-list h3,
+.archive-link-card span,
+.archive-link-card small,
+.video-card a,
+.archive-source-links a,
+.title-leaderboard-card span,
+.champion-record-card span,
+.class-team-list span,
+.profile-roster-list span,
+.title-history-row strong,
+.day-section h2,
+.sponsor-tier h2,
+.home-tipoff span,
+.today-brief-card span,
+.prediction-card-head span,
+.tonight-host-class,
+.door-info-grid strong,
+.bracket-column-heading,
+.roster-details summary,
+.roster-columns li span,
+.home-today-note span,
+.home-today-note small,
+.home-poll-copy span,
+.partner-strip span,
+.archive-mvp strong,
+.today-score-strip strong {
+  color: var(--fd-gold);
+}
+
+.team-line,
+.standing-mobile-card dl div,
+.champion-record-card,
+.archive-game-row,
+.archive-link-card,
+.class-team-list a,
+.team-game-row,
+.profile-roster-list div,
+.title-history-row,
+.prediction-card,
+.prediction-empty,
+.roster-columns li,
+.partner-strip div,
+.partner-strip a,
+.today-score-strip {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.team-line a,
+.team-line strong,
+.standing-mobile-card dd,
+.home-today-note strong,
+.home-today-note p,
+.home-poll-copy strong,
+.home-poll-teaser strong {
+  color: #fff;
+}
+
+.team-line a:hover {
+  color: var(--fd-gold);
+}
+
+.game-meta span,
+.archive-badges > span:not(.status-badge),
+.archive-score,
+.team-game-score strong,
+.class-chip-row a,
+.class-chip-row button,
+.class-link-list a,
+.schedule-day-jump a,
+.archive-sponsor-list a,
+.archive-sponsor-badge,
+.game-night-date,
+.bracket-tab-btn,
+.bracket-pill-btn,
+.time-chip {
+  background: var(--surface-strong);
+  border: 1px solid var(--line-strong);
+  color: #fff;
+}
+
+.archive-score,
+.team-game-score strong,
+.schedule-day-jump a {
+  color: var(--fd-gold);
+}
+
+.schedule-day-jump span {
+  background: var(--fd-maroon-800);
+  color: #fff;
+}
+
+.bracket-tab-btn.active,
+.bracket-pill-btn.active,
+.game-night-date[aria-pressed='true'] {
+  background: var(--fd-maroon);
+  border-color: var(--fd-gold-line);
+  color: #fff;
+}
+
+.title-leaderboard-panel,
+.archive-hero,
+.watch-hero,
+.team-profile-hero,
+.class-profile-note,
+.ticket-info-card,
+.sponsor-card--diamond,
+.ticket-card--pass,
+.home-today-note,
+.home-poll-callout,
+.prediction-card.compact {
+  background: linear-gradient(135deg, rgba(110, 20, 45, 0.52) 0%, rgba(23, 14, 18, 0.96) 72%);
+  border: 1px solid var(--fd-gold-line);
+  color: var(--ink);
+}
+
+.title-leaderboard-card {
+  background: rgba(12, 7, 9, 0.6);
+  border: 1px solid var(--fd-gold-line);
+}
+
+.title-leaderboard-card strong {
+  color: #fff;
+}
+
+.archive-chip-row .archive-pill,
+.video-card-meta .archive-pill {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+
+.archive-chip-row .archive-pill--maroon,
+.video-card-meta .archive-pill--maroon {
+  background: var(--fd-maroon);
+  color: #fff;
+}
+
+.archive-chip-row .archive-pill--gold,
+.video-card-meta .archive-pill--gold {
+  background: var(--fd-gold);
+  color: #190c10;
+}
+
+.archive-chip-row .archive-pill--platinum,
+.video-card-meta .archive-pill--platinum {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.prediction-options button {
+  background: #140c10;
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.prediction-options button:hover:not(:disabled),
+.prediction-options button.selected {
+  background: var(--fd-maroon-50);
+  border-color: var(--fd-gold);
+}
+
+.home-tipoff {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  border-inline-start-color: var(--fd-gold);
+  color: #fff;
+}
+
+.home-tipoff:hover {
+  background: #27171f;
+}
+
+.info-card-icon {
+  background: var(--fd-maroon-50);
+  color: var(--fd-gold);
+}
+
+.info-list-card li::marker {
+  color: var(--fd-gold);
+}
+
+/* Alerts & Banners (High-Contrast Dark) */
+.tournament-alert-banner {
+  background: var(--surface-strong);
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.tournament-alert-banner--info {
+  background: rgba(30, 58, 138, 0.28);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #dbeafe;
+}
+
+.tournament-alert-banner--warning,
+.tickets-stale-banner,
+.game-status-note,
+.box-score-warning {
+  background: rgba(180, 83, 9, 0.24);
+  border-color: rgba(244, 196, 78, 0.48);
+  color: #fde68a;
+}
+
+.tournament-alert-banner--urgent {
+  background: rgba(153, 27, 27, 0.32);
+  border-color: rgba(248, 113, 113, 0.52);
+  color: #fecaca;
+}
+
+/* Find Your Class & Jungle Rafters (Dark Arena) */
+.find-class {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.find-class-controls select {
+  background: #120b0e;
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.heritage-options button {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+.heritage-options button[aria-pressed='true'] {
+  background: var(--fd-gold);
+  border-color: var(--fd-gold);
+  color: #190c10;
+}
+
+.class-legacy-card {
+  background: linear-gradient(135deg, #5d1025 0%, #240811 100%);
+  border: 2px solid var(--fd-gold);
+  color: #fff;
+}
+
+.class-legacy-card .eyebrow {
+  color: var(--fd-gold);
+}
+
+.class-legacy-badges strong {
+  color: var(--fd-gold);
+  border-color: var(--fd-gold-line);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.class-legacy-titles {
+  color: var(--ink-2);
+}
+
+.rafters-banner {
+  --banner-paper: #241219;
+  --banner-ink: #fff;
+}
+
+.rafters-banner--maroon {
+  --banner-paper: linear-gradient(180deg, #6e142d 0%, #3b0917 100%);
+  --banner-ink: #fff;
+}
+
+.rafters-banner--gold {
+  --banner-paper: linear-gradient(180deg, #4b3511 0%, #261a08 100%);
+  --banner-ink: #fde68a;
+}
+
+.rafters-banner--platinum {
+  --banner-paper: linear-gradient(180deg, #273142 0%, #151b26 100%);
+  --banner-ink: #e2e8f0;
+}
+
+.rafters-banner--cancelled {
+  --banner-paper: #1e191c;
+  --banner-ink: #a1969c;
+}
+
+.rafters-back {
+  background: #1b1015;
+  color: #fff;
+}
+
+.archive-shell {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.archive-return {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+/* ==========================================================================
+   ADMIN SHELL — OPTION C: HIGH-CONTRAST ARENA COMMAND
+   Obsidian canvas (#08080a) + lifted slate cards (#18181f) + crisp borders
+   ========================================================================== */
+
+.admin-shell {
+  color-scheme: dark;
+  --fd-maroon: #8a1939;
+  --fd-maroon-800: #6e142d;
+  --fd-maroon-900: #100c0f;
+  --fd-maroon-50: rgba(138, 25, 57, 0.28);
+  --fd-gold: #f4c44e;
+  --fd-gold-100: rgba(244, 196, 78, 0.18);
+  --ink: #ffffff;
+  --ink-2: #d8d5df;
+  --muted: #a6a1b2;
+  --line: rgba(255, 255, 255, 0.16);
+  --line-strong: rgba(255, 255, 255, 0.24);
+  --paper: #08080a;
+  --surface: #18181f;
+  --surface-strong: #22222c;
+  --admin-shadow: 0 12px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.admin-shell .admin-sidebar {
+  background: #100c0f;
+  color: #fff;
+  border-right: 1px solid var(--line);
+}
+
+.admin-shell .admin-brand-crest {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.55rem;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(244, 196, 78, 0.48);
+}
+
+.admin-shell .admin-brand-crest img {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.admin-shell .admin-brand strong {
+  font-family: var(--arena-display);
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admin-shell .admin-brand small {
+  color: var(--fd-gold);
+}
+
+.admin-shell .admin-nav-section p {
+  color: var(--muted);
+}
+
+.admin-shell .admin-nav-link {
+  color: var(--ink-2);
+  border-radius: 0.65rem;
+}
+
+.admin-shell .admin-nav-link:hover,
+.admin-shell .admin-nav-link:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-shell .admin-nav-link.active {
+  background: var(--fd-maroon);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(244, 196, 78, 0.55);
+}
+
+.admin-shell .admin-account-card {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.admin-shell .admin-sidebar .admin-account-avatar {
+  background: var(--fd-gold);
+  color: #140a0d;
+}
+
+.admin-shell .admin-account-meta small {
+  color: var(--muted);
+}
+
+.admin-shell .admin-collapse-button,
+.admin-shell .admin-signout-button {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+.admin-shell .admin-collapse-button:hover,
+.admin-shell .admin-signout-button:hover {
+  background: var(--surface-strong);
+  border-color: var(--line-strong);
+  color: #fff;
+}
+
+.admin-shell .admin-mobile-topbar {
+  background: #140b0f;
+  color: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-shell .admin-mobile-topbar .icon-button {
+  background: var(--surface-strong);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* Command Header Banner inside Admin Workspace */
+.admin-shell .page-header {
+  background: linear-gradient(120deg, #5a0e24 0%, #240d16 58%, #18181f 100%);
+  border: 1px solid rgba(244, 196, 78, 0.42);
+  border-radius: 1.05rem;
+  padding: clamp(1.1rem, 2.5vw, 1.55rem);
+  margin-bottom: 0.35rem;
+}
+
+.admin-shell .page-header h1 {
+  color: #fff;
+  font-family: var(--arena-sans);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.admin-shell .page-header p {
+  color: var(--ink-2);
+}
+
+.admin-shell .page-header .eyebrow {
+  color: var(--fd-gold);
+}
+
+.admin-shell .panel,
+.admin-shell .state-card,
+.admin-shell .stat-card,
+.admin-shell .auth-card,
+.admin-shell .admin-row-card,
+.admin-shell .people-capability-card,
+.admin-shell .people-person-card,
+.admin-shell .class-membership-editor,
+.admin-shell .team-edit-panel,
+.admin-shell .roster-table-wrap,
+.admin-shell .score-entry-panel,
+.admin-shell .game-detail-editor,
+.admin-shell .tournament-edit-panel,
+.admin-shell .modal-card,
+.admin-shell .admin-editor-dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  color: #fff;
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-shell .auth-card {
+  background: var(--surface);
+}
+
+.admin-shell .admin-overview-status:first-child {
+  background: var(--surface-strong);
+  border-color: rgba(244, 196, 78, 0.42);
+}
+
+.admin-shell .btn.primary {
+  background: var(--fd-gold);
+  color: #160a0d;
+  font-weight: 800;
+}
+
+.admin-shell .btn.primary:hover {
+  background: #ffd166;
+}
+
+.admin-shell .btn.secondary {
+  background: var(--surface-strong);
+  color: #fff;
+  border: 1px solid var(--line-strong);
+}
+
+.admin-shell .btn.secondary:hover {
+  background: #2c2c38;
+  border-color: rgba(244, 196, 78, 0.45);
+}
+
+.admin-shell .btn.danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
+.admin-shell .admin-user-badge {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+.admin-shell .admin-module-tab {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.admin-shell .admin-module-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-shell .admin-module-tab:is(.is-active, [aria-current='page'], [aria-selected='true']) {
+  background: var(--fd-maroon);
+  color: #fff;
+  border-color: rgba(244, 196, 78, 0.45);
+}
+
+.admin-shell .admin-work-link {
+  color: #fff;
+}
+
+.admin-shell .admin-work-link svg {
+  color: var(--fd-gold);
+}
+
+.admin-shell .admin-work-link:hover,
+.admin-shell .admin-choice-card:hover {
+  border-color: rgba(244, 196, 78, 0.5);
+  background: var(--surface-strong);
+}
+
+.admin-shell .admin-choice-card {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  color: #fff;
+}
+
+.admin-shell .admin-choice-card span {
+  color: var(--ink-2);
+}
+
+.admin-shell .admin-choice-card[aria-pressed='true'] {
+  border-color: var(--fd-gold);
+  background: rgba(138, 25, 57, 0.36);
+  box-shadow: 0 0 0 1px rgba(244, 196, 78, 0.35);
+}
+
+.admin-shell :is(.status-completed, .admin-live-badge) {
+  background: rgba(52, 211, 153, 0.18);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.48);
+}
+
+.admin-shell .status-upcoming {
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.42);
+}
+
+.admin-shell .status-hidden {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.admin-shell input,
+.admin-shell select,
+.admin-shell textarea {
+  background: #101015;
+  border: 1px solid var(--line-strong);
+  color: #fff;
+}
+
+.admin-shell .image-url-upload input[type='file'] {
+  background: var(--surface-strong);
+  color: var(--fd-gold);
+}
+
+.admin-shell .check-field,
+.admin-shell .people-presets legend,
+.admin-shell .people-capability-card legend,
+.admin-shell .people-scope-title,
+.admin-shell .audit-date-range legend,
+.admin-shell .audit-details summary,
+.admin-shell .scorekeeper-team-label {
+  color: var(--fd-gold);
+}
+
+.admin-shell .audit-area,
+.admin-shell .audit-provenance {
+  background: var(--surface-strong);
+  color: var(--fd-gold);
+  border: 1px solid var(--line);
+}
+
+.admin-shell .data-table th,
+.admin-shell .admin-finance-table thead th {
+  background: var(--surface-strong);
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-shell .data-table td,
+.admin-shell .admin-finance-table td,
+.admin-shell .admin-finance-table tbody th {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.admin-shell .bulk-link-panel,
+.admin-shell .consolidated-gap-row,
+.admin-shell .team-representation-summary,
+.admin-shell .workflow-panel,
+.admin-shell .tournament-mode-panel,
+.admin-shell .tournament-dashboard-hero.archive-mode,
+.admin-shell .tournament-dashboard-hero.operations-mode,
+.admin-shell .workboard-card-ready,
+.admin-shell .workboard-card-attention {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  color: #fff;
+}
+
+.admin-shell .draft-filter-note,
+.admin-shell .draft-badge {
+  background: rgba(244, 196, 78, 0.18);
+  border-color: rgba(244, 196, 78, 0.45);
+  color: var(--fd-gold);
+}
+
+.admin-shell .workflow-steps span,
+.admin-shell .featured-game-card p,
+.admin-shell .game-day-date-jump button {
+  background: #101015;
+  border-color: var(--line-strong);
+  color: var(--fd-gold);
+}
+
+.admin-shell :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--fd-gold);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS FOR ARENA LAYOUTS
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .host-arena-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .host-events-grid--spotlight .host-event-card--completed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .public-brand strong {
+    font-size: 1.08rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .host-events-grid--two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-panel.host-countdown-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .host-countdown-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Keep Print Reports Clean White Paper */
+@media print {
+  :root,
+  .admin-shell,
+  .site-shell {
+    color-scheme: light !important;
+    background: #fff !important;
+    color: #000 !important;
+    --ink: #000 !important;
+    --muted: #444 !important;
+    --surface: #fff !important;
+    --surface-strong: #f5f5f5 !important;
+    --line: #ccc !important;
+  }
+
+  .admin-shell :is(
+    .panel,
+    .stat-card,
+    .page-header,
+    .page-header h1,
+    .page-header p,
+    .data-table td,
+    .data-table th,
+    .admin-finance-table td,
+    .admin-finance-table th
+  ) {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+}
