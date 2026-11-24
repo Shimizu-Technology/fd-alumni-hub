@@ -85,13 +85,7 @@ function PublicShell() {
   }, [location.pathname])
 
   const visibleMenuKey = visibleMenuItems.map((item) => item.to).join(',')
-
-  useEffect(() => {
-    if (!open || typeof document === 'undefined') return
-    if (menuPanelRef.current && !menuPanelRef.current.contains(document.activeElement)) {
-      closeButtonRef.current?.focus({ preventScroll: true })
-    }
-  }, [open, visibleMenuKey])
+  const prevMenuKeyRef = useRef(visibleMenuKey)
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -138,6 +132,15 @@ function PublicShell() {
       if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus({ preventScroll: true })
     }
   }, [open])
+
+  useEffect(() => {
+    const changed = prevMenuKeyRef.current !== visibleMenuKey
+    prevMenuKeyRef.current = visibleMenuKey
+    if (!changed || !open || typeof document === 'undefined') return
+    if (menuPanelRef.current && !menuPanelRef.current.contains(document.activeElement)) {
+      closeButtonRef.current?.focus({ preventScroll: true })
+    }
+  }, [open, visibleMenuKey])
 
   const moreActive = open || !bottomNavItems.some(({ to }) => to === location.pathname || (to !== '/' && location.pathname.startsWith(`${to}/`)))
 
