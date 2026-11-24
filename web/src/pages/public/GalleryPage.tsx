@@ -59,7 +59,7 @@ export function GalleryPage() {
             const articleHref = safeHttpsHref(asset.articleUrl)
             return (
               <article key={asset.id} className="gallery-card">
-                {asset.imageUrl && <img src={asset.imageUrl} alt={asset.caption || asset.title} loading="lazy" />}
+                {asset.imageUrl && <GalleryImage key={asset.imageUrl} src={asset.imageUrl} alt={asset.caption || asset.title} />}
                 <div>
                   <span>{asset.source}{asset.takenAt ? ` · ${formatGuamDate(asset.takenAt)}` : ''}</span>
                   <h2>{asset.title}</h2>
@@ -74,4 +74,12 @@ export function GalleryPage() {
       )}
     </div>
   )
+}
+
+function GalleryImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) return <div className="image-placeholder" aria-hidden="true">FD</div>
+
+  return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />
 }

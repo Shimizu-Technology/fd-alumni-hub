@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FundraiserBadges, FundraiserDate, FundraiserTicketAction, isClosedFundraiser } from '../../components/CampaignEventCard'
+import { SITE_NAME } from '../../components/SeoManager'
 import { EmptyState, LoadingState, Panel, SectionUnavailable } from '../../components/ui'
 import { useSiteMode } from '../../contexts/SiteModeContext'
 import { api } from '../../lib/api'
@@ -15,6 +17,16 @@ export function FundraiserDetailPage() {
 function FundraiserDetail({ id }: { id: string }) {
   const { siteMode } = useSiteMode()
   const { data, loading, error, errorStatus, reload } = useAsync(() => api.publicFundraiser(id), [id])
+  const eventTitle = data?.event.title
+
+  useEffect(() => {
+    if (!eventTitle) return
+    const nextTitle = `${eventTitle} | ${SITE_NAME}`
+    document.title = nextTitle
+    for (const selector of ['meta[name="title"]', 'meta[property="og:title"]', 'meta[name="twitter:title"]']) {
+      document.head.querySelector<HTMLMetaElement>(selector)?.setAttribute('content', nextTitle)
+    }
+  }, [eventTitle])
   const onFundraisingHome = siteMode.mode === 'fundraising'
   const isDefaultActiveCampaign = Boolean(
     data?.campaign.slug &&

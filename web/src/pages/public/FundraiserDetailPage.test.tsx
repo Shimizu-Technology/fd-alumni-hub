@@ -28,6 +28,7 @@ it('shows the full flyer and live purchase link on the alternate detail route', 
   const load = vi.spyOn(api, 'publicFundraiser').mockResolvedValue({ event: upcomingEvent, campaign, hafapass })
   open('/host-year/events/20')
   expect(await screen.findByRole('heading', { name: 'Alumni dinner' })).toBeInTheDocument()
+  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
   expect(load).toHaveBeenCalledWith('20')
   expect(screen.getByRole('img', { name: 'Flyer for Alumni dinner' })).toHaveAttribute('src', upcomingEvent.imageUrl)
   expect(screen.getByText('Tickets on sale')).toBeInTheDocument()
