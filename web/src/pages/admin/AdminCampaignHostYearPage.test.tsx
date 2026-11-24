@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { api } from '../../lib/api'
@@ -50,6 +50,7 @@ it('uploads, previews, replaces and removes a flyer and uses the stored status f
   vi.mocked(api.campaignEvents).mockResolvedValue({ events: [{ ...adminEvent, imageUrl: 'https://images.example.com/flyer.jpg' }] })
   fireEvent.click(screen.getByLabelText('Show archived'))
   await waitFor(() => expect(api.campaignEvents).toHaveBeenCalledWith(adminCampaign.slug, { includeArchived: true }))
+  await act(async () => { await Promise.resolve() })
   fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
   expect(screen.getByLabelText('Status')).toHaveValue('open')
   fireEvent.click(screen.getByRole('button', { name: 'Remove flyer' }))

@@ -52,7 +52,8 @@ function RecapGallery({ photos }: { photos: RecapPhoto[] }) {
           </figure>
         ))}
       </div>
-      <dialog ref={dialog} className="recap-lightbox" role="dialog" aria-modal="true" aria-label="Recap Photo Gallery"
+      <dialog ref={dialog} className="recap-lightbox" aria-modal="true" aria-label="Recap Photo Gallery"
+        onClick={(event) => { if (event.target === event.currentTarget) close() }}
         onKeyDown={handleKeys} onCancel={(event) => { event.preventDefault(); close() }}>
         <div className="recap-lightbox-toolbar">
           <span aria-live="polite">{index + 1} of {photos.length}</span>
@@ -82,7 +83,10 @@ function FundraiserDetail({ id }: { id: string }) {
   const { siteMode } = useSiteMode()
   const { data, loading, error, errorStatus, reload } = useAsync(() => api.publicFundraiser(id), [id])
   const onFundraisingHome = siteMode.mode === 'fundraising'
-  const back = <Link className="fundraiser-back" to={onFundraisingHome ? '/' : '/host-year'}>← Back to fundraisers</Link>
+  const campaignBackTo = data?.campaign.status === 'archived'
+    ? `/host-year/${data.campaign.slug}`
+    : (onFundraisingHome ? '/' : '/host-year')
+  const back = <Link className="fundraiser-back" to={campaignBackTo}>← Back to fundraisers</Link>
 
   if (loading && !data) return <LoadingState label="Loading fundraiser" />
   if (error || !data) {
