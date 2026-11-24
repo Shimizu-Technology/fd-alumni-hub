@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDate, formatGuamDateTime, guamDayLabel } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, formatTournamentWindow, gameResultLabel } from '../../lib/games'
-import { classRouteKey } from '../../lib/history'
+import { classRouteKey, publicSourceLabel } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import { staticChampionsForYear } from '../../lib/staticChampions'
 import type { Article, Game, MediaAsset, Sponsor, Standing, TournamentChampion } from '../../lib/types'
@@ -78,6 +78,7 @@ export function HistoryDetailPage() {
   const finalGames = games.filter((game) => game.status === 'final' && game.homeScore !== null && game.awayScore !== null)
   const championRecords = archiveData?.champions.championRecords || []
   const primaryChampion = championRecords.find((record) => record.primary && record.status === 'completed') || championRecords.find((record) => record.status === 'completed') || championRecords[0]
+  const isFinalArchive = tournament?.status === 'completed' || primaryChampion?.status === 'completed'
   const failed = archiveData?.failedSections
 
   return (
@@ -127,9 +128,9 @@ export function HistoryDetailPage() {
           {failed?.schedule ? (
             <SectionUnavailable title="Schedule archive unavailable" description="Could not load archived games right now." onRetry={reload} />
           ) : !games.length ? (
-            <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the Rails archive yet." />
+            <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the tournament archive yet." />
           ) : (
-            <ArchiveGameList games={games} />
+            <ArchiveGameList games={games} collapseUnscoredSlots={isFinalArchive} />
           )}
         </Panel>
         <Panel>
@@ -224,8 +225,8 @@ function ChampionRecordsPanel({ records, articles, videos }: { records: Tourname
           return <article className="champion-record-card" key={record.id}>
             <div className="archive-chip-row"><span>{record.label}</span><DivisionPill division={record.bracket} /></div>
             {record.championKey && record.championLabel ? <Link to={`/classes/${classRouteKey(record.championKey)}`}><strong>{record.championLabel}</strong></Link> : <strong>{record.championLabel || 'Champion pending'}</strong>}
-            <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || record.source}</p>
-            <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
+            <p>{record.runnerUpLabel ? `Runner-up: ${record.runnerUpLabel}` : record.notes || publicSourceLabel(record.source)}</p>
+            <small>{record.score ? `${record.score} · ` : ''}{publicSourceLabel(record.source)}</small>
             <ArchiveChampionDetails
               record={{ ...record, sourceUrl: recap?.url || record.sourceUrl }}
               highlightHref={highlight ? `#archive-video-${highlight.id}` : undefined}
@@ -237,14 +238,42 @@ function ChampionRecordsPanel({ records, articles, videos }: { records: Tourname
   )
 }
 
-function ArchiveGameList({ games }: { games: Game[] }) {
+function ArchiveGameList({ games, collapseUnscoredSlots = false }: { games: Game[]; collapseUnscoredSlots?: boolean }) {
+  const scoredGames = games.filter((game) => game.homeScore !== null && game.awayScore !== null)
+  const unscoredGames = games.filter((game) => game.homeScore === null || game.awayScore === null)
+  const collapseUnscored = collapseUnscoredSlots && scoredGames.length > 0 && unscoredGames.length > 0
+  const primaryGames = collapseUnscored ? scoredGames : games
+
+  return (
+    <div className="archive-game-list">
+      <ArchiveGameGroups games={primaryGames} />
+      {collapseUnscored && (
+        <details className="archive-unscored-toggle">
+          <summary>Show {unscoredGames.length} archived schedule {unscoredGames.length === 1 ? 'slot' : 'slots'} without recorded scores</summary>
+          <ArchiveGameGroups games={unscoredGames} />
+        </details>
+      )}
+    </div>
+  )
+}
+
+function ArchiveGameGroups({ games }: { games: Game[] }) {
   const groups = new Map<string, Game[]>()
   games.forEach((game) => {
     const day = guamDayLabel(game.startTime)
     groups.set(day, [...(groups.get(day) || []), game])
   })
 
-  return <div className="archive-game-list">{Array.from(groups.entries()).map(([day, dayGames]) => <div key={day}><h3>{day}</h3>{dayGames.map((game) => <ArchiveGameRow key={game.id} game={game} />)}</div>)}</div>
+  return (
+    <>
+      {Array.from(groups.entries()).map(([day, dayGames]) => (
+        <div key={day}>
+          <h3>{day}</h3>
+          {dayGames.map((game) => <ArchiveGameRow key={game.id} game={game} />)}
+        </div>
+      ))}
+    </>
+  )
 }
 
 function ArchiveGameRow({ game }: { game: Game }) {

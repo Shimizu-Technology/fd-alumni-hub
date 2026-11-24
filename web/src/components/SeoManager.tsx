@@ -4,7 +4,7 @@ import { SITE_URL } from '../lib/site'
 
 const SITE_NAME = 'FD Alumni Basketball Hub'
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
-const DEFAULT_DESCRIPTION = 'Central hub for FD Alumni Basketball Tournament schedules, standings, GuamTime tickets, Clutch streams, news, media, sponsors, and history.'
+const DEFAULT_DESCRIPTION = 'Central hub for FD Alumni Basketball Tournament schedules, standings, HåfaPass tickets, Clutch streams, news, media, sponsors, and history.'
 
 type SeoRoute = {
   title: string
@@ -41,7 +41,7 @@ const routeSeo: Record<string, SeoRoute> = {
   },
   '/watch': {
     title: `Watch & Tickets | ${SITE_NAME}`,
-    description: 'Find partner links for GuamTime tickets, Clutch streams, local coverage, and FD Alumni Basketball Tournament game media.',
+    description: 'Find partner links for HåfaPass tickets, Clutch streams, local coverage, and FD Alumni Basketball Tournament game media.',
   },
   '/info': {
     title: `Rules & Tournament Info | ${SITE_NAME}`,

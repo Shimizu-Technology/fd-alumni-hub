@@ -67,8 +67,18 @@ export type SiteModePreview = {
   warnings: string[]
 }
 
-const offlineLinks = [
-  { label: 'Home', to: '/' }, { label: 'Fundraisers', to: '/host-year' }, { label: 'History', to: '/history' },
+const offlineDesktopLinks = [
+  { label: 'Home', to: '/' },
+  { label: 'History', to: '/history' },
+  { label: 'Gallery', to: '/gallery' },
+  { label: 'Sponsors', to: '/sponsors' },
+  { label: 'Info', to: '/info' },
+]
+
+const offlineMobileLinks = [
+  { label: 'Home', to: '/' },
+  { label: 'History', to: '/history' },
+  { label: 'Sponsors', to: '/sponsors' },
 ]
 
 export const offlineSiteMode: SiteMode = {
@@ -79,7 +89,7 @@ export const offlineSiteMode: SiteMode = {
     fundraisers: false, tonight: false, schedule: false, teams: false, standings: false,
     bracket: false, tickets: false, sponsors: false, coverage: false, recap: false,
   },
-  navItems: offlineLinks, mobileBottomNav: [...offlineLinks, { label: 'More', to: null }],
+  navItems: offlineDesktopLinks, mobileBottomNav: [...offlineMobileLinks, { label: 'More', to: null }],
   readiness: { fundraising: [], schedule_ready: [], tournament_live: [], tournament_recap: [] },
   suggestedMode: 'fundraising',
 }

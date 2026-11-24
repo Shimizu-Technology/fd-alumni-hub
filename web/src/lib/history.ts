@@ -32,6 +32,16 @@ function formatClassSegment(segment: string, index: number) {
   return `${Number(segment) >= 50 ? '19' : '20'}${segment}`
 }
 
+export function publicSourceLabel(source?: string | null) {
+  if (!source) return ''
+  const cleaned = source
+    .replace(/\s*\/\s*whatsapp\s+confirmation/gi, '')
+    .replace(/whatsapp\s+confirmation/gi, '')
+    .replace(/\s*\/\s*$/, '')
+    .trim()
+  return cleaned || 'FDAA archive'
+}
+
 export function canonicalClassKey(value?: string | null) {
   if (!value) return ''
 

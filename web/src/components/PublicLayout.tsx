@@ -10,6 +10,7 @@ import {
   IconTicket,
 } from './Icons'
 import { externalHref } from '../lib/urls'
+import type { SiteMode, SiteSection } from '../lib/siteMode'
 import { SiteModeProvider, useSiteMode } from '../contexts/SiteModeContext'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 
@@ -23,24 +24,45 @@ const menuFocusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
-const navItems = [
-  { to: '/', label: 'Home' },
-  { to: '/host-year', label: 'Fundraisers' },
-  { to: '/today', label: 'Today' },
-  { to: '/schedule', label: 'Schedule' },
-  { to: '/teams', label: 'Teams' },
-  { to: '/bracket', label: 'Bracket' },
-  { to: '/standings', label: 'Standings' },
-  { to: '/tickets', label: 'Tickets' },
-  { to: '/watch', label: 'Watch' },
-  { to: '/info', label: 'Info' },
-  { to: '/news', label: 'News' },
-  { to: '/gallery', label: 'Gallery' },
-  { to: '/history', label: 'History' },
-  { to: '/sponsors', label: 'Sponsors' },
+type PublicNavItem = {
+  to: string
+  label: string
+  section?: SiteSection
+  alwaysVisible?: boolean
+  hideInFundraising?: boolean
+  requiresScheduleOrTonight?: boolean
+}
+
+const navItems: PublicNavItem[] = [
+  { to: '/', label: 'Home', alwaysVisible: true },
+  { to: '/host-year', label: 'Fundraisers', section: 'fundraisers', hideInFundraising: true },
+  { to: '/today', label: 'Today', section: 'tonight' },
+  { to: '/schedule', label: 'Schedule', section: 'schedule' },
+  { to: '/teams', label: 'Teams', section: 'teams' },
+  { to: '/bracket', label: 'Bracket', section: 'bracket' },
+  { to: '/standings', label: 'Standings', section: 'standings' },
+  { to: '/tickets', label: 'Tickets', section: 'tickets' },
+  { to: '/watch', label: 'Watch', requiresScheduleOrTonight: true },
+  { to: '/history', label: 'History', alwaysVisible: true },
+  { to: '/gallery', label: 'Gallery', alwaysVisible: true },
+  { to: '/news', label: 'News', alwaysVisible: true },
+  { to: '/sponsors', label: 'Sponsors', alwaysVisible: true },
+  { to: '/info', label: 'Info', alwaysVisible: true },
 ]
 
-const bottomIcons = { '/': IconHome, '/today': IconCalendar, '/schedule': IconCalendar, '/tickets': IconTicket, '/history': IconChart }
+function activeNavItemsForMode(siteMode: SiteMode): PublicNavItem[] {
+  const primaryPaths = new Set(siteMode.navItems.map((item) => item.to))
+  return navItems.filter((item) => {
+    if (primaryPaths.has(item.to)) return true
+    if (item.hideInFundraising && siteMode.mode === 'fundraising') return false
+    if (item.alwaysVisible) return true
+    if (item.requiresScheduleOrTonight) return Boolean(siteMode.sections.schedule || siteMode.sections.tonight)
+    if (item.section) return Boolean(siteMode.sections[item.section])
+    return false
+  })
+}
+
+const bottomIcons = { '/': IconHome, '/today': IconCalendar, '/schedule': IconCalendar, '/tickets': IconTicket, '/history': IconChart, '/sponsors': IconShield }
 
 export function PublicLayout() {
   return <SiteModeProvider><PublicShell /></SiteModeProvider>
@@ -55,10 +77,15 @@ function PublicShell() {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
   const bottomNavItems = siteMode.mobileBottomNav.filter((item) => item.to !== null)
+  const visibleMenuItems = activeNavItemsForMode(siteMode)
+  const secondaryFooterItems = visibleMenuItems.filter(({ to }) => !siteMode.navItems.some((item) => item.to === to))
 
   useEffect(() => {
     setOpen(false)
   }, [location.pathname])
+
+  const visibleMenuKey = visibleMenuItems.map((item) => item.to).join(',')
+  const prevMenuKeyRef = useRef(visibleMenuKey)
 
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -106,6 +133,15 @@ function PublicShell() {
     }
   }, [open])
 
+  useEffect(() => {
+    const changed = prevMenuKeyRef.current !== visibleMenuKey
+    prevMenuKeyRef.current = visibleMenuKey
+    if (!changed || !open || typeof document === 'undefined') return
+    if (menuPanelRef.current && !menuPanelRef.current.contains(document.activeElement)) {
+      closeButtonRef.current?.focus({ preventScroll: true })
+    }
+  }, [open, visibleMenuKey])
+
   const moreActive = open || !bottomNavItems.some(({ to }) => to === location.pathname || (to !== '/' && location.pathname.startsWith(`${to}/`)))
 
   return (
@@ -133,7 +169,7 @@ function PublicShell() {
               <button ref={closeButtonRef} className="icon-button" type="button" aria-label="Close menu" onClick={() => setOpen(false)}><IconClose /></button>
             </div>
             <nav className="mobile-menu-links" aria-label="Full menu navigation">
-              {navItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setOpen(false)}>{item.label}</NavLink>)}
+              {visibleMenuItems.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setOpen(false)}>{item.label}</NavLink>)}
             </nav>
             <NavLink className="mobile-admin-link" to="/admin" onClick={() => setOpen(false)}><IconShield size={16} /> Organizer sign in</NavLink>
           </div>
@@ -179,12 +215,12 @@ function PublicShell() {
           <p className="site-credit">Built by <a href={externalHref('https://shimizu-technology.com') || undefined} target="_blank" rel="noreferrer">Shimizu Technology</a>.</p>
         </div>
         <nav className="footer-links" aria-label="More tournament pages">
-          {navItems.filter(({ to }) => !siteMode.navItems.some((item) => item.to === to)).map(({ to, label }) => <NavLink key={to} to={to}>{label}</NavLink>)}
+          {secondaryFooterItems.map(({ to, label }) => <NavLink key={to} to={to}>{label}</NavLink>)}
         </nav>
         <div className="footer-links" aria-label="Tournament and partner links">
           <NavLink to="/admin">Organizer sign in</NavLink>
           <a href={externalHref('https://fatherduenas.com/') || undefined} target="_blank" rel="noreferrer">Father Duenas</a>
-          <a href={externalHref(import.meta.env.VITE_GUAMTIME_URL || 'https://guamtime.net') || undefined} target="_blank" rel="noreferrer">GuamTime</a>
+          <NavLink to="/tickets">HåfaPass Tickets</NavLink>
           <a href={externalHref(import.meta.env.VITE_CLUTCH_URL || 'https://www.clutchguam.com') || undefined} target="_blank" rel="noreferrer">Clutch</a>
           <a href={externalHref('https://guamsportsnetwork.com/') || undefined} target="_blank" rel="noreferrer">GSPN</a>
         </div>

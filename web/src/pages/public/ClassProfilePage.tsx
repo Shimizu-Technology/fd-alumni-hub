@@ -3,7 +3,7 @@ import { api } from '../../lib/api'
 import { representedClassesLabel } from '../../lib/classes'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
-import { classDisplayLabel, classKeyFromRoute, classRouteKey } from '../../lib/history'
+import { classDisplayLabel, classKeyFromRoute, classRouteKey, publicSourceLabel } from '../../lib/history'
 import { useAsync } from '../../lib/hooks'
 import type { Article, Game, Team, TournamentChampion } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatCard, StatusBadge } from '../../components/ui'
@@ -61,6 +61,9 @@ export function ClassProfilePage() {
   const latestTeam = data.teams[0]
   const finalGames = data.games.filter((game) => game.status === 'final')
   const titleDetail = profile.titleYears.length ? `Latest ${profile.titleYears[0]}` : 'No titles verified yet'
+  const titleIds = new Set(data.titleRecords.map((record) => record.id))
+  const distinctRelatedTitles = data.relatedTitleRecords.filter((record) => !titleIds.has(record.id))
+  const showRelatedPanel = components.length > 1 || distinctRelatedTitles.length > 0
 
   return (
     <div className="page-stack class-profile-page">
@@ -97,19 +100,23 @@ export function ClassProfilePage() {
         )}
       </Panel>
 
-      <div className="split-grid class-profile-split">
+      <div className={showRelatedPanel ? 'split-grid class-profile-split' : 'page-stack'}>
         <Panel>
           <div className="section-heading"><h2>Title history</h2><span>{data.titleRecords.length}</span></div>
           {!data.titleRecords.length ? <EmptyState title="No verified titles" description="Champion records are still being verified for this class archive." /> : <TitleRecordList records={data.titleRecords} />}
         </Panel>
-        <Panel>
-          <div className="section-heading"><h2>{components.length > 1 ? 'Individual class links' : 'Combined class context'}</h2><span>{data.relatedTitleRecords.length || components.length}</span></div>
-          {components.length > 1 ? (
-            <div className="class-link-list">
-              {components.map((component) => <Link key={component} to={`/classes/${classRouteKey(component)}`}>{classDisplayLabel(component)}<IconArrowRight /></Link>)}
-            </div>
-          ) : data.relatedTitleRecords.length ? <TitleRecordList records={data.relatedTitleRecords} compact /> : <EmptyState title="No combined records found" description="If this class later merged with another class, those confirmed records will appear here." />}
-        </Panel>
+        {showRelatedPanel && (
+          <Panel>
+            <div className="section-heading"><h2>{components.length > 1 ? 'Individual class links' : 'Combined class context'}</h2><span>{components.length > 1 ? components.length : distinctRelatedTitles.length}</span></div>
+            {components.length > 1 ? (
+              <div className="class-link-list">
+                {components.map((component) => <Link key={component} to={`/classes/${classRouteKey(component)}`}>{classDisplayLabel(component)}<IconArrowRight /></Link>)}
+              </div>
+            ) : (
+              <TitleRecordList records={distinctRelatedTitles} compact />
+            )}
+          </Panel>
+        )}
       </div>
 
       <div className="split-grid class-profile-split">
@@ -138,7 +145,7 @@ function TitleRecordList({ records, compact = false }: { records: TournamentCham
         <Link key={record.id} to={`/history/${record.year}`} className="title-history-row">
           <strong>{record.label}</strong>
           <span>{titleRecordSubhead(record)}</span>
-          <small>{record.score ? `${record.score} · ` : ''}{record.source}</small>
+          <small>{record.score ? `${record.score} · ` : ''}{publicSourceLabel(record.source)}</small>
         </Link>
       ))}
     </div>

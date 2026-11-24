@@ -2,6 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { safeHttpsHref } from '../../lib/urls'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
+import { useSiteMode } from '../../contexts/SiteModeContext'
 import { PageHeader, Panel } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 import type { InfoGuide } from '../../lib/types'
@@ -20,6 +21,7 @@ const fallback: InfoGuide = {
 }
 
 export function InfoPage() {
+  const { siteMode } = useSiteMode()
   const [search] = useSearchParams()
   const year = search.get('year') || undefined
   const tournamentId = search.get('tournamentId') || undefined
@@ -37,7 +39,9 @@ export function InfoPage() {
       <PageHeader
         title="Venue & Rules"
         description={season ? `${season.tournament.year} · ${season.tournament.name}` : 'FD Alumni Basketball Tournament'}
-        actions={<Link className="btn secondary" to="/schedule">Open schedule <IconArrowRight /></Link>}
+        actions={siteMode.sections.schedule
+          ? <Link className="btn secondary" to="/schedule">Open schedule <IconArrowRight /></Link>
+          : <Link className="btn secondary" to="/">Host Year Hub <IconArrowRight /></Link>}
       />
       {error && <p role="status">Season details are unavailable. Showing general tournament guidance. <button className="btn secondary small" onClick={reload}>Retry</button></p>}
       <section className="info-hero-grid">

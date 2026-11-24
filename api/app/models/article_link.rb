@@ -15,6 +15,7 @@ class ArticleLink < ApplicationRecord
     {
       id: id.to_s,
       tournamentId: tournament_id.to_s,
+      tournamentYear: tournament&.year,
       gameId: game_id&.to_s,
       game: game&.summary_json,
       title: title,

@@ -233,8 +233,8 @@ export const api = {
     request<StatLeadersResponse>(`/public/stat-leaders${query(params)}`),
   publicStandings: (params: { tournamentId?: string | null; year?: number | null; division?: string | null; divisionId?: string | null } = {}) =>
     request<{ tournament: Tournament | null; standings: Standing[]; divisions: string[]; divisionStandings?: DivisionStandingsGroup[]; scoreCoverage: ScoreCoverage }>(`/public/standings${query(params)}`),
-  publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number } = {}) =>
-    request<{ tournament: Tournament | null; articles: Article[] }>(`/public/articles${query(params)}`),
+  publicArticles: (params: { tournamentId?: string | null; year?: number | null; limit?: number; archive?: boolean } = {}) =>
+    request<{ tournament: Tournament | null; articles: Article[]; availableYears?: number[] }>(`/public/articles${query(params)}`),
   publicMedia: (params: { tournamentId?: string | null; year?: number | null; limit?: number; archive?: boolean; mediaType?: 'photo' | 'video' } = {}) =>
     request<{ tournament: Tournament | null; mediaAssets: MediaAsset[] }>(`/public/media-assets${query(params)}`),
   publicSponsors: (params: { tournamentId?: string | null; year?: number | null } = {}) =>

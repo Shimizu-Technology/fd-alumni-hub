@@ -71,7 +71,7 @@ describe('PublicLayout', () => {
 
 describe('seasonal navigation', () => {
   const modes = [
-    ['fundraising', ['Home', 'Fundraisers', 'History'], ['Home', 'Fundraisers', 'History']],
+    ['fundraising', ['Home', 'History', 'Gallery', 'Sponsors', 'Info'], ['Home', 'History', 'Sponsors']],
     ['schedule_ready', ['Home', 'Schedule', 'Teams', 'Tickets', 'Bracket', 'History'], ['Home', 'Schedule', 'Tickets']],
     ['tournament_live', ['Tonight', 'Schedule', 'Standings', 'Bracket', 'Tickets', 'History'], ['Tonight', 'Schedule', 'Tickets']],
     ['tournament_recap', ['Recap', 'History', 'Fundraisers'], ['Recap', 'History']],
@@ -126,5 +126,35 @@ describe('seasonal navigation', () => {
     expect(mobile.getByRole('button', { name: 'Open more menu' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Organizer sign in' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /GuamTime/i })).not.toBeInTheDocument()
+  })
+
+  it('hides inactive off-season links from the mobile drawer and footer in fundraising mode', async () => {
+    vi.spyOn(backendHook, 'useBackendAvailabilityContext').mockReturnValue({
+      status: 'available', isUnavailable: false, isChecking: false,
+      retry: vi.fn(async () => {}), reportUnavailable: vi.fn(), reportAvailable: vi.fn(),
+    })
+    vi.spyOn(api, 'publicSiteMode').mockResolvedValue({
+      siteMode: offlineSiteMode,
+      alerts: [],
+    })
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes><Route element={<PublicLayout />}><Route index element={<div>Home</div>} /></Route></Routes>
+      </MemoryRouter>,
+    )
+    await act(async () => {})
+    const footerNav = within(screen.getByRole('navigation', { name: 'More tournament pages' }))
+    expect(footerNav.getByRole('link', { name: 'News' })).toBeInTheDocument()
+    expect(footerNav.queryByRole('link', { name: 'Schedule' })).not.toBeInTheDocument()
+    expect(footerNav.queryByRole('link', { name: 'Bracket' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Open more menu/i }))
+    const drawer = within(screen.getByRole('dialog', { name: /Site menu/i }))
+    expect(drawer.getByRole('link', { name: 'History' })).toBeInTheDocument()
+    expect(drawer.getByRole('link', { name: 'Sponsors' })).toBeInTheDocument()
+    expect(drawer.queryByRole('link', { name: 'Schedule' })).not.toBeInTheDocument()
+    expect(drawer.queryByRole('link', { name: 'Standings' })).not.toBeInTheDocument()
+    expect(drawer.queryByRole('link', { name: 'Fundraisers' })).not.toBeInTheDocument()
   })
 })

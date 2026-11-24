@@ -968,6 +968,69 @@ textarea:focus {
   color: var(--ink);
 }
 
+.class-profile-note strong {
+  color: var(--fd-gold);
+}
+
+.class-profile-note p {
+  color: var(--ink-2);
+}
+
+.info-feature-card h3 {
+  margin: 0.4rem 0 0;
+  color: var(--fd-gold);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sponsor-tiers-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.sponsor-tier-preview-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.95rem 1rem;
+  border-radius: 0.85rem;
+  background: rgba(12, 7, 9, 0.58);
+  border: 1px solid var(--line);
+}
+
+.sponsor-tier-preview-card strong {
+  color: var(--fd-gold);
+  font-size: 0.92rem;
+}
+
+.sponsor-tier-preview-card p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.archive-unscored-toggle {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.archive-unscored-toggle summary {
+  cursor: pointer;
+  color: var(--fd-gold);
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.35rem 0;
+}
+
+.archive-unscored-toggle summary:hover {
+  color: #fff;
+}
+
 .title-leaderboard-card {
   background: rgba(12, 7, 9, 0.6);
   border: 1px solid var(--fd-gold-line);

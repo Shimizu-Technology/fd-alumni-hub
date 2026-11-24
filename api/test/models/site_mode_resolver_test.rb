@@ -16,6 +16,9 @@ class SiteModeResolverTest < ActiveSupport::TestCase
       assert_includes 3..4, payload[:mobileBottomNav].size
       assert resolver.readiness.fetch(mode.to_sym).any?
     end
+
+    fundraising_nav = SiteMode::Resolver.preview(mode: "fundraising").as_json[:navItems].pluck(:to)
+    assert_equal %w[/ /history /gallery /sponsors /info], fundraising_nav
   end
 
   test "preview resolves published content and applies automatic, show and hide overrides" do

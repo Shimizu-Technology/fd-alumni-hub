@@ -14,13 +14,21 @@ const filters = [
   { label: 'Videos', value: 'video' },
 ] as const
 
+function isScheduleGraphic(asset: { title: string; imageUrl?: string | null }) {
+  const normalized = `${asset.title} ${asset.imageUrl || ''}`.replace(/[_-]+/g, ' ')
+  return /\b(schedule|playoffs\s+final|bracket)\b/i.test(normalized)
+}
+
 export function GalleryPage() {
   const [mediaType, setMediaType] = useState<'photo' | 'video'>()
   const { data, loading, error, reload } = useAsync(async () => {
     const result = await api.publicMedia({ archive: true, limit: 200, mediaType })
     return { ...result, mediaType }
   }, [mediaType])
-  const assets = data?.mediaType === mediaType ? data?.mediaAssets : undefined
+  const rawAssets = data?.mediaType === mediaType ? data?.mediaAssets : undefined
+  const assets = rawAssets
+    ? [...rawAssets].sort((a, b) => Number(isScheduleGraphic(a)) - Number(isScheduleGraphic(b)))
+    : undefined
 
   return (
     <div className="page-stack">

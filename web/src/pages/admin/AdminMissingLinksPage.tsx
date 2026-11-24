@@ -41,7 +41,7 @@ export function AdminMissingLinksPage() {
       <PageHeader
         eyebrow="Admin"
         title="Missing links and scores"
-        description="Find games still missing GuamTime tickets, Clutch streams, or final scores. One game row now shows every missing field for that game."
+        description="Find games still missing HåfaPass tickets, Clutch streams, or final scores. One game row now shows every missing field for that game."
         actions={<Link className="btn secondary" to={tournamentScopedPath('/admin/links', tournament?.id)}>Open Links page</Link>}
       />
       <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
@@ -165,7 +165,7 @@ function MissingGameRow({ gap, tournamentId, onSaved }: { gap: MissingGap; tourn
       </div>
       <div className="missing-gap-actions consolidated-gap-actions">
         <div className="gap-field-grid">
-          {gap.missingTicket && <Field label="GuamTime ticket URL"><input value={ticketUrl} onChange={(event) => setTicketUrl(event.target.value)} placeholder="https://..." /></Field>}
+          {gap.missingTicket && <Field label="HåfaPass ticket URL"><input value={ticketUrl} onChange={(event) => setTicketUrl(event.target.value)} placeholder="https://..." /></Field>}
           {gap.missingStream && <Field label="Clutch / stream URL"><input value={streamUrl} onChange={(event) => setStreamUrl(event.target.value)} placeholder="https://..." /></Field>}
 
         </div>
@@ -227,7 +227,7 @@ function filterAndSortMissingGaps(gaps: MissingGap[], query: string, sort: Missi
 }
 
 function gapLabel(gap: MissingGap) {
-  return [gap.missingTicket ? 'ticket GuamTime' : '', gap.missingStream ? 'stream Clutch' : '', gap.missingScore ? 'score final' : ''].filter(Boolean).join(' ')
+  return [gap.missingTicket ? 'ticket HåfaPass' : '', gap.missingStream ? 'stream Clutch' : '', gap.missingScore ? 'score final' : ''].filter(Boolean).join(' ')
 }
 
 function compareMissingGames(a: Game, b: Game, sort: MissingSort) {
