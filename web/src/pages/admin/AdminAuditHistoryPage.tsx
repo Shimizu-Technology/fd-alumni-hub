@@ -58,13 +58,14 @@ function AuditHistoryEntry({ event, showOperation }: { event: AuditEvent; showOp
 export function AdminAuditHistoryPage() {
   const [params] = useSearchParams()
   const campaignId = params.get('hostCampaignId') || undefined
-  return <AuditHistory key={campaignId || 'all'} campaignId={campaignId} />
+  const area = params.get('area') || undefined
+  return <AuditHistory key={JSON.stringify([campaignId, area])} campaignId={campaignId} area={area} />
 }
 
-function AuditHistory({ campaignId }: { campaignId?: string }) {
+function AuditHistory({ campaignId, area }: { campaignId?: string; area?: string }) {
   const { user } = useAuthContext()
   const canExport = user?.isSuperAdmin ?? user?.isAdmin
-  const [filters, setFilters] = useState<AdminAuditFilters>(() => campaignId ? { host_campaign_id: campaignId } : {})
+  const [filters, setFilters] = useState<AdminAuditFilters>(() => ({ ...(campaignId && { host_campaign_id: campaignId }), ...(area && { area }) }))
   const [search, setSearch] = useState('')
   const [cursor, setCursor] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)

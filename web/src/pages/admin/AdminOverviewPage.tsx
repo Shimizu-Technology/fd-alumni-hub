@@ -1,28 +1,150 @@
 import { Link } from 'react-router-dom'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { hasCapability, visibleAdminModules } from '../../lib/adminModules'
+import { siteModes } from '../../lib/siteMode'
+import type { CurrentUser } from '../../lib/types'
+import { formatUsd } from './finance/financeFields'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { EmptyState, ErrorState, LoadingState, PageHeader, Panel, StatCard } from '../../components/ui'
 
+const financeCapability = 'finance_and_reimbursements'
+const fundraiserCapability = 'fundraisers_and_sponsors'
+
+const moduleDescriptions: Record<string, string> = {
+  'game-day': 'Update the nightly menu, photos, announcements, and alerts.',
+  games: 'Manage seasons, divisions, schedules, tickets, and streams.',
+  scorekeeper: 'Manage tournament results, standings, and brackets.',
+  'campaign/host-year': 'Organize campaign events, sponsors, and class news.',
+  'campaign/finance': 'Review income, expenses, pledges, and reimbursements.',
+  news: 'Manage articles, photos, and videos.',
+  'site-mode': 'Preview and publish the seasonal homepage.',
+  people: 'Invite organizers and manage scoped access.',
+  audit: 'Review who changed what and when.',
+}
+
+function hasCampaignCapability(user: CurrentUser | null | undefined, capability: string) {
+  if (!user || user.active === false) return false
+  if (user.isSuperAdmin ?? user.isAdmin) return true
+  if (!user.capabilities) return hasCapability(user, capability, 'view')
+  return user.capabilities.some((entry) =>
+    entry.capability === capability &&
+    entry.actions.includes('view') &&
+    (entry.allScopes || (entry.scopeType === 'campaign' && entry.scopeIds.length > 0)),
+  )
+}
+
 export function AdminOverviewPage() {
   const { user } = useAuthContext()
   const modules = visibleAdminModules(user).filter((module) => module.key !== 'work')
+  const canViewFinance = hasCampaignCapability(user, financeCapability)
+  const canViewFundraisers = hasCampaignCapability(user, fundraiserCapability)
+  const canViewSiteMode = hasCapability(user, 'site_mode_and_settings', 'view')
+  const scopeKey = user ? `${user.id}:${JSON.stringify(user.capabilities ?? user.campaignMemberships ?? '')}` : ''
+
   return (
     <div className="page-stack admin-page">
-      <PageHeader title="My work" />
-      <div className="split-grid">
-        {modules.map(({ key, path, label, icon: Icon }) => (
-          <Panel key={key}>
-            <Link className="admin-work-link" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
-              <Icon size={20} /> {label}
-            </Link>
-          </Panel>
-        ))}
-      </div>
+      <PageHeader title={user?.firstName ? `Welcome, ${user.firstName}` : 'Workspace overview'} description="Check your work and jump back into the areas you manage." />
+      {user && (canViewFinance || canViewFundraisers || canViewSiteMode) && (
+        <div className="admin-overview-grid">
+          {canViewFinance && <FinanceStatus key={scopeKey} user={user} />}
+          {canViewFundraisers && <FundraiserStatus key={scopeKey} user={user} showPublicProgress={!canViewFinance} />}
+          {canViewSiteMode && <SiteModeStatus />}
+        </div>
+      )}
+      {modules.length > 0 && (
+        <section className="page-stack" aria-labelledby="workspace-quick-jump">
+          <h2 id="workspace-quick-jump" className="admin-section-title">Workspace quick-jump</h2>
+          <div className="admin-overview-grid">
+            {modules.map(({ key, path, label, icon: Icon }) => (
+              <Link key={key} className="panel admin-work-link" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
+                <Icon size={20} />
+                <span><strong>{label}</strong><small>{moduleDescriptions[key]}</small></span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       {Boolean((user?.isSuperAdmin ?? user?.isAdmin) || (user?.isStaff && !user.capabilities)) && <TournamentOverview />}
     </div>
   )
+}
+
+async function activeCampaignFor(user: CurrentUser, capability: string) {
+  const pick = <T extends { status: string }>(campaigns: T[]) =>
+    campaigns.find((campaign) => campaign.status === 'active') ?? campaigns.find((campaign) => campaign.status === 'closing')
+  if (!user.capabilities && !(user.isSuperAdmin ?? user.isAdmin)) {
+    const membership = pick(user.campaignMemberships ?? [])
+    return membership && { id: membership.campaignId, slug: membership.campaignSlug, title: membership.campaignTitle, status: membership.status }
+  }
+  const { campaigns } = await api.adminCampaignWorkspace(capability)
+  return pick(campaigns.filter(({ id }) => hasCapability(user, capability, 'view', { type: 'campaign', id })))
+}
+
+function FinanceStatus({ user }: { user: CurrentUser }) {
+  const query = useAsync(async () => {
+    const campaign = await activeCampaignFor(user, financeCapability)
+    if (!campaign) return null
+    return api.campaignFinanceSummary(campaign.slug)
+  }, [user])
+  const result = query.error ? null : query.data
+  const canRecord = result && result.campaign.status !== 'archived' && (user.capabilities
+    ? hasCapability(user, financeCapability, 'record', { type: 'campaign', id: result.campaign.id })
+    : (user.isSuperAdmin ?? user.isAdmin) || result.roles.includes('treasurer'))
+  const financePath = result ? `/admin/campaign/finance?campaign=${encodeURIComponent(result.campaign.slug)}` : '/admin/campaign/finance'
+
+  return (
+    <>
+      <Panel className="admin-overview-status">
+        <h2>Fundraising progress</h2>
+        {result ? <>
+          <div>
+            <p className="admin-kpi-value">{formatUsd(result.summary.raisedCents)} <small>/ {formatUsd(result.summary.goalCents)}</small></p>
+            <p className="muted">{result.campaign.title}</p>
+          </div>
+        </> : <p className="muted">{query.loading ? 'Loading campaign totals…' : query.error ? 'Campaign totals are unavailable.' : 'No active campaign.'}</p>}
+        <Link className={`btn ${canRecord ? 'primary' : 'secondary'}`} to={canRecord ? `${financePath}&action=income` : financePath}>{canRecord ? 'Record money' : 'Open finance workspace'}</Link>
+      </Panel>
+      {result && <Panel className="admin-overview-status">
+        <h2>Pending reimbursements</h2>
+        <p className="admin-kpi-value">{result.summary.pendingReimbursementsCount}</p>
+        <Link className="btn secondary" to={`${financePath}&tab=reimbursements`}>View reimbursements</Link>
+      </Panel>}
+    </>
+  )
+}
+
+function FundraiserStatus({ user, showPublicProgress }: { user: CurrentUser; showPublicProgress: boolean }) {
+  const query = useAsync(async () => {
+    const campaign = await activeCampaignFor(user, fundraiserCapability)
+    if (!campaign || !showPublicProgress) return { campaign, meter: null }
+    try {
+      const { campaign: settings } = await api.campaignSettings(campaign.slug)
+      return { campaign, meter: settings.meter.enabled ? settings.meter : null }
+    } catch {
+      return { campaign, meter: null }
+    }
+  }, [user, showPublicProgress])
+  const { campaign, meter } = query.data ?? {}
+  const selector = campaign ? `&campaign=${encodeURIComponent(campaign.slug)}` : ''
+  return <Panel className="admin-overview-status">
+    <h2>{meter ? 'Fundraising progress' : 'Campaign events'}</h2>
+    <div>
+      {meter && <p className="admin-kpi-value">{formatUsd(meter.raisedCents)} <small>/ {formatUsd(meter.goalCents)}</small></p>}
+      <p className="muted">{campaign?.title ?? (query.loading ? 'Loading campaign…' : query.error ? 'Campaign details are unavailable.' : 'No active campaign.')}</p>
+    </div>
+    <Link className="btn primary" to={`/admin/campaign/host-year?tab=events${selector}`}>Manage fundraisers</Link>
+  </Panel>
+}
+
+function SiteModeStatus() {
+  const { data, loading } = useAsync(api.publicSiteMode)
+  return <Panel className="admin-overview-status">
+    <h2>Active site mode</h2>
+    <p>{data ? <span className="admin-live-badge">{siteModes[data.siteMode.mode]}</span> : <span className="muted">{loading ? 'Loading site mode…' : 'Site mode is unavailable.'}</span>}</p>
+    <Link className="btn primary" to="/admin/site-mode">Change site mode</Link>
+  </Panel>
 }
 
 function TournamentOverview() {
@@ -33,12 +155,8 @@ function TournamentOverview() {
   if (!data) return <EmptyState title="Dashboard unavailable" />
 
   return (
-    <div className="page-stack admin-page">
-      <PageHeader
-        eyebrow="Admin console"
-        title="Tournament operations"
-        description="Set up the tournament, keep scores current, and make sure fans can find tickets, streams, coverage, and sponsor information."
-      />
+    <section className="page-stack" aria-labelledby="tournament-operations">
+      <h2 id="tournament-operations" className="admin-section-title">Tournament operations</h2>
 
       <div className="stats-grid four">
         <StatCard label="Teams" value={data.counts.teams || 0} tone="maroon" />
@@ -75,6 +193,6 @@ function TournamentOverview() {
           <Link to="/admin/news">Attach coverage</Link>
         </div>
       </Panel>
-    </div>
+    </section>
   )
 }

@@ -17,6 +17,7 @@ import type {
 } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
+import { AdminEditorDialog } from './AdminEditorDialog'
 import { CampaignHandoff } from './handoff/CampaignHandoff'
 
 const WORKSPACE_TABS = ['settings', 'events', 'posts', 'handoff'] as const
@@ -478,6 +479,7 @@ function HostYearEventsPanel({
   onToggleArchived: (value: boolean) => void
   onSaved: () => Promise<void>
 }) {
+  const [eventEditorOpen, setEventEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [kind, setKind] = useState<CampaignEventKind>('fundraiser')
   const [title, setTitle] = useState('')
@@ -524,7 +526,14 @@ function HostYearEventsPanel({
     setPublicVisible(true)
   }
 
+  const closeEventEditor = () => {
+    setEventEditorOpen(false)
+    setError('')
+    resetForm()
+  }
+
   const startEdit = (ev: AdminCampaignEvent) => {
+    setEventEditorOpen(true)
     setEditingId(ev.id)
     setKind(ev.kind)
     setTitle(ev.title)
@@ -550,7 +559,7 @@ function HostYearEventsPanel({
   const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file) return
+    if (!file || uploading || saving) return
     setUploading(true)
     setError('')
     try {
@@ -565,7 +574,7 @@ function HostYearEventsPanel({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!canEdit) return
+    if (!canEdit || saving || uploading) return
     const parsedGoal = parseOptionalDollarsToCents(goalDollars)
     if (!parsedGoal.ok) {
       setError(`Fundraiser goal: ${parsedGoal.error}`)
@@ -601,8 +610,8 @@ function HostYearEventsPanel({
         await api.campaignCreateEvent(campaign.slug, payload)
         setMessage('Event created.')
       }
-      resetForm()
       await onSaved()
+      closeEventEditor()
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to save event'))
     } finally {
@@ -629,13 +638,9 @@ function HostYearEventsPanel({
 
   return (
     <div className="page-stack">
-      {canEdit && (
-        <Panel>
-          <div className="section-heading">
-            <h2>{editingId ? 'Edit fundraiser event' : 'Add fundraiser or host event'}</h2>
-            {editingId && <button type="button" className="btn secondary small" onClick={resetForm} disabled={saving || uploading}>Cancel edit</button>}
-          </div>
-          <form onSubmit={handleSubmit}>
+      {canEdit && eventEditorOpen && (
+        <AdminEditorDialog title={editingId ? 'Edit fundraiser' : 'Add fundraiser'} onClose={closeEventEditor} busy={saving || uploading}>
+          <form className="stacked-form" onSubmit={handleSubmit}>
             <FormGrid>
               <Field label="Kind">
                 <select value={kind} onChange={(e) => setKind(e.target.value as CampaignEventKind)}>
@@ -717,22 +722,31 @@ function HostYearEventsPanel({
                 {saving ? 'Saving…' : editingId ? 'Save event' : 'Create event'}
               </button>
             </div>
-            {message && <p role="status" style={{ marginTop: '0.6rem' }}>{message}</p>}
             {error && <p className="form-error" role="alert">{error}</p>}
           </form>
-        </Panel>
+        </AdminEditorDialog>
       )}
 
       <Panel>
         <div className="section-heading">
           <h2>Campaign events ({events.length})</h2>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
-            <input type="checkbox" checked={includeArchived} onChange={(e) => onToggleArchived(e.target.checked)} />
-            <span>Show archived</span>
-          </label>
+          <div className="row-actions">
+            <label className="admin-inline-check">
+              <input type="checkbox" checked={includeArchived} onChange={(e) => onToggleArchived(e.target.checked)} />
+              <span>Show archived</span>
+            </label>
+            {canEdit && <button type="button" className="btn primary" onClick={() => {
+              resetForm()
+              setMessage('')
+              setError('')
+              setEventEditorOpen(true)
+            }}>Add fundraiser</button>}
+          </div>
         </div>
+        {message && <p role="status">{message}</p>}
+        {!eventEditorOpen && error && <p className="form-error" role="alert">{error}</p>}
         {events.length === 0 ? (
-          <EmptyState title="No campaign events yet" description="Add your class fundraisers, golf tournament, or merch drops above." />
+          <EmptyState title="No campaign events yet" description="Add your class fundraisers, golf tournament, or merch drops." />
         ) : (
           <div className="admin-list">
             {events.map((ev) => (
@@ -740,9 +754,10 @@ function HostYearEventsPanel({
                 <div className="compact-admin-row" style={{ padding: '0.85rem', borderBottom: '1px solid var(--line)' }}>
                   <div>
                     <strong>{ev.title}</strong>{' '}
-                    <StatusBadge status={ev.archivedAt ? 'archived' : ev.status} />{' '}
-                    {ev.autoCompleted && !ev.archivedAt && <span className="pill">Auto-completed</span>}{' '}
-                    {!ev.publicVisible && <span className="pill">Hidden</span>}
+                    {ev.autoCompleted && !ev.archivedAt
+                      ? <span className="status-badge status-completed">Auto-completed</span>
+                      : <StatusBadge status={ev.archivedAt ? 'archived' : ev.status === 'planned' ? 'upcoming' : ev.status} />}{' '}
+                    {!ev.publicVisible && <span className="status-badge status-hidden">Hidden</span>}
                     <p className="muted" style={{ margin: '0.25rem 0 0' }}>
                       {ev.kind.replace('_', ' ')} · {ev.dateLabel || (ev.startsAt ? new Date(ev.startsAt).toLocaleString() : 'Date TBA')}
                       {ev.venue ? ` · ${ev.venue}` : ''}
@@ -763,11 +778,11 @@ function HostYearEventsPanel({
                     {canEdit && !ev.archivedAt && (
                       <button type="button" className={`btn small ${ev.status === 'completed' ? 'primary' : 'secondary'}`}
                         disabled={recapBusy}
-                        aria-expanded={recapEventId === ev.id} onClick={() => setRecapEventId(recapEventId === ev.id ? null : ev.id)}>
+                        aria-expanded={recapEventId === ev.id} onClick={() => setRecapEventId(ev.id)}>
                         {hasEventRecap(ev) ? 'Edit Recap & Photos' : 'Add Recap & Photos'}
                       </button>
                     )}
-                    {canEdit && <button type="button" className="btn secondary small" disabled={saving || uploading} onClick={() => startEdit(ev)}>Edit</button>}
+                    {canEdit && <button type="button" className="btn secondary small" disabled={saving || uploading || recapBusy} onClick={() => startEdit(ev)}>Edit</button>}
                     {canEdit && !ev.archivedAt && (
                       <button type="button" className="btn secondary small" disabled={recapBusy && recapEventId === ev.id} onClick={() => void handleArchive(ev)}>Archive</button>
                     )}
@@ -860,47 +875,48 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
   }
 
   return (
-    <form className="admin-event-recap" onSubmit={save} aria-label={`Recap for ${event.title}`}>
-      <h3>Recap &amp; photos for {event.title}</h3>
-      <Field label="Amount raised">
-        <input value={raised} maxLength={80} disabled={saving} placeholder="$4,200 raised" onChange={(change) => setRaised(change.target.value)} />
-      </Field>
-      <Field label="Recap notes">
-        <textarea value={notes} rows={4} maxLength={5000} disabled={saving} onChange={(change) => setNotes(change.target.value)} />
-      </Field>
-      <Field label="Recap highlights">
-        <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} onChange={(change) => setHighlights(change.target.value)} />
-      </Field>
-      <Field label={uploading ? 'Uploading recap photos…' : 'Upload recap photos'}>
-        <input type="file" multiple accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
-          disabled={uploading || saving || photos.length >= recapPhotoLimit} />
-      </Field>
-      <p className="muted-note">{photos.length} of {recapPhotoLimit} photos</p>
-      {photos.length > 0 && (
-        <div className="fundraiser-photo-grid admin-event-photos">
-          {photos.map((photo, index) => (
-            <div key={`${photo.url}-${index}`}>
-              <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
-              <Field label={`Caption for photo ${index + 1}`}>
-                <input value={photo.caption || ''} maxLength={240} disabled={saving}
-                  onChange={(change) => setPhotos((current) => current.map((item, photoIndex) =>
-                    index === photoIndex ? { ...item, caption: change.target.value } : item))} />
-              </Field>
-              <button type="button" className="btn secondary small" disabled={saving}
-                onClick={() => setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index))}>
-                Remove photo {index + 1}
-              </button>
-            </div>
-          ))}
+    <AdminEditorDialog title={`Recap & photos for ${event.title}`} onClose={onClose} busy={uploading || saving} drawer>
+      <form className="admin-event-recap" onSubmit={save} aria-label={`Recap for ${event.title}`}>
+        <Field label="Amount raised">
+          <input value={raised} maxLength={80} disabled={saving} placeholder="$4,200 raised" onChange={(change) => setRaised(change.target.value)} />
+        </Field>
+        <Field label="Recap notes">
+          <textarea value={notes} rows={4} maxLength={5000} disabled={saving} onChange={(change) => setNotes(change.target.value)} />
+        </Field>
+        <Field label="Recap highlights">
+          <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} onChange={(change) => setHighlights(change.target.value)} />
+        </Field>
+        <Field label={uploading ? 'Uploading recap photos…' : 'Upload recap photos'}>
+          <input type="file" multiple accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
+            disabled={uploading || saving || photos.length >= recapPhotoLimit} />
+        </Field>
+        <p className="muted-note">{photos.length} of {recapPhotoLimit} photos</p>
+        {photos.length > 0 && (
+          <div className="fundraiser-photo-grid admin-event-photos">
+            {photos.map((photo, index) => (
+              <div key={`${photo.url}-${index}`}>
+                <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
+                <Field label={`Caption for photo ${index + 1}`}>
+                  <input value={photo.caption || ''} maxLength={240} disabled={saving}
+                    onChange={(change) => setPhotos((current) => current.map((item, photoIndex) =>
+                      index === photoIndex ? { ...item, caption: change.target.value } : item))} />
+                </Field>
+                <button type="button" className="btn secondary small" disabled={saving}
+                  onClick={() => setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index))}>
+                  Remove photo {index + 1}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="row-actions">
+          <button type="submit" className="btn primary" disabled={uploading || saving}>{saving ? 'Saving…' : 'Save recap'}</button>
+          <button type="button" className="btn secondary" disabled={uploading || saving} onClick={onClose}>Close recap editor</button>
         </div>
-      )}
-      <div className="row-actions">
-        <button type="submit" className="btn primary" disabled={uploading || saving}>{saving ? 'Saving…' : 'Save recap'}</button>
-        <button type="button" className="btn secondary" disabled={uploading || saving} onClick={onClose}>Close recap editor</button>
-      </div>
-      {message && <p role="status">{message}</p>}
-      {error && <p className="form-error" role="alert">{error}</p>}
-    </form>
+        {message && <p role="status">{message}</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+      </form>
+    </AdminEditorDialog>
   )
 }
 

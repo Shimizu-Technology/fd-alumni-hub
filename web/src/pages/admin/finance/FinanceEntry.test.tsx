@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../../../lib/api'
-import type { AdminHostCampaign, FinanceSummary, LedgerEntryRecord } from '../../../lib/types'
+import type { AdminHostCampaign, BudgetLineRecord, FinanceSummary, LedgerEntryRecord, PledgeRecord } from '../../../lib/types'
 import { uploadCampaignReceipt } from '../../../lib/uploads'
 import { AdminCampaignFinancePage } from '../AdminCampaignFinancePage'
 
@@ -78,7 +78,7 @@ describe('finance quick entry', () => {
     })))
     expect(await screen.findByText('Money received recorded.')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Finance history' })).toHaveAttribute('href', '/admin/audit?hostCampaignId=1')
+    expect(screen.getByRole('link', { name: 'View finance history →' })).toHaveAttribute('href', '/admin/audit?area=finance&hostCampaignId=1')
   })
 
   it('shows payer details only when needed, uploads a private receipt and requests reimbursement', async () => {
@@ -133,4 +133,78 @@ describe('finance quick entry', () => {
     expect(await screen.findByText('Finance access unavailable')).toBeInTheDocument()
     expect(api.campaignFinanceSummary).not.toHaveBeenCalled()
   })
+})
+
+it('uses the ledger for old audit links and skips the legacy audit request', async () => {
+  open('/admin/campaign/finance?tab=audit')
+  expect(await screen.findByRole('button', { name: /^Ledger/ })).toHaveAttribute('aria-current', 'page')
+  expect(screen.queryByRole('button', { name: /Audit log/i })).not.toBeInTheDocument()
+  expect(api.campaignFinanceAuditEvents).not.toHaveBeenCalled()
+})
+
+it('opens budget creation and editing on demand', async () => {
+  const line: BudgetLineRecord = {
+    id: 'venue', hostCampaignId: campaign.id, kind: 'expense', category: 'Venue',
+    budgetCents: 100_000, position: 0, notes: null, archivedAt: null,
+  }
+  const create = vi.spyOn(api, 'campaignCreateBudgetLine').mockImplementation(async () => {
+    vi.mocked(api.campaignBudgetLines).mockResolvedValue({ budgetLines: [line] })
+    vi.mocked(api.campaignFinanceSummary).mockResolvedValue({
+      campaign, roles: ['admin'], summary: { ...summary, budgetVsActual: [{ ...line, actualCents: 0, varianceCents: -100_000, archived: false }] },
+    })
+    return { budgetLine: line }
+  })
+  const update = vi.spyOn(api, 'campaignUpdateBudgetLine').mockResolvedValue({ budgetLine: line })
+
+  open('/admin/campaign/finance?tab=budget')
+  const add = await screen.findByRole('button', { name: 'Add budget line' })
+  expect(screen.queryByLabelText('Planned budget (USD)')).not.toBeInTheDocument()
+  fireEvent.click(add)
+  const dialog = within(screen.getByRole('dialog', { name: 'Add budget line' }))
+  fireEvent.change(dialog.getByLabelText('Category'), { target: { value: 'Venue' } })
+  fireEvent.change(dialog.getByLabelText('Planned budget (USD)'), { target: { value: '1000' } })
+  fireEvent.click(dialog.getByRole('button', { name: 'Save budget line' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(create).toHaveBeenCalledWith(campaign.slug, expect.objectContaining({ category: 'Venue', budgetCents: 100_000 }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit budget line' }))
+  const edit = within(screen.getByRole('dialog', { name: 'Edit budget line' }))
+  expect(edit.getByLabelText('Planned budget (USD)')).toHaveValue('1000')
+  fireEvent.change(edit.getByLabelText('Planned budget (USD)'), { target: { value: '1500' } })
+  fireEvent.click(edit.getByRole('button', { name: 'Save budget line' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(update).toHaveBeenCalledWith(campaign.slug, line.id, expect.objectContaining({ budgetCents: 150_000 }))
+})
+
+it('opens pledge creation and editing on demand', async () => {
+  const pledge: PledgeRecord = {
+    id: 'sponsor', hostCampaignId: campaign.id, donorName: 'Community Sponsor', sponsorId: null,
+    sponsorName: null, contactInfo: null, tier: 'Gold', isInKind: false, promisedCents: 25_000, receivedCents: 0,
+    outstandingCents: 25_000, overpaymentCents: 0, dueOn: null, status: 'promised', notes: null,
+    recordedById: '2', recordedByName: null,
+  }
+  const create = vi.spyOn(api, 'campaignCreatePledge').mockImplementation(async () => {
+    vi.mocked(api.campaignPledges).mockResolvedValue({ pledges: [pledge], sponsors: [] })
+    return { pledge }
+  })
+  const update = vi.spyOn(api, 'campaignUpdatePledge').mockResolvedValue({ pledge })
+
+  open('/admin/campaign/finance?tab=pledges')
+  const add = await screen.findByRole('button', { name: 'Add pledge' })
+  expect(screen.queryByLabelText('Donor / Sponsor name')).not.toBeInTheDocument()
+  fireEvent.click(add)
+  const dialog = within(screen.getByRole('dialog', { name: 'Add pledge' }))
+  fireEvent.change(dialog.getByLabelText('Donor / Sponsor name'), { target: { value: pledge.donorName } })
+  fireEvent.change(dialog.getByLabelText('Promised amount / value (USD)'), { target: { value: '250' } })
+  fireEvent.click(dialog.getByRole('button', { name: 'Save pledge' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(create).toHaveBeenCalledWith(campaign.slug, expect.objectContaining({ donorName: pledge.donorName, promisedCents: 25_000 }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit pledge' }))
+  const edit = within(screen.getByRole('dialog', { name: 'Edit pledge' }))
+  expect(edit.getByLabelText('Donor / Sponsor name')).toHaveValue(pledge.donorName)
+  fireEvent.change(edit.getByLabelText('Notes'), { target: { value: 'Confirmed by phone' } })
+  fireEvent.click(edit.getByRole('button', { name: 'Save pledge' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(update).toHaveBeenCalledWith(campaign.slug, pledge.id, expect.objectContaining({ notes: 'Confirmed by phone' }))
 })

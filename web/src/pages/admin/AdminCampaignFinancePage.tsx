@@ -1,3 +1,4 @@
+import { AdminEditorDialog } from './AdminEditorDialog'
 import { LedgerEntryDialog } from './finance/LedgerEntryDialog'
 import { LedgerTab } from './finance/LedgerTab'
 import { ReimbursementsTab } from './finance/ReimbursementsTab'
@@ -13,7 +14,6 @@ import { safeHttpsHref } from '../../lib/urls'
 import type {
   AdminHostCampaign,
   BudgetLineRecord,
-  FinanceAuditEvent,
   FinanceSummary,
   LedgerEntryType,
   PledgeRecord,
@@ -32,7 +32,7 @@ import {
   StatusBadge,
 } from '../../components/ui'
 
-const FINANCE_TABS = ['ledger', 'budget', 'pledges', 'reimbursements', 'audit', 'report'] as const
+const FINANCE_TABS = ['ledger', 'budget', 'pledges', 'reimbursements', 'report'] as const
 type FinanceTab = typeof FINANCE_TABS[number]
 
 const PLEDGE_TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Donor', 'In-Kind']
@@ -123,11 +123,10 @@ export function AdminCampaignFinancePage() {
   const overviewQuery = useAsync(async () => {
     if (!selectedSlug) return null
     const summaryRes = await api.campaignFinanceSummary(selectedSlug)
-    const [budgetSettled, pledgesSettled, reimbSettled, auditSettled] = await Promise.allSettled([
+    const [budgetSettled, pledgesSettled, reimbSettled] = await Promise.allSettled([
       api.campaignBudgetLines(selectedSlug, { includeArchived: true }),
       api.campaignPledges(selectedSlug),
       api.campaignLedgerEntries(selectedSlug, { entryType: 'expense', includeVoided: false }),
-      api.campaignFinanceAuditEvents(selectedSlug, 100),
     ])
     return {
       slug: selectedSlug,
@@ -141,12 +140,10 @@ export function AdminCampaignFinancePage() {
       pledgesError: pledgesSettled.status === 'rejected' ? mutationErrorMessage(pledgesSettled.reason, 'Unable to load pledges') : null,
       reimbursementExpenses: reimbSettled.status === 'fulfilled' ? reimbSettled.value.ledgerEntries : [],
       reimbursementsError: reimbSettled.status === 'rejected' ? mutationErrorMessage(reimbSettled.reason, 'Unable to load reimbursements') : null,
-      auditEvents: auditSettled.status === 'fulfilled' ? auditSettled.value.auditEvents : [],
-      auditError: auditSettled.status === 'rejected' ? mutationErrorMessage(auditSettled.reason, 'Unable to load audit log') : null,
     }
   }, [selectedSlug])
 
-  // Filtered ledger query runs independently so changing ledger filters doesn't refetch summary/budget/audit
+  // Filtered ledger query runs independently so changing ledger filters doesn't refetch summary or other finance sections
   const ledgerQuery = useAsync(async () => {
     if (!selectedSlug) return null
     const res = await api.campaignLedgerEntries(selectedSlug, {
@@ -259,8 +256,6 @@ export function AdminCampaignFinancePage() {
     pledgesError,
     reimbursementExpenses,
     reimbursementsError,
-    auditEvents,
-    auditError,
   } = data
 
   const ledgerReady = Boolean(
@@ -281,7 +276,7 @@ export function AdminCampaignFinancePage() {
   const canWriteFinance = financePermission('record', roles.includes('treasurer')) && !isArchived
   const canApproveReimbursements = financePermission('approve', roles.includes('chair') || roles.includes('treasurer')) && !isArchived
   const canMarkReimbursed = financePermission('payout', roles.includes('treasurer')) && !isArchived
-  const canViewAudit = isAdmin || hasCapability(auth.user, 'view_audit_log', 'view', { type: 'campaign', id: campaign.id })
+  const canViewAudit = hasCapability(auth.user, 'view_audit_log', 'view', { type: 'campaign', id: campaign.id })
   const canViewReceipts = financePermission('view_receipts', true)
 
   return (
@@ -327,9 +322,7 @@ export function AdminCampaignFinancePage() {
           <button type="button" className="btn secondary" onClick={() => setTab('reimbursements')}>
             Reimbursements to review ({summary.pendingReimbursementsCount})
           </button>
-          <Link className="btn secondary" to={canViewAudit
-            ? `/admin/audit?hostCampaignId=${campaign.id}`
-            : `?campaign=${encodeURIComponent(campaign.slug)}&tab=audit`}>Finance history</Link>
+          {canViewAudit && <Link className="finance-history-link" to={`/admin/audit?area=finance&hostCampaignId=${encodeURIComponent(campaign.id)}`}>View finance history →</Link>}
         </div>
         {saveNotice?.slug === campaign.slug && <p role="status">{saveNotice.message}</p>}
         {entryType && canWriteFinance && ledgerQuery.error && !ledgerOptions && (
@@ -430,23 +423,20 @@ export function AdminCampaignFinancePage() {
         )}
       </div>
 
-      <nav className="finance-tabs" aria-label="Finance tracker sections">
-        <button type="button" aria-current={tab === 'ledger' ? 'page' : undefined} className={`btn small ${tab === 'ledger' ? 'primary' : 'secondary'}`} onClick={() => setTab('ledger')}>
+      <nav className="finance-tabs admin-section-tabs" aria-label="Finance tracker sections">
+        <button type="button" aria-current={tab === 'ledger' ? 'page' : undefined} className="admin-module-tab" onClick={() => setTab('ledger')}>
           Ledger ({ledgerEntries.length})
         </button>
-        <button type="button" aria-current={tab === 'budget' ? 'page' : undefined} className={`btn small ${tab === 'budget' ? 'primary' : 'secondary'}`} onClick={() => setTab('budget')}>
+        <button type="button" aria-current={tab === 'budget' ? 'page' : undefined} className="admin-module-tab" onClick={() => setTab('budget')}>
           Budget ({summary.budgetVsActual.length})
         </button>
-        <button type="button" aria-current={tab === 'pledges' ? 'page' : undefined} className={`btn small ${tab === 'pledges' ? 'primary' : 'secondary'}`} onClick={() => setTab('pledges')}>
+        <button type="button" aria-current={tab === 'pledges' ? 'page' : undefined} className="admin-module-tab" onClick={() => setTab('pledges')}>
           Pledges ({pledges.length})
         </button>
-        <button type="button" aria-current={tab === 'reimbursements' ? 'page' : undefined} className={`btn small ${tab === 'reimbursements' ? 'primary' : 'secondary'}`} onClick={() => setTab('reimbursements')}>
+        <button type="button" aria-current={tab === 'reimbursements' ? 'page' : undefined} className="admin-module-tab" onClick={() => setTab('reimbursements')}>
           Reimbursements ({summary.pendingReimbursementsCount})
         </button>
-        <button type="button" aria-current={tab === 'audit' ? 'page' : undefined} className={`btn small ${tab === 'audit' ? 'primary' : 'secondary'}`} onClick={() => setTab('audit')}>
-          Audit Log ({auditEvents.length})
-        </button>
-        <button type="button" aria-current={tab === 'report' ? 'page' : undefined} className={`btn small ${tab === 'report' ? 'primary' : 'secondary'}`} onClick={() => setTab('report')}>
+        <button type="button" aria-current={tab === 'report' ? 'page' : undefined} className="admin-module-tab" onClick={() => setTab('report')}>
           Final Report
         </button>
       </nav>
@@ -515,14 +505,6 @@ export function AdminCampaignFinancePage() {
             onOpenReceipt={canViewReceipts ? handleOpenReceipt : undefined}
             onSaved={reloadAll}
           />
-        )
-      )}
-
-      {tab === 'audit' && (
-        auditError ? (
-          <ErrorState message={auditError} onRetry={overviewQuery.reload} />
-        ) : (
-          <AuditLogTab auditEvents={auditEvents} />
         )
       )}
 
@@ -862,39 +844,8 @@ function BudgetTab({
   canWrite: boolean
   onSaved: () => Promise<void>
 }) {
-  const [kind, setKind] = useState<LedgerEntryType>('expense')
-  const [category, setCategory] = useState('')
-  const [budgetDollars, setBudgetDollars] = useState('')
-  const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [editor, setEditor] = useState<BudgetLineRecord | null>()
   const [error, setError] = useState('')
-
-  const handleCreate = async (event: FormEvent) => {
-    event.preventDefault()
-    const budgetParsed = parseDollarsToCents(budgetDollars)
-    if (!budgetParsed.ok) {
-      setError(`Planned budget: ${budgetParsed.error}`)
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      await api.campaignCreateBudgetLine(campaign.slug, {
-        kind,
-        category: category.trim(),
-        budgetCents: budgetParsed.value,
-        notes: notes.trim() || null,
-      })
-      setCategory('')
-      setBudgetDollars('')
-      setNotes('')
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to create budget line'))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const handleArchive = async (line: BudgetLineRecord) => {
     if (!window.confirm(`Archive budget line "${line.category}"? Existing ledger history stays intact.`)) return
@@ -909,69 +860,124 @@ function BudgetTab({
 
   return (
     <div className="page-stack">
-      {canWrite && (
-        <Panel>
-          <h2>Add budget line</h2>
-          <form onSubmit={handleCreate}>
-            <FormGrid>
-              <Field label="Kind">
-                <select value={kind} onChange={(e) => setKind(e.target.value as LedgerEntryType)}>
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
-                </select>
-              </Field>
-              <Field label="Category">
-                <input value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="Venue / Jerseys / Fundraiser" />
-              </Field>
-              <Field label="Planned budget (USD)">
-                <input inputMode="decimal" value={budgetDollars} onChange={(e) => setBudgetDollars(e.target.value)} required placeholder="5000" />
-              </Field>
-              <Field label="Notes">
-                <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </Field>
-            </FormGrid>
-            <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Adding…' : 'Add budget line'}</button>
-            {error && <p className="form-error" role="alert">{error}</p>}
-          </form>
-        </Panel>
-      )}
-
       <Panel>
-        <h2>Budget vs Actual</h2>
+        <div className="section-heading">
+          <h2>Budget vs Actual</h2>
+          {canWrite && <button type="button" className="btn primary" onClick={() => setEditor(null)}>Add budget line</button>}
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
         {summary.budgetVsActual.length === 0 ? (
           <EmptyState title="No budget lines yet" description="Add planned income and expense categories to compare against actual ledger totals." />
         ) : (
-          <div className="admin-list">
-            {summary.budgetVsActual.map((row) => {
-              const record = budgetLines.find((b) => b.id === row.id)
-              const varianceLabel = row.varianceCents === 0
-                ? 'On budget'
-                : row.kind === 'expense'
-                  ? (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} over budget` : `${formatUsd(Math.abs(row.varianceCents))} under budget`)
-                  : (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} above target` : `${formatUsd(Math.abs(row.varianceCents))} below target`)
+          <table className="admin-finance-table" aria-label="Budget vs Actual">
+            <thead><tr>
+              <th scope="col">Category</th><th scope="col">Budget</th><th scope="col">Actual</th>
+              <th scope="col">Variance</th>{canWrite && <th scope="col">Actions</th>}
+            </tr></thead>
+            <tbody>
+              {summary.budgetVsActual.map((row) => {
+                const record = budgetLines.find((line) => line.id === row.id)
+                const varianceLabel = row.varianceCents === 0
+                  ? 'On budget'
+                  : row.kind === 'expense'
+                    ? (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} over budget` : `${formatUsd(Math.abs(row.varianceCents))} under budget`)
+                    : (row.varianceCents > 0 ? `${formatUsd(row.varianceCents)} above target` : `${formatUsd(Math.abs(row.varianceCents))} below target`)
 
-              return (
-                <div key={row.id} className="compact-admin-row" style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--line)' }}>
-                  <div>
-                    <strong>{row.category}</strong>{' '}
-                    <span className="pill">{row.kind}</span>{' '}
-                    {row.archived && <span className="pill">Archived</span>}
-                    <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                      Budget {formatUsd(row.budgetCents)} · Actual {formatUsd(row.actualCents)} · {varianceLabel}
-                    </p>
-                  </div>
-                  {canWrite && record && !record.archivedAt && (
-                    <button type="button" className="btn secondary small" onClick={() => void handleArchive(record)}>
-                      Archive
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                return (
+                  <tr key={row.id}>
+                    <th scope="row">
+                      <strong>{row.category}</strong>{' '}
+                      <span className="status-badge">{row.kind}</span>{' '}
+                      {row.archived && <StatusBadge status="archived" />}
+                    </th>
+                    <td><span className="admin-finance-cell-label" aria-hidden="true">Budget</span>{formatUsd(row.budgetCents)}</td>
+                    <td><span className="admin-finance-cell-label" aria-hidden="true">Actual</span>{formatUsd(row.actualCents)}</td>
+                    <td>{varianceLabel}</td>
+                    {canWrite && <td>{record && !record.archivedAt && (
+                      <div className="row-actions">
+                        <button type="button" className="btn secondary small" onClick={() => setEditor(record)}>Edit budget line</button>
+                        <button type="button" className="btn secondary small" onClick={() => void handleArchive(record)}>Archive</button>
+                      </div>
+                    )}</td>}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         )}
       </Panel>
+      {canWrite && editor !== undefined && (
+        <BudgetLineDialog campaignSlug={campaign.slug} line={editor} onClose={() => setEditor(undefined)} onSaved={onSaved} />
+      )}
     </div>
+  )
+}
+
+function BudgetLineDialog({ campaignSlug, line, onClose, onSaved }: {
+  campaignSlug: string
+  line: BudgetLineRecord | null
+  onClose: () => void
+  onSaved: () => Promise<void>
+}) {
+  const [kind, setKind] = useState<LedgerEntryType>(line?.kind ?? 'expense')
+  const [category, setCategory] = useState(line?.category ?? '')
+  const [budgetDollars, setBudgetDollars] = useState(line ? centsToInput(line.budgetCents) : '')
+  const [notes, setNotes] = useState(line?.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSave = async (event: FormEvent) => {
+    event.preventDefault()
+    if (saving) return
+    const budgetParsed = parseDollarsToCents(budgetDollars)
+    if (!budgetParsed.ok) {
+      setError(`Planned budget: ${budgetParsed.error}`)
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        ...(!line && { kind }),
+        category: category.trim(),
+        budgetCents: budgetParsed.value,
+        notes: notes.trim() || null,
+      }
+      if (line) await api.campaignUpdateBudgetLine(campaignSlug, line.id, payload)
+      else await api.campaignCreateBudgetLine(campaignSlug, payload)
+      await onSaved()
+      onClose()
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to save budget line'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <AdminEditorDialog title={line ? 'Edit budget line' : 'Add budget line'} onClose={onClose} busy={saving}>
+      <form className="stacked-form" onSubmit={handleSave}>
+        <FormGrid>
+          <Field label="Kind">
+            <select disabled={Boolean(line)} value={kind} onChange={(e) => setKind(e.target.value as LedgerEntryType)}>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </Field>
+          <Field label="Category">
+            <input value={category} onChange={(e) => setCategory(e.target.value)} required placeholder="Venue / Jerseys / Fundraiser" />
+          </Field>
+          <Field label="Planned budget (USD)">
+            <input inputMode="decimal" value={budgetDollars} onChange={(e) => setBudgetDollars(e.target.value)} required placeholder="5000" />
+          </Field>
+          <Field label="Notes">
+            <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </Field>
+        </FormGrid>
+        <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save budget line'}</button>
+        {error && <p className="form-error" role="alert">{error}</p>}
+      </form>
+    </AdminEditorDialog>
   )
 }
 
@@ -988,51 +994,8 @@ function PledgesTab({
   canWrite: boolean
   onSaved: () => Promise<void>
 }) {
-  const [donorName, setDonorName] = useState('')
-  const [sponsorId, setSponsorId] = useState('')
-  const [contactInfo, setContactInfo] = useState('')
-  const [tier, setTier] = useState('Gold')
-  const [isInKind, setIsInKind] = useState(false)
-  const [promisedDollars, setPromisedDollars] = useState('')
-  const [dueOn, setDueOn] = useState('')
-  const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [editor, setEditor] = useState<PledgeRecord | null>()
   const [error, setError] = useState('')
-
-  const handleCreate = async (event: FormEvent) => {
-    event.preventDefault()
-    const promisedParsed = parseDollarsToCents(promisedDollars, { positive: true })
-    if (!promisedParsed.ok) {
-      setError(`Promised amount: ${promisedParsed.error}`)
-      return
-    }
-    setSaving(true)
-    setError('')
-    try {
-      await api.campaignCreatePledge(campaign.slug, {
-        donorName: donorName.trim(),
-        sponsorId: sponsorId || null,
-        contactInfo: contactInfo.trim() || null,
-        tier: tier || null,
-        isInKind,
-        promisedCents: promisedParsed.value,
-        dueOn: dueOn || null,
-        notes: notes.trim() || null,
-      })
-      setDonorName('')
-      setSponsorId('')
-      setContactInfo('')
-      setPromisedDollars('')
-      setDueOn('')
-      setNotes('')
-      setIsInKind(false)
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to create pledge'))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   const handleStatusChange = async (pledgeId: string, status: PledgeStatus) => {
     setError('')
@@ -1046,127 +1009,159 @@ function PledgesTab({
 
   return (
     <div className="page-stack">
-      {canWrite && (
-        <Panel>
-          <h2>Record sponsor or donor pledge</h2>
-          <form onSubmit={handleCreate}>
-            <FormGrid>
-              <Field label="Donor / Sponsor name">
-                <input value={donorName} onChange={(e) => setDonorName(e.target.value)} required placeholder="Bank of Guam" />
-              </Field>
-              <Field label="Linked tournament sponsor (optional)">
-                <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)}>
-                  <option value="">None</option>
-                  {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </Field>
-              <Field label="Promised amount / value (USD)">
-                <input inputMode="decimal" value={promisedDollars} onChange={(e) => setPromisedDollars(e.target.value)} required placeholder="2500" />
-              </Field>
-              <Field label="Tier">
-                <select value={tier} onChange={(e) => setTier(e.target.value)}>
-                  {PLEDGE_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </Field>
-              <Field label="Expected date">
-                <input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
-              </Field>
-              <Field label="Contact info (private)">
-                <input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="Contact name / phone" />
-              </Field>
-            </FormGrid>
-            <Field label="Notes">
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </Field>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.5rem' }}>
-              <input type="checkbox" checked={isInKind} onChange={(e) => setIsInKind(e.target.checked)} />
-              <span>In-kind donation (tracked separately from cash totals)</span>
-            </label>
-            <div className="row-actions" style={{ marginTop: '0.75rem' }}>
-              <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save pledge'}</button>
-            </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
-          </form>
-        </Panel>
-      )}
-
       <Panel>
-        <h2>Pledges ({pledges.length})</h2>
+        <div className="section-heading">
+          <h2>Pledges ({pledges.length})</h2>
+          {canWrite && <button type="button" className="btn primary" onClick={() => setEditor(null)}>Add pledge</button>}
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>}
         <p className="muted">Cash pledge fulfillment updates automatically as linked income entries are recorded or voided.</p>
         {pledges.length === 0 ? (
           <EmptyState title="No pledges tracked yet" description="Log promised sponsorships or donations to monitor follow-up and fulfillment." />
         ) : (
-          <div className="admin-list">
-            {pledges.map((p) => (
-              <div key={p.id} className="compact-admin-row" style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--line)' }}>
-                <div>
-                  <strong>{p.donorName}</strong>{' '}
-                  {p.tier && <span className="pill">{p.tier}</span>}{' '}
-                  {p.isInKind && <span className="pill">In-Kind</span>}{' '}
-                  <StatusBadge status={p.status} />
-                  <p className="muted" style={{ margin: '0.2rem 0 0' }}>
-                    Promised {formatUsd(p.promisedCents)}
-                    {!p.isInKind && (
-                      <>
-                        {' '}· Received {formatUsd(p.receivedCents)} · Outstanding {formatUsd(p.outstandingCents)}
-                        {p.overpaymentCents > 0 ? ` · Overpaid +${formatUsd(p.overpaymentCents)}` : ''}
-                      </>
+          <table className="admin-finance-table" aria-label="Pledges">
+            <thead><tr>
+              <th scope="col">Donor</th><th scope="col">Promised</th><th scope="col">Received</th>
+              <th scope="col">Outstanding</th><th scope="col">Due</th>{canWrite && <th scope="col">Actions</th>}
+            </tr></thead>
+            <tbody>
+              {pledges.map((pledge) => (
+                <tr key={pledge.id}>
+                  <th scope="row">
+                    <strong>{pledge.donorName}</strong>{' '}
+                    {pledge.tier && <span className="status-badge">{pledge.tier}</span>}{' '}
+                    {pledge.isInKind && <span className="status-badge">In-Kind</span>}{' '}
+                    <StatusBadge status={pledge.status} />
+                  </th>
+                  <td><span className="admin-finance-cell-label" aria-hidden="true">Promised</span>{formatUsd(pledge.promisedCents)}</td>
+                  <td>
+                    <span className="admin-finance-cell-label" aria-hidden="true">Received</span>
+                    {pledge.isInKind ? '—' : formatUsd(pledge.receivedCents)}
+                    {!pledge.isInKind && pledge.overpaymentCents > 0 && <small>Overpaid +{formatUsd(pledge.overpaymentCents)}</small>}
+                  </td>
+                  <td><span className="admin-finance-cell-label" aria-hidden="true">Outstanding</span>{pledge.isInKind ? '—' : formatUsd(pledge.outstandingCents)}</td>
+                  <td><span className="admin-finance-cell-label" aria-hidden="true">Due</span>{pledge.dueOn || '—'}</td>
+                  {canWrite && <td><div className="row-actions">
+                    <button type="button" className="btn secondary small" onClick={() => setEditor(pledge)}>Edit pledge</button>
+                    {pledge.isInKind ? (
+                      <select aria-label={`Status for ${pledge.donorName}`} value={pledge.status} onChange={(e) => void handleStatusChange(pledge.id, e.target.value as PledgeStatus)}>
+                        {PLEDGE_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    ) : pledge.status === 'cancelled' ? (
+                      <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(pledge.id, 'promised')}>Reopen pledge</button>
+                    ) : pledge.receivedCents === 0 ? (
+                      <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(pledge.id, 'cancelled')}>Cancel pledge</button>
+                    ) : (
+                      <small>Auto-synced</small>
                     )}
-                    {p.dueOn ? ` · Due ${p.dueOn}` : ''}
-                  </p>
-                </div>
-                {canWrite && (
-                  p.isInKind ? (
-                    <select
-                      aria-label={`Status for ${p.donorName}`}
-                      value={p.status}
-                      onChange={(e) => void handleStatusChange(p.id, e.target.value as PledgeStatus)}
-                    >
-                      {PLEDGE_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  ) : p.status === 'cancelled' ? (
-                    <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(p.id, 'promised')}>
-                      Reopen pledge
-                    </button>
-                  ) : p.receivedCents === 0 ? (
-                    <button type="button" className="btn secondary small" onClick={() => void handleStatusChange(p.id, 'cancelled')}>
-                      Cancel pledge
-                    </button>
-                  ) : (
-                    <span className="muted" style={{ fontSize: '0.85rem' }}>Auto-synced</span>
-                  )
-                )}
-              </div>
-            ))}
-          </div>
+                  </div></td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </Panel>
+      {canWrite && editor !== undefined && (
+        <PledgeDialog campaignSlug={campaign.slug} pledge={editor} sponsors={sponsors} onClose={() => setEditor(undefined)} onSaved={onSaved} />
+      )}
     </div>
   )
 }
 
-function AuditLogTab({ auditEvents }: { auditEvents: FinanceAuditEvent[] }) {
+function PledgeDialog({ campaignSlug, pledge, sponsors, onClose, onSaved }: {
+  campaignSlug: string
+  pledge: PledgeRecord | null
+  sponsors: Array<{ id: string; name: string }>
+  onClose: () => void
+  onSaved: () => Promise<void>
+}) {
+  const [donorName, setDonorName] = useState(pledge?.donorName ?? '')
+  const [sponsorId, setSponsorId] = useState(pledge?.sponsorId ?? '')
+  const [contactInfo, setContactInfo] = useState(pledge?.contactInfo ?? '')
+  const [tier, setTier] = useState(pledge ? pledge.tier ?? '' : 'Gold')
+  const [isInKind, setIsInKind] = useState(pledge?.isInKind ?? false)
+  const [promisedDollars, setPromisedDollars] = useState(pledge ? centsToInput(pledge.promisedCents) : '')
+  const [dueOn, setDueOn] = useState(pledge?.dueOn ?? '')
+  const [notes, setNotes] = useState(pledge?.notes ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSave = async (event: FormEvent) => {
+    event.preventDefault()
+    if (saving) return
+    const promisedParsed = parseDollarsToCents(promisedDollars, { positive: true })
+    if (!promisedParsed.ok) {
+      setError(`Promised amount: ${promisedParsed.error}`)
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const payload = {
+        donorName: donorName.trim(),
+        sponsorId: sponsorId || null,
+        contactInfo: contactInfo.trim() || null,
+        tier: tier || null,
+        ...(!pledge && { isInKind }),
+        promisedCents: promisedParsed.value,
+        dueOn: dueOn || null,
+        notes: notes.trim() || null,
+      }
+      if (pledge) await api.campaignUpdatePledge(campaignSlug, pledge.id, payload)
+      else await api.campaignCreatePledge(campaignSlug, payload)
+      await onSaved()
+      onClose()
+    } catch (err) {
+      setError(mutationErrorMessage(err, 'Unable to save pledge'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <Panel>
-      <h2>Append-only finance audit log ({auditEvents.length})</h2>
-      <p className="muted">Every ledger change, void, receipt attachment/view, reimbursement approval, and settings change is logged.</p>
-      {auditEvents.length === 0 ? (
-        <EmptyState title="No audit events yet" description="Audit entries appear here automatically as activity occurs." />
-      ) : (
-        <div className="admin-list">
-          {auditEvents.map((ev) => (
-            <div key={ev.id} style={{ padding: '0.65rem 0', borderBottom: '1px solid var(--line)' }}>
-              <strong>{ev.action.replace(/_/g, ' ')}</strong>{' '}
-              <span className="pill">{ev.recordType} #{ev.recordId}</span>
-              <p className="muted" style={{ margin: '0.2rem 0 0', fontSize: '0.88rem' }}>
-                {ev.actorName || ev.actorEmail || `User #${ev.actorId}`} · {ev.createdAt ? new Date(ev.createdAt).toLocaleString() : ''}
-                {ev.reason ? ` · Reason: ${ev.reason}` : ''}
-              </p>
-            </div>
-          ))}
+    <AdminEditorDialog title={pledge ? 'Edit pledge' : 'Add pledge'} onClose={onClose} busy={saving}>
+      <form className="stacked-form" onSubmit={handleSave}>
+        <FormGrid>
+          <Field label="Donor / Sponsor name">
+            <input value={donorName} onChange={(e) => setDonorName(e.target.value)} required placeholder="Bank of Guam" />
+          </Field>
+          <Field label="Linked tournament sponsor (optional)">
+            <select value={sponsorId} onChange={(e) => setSponsorId(e.target.value)}>
+              <option value="">None</option>
+              {sponsorId && !sponsors.some((sponsor) => sponsor.id === sponsorId) && <option value={sponsorId}>{pledge?.sponsorName || 'Current sponsor'}</option>}
+              {sponsors.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Promised amount / value (USD)">
+            <input inputMode="decimal" value={promisedDollars} onChange={(e) => setPromisedDollars(e.target.value)} required placeholder="2500" />
+          </Field>
+          <Field label="Tier">
+            <select value={tier} onChange={(e) => setTier(e.target.value)}>
+              <option value="">No tier</option>
+              {tier && !PLEDGE_TIERS.includes(tier) && <option value={tier}>{tier}</option>}
+              {PLEDGE_TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </Field>
+          <Field label="Expected date">
+            <input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
+          </Field>
+          <Field label="Contact info (private)">
+            <input value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} placeholder="Contact name / phone" />
+          </Field>
+        </FormGrid>
+        <Field label="Notes">
+          <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Field>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.5rem' }}>
+          <input type="checkbox" checked={isInKind} disabled={Boolean(pledge)} onChange={(e) => setIsInKind(e.target.checked)} />
+          <span>In-kind donation (tracked separately from cash totals)</span>
+        </label>
+        <div className="row-actions" style={{ marginTop: '0.75rem' }}>
+          <button type="submit" className="btn primary" disabled={saving}>{saving ? 'Saving…' : 'Save pledge'}</button>
         </div>
-      )}
-    </Panel>
+        {error && <p className="form-error" role="alert">{error}</p>}
+      </form>
+    </AdminEditorDialog>
   )
 }
 

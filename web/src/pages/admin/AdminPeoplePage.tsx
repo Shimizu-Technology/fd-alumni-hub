@@ -383,6 +383,15 @@ function describeGrant(grant: GrantSelection) {
   return `${new Intl.ListFormat('en').format(grant.actions.map((action) => actionLabel(action).toLowerCase()))} ${accessLabel(grant.capability).toLowerCase()}`
 }
 
+const presetDescriptions: Record<string, string> = {
+  class_chair: 'Lead campaign events, approvals, and organizer access.',
+  treasurer: 'Record campaign money and manage reimbursements.',
+  board_viewer: 'Review campaign finances, fundraisers, and audit history.',
+  scorekeeper: 'Enter game scores and request result corrections.',
+  game_night_coordinator: 'Publish menus and game-night updates.',
+  fundraiser_sponsor_lead: 'Manage sponsors and publish fundraiser content.',
+}
+
 export function AdminPeoplePage() {
   const { user } = useAuthContext()
   const superAdmin = Boolean(user?.isSuperAdmin ?? user?.isAdmin)
@@ -515,10 +524,10 @@ export function AdminPeoplePage() {
               </Field>}
             </FormGrid>
             <fieldset className="people-presets">
-              <legend>Presets</legend>
-              <div className="people-chip-row">
+              <legend>Role presets</legend>
+              <div className="admin-choice-grid">
                 {directory.presets.map((preset) => (
-                  <button type="button" className="btn secondary small" key={preset.key} aria-pressed={presetKey === preset.key}
+                  <button type="button" className="admin-choice-card" key={preset.key} aria-pressed={presetKey === preset.key}
                     onClick={() => {
                       if (!preset.scopeTypes.includes(scopeType)) {
                         setScopeType(preset.scopeTypes[0])
@@ -526,26 +535,32 @@ export function AdminPeoplePage() {
                       }
                       setPresetKey(preset.key)
                       setGrants(preset.grants)
-                    }}>{preset.label}</button>
+                    }}>
+                    <strong>{preset.key === 'class_chair' ? 'Host Class Chair' : preset.label}</strong>
+                    {presetDescriptions[preset.key] && <span>{presetDescriptions[preset.key]}</span>}
+                  </button>
                 ))}
               </div>
             </fieldset>
-            <div className="people-capabilities-grid">
-              {Object.entries(directory.capabilities).filter(([capability]) => scopeType !== 'site' || capability !== 'view_audit_log').map(([capability, actions]) => (
-                <fieldset className="people-capability-card" key={capability}>
-                  <legend>{accessLabel(capability)}</legend>
-                  <div className="people-actions-row">
-                    {actions.filter((action) => capability !== 'view_audit_log' || action !== 'export').map((action) => (
-                      <label className="people-checkbox-label" key={action}>
-                        <input type="checkbox" checked={grants.some((grant) => grant.capability === capability && grant.actions.includes(action))}
-                          onChange={() => toggleAction(capability, action)} />
-                        {actionLabel(action)}
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-              ))}
-            </div>
+            <details className="people-custom-permissions">
+              <summary>Customize individual permissions</summary>
+              <div className="people-capabilities-grid">
+                {Object.entries(directory.capabilities).filter(([capability]) => scopeType !== 'site' || capability !== 'view_audit_log').map(([capability, actions]) => (
+                  <fieldset className="people-capability-card" key={capability}>
+                    <legend>{accessLabel(capability)}</legend>
+                    <div className="people-actions-row">
+                      {actions.filter((action) => capability !== 'view_audit_log' || action !== 'export').map((action) => (
+                        <label className="people-checkbox-label" key={action}>
+                          <input type="checkbox" checked={grants.some((grant) => grant.capability === capability && grant.actions.includes(action))}
+                            onChange={() => toggleAction(capability, action)} />
+                          {actionLabel(action)}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            </details>
             <p aria-live="polite" className="people-summary-line">
               {grants.length ? `${subject} can ${new Intl.ListFormat('en').format(grants.map(describeGrant))} for ${scopeName(scopeType, scopeId)}.` : 'Choose a preset or select actions.'}
             </p>

@@ -116,3 +116,8 @@ it('opens with the campaign filter from a finance history link', async () => {
   render(<MemoryRouter initialEntries={['/admin/audit?hostCampaignId=7']}><AdminAuditHistoryPage /></MemoryRouter>)
   await waitFor(() => expect(api.adminAuditEvents).toHaveBeenCalledWith({ host_campaign_id: '7', cursor: null }, expect.any(AbortSignal)))
 })
+
+it('filters the audit timeline to finance from the overview link', async () => {
+  render(<MemoryRouter initialEntries={['/admin/audit?area=finance']}><AdminAuditHistoryPage /></MemoryRouter>)
+  await waitFor(() => expect(api.adminAuditEvents).toHaveBeenCalledWith({ area: 'finance', cursor: null }, expect.any(AbortSignal)))
+})
