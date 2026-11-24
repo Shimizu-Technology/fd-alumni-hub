@@ -83,9 +83,16 @@ function FundraiserDetail({ id }: { id: string }) {
   const { siteMode } = useSiteMode()
   const { data, loading, error, errorStatus, reload } = useAsync(() => api.publicFundraiser(id), [id])
   const onFundraisingHome = siteMode.mode === 'fundraising'
-  const campaignBackTo = data?.campaign.slug
-    ? `/host-year/${encodeURIComponent(data.campaign.slug)}`
-    : (onFundraisingHome ? '/' : '/host-year')
+  const isDefaultActiveCampaign = Boolean(
+    data?.campaign.slug &&
+    data.campaign.status !== 'archived' &&
+    (!siteMode.hostCampaign?.slug || siteMode.hostCampaign.slug === data.campaign.slug),
+  )
+  const campaignBackTo = onFundraisingHome && isDefaultActiveCampaign
+    ? '/'
+    : data?.campaign.slug
+      ? `/host-year/${encodeURIComponent(data.campaign.slug)}`
+      : (onFundraisingHome ? '/' : '/host-year')
   const back = <Link className="fundraiser-back" to={campaignBackTo}>← Back to fundraisers</Link>
 
   if (loading && !data) return <LoadingState label="Loading fundraiser" />

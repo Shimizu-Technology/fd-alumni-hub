@@ -67,7 +67,7 @@ it('shows a completed recap and restores photo focus after keyboard and click na
     expect(screen.getByText('Thank you for supporting the court.')).toBeInTheDocument()
     expect(screen.getByText('Alumni scrimmage.')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Buy tickets' })).toBeNull()
-    expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', `/host-year/${campaign.slug}`)
+    expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', '/')
 
     const thumbnail = screen.getByRole('button', { name: /Open recap photo 1/ })
     fireEvent.click(thumbnail)
@@ -97,4 +97,15 @@ it('handles an unavailable fundraiser', async () => {
   vi.spyOn(api, 'publicFundraiser').mockRejectedValue(new ApiError('Fundraiser not found', 404, {}))
   open('/fundraisers/unknown')
   expect(await screen.findByRole('heading', { name: 'Fundraiser not found' })).toBeInTheDocument()
+})
+
+it('links back to the event campaign slug for archived campaigns even in fundraising mode', async () => {
+  vi.spyOn(api, 'publicFundraiser').mockResolvedValue({
+    event: completedEvent,
+    campaign: { ...campaign, slug: '2026-class-of-2016', status: 'archived' },
+    hafapass,
+  })
+  open('/fundraisers/21')
+  expect(await screen.findByRole('heading', { name: 'Alumni night' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', '/host-year/2026-class-of-2016')
 })
