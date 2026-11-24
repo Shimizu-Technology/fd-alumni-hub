@@ -15,8 +15,8 @@ const filters = [
 ] as const
 
 function isScheduleGraphic(asset: { title: string; imageUrl?: string | null }) {
-  const text = `${asset.title} ${asset.imageUrl || ''}`
-  return /\b(schedule|playoffs[_-]?final|bracket)\b/i.test(text)
+  const normalized = `${asset.title} ${asset.imageUrl || ''}`.replace(/[_-]+/g, ' ')
+  return /\b(schedule|playoffs\s+final|bracket)\b/i.test(normalized)
 }
 
 export function GalleryPage() {

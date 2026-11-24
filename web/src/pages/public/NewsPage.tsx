@@ -17,22 +17,23 @@ function articleYear(article: Article): number | null {
 
 export function NewsPage() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
-  const { data, loading, error, reload } = useAsync(() => api.publicArticles({ archive: true, limit: 200 }), [])
-  const allArticles = data?.articles ?? []
+  const { data, loading, error, reload } = useAsync(
+    () => (selectedYear ? api.publicArticles({ year: selectedYear, limit: 200 }) : api.publicArticles({ archive: true, limit: 200 })),
+    [selectedYear],
+  )
+  const articles = data?.articles ?? []
 
   const years = useMemo(() => {
+    if (data?.availableYears?.length) {
+      return [...data.availableYears].sort((a, b) => b - a)
+    }
     const unique = new Set<number>()
-    allArticles.forEach((article) => {
+    articles.forEach((article) => {
       const year = articleYear(article)
       if (year) unique.add(year)
     })
     return Array.from(unique).sort((a, b) => b - a)
-  }, [allArticles])
-
-  const articles = useMemo(
-    () => (selectedYear ? allArticles.filter((article) => articleYear(article) === selectedYear) : allArticles),
-    [allArticles, selectedYear],
-  )
+  }, [data?.availableYears, articles])
 
   return (
     <div className="page-stack">
@@ -50,7 +51,7 @@ export function NewsPage() {
             aria-pressed={selectedYear === null}
             onClick={() => setSelectedYear(null)}
           >
-            All years ({allArticles.length})
+            All years
           </button>
           {years.map((year) => (
             <button

@@ -78,6 +78,7 @@ export function HistoryDetailPage() {
   const finalGames = games.filter((game) => game.status === 'final' && game.homeScore !== null && game.awayScore !== null)
   const championRecords = archiveData?.champions.championRecords || []
   const primaryChampion = championRecords.find((record) => record.primary && record.status === 'completed') || championRecords.find((record) => record.status === 'completed') || championRecords[0]
+  const isFinalArchive = tournament?.status === 'completed' || primaryChampion?.status === 'completed'
   const failed = archiveData?.failedSections
 
   return (
@@ -129,7 +130,7 @@ export function HistoryDetailPage() {
           ) : !games.length ? (
             <EmptyState title="Schedule archive pending" description="Games for this tournament have not been loaded into the tournament archive yet." />
           ) : (
-            <ArchiveGameList games={games} />
+            <ArchiveGameList games={games} collapseUnscoredSlots={isFinalArchive} />
           )}
         </Panel>
         <Panel>
@@ -237,10 +238,10 @@ function ChampionRecordsPanel({ records, articles, videos }: { records: Tourname
   )
 }
 
-function ArchiveGameList({ games }: { games: Game[] }) {
+function ArchiveGameList({ games, collapseUnscoredSlots = false }: { games: Game[]; collapseUnscoredSlots?: boolean }) {
   const scoredGames = games.filter((game) => game.homeScore !== null && game.awayScore !== null)
   const unscoredGames = games.filter((game) => game.homeScore === null || game.awayScore === null)
-  const collapseUnscored = scoredGames.length > 0 && unscoredGames.length > 0
+  const collapseUnscored = collapseUnscoredSlots && scoredGames.length > 0 && unscoredGames.length > 0
   const primaryGames = collapseUnscored ? scoredGames : games
 
   return (

@@ -84,6 +84,15 @@ function PublicShell() {
     setOpen(false)
   }, [location.pathname])
 
+  const visibleMenuKey = visibleMenuItems.map((item) => item.to).join(',')
+
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+    if (menuPanelRef.current && !menuPanelRef.current.contains(document.activeElement)) {
+      closeButtonRef.current?.focus({ preventScroll: true })
+    }
+  }, [open, visibleMenuKey])
+
   useEffect(() => {
     if (!open || typeof document === 'undefined') return
 

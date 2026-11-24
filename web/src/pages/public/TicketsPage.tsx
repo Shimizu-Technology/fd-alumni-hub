@@ -108,9 +108,11 @@ export function TicketsPage() {
     <div className="page-stack tickets-page">
       <PageHeader
         eyebrow="Tickets & Passes"
-        title={isFundraisingOnly ? 'Fundraisers & 2027 Tickets' : data?.tournament ? `${data.tournament.year} Tournament Tickets` : 'Tournament Tickets'}
-        description={isFundraisingOnly
-          ? 'Host-class fundraiser events are underway now. Official 2027 tournament passes and single-night Phoenix Center tickets will post here via HåfaPass closer to tip-off.'
+        title={isFundraisingOnly && data
+          ? `${data.tournament ? `${data.tournament.year} ` : ''}Fundraisers & Tournament Tickets`
+          : data?.tournament ? `${data.tournament.year} Tournament Tickets` : 'Tournament Tickets'}
+        description={isFundraisingOnly && data
+          ? `Host-class fundraiser events are underway now. Official ${data.tournament ? `${data.tournament.year} ` : ''}tournament passes and single-night Phoenix Center tickets will post here via HåfaPass closer to tip-off.`
           : 'Official tournament passes, single-night Phoenix Center tickets, and host-class fundraiser events powered by HåfaPass.'}
         actions={
           allTicketsHref ? (
@@ -369,16 +371,20 @@ function FundraiserTicketCard({
 
       {item.shortDescription && <p className="ticket-card-description">{item.shortDescription}</p>}
 
-      <div className="ticket-card-actions">
-        {buyHref && (
-          <a className="btn primary small" href={buyHref} target="_blank" rel="noreferrer">
-            {item.ctaLabel || 'Buy tickets'} <IconExternal size={14} />
-          </a>
-        )}
-        <Link className="btn secondary small" to={`/fundraisers/${item.id}`}>
-          {closed ? 'View recap' : 'Event details'} <IconArrowRight size={14} />
-        </Link>
-      </div>
+      {(buyHref || !item.id.startsWith('hp-')) && (
+        <div className="ticket-card-actions">
+          {buyHref && (
+            <a className="btn primary small" href={buyHref} target="_blank" rel="noreferrer">
+              {item.ctaLabel || 'Buy tickets'} <IconExternal size={14} />
+            </a>
+          )}
+          {!item.id.startsWith('hp-') && (
+            <Link className="btn secondary small" to={`/fundraisers/${item.id}`}>
+              {closed ? 'View recap' : 'Event details'} <IconArrowRight size={14} />
+            </Link>
+          )}
+        </div>
+      )}
     </article>
   )
 }

@@ -105,8 +105,7 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
   const pastEvents = data.events.filter(isClosedFundraiser).reverse()
   const shownEventImages = new Set(
     data.events
-      .flatMap((event) => [event.imageUrl, event.recapPhotos?.[0]?.url])
-      .map((url) => safeHttpsHref(url))
+      .map((event) => safeHttpsHref(event.imageUrl) || (event.status === 'completed' ? safeHttpsHref(event.recapPhotos?.[0]?.url) : null))
       .filter((href): href is string => Boolean(href)),
   )
 
