@@ -372,7 +372,7 @@ textarea {
 
 input::placeholder,
 textarea::placeholder {
-  color: #82737b;
+  color: var(--muted);
 }
 
 input:focus,
@@ -639,6 +639,10 @@ textarea:focus {
   background: linear-gradient(125deg, #211017 0%, #150b0f 100%);
   border: 1px solid var(--fd-gold-line);
   padding: 1.4rem;
+}
+
+.host-events-grid--spotlight .host-event-card--completed > .host-event-body:only-child {
+  grid-column: 1 / -1;
 }
 
 .host-events-grid--spotlight .host-event-media {
@@ -1537,6 +1541,23 @@ textarea:focus {
     --ink: #000 !important;
     --muted: #444 !important;
     --surface: #fff !important;
+    --surface-strong: #f5f5f5 !important;
     --line: #ccc !important;
+  }
+
+  .admin-shell :is(
+    .panel,
+    .stat-card,
+    .page-header,
+    .page-header h1,
+    .page-header p,
+    .data-table td,
+    .data-table th,
+    .admin-finance-table td,
+    .admin-finance-table th
+  ) {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
   }
 }
