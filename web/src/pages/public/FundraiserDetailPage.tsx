@@ -83,8 +83,8 @@ function FundraiserDetail({ id }: { id: string }) {
   const { siteMode } = useSiteMode()
   const { data, loading, error, errorStatus, reload } = useAsync(() => api.publicFundraiser(id), [id])
   const onFundraisingHome = siteMode.mode === 'fundraising'
-  const campaignBackTo = data?.campaign.status === 'archived'
-    ? `/host-year/${data.campaign.slug}`
+  const campaignBackTo = data?.campaign.slug
+    ? `/host-year/${encodeURIComponent(data.campaign.slug)}`
     : (onFundraisingHome ? '/' : '/host-year')
   const back = <Link className="fundraiser-back" to={campaignBackTo}>← Back to fundraisers</Link>
 

@@ -482,6 +482,7 @@ function HostYearEventsPanel({
   const [kind, setKind] = useState<CampaignEventKind>('fundraiser')
   const [title, setTitle] = useState('')
   const [recapEventId, setRecapEventId] = useState<string | null>(null)
+  const [recapBusy, setRecapBusy] = useState(false)
   const [status, setStatus] = useState<CampaignEventStatus>('planned')
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
@@ -761,18 +762,19 @@ function HostYearEventsPanel({
                     )}
                     {canEdit && !ev.archivedAt && (
                       <button type="button" className={`btn small ${ev.status === 'completed' ? 'primary' : 'secondary'}`}
+                        disabled={recapBusy}
                         aria-expanded={recapEventId === ev.id} onClick={() => setRecapEventId(recapEventId === ev.id ? null : ev.id)}>
                         {hasEventRecap(ev) ? 'Edit Recap & Photos' : 'Add Recap & Photos'}
                       </button>
                     )}
                     {canEdit && <button type="button" className="btn secondary small" disabled={saving || uploading} onClick={() => startEdit(ev)}>Edit</button>}
                     {canEdit && !ev.archivedAt && (
-                      <button type="button" className="btn secondary small" onClick={() => void handleArchive(ev)}>Archive</button>
+                      <button type="button" className="btn secondary small" disabled={recapBusy && recapEventId === ev.id} onClick={() => void handleArchive(ev)}>Archive</button>
                     )}
                   </div>
                 </div>
                 {canEdit && !ev.archivedAt && recapEventId === ev.id && (
-                  <EventRecapForm campaignSlug={campaign.slug} event={ev} onSaved={onSaved} onClose={() => setRecapEventId(null)} />
+                  <EventRecapForm campaignSlug={campaign.slug} event={ev} onSaved={onSaved} onBusyChange={setRecapBusy} onClose={() => setRecapEventId(null)} />
                 )}
               </div>
             ))}
@@ -789,10 +791,11 @@ function hasEventRecap(event: AdminCampaignEvent) {
   return Boolean(event.recapNotes || event.recapHighlights || event.raisedDisplay || event.recapPhotos?.length)
 }
 
-function EventRecapForm({ campaignSlug, event, onSaved, onClose }: {
+function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }: {
   campaignSlug: string
   event: AdminCampaignEvent
   onSaved: () => Promise<void>
+  onBusyChange: (busy: boolean) => void
   onClose: () => void
 }) {
   const [notes, setNotes] = useState(event.recapNotes || '')
@@ -803,6 +806,11 @@ function EventRecapForm({ campaignSlug, event, onSaved, onClose }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    onBusyChange(uploading || saving)
+    return () => onBusyChange(false)
+  }, [uploading, saving, onBusyChange])
 
   const uploadPhotos = async (change: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(change.currentTarget.files || [])

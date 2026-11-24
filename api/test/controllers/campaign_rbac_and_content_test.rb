@@ -206,7 +206,7 @@ class CampaignRbacAndContentTest < ActionDispatch::IntegrationTest
     audit = AuditEvent.where(record_type: "CampaignEvent", record_id: event.id.to_s, action: "update").order(:id).last
     assert_equal "A great night", audit.after_json["recap_notes"]
 
-    [ { url: "https://example.com/photo.jpg" }, [ "invalid" ], [ { url: "https://example.com/photo.jpg", caption: { invalid: true } } ] ].each do |photos|
+    [ { url: "https://example.com/photo.jpg" }, [ nil ], [ "invalid" ], [ { url: "https://example.com/photo.jpg", caption: { invalid: true } } ] ].each do |photos|
       patch path, params: { event: { recapPhotos: photos } }, headers: headers_for(@chair), as: :json
       assert_response :unprocessable_entity
       assert_equal saved["recapPhotos"], event.reload.recap_photos

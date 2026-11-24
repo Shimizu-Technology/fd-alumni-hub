@@ -48,10 +48,10 @@ export function PublicLayout() {
 
 function PublicShell() {
   const [open, setOpen] = useState(false)
-  const { siteMode, alerts } = useSiteMode()
+  const { siteMode, alerts, homeAlertsInline } = useSiteMode()
   const location = useLocation()
   const backend = useBackendAvailabilityContext()
-  const showLayoutAlerts = location.pathname !== '/' || siteMode.mode !== 'tournament_live'
+  const showLayoutAlerts = location.pathname !== '/' || !homeAlertsInline
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
   const bottomNavItems = siteMode.mobileBottomNav.filter((item) => item.to !== null)

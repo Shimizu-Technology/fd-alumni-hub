@@ -34,8 +34,20 @@ it('shows the full flyer and live purchase link on the alternate detail route', 
   expect(screen.getByText('Main hall', { exact: false })).toBeInTheDocument()
   expect(screen.getByText('Dinner with the host class.')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Buy tickets' })).toHaveAttribute('href', 'https://example.com/tickets')
-  expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', '/host-year')
+  expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', `/host-year/${campaign.slug}`)
   expect(screen.queryByRole('heading', { name: 'Event Recap' })).toBeNull()
+})
+
+it('suppresses stale on_sale ticket badge while preserving cancelled warnings', async () => {
+  vi.spyOn(api, 'publicFundraiser').mockResolvedValue({
+    event: { ...upcomingEvent, hafapass: { ...upcomingEvent.hafapass!, stale: true, ticketState: 'on_sale' } },
+    campaign,
+    hafapass,
+  })
+  open('/fundraisers/20')
+  expect(await screen.findByRole('heading', { name: 'Alumni dinner' })).toBeInTheDocument()
+  expect(screen.queryByText('Tickets on sale')).toBeNull()
+  expect(screen.getByText('Upcoming')).toBeInTheDocument()
 })
 
 it('shows a completed recap and restores photo focus after keyboard and click navigation', async () => {
@@ -55,7 +67,7 @@ it('shows a completed recap and restores photo focus after keyboard and click na
     expect(screen.getByText('Thank you for supporting the court.')).toBeInTheDocument()
     expect(screen.getByText('Alumni scrimmage.')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Buy tickets' })).toBeNull()
-    expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', `/host-year/${campaign.slug}`)
 
     const thumbnail = screen.getByRole('button', { name: /Open recap photo 1/ })
     fireEvent.click(thumbnail)

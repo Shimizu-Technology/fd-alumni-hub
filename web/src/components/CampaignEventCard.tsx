@@ -29,7 +29,7 @@ export function isClosedFundraiser(event: PublicCampaignEvent) {
 
 export function FundraiserBadges({ event }: { event: PublicCampaignEvent }) {
   const hp = event.hafapass
-  const ticketState = hp?.ticketState
+  const ticketState = hp && (!hp.stale || hp.ticketState === 'cancelled') ? hp.ticketState : undefined
   const completed = event.status === 'completed'
   const cancelled = event.status === 'cancelled' || ticketState === 'cancelled'
   const label = completed ? 'Completed'

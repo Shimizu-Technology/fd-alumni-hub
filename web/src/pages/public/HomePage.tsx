@@ -33,7 +33,7 @@ export function HomePage() {
   const [voterToken] = useState(readOrCreateVoterToken)
   const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
   const [voteError, setVoteError] = useState('')
-  const { siteMode: layoutMode, alerts: layoutAlerts, acceptSiteMode } = useSiteMode()
+  const { siteMode: layoutMode, acceptSiteMode, setHomeAlertsInline } = useSiteMode()
   const { data, loading, error, reload } = useAsync(() => api.publicHome(voterToken), [voterToken])
 
   useEffect(() => {
@@ -43,6 +43,11 @@ export function HomePage() {
 
   const activeMode = data?.siteMode?.mode || layoutMode.mode
   const refreshIntervalMs = activeMode === 'tournament_live' ? liveRefreshIntervalMs : offSeasonRefreshIntervalMs
+
+  useEffect(() => {
+    setHomeAlertsInline(Boolean(data && activeMode === 'tournament_live'))
+    return () => setHomeAlertsInline(false)
+  }, [data, activeMode, setHomeAlertsInline])
 
   useEffect(() => {
     if (!data) return undefined
@@ -82,17 +87,17 @@ export function HomePage() {
   const announcement = gameDayNote?.announcement
   const sponsorShoutout = gameDayNote?.sponsorShoutout
   const hasGameDayNote = Boolean(hostClass || menuHeadline || announcement || sponsorShoutout)
-  const activeAlerts = (data ? data.alerts : layoutAlerts)?.filter((item) => item.active) || []
+  const activeAlerts = data?.alerts?.filter((item) => item.active) || []
   const showHostCard = sections.fundraisers && (mode === 'schedule_ready' || (mode === 'tournament_recap' && recap.handoffBannerEnabled))
   const leadLinks: SiteSection[] = mode === 'schedule_ready' ? ['schedule', 'teams', 'tickets'] : []
   const visibleSeasonLinks = seasonLinks.filter(({ section }) => sections[section] && !leadLinks.includes(section))
   const isLive = mode === 'tournament_live'
   const champions = (data?.championRecords || []).filter((record) => record.championLabel)
 
-  const gameDayPanel = (data || (isLive && activeAlerts.length > 0)) && (sections.tonight || activeAlerts.length > 0) && (
+  const gameDayPanel = data && (sections.tonight || (isLive && activeAlerts.length > 0)) && (
     <Panel className="home-tonight-panel">
       <div className="section-heading"><h2>Tonight at The Jungle</h2><Link to="/today">Tonight’s guide <IconArrowRight size={15} /></Link></div>
-      {activeAlerts.map((alert) => (
+      {isLive && activeAlerts.map((alert) => (
         <div key={alert.id} role={alert.severity === 'urgent' ? 'alert' : 'status'}>
           <Link className={`tournament-alert-banner tournament-alert-banner--${alert.severity}`} to="/today">
             <span className={`tournament-alert-pill tournament-alert-pill--${alert.severity}`}>{alert.severity === 'urgent' ? 'Urgent' : 'Alert'}</span>
@@ -202,6 +207,7 @@ export function HomePage() {
               <Link to={`/host-year/${hostCampaign.slug}`}>{mode === 'schedule_ready' ? 'Explore fundraisers' : 'Meet the host class'} <IconArrowRight size={16} /></Link>
             </Panel>
           )}
+          {!isLive && sections.tonight && gameDayPanel}
           {visibleSeasonLinks.length > 0 && (
             <Panel>
               <nav className="hero-actions" aria-label="Season resources">

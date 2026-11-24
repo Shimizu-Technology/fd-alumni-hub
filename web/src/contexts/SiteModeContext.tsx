@@ -11,6 +11,8 @@ const SiteModeContext = createContext({
   siteMode: offlineSiteMode,
   alerts: [] as TournamentAlert[],
   acceptSiteMode: (_payload: Payload) => {},
+  homeAlertsInline: false,
+  setHomeAlertsInline: (_inline: boolean) => {},
 })
 
 export function SiteModeProvider({ children }: { children: ReactNode }) {
@@ -18,6 +20,7 @@ export function SiteModeProvider({ children }: { children: ReactNode }) {
   const { status } = useBackendAvailabilityContext()
   const [resolved, setResolved] = useState<SiteMode | null>(null)
   const [alerts, setAlerts] = useState<TournamentAlert[]>([])
+  const [homeAlertsInline, setHomeAlertsInline] = useState(false)
   const acceptSiteMode = useCallback(({ siteMode, alerts }: Payload) => {
     if (siteMode) setResolved(siteMode)
     if (alerts) setAlerts(alerts)
@@ -54,7 +57,7 @@ export function SiteModeProvider({ children }: { children: ReactNode }) {
   }, [acceptSiteMode, status])
 
   return (
-    <SiteModeContext.Provider value={{ siteMode: resolved || offlineSiteMode, alerts, acceptSiteMode }}>
+    <SiteModeContext.Provider value={{ siteMode: resolved || offlineSiteMode, alerts, acceptSiteMode, homeAlertsInline, setHomeAlertsInline }}>
       {children}
     </SiteModeContext.Provider>
   )

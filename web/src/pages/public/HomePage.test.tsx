@@ -133,3 +133,23 @@ it('offers the static champions archive when the API is unreachable', async () =
   expect(screen.getByRole('heading', { name: 'Class of 2017' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Full history' })).toHaveAttribute('href', '/history')
 })
+
+it('renders Tonight at The Jungle in schedule_ready when explicitly enabled without duplicating inline alerts', async () => {
+  const fetch = mockHome('schedule_ready', {
+    gameDayNote: {
+      id: 'note-2', tournamentId: '1', date: '2090-07-08', active: true,
+      hostClass: null, foodMenu: null, announcement: null, sponsorShoutout: null,
+      hostSpotlight: { hostClassLabel: 'Class of 2017' }, menuItems: [{ name: 'Red rice plates' }],
+    },
+    alerts: [{
+      id: 'alert-2', tournamentId: '1', severity: 'urgent', title: 'Gate update',
+      message: 'Doors open at 5pm.', active: true, startsAt: null, expiresAt: null,
+    }],
+  })
+  const payload = await api.publicHome()
+  fetch.mockResolvedValue({ ...payload, siteMode: { ...payload.siteMode, sections: { ...payload.siteMode.sections, tonight: true } } })
+  open()
+  expect(await screen.findByRole('heading', { name: 'Tonight at The Jungle' })).toBeInTheDocument()
+  expect(screen.getByText('Red rice plates')).toBeInTheDocument()
+  expect(screen.queryByText('Doors open at 5pm.')).toBeNull()
+})

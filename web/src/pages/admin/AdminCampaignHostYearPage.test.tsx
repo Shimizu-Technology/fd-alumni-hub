@@ -94,3 +94,24 @@ it('uploads multiple recap photos, preserves a successful partial upload, and sa
   fireEvent.click(await screen.findByRole('button', { name: 'Edit Recap & Photos' }))
   expect(screen.getByLabelText('Caption for photo 1')).toHaveValue('The team')
 })
+
+it('disables parent recap toggle and archive buttons while a recap upload is in flight', async () => {
+  let resolveUpload!: (url: string) => void
+  vi.mocked(uploadCampaignImage).mockImplementationOnce(() => new Promise<string>((resolve) => { resolveUpload = resolve }))
+  await open()
+
+  const toggle = screen.getByRole('button', { name: 'Add Recap & Photos' })
+  const archive = screen.getByRole('button', { name: 'Archive' })
+  fireEvent.click(toggle)
+  const form = within(screen.getByRole('form', { name: 'Recap for Alumni night' }))
+  fireEvent.change(form.getByLabelText('Upload recap photos'), {
+    target: { files: [new File(['img'], 'pending.jpg', { type: 'image/jpeg' })] },
+  })
+
+  expect(toggle).toBeDisabled()
+  expect(archive).toBeDisabled()
+
+  await act(async () => { resolveUpload('https://images.example.com/pending.jpg') })
+  await waitFor(() => expect(toggle).not.toBeDisabled())
+  expect(archive).not.toBeDisabled()
+})
