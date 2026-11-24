@@ -13,7 +13,7 @@ afterEach(() => {
 const date = '2032-07-03'
 const next = '2032-07-05'
 const payload: TonightPayload = {
-  tournament: null, date, requestedDate: date, resolvedDate: date, nextScheduledDate: next, isRestDay: true,
+  tournament: null, date, scheduledDates: [date, next], requestedDate: date, resolvedDate: date, nextScheduledDate: next, isRestDay: true,
   games: [], linkedCampaignEvents: [], sponsors: [], lastUpdatedAt: null,
   alerts: [{ id: 'a1', severity: 'urgent', title: 'Weather delay', message: 'Check again soon.', active: true, tournamentId: null, startsAt: null, expiresAt: null }],
   gameDayNote: {
@@ -28,16 +28,16 @@ const payload: TonightPayload = {
   }],
 }
 
-it('places alerts and games above menu, events, updates and predictions', async () => {
+it('places alerts and predictions above the companion sections on mobile', async () => {
   vi.spyOn(api, 'publicToday').mockResolvedValue(payload)
   render(<MemoryRouter initialEntries={[`/today?date=${date}`]}><TodayPage /></MemoryRouter>)
 
   await screen.findByText('Chicken plate')
   const alerts = screen.getByRole('alert')
   const hierarchy = [
-    alerts, screen.getByRole('heading', { name: 'Tip-offs & scores' }), screen.getByRole('heading', { name: 'Food & Drink Menu' }),
-    screen.getByRole('heading', { name: /Special Events/ }), screen.getByRole('heading', { name: 'Host Class Spotlight' }),
-    screen.getByRole('heading', { name: 'Organizer Updates' }), screen.getByRole('heading', { name: 'Fan Predictions' }),
+    alerts, screen.getByRole('heading', { name: 'Fan Predictions' }), screen.getByRole('heading', { name: 'Host Class Spotlight' }),
+    screen.getByRole('heading', { name: 'Food & Drink Menu' }), screen.getByRole('heading', { name: /Special Events/ }),
+    screen.getByRole('heading', { name: 'Organizer Updates' }),
   ]
   hierarchy.slice(1).forEach((section, index) => expect(hierarchy[index].compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy())
   expect(screen.getByText('Sold out')).toBeInTheDocument()
@@ -51,10 +51,12 @@ it('jumps from a rest day to the next dated guide and falls back to the legacy m
     selected === next
       ? { ...payload, date: next, resolvedDate: next, requestedDate: next, updates: [], isRestDay: false, nextScheduledDate: null,
         gameDayNote: { ...payload.gameDayNote!, date: next, menuItems: [] } }
-      : payload
+      : { ...payload, gameDayNote: null, updates: [], predictionPolls: [] }
   ))
   render(<MemoryRouter initialEntries={[`/today?date=${date}`]}><TodayPage /></MemoryRouter>)
-  expect(await screen.findByText('Parking update')).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Rest day at The Jungle' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Organizer Updates' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: /Special Events/ })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /Next scheduled night/ }))
   await waitFor(() => expect(fetch).toHaveBeenLastCalledWith(expect.objectContaining({ date: next }), expect.anything()))
   expect(await screen.findByText('Legacy BBQ')).toBeInTheDocument()

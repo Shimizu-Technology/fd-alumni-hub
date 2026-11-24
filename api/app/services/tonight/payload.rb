@@ -32,6 +32,7 @@ module Tonight
         date: @day.iso8601,
         requestedDate: @day.iso8601,
         resolvedDate: @day.iso8601,
+        scheduledDates: schedule ? self.class.scheduled_dates(@tournament, preview: preview) : [],
         nextScheduledDate: next_date&.iso8601,
         isRestDay: schedule && games.empty?,
         alerts: alerts.map(&:api_json),
@@ -44,6 +45,14 @@ module Tonight
         sponsors: @tournament.sponsors.active.ordered_by_tier.limit(4).map(&:api_json),
         lastUpdatedAt: latest_updated_at(note, games, polls, alerts, updates.to_a, events.to_a)&.iso8601
       }
+    end
+
+    def self.scheduled_dates(tournament, preview: false)
+      notes = tournament.game_day_notes
+      notes = notes.active.where(status: "published") unless preview
+      game_dates = tournament.games.where(status: %w[scheduled live final]).distinct.pluck(:start_time)
+        .compact.map { |tip_off| tip_off.in_time_zone.to_date }
+      (game_dates | notes.pluck(:date)).sort.map(&:iso8601)
     end
 
     def self.campaign_for(tournament)

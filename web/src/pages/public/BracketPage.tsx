@@ -1,17 +1,34 @@
 import { GameBoxScoreButton } from '../../components/GameBoxScoreDrawer'
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
-import { numericSearchParam } from '../../lib/urls'
 import type { BracketDivisionGroup, Game } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight } from '../../components/Icons'
 
+// Keep in sync with the bracket breakpoint in styles.css.
+const mobileLayoutQuery = '(max-width: 960px)'
+
+function subscribeToLayout(onChange: () => void) {
+  const media = globalThis.matchMedia?.(mobileLayoutQuery)
+  media?.addEventListener('change', onChange)
+  return () => media?.removeEventListener('change', onChange)
+}
+
+function isMobileLayout() {
+  return globalThis.matchMedia?.(mobileLayoutQuery).matches ?? false
+}
+
+const serverLayout = () => false
+
 export function BracketPage() {
-  const [year] = useState(() => numericSearchParam('year'))
+  const [search] = useSearchParams()
+  const yearParam = search.get('year')
+  const year = yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null
+  const mobile = useSyncExternalStore(subscribeToLayout, isMobileLayout, serverLayout)
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>('')
   const [selectedRound, setSelectedRound] = useState<string>('')
 
@@ -97,46 +114,50 @@ export function BracketPage() {
 
           {activeDivision && (
             <section className="bracket-section" aria-label={`${activeDivision.division.name} playoff bracket`}>
-              <div className="bracket-round-pills" role="group" aria-label="Playoff rounds">
-                {rounds.map((roundGroup) => {
-                  const isActive = roundGroup.round === activeRoundKey
-                  return (
-                    <button
-                      key={roundGroup.round}
-                      type="button"
-                      aria-pressed={isActive}
-                      className={`bracket-pill-btn${isActive ? ' active' : ''}`}
-                      onClick={() => setSelectedRound(roundGroup.round)}
-                    >
-                      <span>{roundGroup.label}</span>
-                      <small>{roundGroup.games.length}</small>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {activeMobileRound && (
-                <div className="bracket-mobile-round">
-                  <h2>{activeDivision.division.name} · {activeMobileRound.label}</h2>
-                  <div className="bracket-round-list">
-                    {activeMobileRound.games.map((game) => <BracketGameCard key={game.id} game={game} />)}
+              {mobile ? (
+                <>
+                  <div className="bracket-round-pills" role="group" aria-label="Playoff rounds">
+                    {rounds.map((roundGroup) => {
+                      const isActive = roundGroup.round === activeRoundKey
+                      return (
+                        <button
+                          key={roundGroup.round}
+                          type="button"
+                          aria-pressed={isActive}
+                          className={`bracket-pill-btn${isActive ? ' active' : ''}`}
+                          onClick={() => setSelectedRound(roundGroup.round)}
+                        >
+                          <span>{roundGroup.label}</span>
+                          <small>{roundGroup.games.length}</small>
+                        </button>
+                      )
+                    })}
                   </div>
+
+                  {activeMobileRound && (
+                    <div className="bracket-mobile-round">
+                      <h2>{activeDivision.division.name} · {activeMobileRound.label}</h2>
+                      <div className="bracket-round-list">
+                        {activeMobileRound.games.map((game) => <BracketGameCard key={game.id} game={game} />)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="bracket-desktop-grid">
+                  {rounds.map((roundGroup) => (
+                    <div key={roundGroup.round} className="bracket-column">
+                      <h2 className="bracket-column-heading">
+                        <span>{roundGroup.label}</span>
+                        <small>{roundGroup.games.length}</small>
+                      </h2>
+                      <div className="bracket-round-list">
+                        {roundGroup.games.map((game) => <BracketGameCard key={game.id} game={game} />)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-
-              <div className="bracket-desktop-grid">
-                {rounds.map((roundGroup) => (
-                  <div key={roundGroup.round} className="bracket-column">
-                    <h2 className="bracket-column-heading">
-                      <span>{roundGroup.label}</span>
-                      <small>{roundGroup.games.length}</small>
-                    </h2>
-                    <div className="bracket-round-list">
-                      {roundGroup.games.map((game) => <BracketGameCard key={game.id} game={game} />)}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </section>
           )}
         </>

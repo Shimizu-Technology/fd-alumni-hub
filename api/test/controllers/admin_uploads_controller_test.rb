@@ -85,6 +85,37 @@ class AdminUploadsControllerTest < ActionDispatch::IntegrationTest
     assert_includes policy.fetch("conditions"), { "Content-Type" => "image/png" }
   end
 
+  test "night editors can presign all tonight purposes in the tonight folder" do
+    staff = User.create!(email: "night-editor@example.test", clerk_id: "night_editor", role: "viewer")
+    PermissionGrant.create!(user: staff, email: staff.email, scope_type: "tournament",
+      scope_id: @tournament.id, capability: "tonights_menu_and_news", actions: %w[edit])
+
+    %w[tonight tonight-photo game-day].each do |purpose|
+      post "/api/v1/admin/uploads/presign",
+        params: { upload: { tournamentId: @tournament.id, filename: "flyer.png", contentType: "image/png", purpose: purpose } },
+        headers: auth_headers(staff), as: :json
+
+      assert_response :ok
+      assert_match %r{\Atonight/#{@tournament.id}/}, response.parsed_body.fetch("key")
+    end
+
+    post "/api/v1/admin/uploads/presign",
+      params: { upload: { tournamentId: @tournament.id, filename: "hero.png", contentType: "image/png", purpose: "media-asset" } },
+      headers: auth_headers(staff), as: :json
+    assert_response :forbidden
+  end
+
+  test "history and media editors without tonight permissions cannot presign tonight photos" do
+    staff = User.create!(email: "media-editor@example.test", clerk_id: "media_editor", role: "viewer")
+    PermissionGrant.create!(user: staff, email: staff.email, scope_type: "tournament",
+      scope_id: @tournament.id, capability: "history_and_media", actions: %w[edit])
+
+    post "/api/v1/admin/uploads/presign",
+      params: { upload: { tournamentId: @tournament.id, filename: "flyer.png", contentType: "image/png", purpose: "tonight-photo" } },
+      headers: auth_headers(staff), as: :json
+    assert_response :forbidden
+  end
+
   test "requires staff auth" do
     post "/api/v1/admin/uploads/presign",
       params: { upload: { tournamentId: @tournament.id, filename: "logo.png", contentType: "image/png" } },
@@ -134,7 +165,7 @@ class AdminUploadsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def auth_headers
-    { "Authorization" => "Bearer test_token_#{@user.id}" }
+  def auth_headers(user = @user)
+    { "Authorization" => "Bearer test_token_#{user.id}" }
   end
 end

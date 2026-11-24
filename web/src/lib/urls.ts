@@ -30,6 +30,12 @@ export function safeHttpsHref(value?: string | null) {
   }
 }
 
+export function safePublicImageHref(value?: string | null) {
+  if (!value || /[\\\s\x00-\x1f\x7f]/.test(value)) return null
+  if (value.startsWith('/') && !value.startsWith('//')) return value
+  return safeHttpsHref(value)
+}
+
 export type NormalizedUrlResult =
   | { ok: true; url: string | null }
   | { ok: false; error: string }

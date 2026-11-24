@@ -307,6 +307,7 @@ export const api = {
     games: Game[]
     predictionPolls: PredictionPoll[]
     infoGuide: InfoGuide
+    scheduledDates?: string[]
   }>(`/admin/game-day-notes${query(params)}`),
   adminSaveGameDayNote: (payload: Partial<GameDayNote>) => request<{ gameDayNote: GameDayNote }>(`/admin/game-day-notes${query({ tournamentId: payload.tournamentId })}`, json('POST', { gameDayNote: payload })),
   adminPreviewNight: (tournamentId: string, date: string) =>
@@ -363,7 +364,8 @@ export const api = {
   adminDeleteMedia: (id: string) => request<void>(`/admin/media-assets/${id}`, { method: 'DELETE' }),
 
   adminSponsors: (tournamentId?: string | null) => request<{ sponsors: Sponsor[] }>(`/admin/sponsors${query({ tournamentId })}`),
-  adminPresignImageUpload: (payload: AdminImageUploadPresignPayload) => request<AdminImageUploadPresign>('/admin/uploads/presign', json('POST', { upload: payload })),
+  adminPresignImageUpload: (payload: AdminImageUploadPresignPayload, signal?: AbortSignal) =>
+    request<AdminImageUploadPresign>('/admin/uploads/presign', { ...json('POST', { upload: payload }), signal }),
   adminCreateSponsor: (payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>('/admin/sponsors', json('POST', { sponsor: payload })),
   adminUpdateSponsor: (id: string, payload: Partial<Sponsor>) => request<{ sponsor: Sponsor }>(`/admin/sponsors/${id}`, json('PATCH', { sponsor: payload })),
   adminDeleteSponsor: (id: string) => request<void>(`/admin/sponsors/${id}`, { method: 'DELETE' }),

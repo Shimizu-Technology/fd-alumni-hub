@@ -87,6 +87,67 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "photos are validated, serialized and audited on update" do
+    note = @season.game_day_notes.create!(date: NIGHT, status: "draft")
+    path = "#{NOTES}/#{note.id}"
+    photos = [ { "url" => "https://cdn.example.test/flyer.png", "caption" => "Game-night flyer" }, { "url" => "/hosts.jpg" } ]
+
+    patch path, params: @params.merge(gameDayNote: { photos: photos }), headers: headers(@editor), as: :json
+    assert_response :ok
+    assert_equal photos, response.parsed_body.dig("gameDayNote", "photos")
+    audit = AuditEvent.find_by!(record_type: "GameDayNote", record_id: note.id.to_s, action: "update")
+    assert_equal photos, audit.after_json.fetch("photos")
+
+    [
+      nil, {}, "invalid", [ nil ], [ photos.first, nil ], [ {} ], [ { url: "" } ],
+      [ { url: "//example.test/x.jpg" } ], [ { url: "javascript:alert(1)" } ],
+      [ { url: "https://user@example.test/x.jpg" } ], [ { url: "/x.jpg", caption: "a" * 241 } ],
+      [ { url: "/x.jpg", caption: 7 } ], [ { url: "/x.jpg", extra: "unsupported" } ], Array.new(17, photos.first)
+    ].each do |invalid|
+      patch path, params: @params.merge(gameDayNote: { photos: invalid }), headers: headers(@editor), as: :json
+      assert_response :unprocessable_entity, invalid.inspect
+    end
+    assert_equal photos, note.reload.photos
+
+    patch path, params: @params.merge(gameDayNote: { status: "published" }), headers: headers(@publisher), as: :json
+    assert_response :ok
+    get TODAY, params: @params
+    assert_equal photos, response.parsed_body.dig("gameDayNote", "photos")
+
+    patch path, params: @params.merge(gameDayNote: { photos: [] }), headers: headers(@publisher), as: :json
+    assert_response :ok
+    assert_empty note.reload.photos
+  end
+
+  test "scheduled days are sorted and deduplicated in Guam time and gated by visibility" do
+    home = @season.teams.create!(class_year_label: "2016", display_name: "Class of 2016", division: "Maroon")
+    away = @season.teams.create!(class_year_label: "2017", display_name: "Class of 2017", division: "Maroon")
+    {
+      "2032-07-02T15:30:00Z" => "scheduled",
+      "2032-07-03T09:00:00Z" => "live",
+      "2032-07-04T09:00:00Z" => "final",
+      "2032-07-05T09:00:00Z" => "cancelled"
+    }.each do |start, status|
+      @season.games.create!(home_team: home, away_team: away, start_time: start, status: status, division: "Maroon")
+    end
+    @season.game_day_notes.create!(date: "2032-07-02", status: "published")
+    @season.game_day_notes.create!(date: NIGHT, status: "published")
+    @season.game_day_notes.create!(date: "2032-07-06", active: false)
+    @season.game_day_notes.create!(date: "2032-07-07", status: "draft")
+
+    get TODAY, params: @params
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04], response.parsed_body["scheduledDates"]
+
+    @season.update!(schedule_published_at: nil)
+    get TODAY, params: @params
+    assert_empty response.parsed_body["scheduledDates"]
+
+    get "#{NOTES}/preview", params: @params, headers: headers(@editor)
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07], response.parsed_body["scheduledDates"]
+    get NOTES, params: @params, headers: headers(@editor)
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07], response.parsed_body["scheduledDates"]
+  end
+
   test "copy previous skips nights without menus and copies legacy or structured copy into a draft" do
     post "#{NOTES}/copy-previous", params: @params, headers: headers(@editor), as: :json
     assert_response :unprocessable_entity

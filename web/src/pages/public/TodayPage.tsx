@@ -5,13 +5,15 @@ import { api } from '../../lib/api'
 import { formatGuamDate, formatGuamDateTime, toLocalDateTimeInputValue } from '../../lib/datetime'
 import { DEFAULT_GAME_VENUE, gameResultLabel } from '../../lib/games'
 import { useAsync } from '../../lib/hooks'
-import { safeHttpsHref } from '../../lib/urls'
+import { safeHttpsHref, safePublicImageHref } from '../../lib/urls'
 import { readOrCreateVoterToken } from '../../lib/voter'
 import type { Game, PredictionPoll, RosterEntry, TonightPayload } from '../../lib/types'
 import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconExternal } from '../../components/Icons'
 import { useSiteMode } from '../../contexts/SiteModeContext'
 import { PredictionPollCard } from '../../components/PredictionPollCard'
+import { GameNightDates } from '../../components/GameNightDates'
+import { PhotoGallery } from '../../components/PhotoGallery'
 
 const todayRefreshIntervalMs = 10_000
 
@@ -31,10 +33,13 @@ export function TodayPage() {
   const [pollOverrides, setPollOverrides] = useState<Record<string, PredictionPoll>>({})
   const [voteError, setVoteError] = useState('')
   const { data: result, loading, error, reload } = useAsync(async () => ({
-    key: JSON.stringify([date, year, tournamentId]),
+    date, year, tournamentId,
     payload: await api.publicToday({ date, year: year ? Number(year) : null, tournamentId }, voterToken),
   }), [date, year, tournamentId, voterToken])
-  const data = result?.key === JSON.stringify([date, year, tournamentId]) ? result.payload : null
+  const currentSeason = result?.year === year && result?.tournamentId === tournamentId ? result : null
+  const data = currentSeason?.date === date ? currentSeason.payload : null
+  const today = toLocalDateTimeInputValue(new Date().toISOString()).slice(0, 10)
+  const selectedDate = date || data?.date || today
 
   useEffect(() => {
     setPollOverrides({})
@@ -77,9 +82,12 @@ export function TodayPage() {
         description={data?.date ? `${formatGuamDate(data.date, { weekday: 'long' })} · Guam time` : 'Game-night guide · Guam time'}
         actions={<Link className="btn secondary" to="/schedule">Full schedule <IconArrowRight /></Link>}
       />
-      <div className="game-actions">
-        <label>Guam date <input type="date" value={date || data?.date || toLocalDateTimeInputValue(new Date().toISOString()).slice(0, 10)} onChange={(event) => changeDate(event.target.value)} /></label>
-        <button type="button" className="btn secondary small" onClick={() => changeDate('')}>Today</button>
+      <div className="today-date-nav">
+        <GameNightDates dates={currentSeason?.payload.scheduledDates || []} selected={selectedDate} today={today} onSelect={changeDate} />
+        <details className="today-other-date">
+          <summary>Other date</summary>
+          <label>Guam date <input type="date" value={selectedDate} onChange={(event) => changeDate(event.target.value)} /></label>
+        </details>
       </div>
       {!data ? (
         error && !loading ? <SectionUnavailable title="The nightly guide is unavailable" onRetry={reload} /> : <LoadingState label="Loading Tonight at The Jungle" />
@@ -101,10 +109,25 @@ export function TonightGuide({ data, onJump, onVote, voteError }: {
 }) {
   const note = data.gameDayNote
   const spotlight = note?.hostSpotlight
-  const photo = spotlight?.photoUrl
-  const safePhoto = photo?.startsWith('/') && !photo.startsWith('//') && !photo.includes('\\') ? photo : safeHttpsHref(photo)
+  const safePhoto = safePublicImageHref(spotlight?.photoUrl)
+  const photos = (note?.photos || []).flatMap((photo) => {
+    const url = safePublicImageHref(photo.url)
+    return url ? [{ ...photo, url }] : []
+  })
   const events = note?.specialEvents || []
   const linked = (data.linkedCampaignEvents || []).filter((event) => !events.some((custom) => custom.campaignEventId === event.id))
+  const hostClass = spotlight?.hostClassLabel?.trim() || note?.hostClass?.trim()
+  const hasSpotlight = Boolean(hostClass || spotlight?.headline?.trim() || spotlight?.body?.trim() || safePhoto)
+  const menu = note?.menuItems || []
+  const updates = data.updates || []
+  const sponsors = data.sponsors || []
+  const hasMenu = Boolean(menu.length || note?.foodMenu?.trim())
+  const hasUpdates = Boolean(updates.length || note?.announcement?.trim())
+  const hasSponsors = Boolean(sponsors.length || note?.sponsorShoutout?.trim())
+  const hasCompanion = hasSpotlight || hasMenu || photos.length > 0 || events.length > 0 || linked.length > 0 || hasUpdates || hasSponsors
+  const noNightProgram = !data.games.length && !note && !updates.length && !linked.length
+  const hasPrimary = Boolean(data.games.length || data.predictionPolls.length || noNightProgram)
+
   return (
     <>
       {data.alerts?.map((alert) => (
@@ -113,67 +136,101 @@ export function TonightGuide({ data, onJump, onVote, voteError }: {
           <div className="tournament-alert-copy"><strong>{alert.title}</strong><p>{alert.message}</p></div>
         </div>
       ))}
-      <Panel>
-        <h2>Tip-offs &amp; scores</h2>
-        {data.games.length ? <div className="today-game-list">
-          {data.games.map((game) => <TodayGameCard key={game.id} game={game} fallbackTicketUrl={data.fallbackTicketUrl || null} />)}
-        </div> : (
-          <>
-            <EmptyState title={data.isRestDay ? 'Rest day at The Jungle' : 'No published games for this night'} />
-            {data.nextScheduledDate && (
-              <button type="button" className="btn primary" disabled={!onJump} onClick={() => onJump?.(data.nextScheduledDate!)}>
-                Next scheduled night · {formatGuamDate(data.nextScheduledDate, { weekday: 'short' })}
-              </button>
-            )}
-          </>
-        )}
-      </Panel>
-
-      <Panel>
-        <h2>Food &amp; Drink Menu</h2>
-        {note?.menuItems?.length ? <ul className="today-menu">
-          {note.menuItems.map((item, index) => <li key={index}>
-            <div><strong>{item.name}</strong> {item.price && <span>{item.price}</span>}
-              {item.category && <small>{item.category}</small>}
-              {item.notes && <p>{item.notes}</p>}
+      <div className={hasPrimary && hasCompanion ? 'tonight-guide tonight-guide--split' : 'tonight-guide'}>
+        {hasPrimary && <div className="tonight-column">
+          {data.games.length > 0 && <Panel className="tonight-scores">
+            <h2>Tip-offs &amp; Live Scores</h2>
+            <div className="today-game-list">
+              {data.games.map((game) => <TodayGameCard key={game.id} game={game} fallbackTicketUrl={data.fallbackTicketUrl || null} />)}
             </div>
-            <span className={`tournament-alert-pill tournament-alert-pill--${item.available === false ? 'warning' : 'info'}`}>{item.available === false ? 'Sold out' : 'Available'}</span>
-          </li>)}
-        </ul> : <p className="night-copy">{note?.foodMenu || 'Menu details are pending.'}</p>}
-      </Panel>
+          </Panel>}
+          {noNightProgram && <EmptyState
+            title={data.isRestDay ? 'Rest day at The Jungle' : 'No published games for this night'}
+            description={data.isRestDay ? 'There are no games or events on this date.' : undefined}
+            action={data.nextScheduledDate && onJump ? (
+              <button type="button" className="btn primary" onClick={() => onJump(data.nextScheduledDate!)}>
+                Next scheduled night · {formatGuamDate(data.nextScheduledDate, { weekday: 'short', year: undefined })}
+              </button>
+            ) : undefined}
+          />}
+          {data.predictionPolls.length > 0 && <Panel>
+            <h2>Fan Predictions</h2>
+            {voteError && <p className="form-error" role="alert">{voteError}</p>}
+            <div className="prediction-grid">{data.predictionPolls.map((poll) => <PredictionPollCard key={poll.id} poll={poll} onVote={onVote} />)}</div>
+          </Panel>}
+        </div>}
 
-      <Panel>
-        <h2>Tonight’s Special Events &amp; Theme Nights</h2>
-        {events.map((event, index) => <article key={index}><h3>{event.title}</h3><p>{event.timeLabel}</p><p className="night-copy">{event.description}</p></article>)}
-        {linked.map((event) => <article key={event.id}><h3>{event.title}</h3><p>{event.startsAt ? formatGuamDateTime(event.startsAt) : event.dateLabel}</p><p className="night-copy">{event.description}</p></article>)}
-        {!events.length && !linked.length && <p>No special events posted.</p>}
-      </Panel>
+        {hasCompanion && <div className="tonight-column">
+          {hasSpotlight && <Panel>
+            <h2>Host Class Spotlight</h2>
+            {safePhoto && <img className="night-spotlight-photo" src={safePhoto} alt="" loading="lazy" />}
+            {hostClass && <p className="tonight-host-class">{hostClass}</p>}
+            {spotlight?.headline && <h3>{spotlight.headline}</h3>}
+            {spotlight?.body && <p className="night-copy">{spotlight.body}</p>}
+          </Panel>}
 
-      {(Boolean(spotlight?.hostClassLabel || spotlight?.headline || spotlight?.body || safePhoto || note?.hostClass)) && <Panel>
-        <h2>Host Class Spotlight</h2>
-        {safePhoto && <img className="night-spotlight-photo" src={safePhoto} alt="" loading="lazy" />}
-        <p>{spotlight?.hostClassLabel || note?.hostClass}</p>
-        {spotlight?.headline && <h3>{spotlight.headline}</h3>}
-        <p className="night-copy">{spotlight?.body}</p>
-      </Panel>}
+          {hasMenu && <Panel>
+            <h2>Food &amp; Drink Menu</h2>
+            {menu.length ? <ul className="today-menu">
+              {menu.map((item, index) => <li key={index}>
+                <div><strong>{item.name}</strong> {item.price && <span>{item.price}</span>}
+                  {item.category && <small>{item.category}</small>}
+                  {item.notes && <p>{item.notes}</p>}
+                </div>
+                <span className={`tournament-alert-pill tournament-alert-pill--${item.available === false ? 'warning' : 'info'}`}>{item.available === false ? 'Sold out' : 'Available'}</span>
+              </li>)}
+            </ul> : <p className="night-copy">{note?.foodMenu}</p>}
+          </Panel>}
 
-      <Panel>
-        <h2>Organizer Updates</h2>
-        {note?.announcement && <p className="night-copy">{note.announcement}</p>}
-        {(data.updates || []).map((update) => <article key={update.id}>
-          <h3>{update.title}</h3>
-          <p className="night-copy">{update.body}</p>
-        </article>)}
-        {!note?.announcement && !data.updates?.length && <p>No organizer updates posted.</p>}
-      </Panel>
-      {note?.sponsorShoutout && <Panel>{note.sponsorShoutout}</Panel>}
-      {data.predictionPolls.length > 0 && (
-        <Panel>
-          <h2>Fan Predictions</h2>
-          {voteError && <p className="form-error" role="alert">{voteError}</p>}
-          <div className="prediction-grid">{data.predictionPolls.map((poll) => <PredictionPollCard key={poll.id} poll={poll} onVote={onVote} />)}</div>
-        </Panel>
-      )}
+          {photos.length > 0 && <Panel>
+            <PhotoGallery key={data.date} photos={photos} title="Tonight’s Photos & Flyers" photoLabel="photo or flyer" headingLevel={2} />
+          </Panel>}
+
+          {events.length > 0 && <Panel>
+            <h2>Special Events &amp; Theme Nights</h2>
+            <div className="tonight-entry-list">
+              {events.map((event, index) => <article key={index}>
+                <h3>{event.campaignEventId ? <Link to={`/fundraisers/${encodeURIComponent(event.campaignEventId)}`}>{event.title}</Link> : event.title}</h3>
+                {event.timeLabel && <p className="muted">{event.timeLabel}</p>}
+                {event.description && <p className="night-copy">{event.description}</p>}
+              </article>)}
+            </div>
+          </Panel>}
+
+          {hasUpdates && <Panel>
+            <h2>Organizer Updates</h2>
+            <div className="tonight-entry-list">
+              {note?.announcement && <p className="night-copy">{note.announcement}</p>}
+              {updates.map((update) => <article key={update.id}>
+                <h3>{update.title}</h3>
+                <p className="night-copy">{update.body}</p>
+              </article>)}
+            </div>
+          </Panel>}
+
+          {linked.length > 0 && <Panel>
+            <h2>Linked Fundraisers</h2>
+            <div className="tonight-entry-list">
+              {linked.map((event) => <article key={event.id}>
+                <h3><Link to={`/fundraisers/${encodeURIComponent(event.id)}`}>{event.title}</Link></h3>
+                {(event.startsAt || event.dateLabel) && <p className="muted">{event.startsAt ? formatGuamDateTime(event.startsAt) : event.dateLabel}</p>}
+                {event.description && <p className="night-copy">{event.description}</p>}
+              </article>)}
+            </div>
+          </Panel>}
+
+          {hasSponsors && <Panel>
+            <h2>Sponsors</h2>
+            {note?.sponsorShoutout && <p className="night-copy">{note.sponsorShoutout}</p>}
+            {sponsors.length > 0 && <ul className="tonight-sponsors">
+              {sponsors.map((sponsor) => {
+                const href = safeHttpsHref(sponsor.targetUrl)
+                return <li key={sponsor.id}>{href ? <a href={href}>{sponsor.name}</a> : sponsor.name}</li>
+              })}
+            </ul>}
+          </Panel>}
+        </div>}
+      </div>
     </>
   )
 }
@@ -197,7 +254,7 @@ function TodayGameCard({
           <span>{formatGuamDateTime(game.startTime)}</span>
           <StatusBadge status={game.status} />
         </div>
-        <h2><TeamNameLink team={game.awayTeam} fallback="Away team" /> at <TeamNameLink team={game.homeTeam} fallback="Home team" /></h2>
+        <h3><TeamNameLink team={game.awayTeam} fallback="Away team" /> at <TeamNameLink team={game.homeTeam} fallback="Home team" /></h3>
         {hasScore && (
           <div className="today-score-strip" aria-label="Game score">
             <span>{game.awayTeam?.displayName || 'Away'}</span>
