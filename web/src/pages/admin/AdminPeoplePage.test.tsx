@@ -37,10 +37,14 @@ afterEach(() => {
 
 it('prefills a preset, edits actions, and describes the scoped access', async () => {
   render(<AdminPeoplePage />)
-  fireEvent.click(await screen.findByRole('button', { name: 'Scorekeeper' }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Scorekeeper/ }))
   fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'mara@example.test' } })
   fireEvent.change(screen.getByLabelText('Season or campaign'), { target: { value: '1' } })
   expect(screen.getByText('Mara can enter scores for the 2027 tournament.')).toBeTruthy()
+  const customize = screen.getByText('Customize individual permissions')
+  expect(customize.closest('details')).not.toHaveAttribute('open')
+  fireEvent.click(customize)
+  expect(customize.closest('details')).toHaveAttribute('open')
   const actions = within(screen.getByRole('group', { name: 'Scores and stats' }))
   expect((actions.getByRole('checkbox', { name: 'Request corrections' }) as HTMLInputElement).checked).toBe(true)
   fireEvent.click(actions.getByRole('checkbox', { name: 'Request corrections' }))

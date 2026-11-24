@@ -2,24 +2,20 @@ import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { SignInButton, SignOutButton } from '@clerk/clerk-react'
-import { canOpenAdminRoute, defaultWorkspaceHome, hasCapability, visibleAdminModules } from '../lib/adminModules'
+import { adminRoute, canOpenAdminRoute, defaultWorkspaceHome, hasCapability, visibleAdminModules } from '../lib/adminModules'
 import { AdminModuleTabs } from './AdminModuleTabs'
 import { tournamentScopedPath } from '../lib/admin'
 import { useAuthContext } from '../contexts/AuthContext'
 import { useBackendAvailabilityContext } from '../hooks/useBackendAvailability'
 import type { CurrentUser } from '../lib/types'
 import {
-  IconCalendar,
   IconClose,
   IconHome,
-  IconImage,
-  IconLink,
   IconLogOut,
   IconMenu,
   IconPanelLeftClose,
   IconPanelLeftOpen,
   IconShield,
-  IconTrophy,
 } from './Icons'
 import { LoadingState, Panel } from './ui'
 
@@ -172,14 +168,25 @@ function UtilityLink({ to, label, icon: Icon, collapsed, onNavigate }: { to: str
   )
 }
 
-function visibleNavSections(user: CurrentUser, tournamentId: string | null) {
-  return [{
-    label: 'Workspace',
-    items: visibleAdminModules(user).map((module) => ({
+const workspaceGroups = [
+  { label: 'Overview', keys: ['work'] },
+  { label: 'Host Year', keys: ['campaign/host-year', 'campaign/finance'] },
+  { label: 'Tournament', keys: ['game-day', 'games', 'scorekeeper', 'news'] },
+  { label: 'System', keys: ['site-mode', 'people', 'audit'] },
+]
+
+function visibleNavSections(user: CurrentUser, tournamentId: string | null): NavSection[] {
+  const visible = visibleAdminModules(user)
+  return workspaceGroups.map(({ label, keys }) => ({
+    label,
+    items: visible.filter((module) => keys.includes(module.key)).map((module) => ({
       to: module.key === 'scorekeeper' && !canOpenAdminRoute(user, module.path) ? '/admin/standings' : module.path,
-      label: module.label, icon: module.icon, end: module.key === 'work', tournamentScoped: module.tournamentScoped && canOpenAdminRoute(user, module.path, tournamentId),
+      label: module.label,
+      icon: module.icon,
+      end: module.key === 'work',
+      tournamentScoped: module.tournamentScoped && canOpenAdminRoute(user, module.path, tournamentId),
     })),
-  }] satisfies NavSection[]
+  })).filter(({ items }) => items.length > 0)
 }
 
 function SidebarContent({
@@ -406,13 +413,19 @@ export function AdminLayout() {
       if (event.key === 'Escape') setMobileOpen(false)
     }
 
+    const desktopViewport = window.matchMedia('(min-width: 981px)')
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setMobileOpen(false)
+    }
+
     window.addEventListener('keydown', onKeyDown)
+    desktopViewport.addEventListener('change', closeOnDesktop)
     return () => {
       window.clearTimeout(focusTimer)
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
-      const mobileNav = document.getElementById(mobileNavId)
-      if (document.activeElement instanceof HTMLElement && mobileNav?.contains(document.activeElement)) opener?.focus()
+      desktopViewport.removeEventListener('change', closeOnDesktop)
+      opener?.focus({ preventScroll: true })
     }
   }, [mobileOpen, showUnavailableState])
 
@@ -478,11 +491,13 @@ export function AdminLayout() {
   const closeMobileNav = () => setMobileOpen(false)
   const userName = auth.user.fullName
   const userRole = displayUserRole(auth.user)
-  const workspaceSubtitle = visibleAdminModules(auth.user).find((module) => module.path === defaultWorkspaceHome(auth.user))?.label || 'Workspace'
+  const { module, tab } = adminRoute(location.pathname)
+  const workspaceTitle = module?.key === 'work' ? 'Overview' : module?.label || 'Workspace'
+  const currentSection = tab ? `${workspaceTitle} / ${tab.label}` : workspaceTitle
 
   return (
     <div className="admin-shell">
-      <header className="admin-mobile-topbar">
+      <header className="admin-mobile-topbar" inert={mobileOpen}>
         <button
           ref={mobileMenuButtonRef}
           type="button"
@@ -494,11 +509,8 @@ export function AdminLayout() {
         >
           <IconMenu />
         </button>
-        <div>
-          <strong>FD Hub Admin</strong>
-          <span>{workspaceSubtitle}</span>
-        </div>
-        <span className="brand-mark">FD</span>
+        <strong>{currentSection}</strong>
+        <span className="admin-user-badge">{userName} · {userRole}</span>
       </header>
 
       {mobileOpen && <button type="button" className="admin-mobile-backdrop" onClick={closeMobileNav} aria-label="Close admin navigation" />}
@@ -513,10 +525,10 @@ export function AdminLayout() {
         <SidebarContent collapsed={desktopCollapsed} tournamentId={tournamentId} user={auth.user} onNavigate={() => undefined} onToggleCollapse={() => setDesktopCollapsed((value) => !value)} />
       </aside>
 
-      <section className={`admin-content ${desktopCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <section className={`admin-content ${desktopCollapsed ? 'sidebar-collapsed' : ''}`} inert={mobileOpen}>
         <div className="admin-topbar">
-          <div className="admin-topbar-icons" aria-hidden="true"><IconCalendar /><IconTrophy /><IconLink /><IconImage /></div>
-          <span>{userName} · {userRole}</span>
+          <strong>{currentSection}</strong>
+          <span className="admin-user-badge">{userName} · {userRole}</span>
         </div>
         <AdminModuleTabs path={location.pathname} user={auth.user} tournamentId={tournamentId} />
         <Outlet />

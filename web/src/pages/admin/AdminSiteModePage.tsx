@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SeasonHero } from '../../components/SeasonHero'
-import { LoadingState, Panel, SectionUnavailable } from '../../components/ui'
+import { LoadingState, PageHeader, Panel, SectionUnavailable } from '../../components/ui'
 import { api } from '../../lib/api'
 import { formatGuamDateTime } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { sectionLabels, siteModes, type SiteModeAdmin, type SiteModeName, type SiteModePreview, type SiteModeSettings, type SiteSection } from '../../lib/siteMode'
+
+const modeDescriptions: Record<SiteModeName, string> = {
+  fundraising: 'Highlights the host class, fundraising progress, and upcoming events.',
+  schedule_ready: 'Shows the published schedule, teams, and ticket links.',
+  tournament_live: 'Brings tonight’s guide, live games, and standings to the homepage.',
+  tournament_recap: 'Features tournament results, season coverage, and the host class handoff.',
+}
 
 function draftFrom({ current, siteMode, campaigns }: SiteModeAdmin): SiteModeSettings {
   return {
@@ -86,21 +93,24 @@ function SiteModeEditor({ configuration, initial, reload }: { configuration: Sit
 
   return (
     <div className="page-stack">
-      <Panel>
-        <h1>Site Mode</h1>
-        <p><strong>Live · {siteModes[siteMode.mode]}</strong> · {siteMode.tournament?.year || 'No selected season'} · {siteMode.hostCampaign?.hostClass?.displayName || siteMode.hostCampaign?.title || 'No active host class'}</p>
-        <p>{siteMode.publishedAt
+      <PageHeader title="Site Mode" description="Choose which season content visitors see on the homepage." />
+      <Panel className="admin-live-banner">
+        <div className="row-actions"><span className="admin-live-badge">Live</span><strong>{siteModes[siteMode.mode]}</strong></div>
+        <p>{siteMode.tournament?.year || 'No selected season'} · {siteMode.hostCampaign?.hostClass?.displayName || siteMode.hostCampaign?.title || 'No active host class'}</p>
+        <small className="muted">{siteMode.publishedAt
           ? `Version ${siteMode.versionNumber} · ${formatGuamDateTime(siteMode.publishedAt)}${siteMode.publishedByName ? ` · ${siteMode.publishedByName}` : ''}`
-          : 'The site is using its default mode.'}</p>
+          : 'The site is using its default mode.'}</small>
       </Panel>
 
       <Panel>
         <fieldset disabled={busy} className="season-editor">
           <legend>Choose a mode</legend>
-          <div className="season-fields" role="group" aria-label="Seasonal mode">
+          <div className="admin-choice-grid" role="group" aria-label="Seasonal mode">
             {(Object.entries(siteModes) as [SiteModeName, string][]).map(([value, label]) => (
-              <button className={`btn ${value === draft.mode ? 'primary' : 'secondary'}`} type="button" key={value} aria-pressed={value === draft.mode} onClick={() => update({ mode: value })}>
-                {label}{value === suggestedMode && <small className="season-suggestion">Suggested</small>}
+              <button className="admin-choice-card" type="button" key={value} aria-pressed={value === draft.mode} onClick={() => update({ mode: value })}>
+                <strong>{label}</strong>
+                <span>{modeDescriptions[value]}</span>
+                {value === suggestedMode && <small className="season-suggestion">Suggested</small>}
               </button>
             ))}
           </div>

@@ -16,6 +16,14 @@ import { NightEditor } from './tonight/NightEditor'
 import { UpdatesPanel } from './tonight/UpdatesPanel'
 import { InfoGuideEditor } from './tonight/InfoGuideEditor'
 
+const nightSections = [
+  { key: 'menu', label: 'Menu & Spotlight' },
+  { key: 'photos', label: 'Photos & Flyers' },
+  { key: 'events', label: 'Events & Updates' },
+  { key: 'alerts', label: 'Alerts & Guide' },
+] as const
+type NightSection = typeof nightSections[number]['key']
+
 export function AdminGameDayPage() {
   const [search, setSearch] = useSearchParams()
   const tournamentId = search.get('tournamentId') || ''
@@ -58,6 +66,7 @@ export function AdminGameDayPage() {
 
 function TournamentNight({ tournament, date, setDate }: { tournament: Tournament; date: string; setDate: (date: string) => void }) {
   const { user } = useAuthContext()
+  const [section, setSection] = useState<NightSection>('menu')
   const scope = { type: 'tournament', id: tournament.id }
   const canEdit = hasCapability(user, 'tonights_menu_and_news', 'edit', scope)
   const canPublish = hasCapability(user, 'tonights_menu_and_news', 'publish', scope)
@@ -79,15 +88,32 @@ function TournamentNight({ tournament, date, setDate }: { tournament: Tournament
         <GameNightDates dates={night.data?.scheduledDates ?? gameDays} selected={selectedDate} onSelect={setDate} />
         {games.error && <ErrorState message={games.error} onRetry={games.reload} />}
       </Panel>
-      {night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : !data ? <LoadingState label="Loading game night" /> : (
-        <NightEditor key={selectedDate} tournamentId={tournament.id} date={selectedDate} note={data.gameDayNote} canEdit={canEdit} canPublish={canPublish} />
+      <nav className="admin-section-tabs" aria-label="Tonight’s page sections">
+        {nightSections.map(({ key, label }) => (
+          <button type="button" className="admin-module-tab" aria-current={key === section ? 'page' : undefined} key={key} onClick={() => setSection(key)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div hidden={section === 'alerts'}>
+        {night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : !data ? <LoadingState label="Loading game night" /> : (
+          <NightEditor key={selectedDate} tournamentId={tournament.id} date={selectedDate} note={data.gameDayNote} canEdit={canEdit} canPublish={canPublish}
+            section={section === 'alerts' ? 'menu' : section} onPreview={() => setSection('menu')} />
+        )}
+      </div>
+      {section === 'alerts' && !data && (
+        night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : <LoadingState label="Loading guide and polls" />
       )}
-      <UpdatesPanel tournamentId={tournament.id} date={selectedDate} canEdit={canEdit} canPublish={canPublish} />
-      <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
-      {data?.infoGuide && <InfoGuideEditor tournamentId={tournament.id} guide={data.infoGuide} canEdit={canEditGuide} />}
-      {canPublish && <details><summary>Optional fan polls</summary>
-        <PredictionAdminPanel tournament={tournament} games={data?.games || []} polls={data?.predictionPolls || []} onSaved={night.reload} />
-      </details>}
+      <div className="page-stack" hidden={section !== 'events'}>
+        <UpdatesPanel tournamentId={tournament.id} date={selectedDate} canEdit={canEdit} canPublish={canPublish} />
+      </div>
+      <div className="page-stack" hidden={section !== 'alerts'}>
+        <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
+        {data?.infoGuide && <InfoGuideEditor tournamentId={tournament.id} guide={data.infoGuide} canEdit={canEditGuide} />}
+        {canPublish && <details><summary>Optional fan polls</summary>
+          <PredictionAdminPanel tournament={tournament} games={data?.games || []} polls={data?.predictionPolls || []} onSaved={night.reload} />
+        </details>}
+      </div>
     </>
   )
 }

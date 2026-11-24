@@ -65,8 +65,14 @@ function parseCachedDraft(raw: string): Draft | null {
   }
 }
 
-export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
-  tournamentId: string; date: string; note: GameDayNote | null; canEdit: boolean; canPublish: boolean
+export function NightEditor({ tournamentId, date, note, canEdit, canPublish, section, onPreview }: {
+  tournamentId: string
+  date: string
+  note: GameDayNote | null
+  canEdit: boolean
+  canPublish: boolean
+  section: 'menu' | 'photos' | 'events'
+  onPreview: () => void
 }) {
   const storageKey = `fd-tonight-draft:${tournamentId}:${date}`
   const [savedNote, setSavedNote] = useState(note)
@@ -199,13 +205,14 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
   const showPreview = () => run(async () => {
     const data = await api.adminPreviewNight(tournamentId, date)
     setPreview(data)
+    onPreview()
   })
 
   return (
     <Panel>
-      <div className="section-heading"><h2>Nightly Menu &amp; Events</h2><span>{savedNote?.status === 'published' ? 'Published' : 'Draft'}</span></div>
+      <div className="section-heading"><h2>Nightly content</h2><span>{savedNote?.status === 'published' ? 'Published' : 'Draft'}</span></div>
       <form className="stacked-form" onSubmit={save}>
-        <fieldset className="night-editor-fieldset" disabled={!canChange || disabled}>
+        <fieldset className="night-editor-fieldset" hidden={section !== 'menu'} disabled={!canChange || disabled}>
           <legend>Food &amp; Drink Menu</legend>
           {menu.map((item, index) => (
             <MenuRow key={index} item={item} index={index} count={menu.length}
@@ -221,14 +228,14 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
             <Field label="Legacy menu (shown when there are no menu items)"><textarea value={form.foodMenu || ''} onChange={(event) => change({ ...form, foodMenu: event.target.value })} /></Field>
           )}
         </fieldset>
-        <fieldset className="night-editor-fieldset" disabled={!canChange || disabled}>
+        <fieldset className="night-editor-fieldset" hidden={section !== 'events'} disabled={!canChange || disabled}>
           <legend>Special Events &amp; Theme Nights</legend>
           {events.map((item, index) => <EventRow key={index} item={item} index={index}
             onChange={(value) => change({ ...form, specialEvents: replaceRow(events, index, value) })}
             onRemove={() => change({ ...form, specialEvents: events.filter((_, position) => position !== index) })} />)}
           <button type="button" className="btn secondary" onClick={() => change({ ...form, specialEvents: [...events, { title: '' }] })}>Add special event</button>
         </fieldset>
-        <fieldset className="night-editor-fieldset" disabled={!canChange || disabled}>
+        <fieldset className="night-editor-fieldset" hidden={section !== 'menu'} disabled={!canChange || disabled}>
           <legend>Host Class Spotlight</legend>
           <FormGrid>
             {spotlightFields.map(([key, label, maxLength]) => (
@@ -248,7 +255,7 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
               change({ ...form, hostSpotlight: { ...form.hostSpotlight, photoUrl: '' } })}>Remove spotlight photo</button>}
           </div>
         </fieldset>
-        <fieldset className="night-editor-fieldset" disabled={!canChange || disabled}>
+        <fieldset className="night-editor-fieldset" hidden={section !== 'photos'} disabled={!canChange || disabled}>
           <legend>Tonight’s Photos &amp; Flyers</legend>
           <Field label={`Upload photos or flyers (${photos.length} of ${photoLimit})`}>
             <input type="file" multiple accept={ADMIN_IMAGE_UPLOAD_ACCEPT} disabled={photos.length >= photoLimit}
@@ -270,7 +277,7 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
             })}
           </ul>}
         </fieldset>
-        {(savedNote?.announcement?.trim() || savedNote?.sponsorShoutout?.trim() || form.announcement?.trim() || form.sponsorShoutout?.trim()) && <details>
+        {(savedNote?.announcement?.trim() || savedNote?.sponsorShoutout?.trim() || form.announcement?.trim() || form.sponsorShoutout?.trim()) && <details hidden={section !== 'events'}>
           <summary>Legacy announcement &amp; sponsor copy</summary>
           <fieldset className="night-editor-fieldset" disabled={!canChange || disabled}>
             <FormGrid>
@@ -300,7 +307,7 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish }: {
           {canPublish && <button className="btn primary" type="submit" value="published" disabled={disabled || !!conflict}>Publish · {dateLabel}</button>}
         </div>
       </form>
-      {preview && <section className="page-stack night-preview" aria-label="Night preview">
+      {preview && section === 'menu' && <section className="page-stack night-preview" aria-label="Night preview">
         <h3>Preview · {dateLabel} (Guam)</h3>
         <TonightGuide data={{ ...preview, gameDayNote: canChange ? { id: '', tournamentId, date, active: true, ...form } : preview.gameDayNote }} />
       </section>}

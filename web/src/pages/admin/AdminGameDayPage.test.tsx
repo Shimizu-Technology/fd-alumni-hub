@@ -58,6 +58,10 @@ it('copies the preceding menu, preserves local edits, and publishes the selected
   expect(copy).toHaveBeenCalledWith('1', date, null)
   fireEvent.click(screen.getByRole('button', { name: 'Add menu item' }))
   fireEvent.change(screen.getAllByLabelText('Item name')[1], { target: { value: 'Iced tea' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Events & Updates' }))
+  expect(screen.queryByRole('group', { name: 'Food & Drink Menu' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Menu & Spotlight' }))
+  expect(screen.getByDisplayValue('Iced tea')).toBeVisible()
   view.unmount()
   open()
   expect(await screen.findByDisplayValue('Iced tea')).toBeInTheDocument()
@@ -100,6 +104,7 @@ it('keeps routine posts and urgent alerts distinct and removes a live alert in o
     .mockResolvedValueOnce({ alerts: [alert] }).mockResolvedValue({ alerts: [{ ...alert, active: false }] })
 
   open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Events & Updates' }))
   const news = within((await screen.findByRole('heading', { name: 'Post an update' })).closest('.panel') as HTMLElement)
   fireEvent.change(news.getByLabelText('Update title'), { target: { value: announcement.title } })
   fireEvent.change(news.getByLabelText('Update body'), { target: { value: announcement.body } })
@@ -109,6 +114,7 @@ it('keeps routine posts and urgent alerts distinct and removes a live alert in o
   expect(post).toHaveBeenCalledWith('1', expect.objectContaining({ title: announcement.title, targetDate: date, status: 'published' }))
   expect(await news.findByText(announcement.title)).toBeInTheDocument()
 
+  fireEvent.click(screen.getByRole('button', { name: 'Alerts & Guide' }))
   const urgent = within(screen.getByRole('heading', { name: 'Post an urgent alert' }).closest('.panel') as HTMLElement)
   fireEvent.change(urgent.getByLabelText('Title'), { target: { value: alert.title } })
   fireEvent.change(urgent.getByLabelText('Message'), { target: { value: alert.message } })
@@ -147,9 +153,14 @@ it('uploads spotlight and gallery images, retains successful files in the draft,
   fireEvent.change(screen.getByLabelText('Upload photo'), { target: { files: [image('new-host.png')] } })
   await screen.findByLabelText('Replace photo')
 
+  fireEvent.click(screen.getByRole('button', { name: 'Photos & Flyers' }))
   fireEvent.change(screen.getByLabelText(/Upload photos or flyers/), {
     target: { files: [image('flyer.png'), image('denied.png'), image('remove.png')] },
   })
+  fireEvent.click(screen.getByRole('button', { name: 'Events & Updates' }))
+  expect(screen.getByText('Uploading images…')).toBeVisible()
+  expect(presign.mock.calls.at(-1)?.[1]?.aborted).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: 'Photos & Flyers' }))
   expect(await screen.findByText(/Could not upload denied.png/)).toBeInTheDocument()
   expect(screen.getAllByLabelText(/Caption for image/)).toHaveLength(2)
   fireEvent.click(screen.getByRole('button', { name: 'Remove image 2' }))
