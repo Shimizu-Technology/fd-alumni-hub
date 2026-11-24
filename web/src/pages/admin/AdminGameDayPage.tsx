@@ -93,7 +93,7 @@ function TournamentNight({ tournament, date, setDate }: { tournament: Tournament
 }
 
 function scheduledGameDayOptions(games: Game[]) {
-  return Array.from(new Set(games.filter((game) => ['scheduled', 'live', 'final'].includes(game.status)).map((game) => toLocalDateTimeInputValue(game.startTime).slice(0, 10)).filter(Boolean))).sort()
+  return Array.from(new Set(games.filter((game) => ['scheduled', 'live', 'final', 'delayed', 'postponed'].includes(game.status)).map((game) => toLocalDateTimeInputValue(game.startTime).slice(0, 10)).filter(Boolean))).sort()
 }
 
 function PredictionAdminPanel({ tournament, games, polls, onSaved }: { tournament: Tournament | null; games: Game[]; polls: PredictionPoll[]; onSaved: () => Promise<void> }) {

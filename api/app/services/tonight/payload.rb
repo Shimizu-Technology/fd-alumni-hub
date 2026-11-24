@@ -1,5 +1,7 @@
 module Tonight
   class Payload
+    SCHEDULED_GAME_STATUSES = %w[scheduled live final delayed postponed].freeze
+
     def self.call(tournament:, day:, alerts:, campaign:, preview: false, voter_hash: nil)
       new(tournament, day).build(alerts, campaign, preview, voter_hash)
     end
@@ -14,7 +16,7 @@ module Tonight
       include_rosters = !preview
       games = schedule ? nightly_games(include_rosters: include_rosters) : []
       next_date = if schedule && games.empty?
-        @tournament.games.where(start_time: @day.next_day.beginning_of_day..).minimum(:start_time)&.in_time_zone&.to_date
+        @tournament.games.where(status: SCHEDULED_GAME_STATUSES, start_time: @day.next_day.beginning_of_day..).minimum(:start_time)&.in_time_zone&.to_date
       end
       notes = @tournament.game_day_notes
       note = schedule ? (preview ? notes : notes.active.where(status: "published")).find_by(date: @day) : nil
@@ -50,7 +52,7 @@ module Tonight
     def self.scheduled_dates(tournament, preview: false)
       notes = tournament.game_day_notes
       notes = notes.active.where(status: "published") unless preview
-      game_dates = tournament.games.where(status: %w[scheduled live final]).distinct.pluck(:start_time)
+      game_dates = tournament.games.where(status: SCHEDULED_GAME_STATUSES).distinct.pluck(:start_time)
         .compact.map { |tip_off| tip_off.in_time_zone.to_date }
       (game_dates | notes.pluck(:date)).sort.map(&:iso8601)
     end

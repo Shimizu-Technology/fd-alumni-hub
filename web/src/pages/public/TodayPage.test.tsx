@@ -62,3 +62,18 @@ it('jumps from a rest day to the next dated guide and falls back to the legacy m
   expect(await screen.findByText('Legacy BBQ')).toBeInTheDocument()
   expect(screen.queryByText('Parking update')).not.toBeInTheDocument()
 })
+
+it('shows the rest-day empty state when a published note has no populated fields', async () => {
+  vi.spyOn(api, 'publicToday').mockResolvedValue({
+    ...payload,
+    updates: [],
+    predictionPolls: [],
+    gameDayNote: {
+      id: 'n-empty', tournamentId: '1', date, hostClass: null, foodMenu: null, announcement: null,
+      sponsorShoutout: null, active: true, menuItems: [], specialEvents: [], hostSpotlight: {}, photos: [],
+    },
+  })
+  render(<MemoryRouter initialEntries={[`/today?date=${date}`]}><TodayPage /></MemoryRouter>)
+  expect(await screen.findByRole('heading', { name: 'Rest day at The Jungle' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Next scheduled night/ })).toBeInTheDocument()
+})

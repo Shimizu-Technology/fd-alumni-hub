@@ -126,7 +126,8 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
       "2032-07-02T15:30:00Z" => "scheduled",
       "2032-07-03T09:00:00Z" => "live",
       "2032-07-04T09:00:00Z" => "final",
-      "2032-07-05T09:00:00Z" => "cancelled"
+      "2032-07-06T09:00:00Z" => "cancelled",
+      "2032-07-08T09:00:00Z" => "delayed"
     }.each do |start, status|
       @season.games.create!(home_team: home, away_team: away, start_time: start, status: status, division: "Maroon")
     end
@@ -136,16 +137,19 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
     @season.game_day_notes.create!(date: "2032-07-07", status: "draft")
 
     get TODAY, params: @params
-    assert_equal %w[2032-07-02 2032-07-03 2032-07-04], response.parsed_body["scheduledDates"]
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-08], response.parsed_body["scheduledDates"]
+
+    get TODAY, params: @params.merge(date: "2032-07-05")
+    assert_equal "2032-07-08", response.parsed_body["nextScheduledDate"]
 
     @season.update!(schedule_published_at: nil)
     get TODAY, params: @params
     assert_empty response.parsed_body["scheduledDates"]
 
     get "#{NOTES}/preview", params: @params, headers: headers(@editor)
-    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07], response.parsed_body["scheduledDates"]
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07 2032-07-08], response.parsed_body["scheduledDates"]
     get NOTES, params: @params, headers: headers(@editor)
-    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07], response.parsed_body["scheduledDates"]
+    assert_equal %w[2032-07-02 2032-07-03 2032-07-04 2032-07-06 2032-07-07 2032-07-08], response.parsed_body["scheduledDates"]
   end
 
   test "copy previous skips nights without menus and copies legacy or structured copy into a draft" do

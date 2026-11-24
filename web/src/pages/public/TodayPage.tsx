@@ -125,7 +125,7 @@ export function TonightGuide({ data, onJump, onVote, voteError }: {
   const hasUpdates = Boolean(updates.length || note?.announcement?.trim())
   const hasSponsors = Boolean(sponsors.length || note?.sponsorShoutout?.trim())
   const hasCompanion = hasSpotlight || hasMenu || photos.length > 0 || events.length > 0 || linked.length > 0 || hasUpdates || hasSponsors
-  const noNightProgram = !data.games.length && !note && !updates.length && !linked.length
+  const noNightProgram = !data.games.length && !hasCompanion
   const hasPrimary = Boolean(data.games.length || data.predictionPolls.length || noNightProgram)
 
   return (
