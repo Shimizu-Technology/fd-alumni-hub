@@ -1238,14 +1238,222 @@ textarea:focus {
   color: #fff;
 }
 
+.rafters-back .rafters-actions :is(a, button) {
+  color: var(--fd-gold-hi);
+}
+
+.jungle-rafters {
+  background: linear-gradient(180deg, #2a0a14 0%, #14090c 100%);
+  border: 1px solid var(--fd-gold-line);
+  color: #fff;
+}
+
+.rafters-swipe {
+  color: var(--fd-gold);
+}
+
+.rafters-heading button[aria-pressed='true'] {
+  background: var(--fd-gold);
+  color: #190c10;
+}
+
+/* Tournament Live Scoreboard Strip (Broadcast High-Contrast) */
+.broadcast-strip {
+  background: linear-gradient(135deg, #4b0d1f 0%, #240912 60%, #170e12 100%);
+  border: 1px solid var(--fd-gold-line);
+  color: #fff;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+
+.broadcast-strip h1 {
+  color: #fff;
+  font-family: var(--arena-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.broadcast-head a {
+  color: var(--fd-gold-hi);
+}
+
+.broadcast-head a:hover,
+.broadcast-head a:focus-visible {
+  color: #fff;
+}
+
+.broadcast-game {
+  background: rgba(12, 7, 9, 0.74);
+  border-color: rgba(230, 184, 76, 0.34);
+  color: #fff;
+}
+
+.broadcast-game:hover,
+.broadcast-game:focus-visible {
+  background: rgba(26, 12, 18, 0.88);
+  border-color: var(--fd-gold);
+}
+
+.broadcast-status {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f7f3ee;
+}
+
+.broadcast-status--live {
+  background: var(--fd-gold);
+  border-color: var(--fd-gold);
+  color: #190c10;
+}
+
+.broadcast-team span {
+  color: #f7f3ee;
+}
+
+.broadcast-score {
+  color: var(--fd-gold-hi);
+  font-family: var(--arena-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.broadcast-empty {
+  color: var(--ink-2);
+}
+
+/* Bracket, Watch Hero & Offline/Notice High-Contrast Overrides */
+.watch-hero svg {
+  color: var(--fd-gold);
+}
+
+.bracket-card--placeholder {
+  background: rgba(23, 14, 18, 0.72);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+.bracket-card-code {
+  color: var(--fd-gold);
+}
+
+.bracket-team-score {
+  color: #fff;
+}
+
+.bracket-team-row.winner .bracket-team-score {
+  color: var(--fd-gold-hi);
+}
+
+.bracket-mobile-round h2 {
+  color: #fff;
+}
+
+.api-status-banner,
+.notice-panel {
+  background: linear-gradient(135deg, rgba(230, 184, 76, 0.18), rgba(23, 14, 18, 0.96));
+  border: 1px solid var(--fd-gold-line);
+  color: #fff;
+}
+
+.api-status-banner strong,
+.notice-panel strong {
+  color: var(--fd-gold-hi);
+}
+
+.api-status-banner span,
+.notice-panel p {
+  color: var(--ink-2);
+}
+
 .archive-shell {
   background: var(--paper);
   color: var(--ink);
 }
 
+.archive-header {
+  background: rgba(12, 7, 9, 0.92);
+  border-bottom-color: var(--line);
+}
+
+.archive-brand strong {
+  color: #fff;
+}
+
+.archive-brand span {
+  color: var(--muted);
+}
+
+.archive-status {
+  background: rgba(230, 184, 76, 0.18);
+  border: 1px solid var(--fd-gold-line);
+  color: var(--fd-gold-hi);
+}
+
+.archive-section-heading h2,
+.archive-return h2 {
+  color: #fff;
+}
+
+.archive-section-heading > p,
+.archive-return > p:not(.archive-eyebrow) {
+  color: var(--ink-2);
+}
+
+.archive-record.cancelled {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line);
+}
+
+.archive-record-year {
+  color: var(--fd-gold);
+}
+
+.archive-record strong {
+  color: #fff;
+}
+
+.archive-record p {
+  color: var(--ink-2);
+}
+
+.archive-record span {
+  background: rgba(230, 184, 76, 0.18);
+  color: var(--fd-gold-hi);
+}
+
 .archive-return {
   background: var(--surface);
   border: 1px solid var(--line);
+}
+
+.archive-links a {
+  border-color: var(--fd-gold-line);
+  color: var(--fd-gold-hi);
+}
+
+.archive-links a:hover,
+.archive-links a:focus-visible {
+  background: var(--fd-maroon);
+  border-color: var(--fd-gold);
+  color: #fff;
+}
+
+.service-check {
+  background: var(--paper);
+  color: var(--fd-gold);
+}
+
+.service-check-spinner {
+  border-color: rgba(230, 184, 76, 0.24);
+  border-top-color: var(--fd-gold);
+}
+
+.archive-footer {
+  border-top-color: var(--line);
+  color: var(--muted);
+}
+
+.archive-footer a {
+  color: var(--fd-gold);
 }
 
 /* ==========================================================================
@@ -1588,6 +1796,101 @@ textarea:focus {
   background: #101015;
   border-color: var(--line-strong);
   color: var(--fd-gold);
+}
+
+.admin-shell .admin-sidebar .brand-mark {
+  background: var(--fd-gold);
+  color: #140a0d;
+}
+
+.admin-shell .health-grid strong {
+  color: #fff;
+}
+
+.admin-shell .scorekeeper-chip,
+.admin-shell .gap-chip-row span,
+.admin-shell .team-card-kicker,
+.admin-shell .division-pill-list span,
+.admin-shell .focused-filter-note,
+.admin-shell .admin-shortcuts a {
+  background: var(--fd-maroon-50);
+  border: 1px solid rgba(244, 196, 78, 0.36);
+  color: var(--fd-gold);
+}
+
+.admin-shell .admin-shortcuts a:hover,
+.admin-shell .admin-shortcuts a:focus-visible {
+  background: var(--fd-maroon);
+  color: #fff;
+}
+
+.admin-shell .class-coverage-panel {
+  background: var(--surface);
+  border-color: var(--line);
+  color: #fff;
+}
+
+.admin-shell .class-coverage-metrics button,
+.admin-shell .class-coverage-toolbar,
+.admin-shell .class-coverage-row,
+.admin-shell .class-coverage-row.open,
+.admin-shell .tournament-mode-grid div {
+  background: var(--surface-strong);
+  border-color: var(--line);
+  color: #fff;
+}
+
+.admin-shell .class-coverage-metrics button:hover,
+.admin-shell .class-coverage-metrics button.selected {
+  background: var(--fd-maroon);
+  border-color: rgba(244, 196, 78, 0.55);
+  color: #fff;
+}
+
+.admin-shell .coverage-filter-buttons button,
+.admin-shell .class-coverage-team-links a {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+.admin-shell .coverage-filter-buttons button:hover,
+.admin-shell .coverage-filter-buttons button[aria-pressed='true'],
+.admin-shell .class-coverage-team-links a:hover {
+  background: var(--fd-maroon);
+  border-color: rgba(244, 196, 78, 0.55);
+  color: #fff;
+}
+
+.admin-shell .class-coverage-metrics span,
+.admin-shell .class-coverage-row span,
+.admin-shell .class-coverage-team span,
+.admin-shell .team-representation-summary span,
+.admin-shell .tournament-mode-grid span,
+.admin-shell .workboard-card span,
+.admin-shell .workboard-card small,
+.admin-shell .article-summary-main span,
+.admin-shell .article-summary-main a,
+.admin-shell .game-detail-summary a,
+.admin-shell .image-upload-status {
+  color: var(--fd-gold);
+}
+
+.admin-shell .class-mapping-warning,
+.admin-shell .class-coverage-row.conflict,
+.admin-shell .team-representation-summary.needs-mapping,
+.admin-shell .class-editor-chip-row button.conflict {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(248, 113, 113, 0.48);
+  color: #fca5a5;
+}
+
+.admin-shell .closeout-action-panel {
+  border-color: rgba(244, 196, 78, 0.48);
+}
+
+.admin-shell input[type='checkbox'] {
+  accent-color: var(--fd-gold);
 }
 
 .admin-shell :is(a, button, input, select, textarea, summary):focus-visible {
