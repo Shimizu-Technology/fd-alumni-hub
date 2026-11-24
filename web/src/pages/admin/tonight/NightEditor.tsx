@@ -65,7 +65,7 @@ function parseCachedDraft(raw: string): Draft | null {
   }
 }
 
-export function NightEditor({ tournamentId, date, note, canEdit, canPublish, section, onPreview }: {
+export function NightEditor({ tournamentId, date, note, canEdit, canPublish, section, onPreview, onSelectSection }: {
   tournamentId: string
   date: string
   note: GameDayNote | null
@@ -73,6 +73,7 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish, sec
   canPublish: boolean
   section: 'menu' | 'photos' | 'events'
   onPreview: () => void
+  onSelectSection: (section: 'menu' | 'photos' | 'events') => void
 }) {
   const storageKey = `fd-tonight-draft:${tournamentId}:${date}`
   const [savedNote, setSavedNote] = useState(note)
@@ -132,6 +133,18 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish, sec
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!canChange || disabled || uploadRequest.current || conflict) return
+    if ((form.menuItems || []).some((item) => !item.name.trim())) {
+      onSelectSection('menu')
+      setMessage('')
+      setError('Enter an item name for every menu item before saving.')
+      return
+    }
+    if ((form.specialEvents || []).some((item) => !item.title.trim())) {
+      onSelectSection('events')
+      setMessage('')
+      setError('Enter a title for every special event before saving.')
+      return
+    }
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
     const status = submitter?.value === 'published' ? 'published' : 'draft'
     void run(async () => {
@@ -211,7 +224,7 @@ export function NightEditor({ tournamentId, date, note, canEdit, canPublish, sec
   return (
     <Panel>
       <div className="section-heading"><h2>Nightly content</h2><span>{savedNote?.status === 'published' ? 'Published' : 'Draft'}</span></div>
-      <form className="stacked-form" onSubmit={save}>
+      <form className="stacked-form" onSubmit={save} noValidate>
         <fieldset className="night-editor-fieldset" hidden={section !== 'menu'} disabled={!canChange || disabled}>
           <legend>Food &amp; Drink Menu</legend>
           {menu.map((item, index) => (

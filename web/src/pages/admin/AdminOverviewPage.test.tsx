@@ -74,3 +74,12 @@ it('only offers the results workspace for a scorekeeper', () => {
   expect(api.publicSiteMode).not.toHaveBeenCalled()
   expect(api.adminDashboard).not.toHaveBeenCalled()
 })
+
+it('skips campaign workspace lookup for a tournament-scoped sponsor lead', () => {
+  open(
+    { capability: 'fundraisers_and_sponsors', actions: ['view'], scopeType: 'tournament', scopeIds: ['t-1'], allScopes: false },
+    capability('scores_and_stats'),
+  )
+  expect(screen.getByRole('link', { name: /Results & Standings/ })).toBeInTheDocument()
+  expect(api.adminCampaignWorkspace).not.toHaveBeenCalled()
+})

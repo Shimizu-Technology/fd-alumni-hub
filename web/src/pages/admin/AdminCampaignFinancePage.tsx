@@ -322,7 +322,7 @@ export function AdminCampaignFinancePage() {
           <button type="button" className="btn secondary" onClick={() => setTab('reimbursements')}>
             Reimbursements to review ({summary.pendingReimbursementsCount})
           </button>
-          {canViewAudit && <Link className="finance-history-link" to="/admin/audit?area=finance">View finance history →</Link>}
+          {canViewAudit && <Link className="finance-history-link" to={`/admin/audit?area=finance&hostCampaignId=${encodeURIComponent(campaign.id)}`}>View finance history →</Link>}
         </div>
         {saveNotice?.slug === campaign.slug && <p role="status">{saveNotice.message}</p>}
         {entryType && canWriteFinance && ledgerQuery.error && !ledgerOptions && (

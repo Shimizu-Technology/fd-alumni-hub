@@ -78,7 +78,7 @@ describe('finance quick entry', () => {
     })))
     expect(await screen.findByText('Money received recorded.')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'View finance history →' })).toHaveAttribute('href', '/admin/audit?area=finance')
+    expect(screen.getByRole('link', { name: 'View finance history →' })).toHaveAttribute('href', '/admin/audit?area=finance&hostCampaignId=1')
   })
 
   it('shows payer details only when needed, uploads a private receipt and requests reimbursement', async () => {

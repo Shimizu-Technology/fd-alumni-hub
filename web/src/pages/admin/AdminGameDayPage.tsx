@@ -98,7 +98,7 @@ function TournamentNight({ tournament, date, setDate }: { tournament: Tournament
       <div hidden={section === 'alerts'}>
         {night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : !data ? <LoadingState label="Loading game night" /> : (
           <NightEditor key={selectedDate} tournamentId={tournament.id} date={selectedDate} note={data.gameDayNote} canEdit={canEdit} canPublish={canPublish}
-            section={section === 'alerts' ? 'menu' : section} onPreview={() => setSection('menu')} />
+            section={section === 'alerts' ? 'menu' : section} onPreview={() => setSection('menu')} onSelectSection={setSection} />
         )}
       </div>
       {section === 'alerts' && !data && (

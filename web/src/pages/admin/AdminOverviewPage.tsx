@@ -23,11 +23,22 @@ const moduleDescriptions: Record<string, string> = {
   audit: 'Review who changed what and when.',
 }
 
+function hasCampaignCapability(user: CurrentUser | null | undefined, capability: string) {
+  if (!user || user.active === false) return false
+  if (user.isSuperAdmin ?? user.isAdmin) return true
+  if (!user.capabilities) return hasCapability(user, capability, 'view')
+  return user.capabilities.some((entry) =>
+    entry.capability === capability &&
+    entry.actions.includes('view') &&
+    (entry.allScopes || (entry.scopeType === 'campaign' && entry.scopeIds.length > 0)),
+  )
+}
+
 export function AdminOverviewPage() {
   const { user } = useAuthContext()
   const modules = visibleAdminModules(user).filter((module) => module.key !== 'work')
-  const canViewFinance = hasCapability(user, financeCapability, 'view')
-  const canViewFundraisers = hasCapability(user, fundraiserCapability, 'view')
+  const canViewFinance = hasCampaignCapability(user, financeCapability)
+  const canViewFundraisers = hasCampaignCapability(user, fundraiserCapability)
   const canViewSiteMode = hasCapability(user, 'site_mode_and_settings', 'view')
 
   return (
@@ -54,7 +65,7 @@ export function AdminOverviewPage() {
           </div>
         </section>
       )}
-      {Boolean(user?.isSuperAdmin || user?.isAdmin || (user?.isStaff && !user.capabilities)) && <TournamentOverview />}
+      {Boolean((user?.isSuperAdmin ?? user?.isAdmin) || (user?.isStaff && !user.capabilities)) && <TournamentOverview />}
     </div>
   )
 }

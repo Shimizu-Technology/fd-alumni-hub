@@ -208,3 +208,16 @@ it('opens a scheduled night in one click, cancels an in-flight upload, and expos
   expect(presign.mock.calls[0][1]?.aborted).toBe(true)
   expect(localStorage.getItem(`fd-tonight-draft:1:${date}`)).toBeNull()
 })
+
+it('validates hidden required fields across tabs and returns to the section needing attention', async () => {
+  const save = vi.spyOn(api, 'adminSaveGameDayNote')
+  open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Add menu item' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Photos & Flyers' }))
+  expect(screen.queryByRole('group', { name: 'Food & Drink Menu' })).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /^Save draft ·/ }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an item name for every menu item before saving.')
+  expect(screen.getByRole('group', { name: 'Food & Drink Menu' })).toBeVisible()
+  expect(save).not.toHaveBeenCalled()
+})
