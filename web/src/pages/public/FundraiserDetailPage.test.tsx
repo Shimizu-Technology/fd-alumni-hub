@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { SeoManager } from '../../components/SeoManager'
@@ -29,7 +29,7 @@ it('shows the full flyer and live purchase link on the alternate detail route', 
   const load = vi.spyOn(api, 'publicFundraiser').mockResolvedValue({ event: upcomingEvent, campaign, hafapass })
   open('/host-year/events/20')
   expect(await screen.findByRole('heading', { name: 'Alumni dinner' })).toBeInTheDocument()
-  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
+  await waitFor(() => expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub'))
   expect(load).toHaveBeenCalledWith('20')
   expect(screen.getByRole('img', { name: 'Flyer for Alumni dinner' })).toHaveAttribute('src', upcomingEvent.imageUrl)
   expect(screen.getByText('Tickets on sale')).toBeInTheDocument()
@@ -125,8 +125,8 @@ it('reapplies the event title when navigating between alternate routes for the s
     </MemoryRouter>,
   )
   expect(await screen.findByRole('heading', { name: 'Alumni dinner' })).toBeInTheDocument()
-  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
+  await waitFor(() => expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub'))
 
   fireEvent.click(screen.getByRole('link', { name: 'Switch route' }))
-  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
+  await waitFor(() => expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub'))
 })
