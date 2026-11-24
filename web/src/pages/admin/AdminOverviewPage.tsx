@@ -47,8 +47,8 @@ export function AdminOverviewPage() {
       <PageHeader title={user?.firstName ? `Welcome, ${user.firstName}` : 'Workspace overview'} description="Check your work and jump back into the areas you manage." />
       {user && (canViewFinance || canViewFundraisers || canViewSiteMode) && (
         <div className="admin-overview-grid">
-          {canViewFinance && <FinanceStatus key={scopeKey} user={user} />}
-          {canViewFundraisers && <FundraiserStatus key={scopeKey} user={user} showPublicProgress={!canViewFinance} />}
+          {canViewFinance && <FinanceStatus key={`finance:${scopeKey}`} user={user} />}
+          {canViewFundraisers && <FundraiserStatus key={`fundraisers:${scopeKey}`} user={user} showPublicProgress={!canViewFinance} />}
           {canViewSiteMode && <SiteModeStatus />}
         </div>
       )}

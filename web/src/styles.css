@@ -3046,6 +3046,18 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 }
 .admin-shell .admin-module-tab:hover { color: var(--fd-maroon); }
 .admin-shell :is(a, button, input, select, textarea, summary):focus-visible { outline: 2px solid #62728a; outline-offset: 3px; }
+.admin-shell input[type="checkbox"],
+.admin-shell input[type="radio"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-height: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  border-radius: .25rem;
+  accent-color: var(--fd-maroon);
+}
+.admin-shell .section-heading .row-actions select { width: auto; }
+.admin-shell .section-heading label { white-space: nowrap; }
 .admin-shell .admin-sidebar :is(a, button):focus-visible { outline-color: #ffdbe4; outline-offset: -3px; }
 .admin-shell .status-badge { letter-spacing: .02em; text-transform: capitalize; }
 .admin-shell :is(.status-completed, .admin-live-badge) { color: #126146; background: #e6f6ee; }
