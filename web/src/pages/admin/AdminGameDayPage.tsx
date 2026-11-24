@@ -88,14 +88,37 @@ function TournamentNight({ tournament, date, setDate }: { tournament: Tournament
         <GameNightDates dates={night.data?.scheduledDates ?? gameDays} selected={selectedDate} onSelect={setDate} />
         {games.error && <ErrorState message={games.error} onRetry={games.reload} />}
       </Panel>
-      <nav className="admin-section-tabs" aria-label="Tonight’s page sections">
-        {nightSections.map(({ key, label }) => (
-          <button type="button" className="admin-module-tab" aria-current={key === section ? 'page' : undefined} key={key} onClick={() => setSection(key)}>
+      <div className="admin-section-tabs" role="tablist" aria-label="Tonight’s page sections">
+        {nightSections.map(({ key, label }, index) => (
+          <button
+            type="button"
+            role="tab"
+            id={`night-tab-${key}`}
+            className="admin-module-tab"
+            aria-selected={key === section}
+            aria-controls={key === 'alerts' ? 'night-panel-alerts' : 'night-panel-content'}
+            tabIndex={key === section ? 0 : -1}
+            key={key}
+            onClick={() => setSection(key)}
+            onKeyDown={(event) => {
+              const last = nightSections.length - 1
+              let nextIndex = -1
+              if (event.key === 'ArrowRight') nextIndex = index === last ? 0 : index + 1
+              else if (event.key === 'ArrowLeft') nextIndex = index === 0 ? last : index - 1
+              else if (event.key === 'Home') nextIndex = 0
+              else if (event.key === 'End') nextIndex = last
+              if (nextIndex < 0) return
+              event.preventDefault()
+              const nextKey = nightSections[nextIndex].key
+              setSection(nextKey)
+              document.getElementById(`night-tab-${nextKey}`)?.focus()
+            }}
+          >
             {label}
           </button>
         ))}
-      </nav>
-      <div hidden={section === 'alerts'}>
+      </div>
+      <div id="night-panel-content" role="tabpanel" aria-labelledby={`night-tab-${section === 'alerts' ? 'menu' : section}`} hidden={section === 'alerts'}>
         {night.error ? <ErrorState message={night.error} onRetry={night.reload} /> : !data ? <LoadingState label="Loading game night" /> : (
           <NightEditor key={selectedDate} tournamentId={tournament.id} date={selectedDate} note={data.gameDayNote} canEdit={canEdit} canPublish={canPublish}
             section={section === 'alerts' ? 'menu' : section} onPreview={() => setSection('menu')} onSelectSection={setSection} />
@@ -107,7 +130,7 @@ function TournamentNight({ tournament, date, setDate }: { tournament: Tournament
       <div className="page-stack" hidden={section !== 'events'}>
         <UpdatesPanel tournamentId={tournament.id} date={selectedDate} canEdit={canEdit} canPublish={canPublish} />
       </div>
-      <div className="page-stack" hidden={section !== 'alerts'}>
+      <div id="night-panel-alerts" role="tabpanel" aria-labelledby="night-tab-alerts" className="page-stack" hidden={section !== 'alerts'}>
         <TournamentAlertsAdminPanel tournament={tournament} canPublish={canPublish} canAlertSiteWide={canAlertSiteWide} />
         {data?.infoGuide && <InfoGuideEditor tournamentId={tournament.id} guide={data.infoGuide} canEdit={canEditGuide} />}
         {canPublish && <details><summary>Optional fan polls</summary>

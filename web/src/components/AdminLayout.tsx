@@ -425,7 +425,11 @@ export function AdminLayout() {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
       desktopViewport.removeEventListener('change', closeOnDesktop)
-      opener?.focus({ preventScroll: true })
+      if (desktopViewport.matches) {
+        document.querySelector<HTMLElement>('.admin-sidebar-desktop a')?.focus({ preventScroll: true })
+      } else {
+        opener?.focus({ preventScroll: true })
+      }
     }
   }, [mobileOpen, showUnavailableState])
 

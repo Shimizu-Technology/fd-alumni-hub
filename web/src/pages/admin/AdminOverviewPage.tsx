@@ -40,14 +40,15 @@ export function AdminOverviewPage() {
   const canViewFinance = hasCampaignCapability(user, financeCapability)
   const canViewFundraisers = hasCampaignCapability(user, fundraiserCapability)
   const canViewSiteMode = hasCapability(user, 'site_mode_and_settings', 'view')
+  const scopeKey = user ? `${user.id}:${JSON.stringify(user.capabilities ?? user.campaignMemberships ?? '')}` : ''
 
   return (
     <div className="page-stack admin-page">
       <PageHeader title={user?.firstName ? `Welcome, ${user.firstName}` : 'Workspace overview'} description="Check your work and jump back into the areas you manage." />
       {user && (canViewFinance || canViewFundraisers || canViewSiteMode) && (
         <div className="admin-overview-grid">
-          {canViewFinance && <FinanceStatus user={user} />}
-          {canViewFundraisers && <FundraiserStatus user={user} showPublicProgress={!canViewFinance} />}
+          {canViewFinance && <FinanceStatus key={scopeKey} user={user} />}
+          {canViewFundraisers && <FundraiserStatus key={scopeKey} user={user} showPublicProgress={!canViewFinance} />}
           {canViewSiteMode && <SiteModeStatus />}
         </div>
       )}
@@ -87,7 +88,7 @@ function FinanceStatus({ user }: { user: CurrentUser }) {
     if (!campaign) return null
     return api.campaignFinanceSummary(campaign.slug)
   }, [user])
-  const result = query.data
+  const result = query.error ? null : query.data
   const canRecord = result && result.campaign.status !== 'archived' && (user.capabilities
     ? hasCapability(user, financeCapability, 'record', { type: 'campaign', id: result.campaign.id })
     : (user.isSuperAdmin ?? user.isAdmin) || result.roles.includes('treasurer'))

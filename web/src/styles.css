@@ -3039,7 +3039,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   background: transparent;
   cursor: pointer;
 }
-.admin-shell .admin-module-tab:is(.is-active, [aria-current="page"]) {
+.admin-shell .admin-module-tab:is(.is-active, [aria-current="page"], [aria-selected="true"]) {
   color: var(--fd-maroon);
   background: var(--fd-maroon-50);
   border-color: #ead4d9;

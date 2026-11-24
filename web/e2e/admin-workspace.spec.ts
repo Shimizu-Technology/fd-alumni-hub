@@ -196,7 +196,7 @@ for (const width of [320, 390, 1440]) {
     await page.getByRole('button', { name: 'Add menu item' }).click()
     await page.getByLabel('Item name').fill('Iced tea')
     for (const section of ['Photos & Flyers', 'Events & Updates', 'Alerts & Guide', 'Menu & Spotlight']) {
-      await page.getByRole('button', { name: section }).click()
+      await page.getByRole('tab', { name: section }).click()
       await fits(section)
     }
     await expect(page.getByLabel('Item name')).toHaveValue('Iced tea')
