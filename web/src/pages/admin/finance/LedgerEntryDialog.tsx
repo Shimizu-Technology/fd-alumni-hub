@@ -166,11 +166,16 @@ export function LedgerEntryDialog({ campaignSlug, entryType, eventId, options, o
             </Field>
             <Field label="Date"><input name="entryDate" type="date" defaultValue={todayIsoDate()} required /></Field>
             <Field label={income ? 'Who paid' : 'Who received money'}>
-              <input name="counterparty" required maxLength={180} />
+              <input name="counterparty" required maxLength={180} placeholder={income ? 'e.g. Antigu Brewery cash/PayPal, Triple J, or John Cruz' : 'e.g. Antigu Brewery bar tab, Costco, or Print Shop'} />
             </Field>
             <Field label="Category">
               <select name="source" defaultValue={income ? 'fundraiser_net' : 'event_expense'}>
                 {categories.map((category) => <option key={category.value} value={category.value}>{category.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Payment method">
+              <select name="paymentMethod" defaultValue="cash">
+                {PAYMENT_METHODS.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}
               </select>
             </Field>
           </FormGrid>
@@ -227,12 +232,7 @@ export function LedgerEntryDialog({ campaignSlug, entryType, eventId, options, o
                   {options.pledges.map((pledge) => <option key={pledge.id} value={pledge.id}>{pledge.donorName} ({pledge.status})</option>)}
                 </select>
               </Field>}
-              <Field label="Payment method">
-                <select name="paymentMethod" defaultValue="other">
-                  {PAYMENT_METHODS.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}
-                </select>
-              </Field>
-              <Field label="Reference number"><input name="referenceNumber" /></Field>
+              <Field label="Reference number"><input name="referenceNumber" placeholder="Check #, PayPal ID, or deposit note" /></Field>
               <Field label="Notes"><textarea name="description" rows={2} /></Field>
             </FormGrid>
           </details>

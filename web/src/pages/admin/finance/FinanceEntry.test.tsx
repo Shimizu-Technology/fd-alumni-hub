@@ -58,6 +58,7 @@ describe('finance quick entry', () => {
     expect(details.closest('details')).not.toHaveAttribute('open')
     expect(dialog.getByLabelText('Date')).toHaveValue(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Pacific/Guam' }).format(new Date()))
     expect(dialog.getByLabelText('Category')).toHaveValue('fundraiser_net')
+    expect(dialog.getByLabelText('Payment method')).toHaveValue('cash')
     expect(dialog.queryByText('Someone paid out of pocket')).not.toBeInTheDocument()
 
     const amount = dialog.getByRole('textbox', { name: 'Amount ($)' })

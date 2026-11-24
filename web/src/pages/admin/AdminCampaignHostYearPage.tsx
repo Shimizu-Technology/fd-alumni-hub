@@ -6,7 +6,7 @@ import { useAuthContext } from '../../contexts/AuthContext'
 import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import { safeHttpsHref } from '../../lib/urls'
-import { ADMIN_IMAGE_UPLOAD_ACCEPT, uploadCampaignImage } from '../../lib/uploads'
+import { WEB_IMAGE_UPLOAD_ACCEPT, uploadCampaignImage } from '../../lib/uploads'
 import type {
   AdminCampaignEvent,
   AdminCampaignPost,
@@ -456,7 +456,7 @@ function HostYearSettingsPanel({
           <div className="row-actions" style={{ marginTop: '0.75rem' }}>
             {canEdit && <label className="btn secondary small" style={{ cursor: 'pointer' }}>
               {uploading ? 'Uploading hero image…' : 'Upload hero image'}
-              <input type="file" accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={handleHeroUpload} disabled={uploading} style={{ display: 'none' }} />
+              <input type="file" accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={handleHeroUpload} disabled={uploading} style={{ display: 'none' }} />
             </label>}
             <button className="btn primary" type="submit" disabled={saving || uploading}>
               {saving ? 'Saving…' : 'Save settings'}
@@ -660,18 +660,21 @@ function HostYearEventsPanel({
         <AdminEditorDialog title={editingId ? 'Edit fundraiser' : 'Add fundraiser'} onClose={closeEventEditor} busy={saving || uploading}>
           <form className="stacked-form" onSubmit={handleSubmit}>
             <FormGrid>
+              <Field label="Title">
+                <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={180} placeholder="Two Pints, One Purpose" />
+              </Field>
               <Field label="Kind">
                 <select value={kind} onChange={(e) => setKind(e.target.value as CampaignEventKind)}>
                   {EVENT_KINDS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </Field>
-              <Field label="Title">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={180} placeholder="Two Pints, One Purpose" />
-              </Field>
               <Field label="Status">
                 <select value={status} onChange={(e) => setStatus(e.target.value as CampaignEventStatus)}>
                   {EVENT_STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                 </select>
+              </Field>
+              <Field label="Venue">
+                <input value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Antigu Brewery, Hagåtña" />
               </Field>
               <Field label="Starts at">
                 <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
@@ -682,39 +685,15 @@ function HostYearEventsPanel({
               <Field label="Date label (for TBA dates)">
                 <input value={dateLabel} onChange={(e) => setDateLabel(e.target.value)} placeholder="May 2027 (TBA)" />
               </Field>
-              <Field label="Venue">
-                <input value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Antigu Brewery" />
-              </Field>
-              <Field label="HåfaPass Event ID (preferred match)">
-                <input value={hafapassEventId} onChange={(e) => setHafapassEventId(e.target.value)} placeholder="hp_101" />
-              </Field>
-              <Field label="HåfaPass Event Slug (fallback)">
-                <input value={hafapassEventSlug} onChange={(e) => setHafapassEventSlug(e.target.value)} placeholder="two-pints-2027" />
-              </Field>
-              <Field label="Per-event HåfaPass /go/:code">
-                <input value={hafapassDistributionCode} onChange={(e) => setHafapassDistributionCode(e.target.value)} placeholder="co2017-antigu" />
-              </Field>
-              <Field label="External URL (Golf / signup https://)">
-                <input type="url" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
-              </Field>
-              <Field label="CTA label override">
-                <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Get Tickets" />
-              </Field>
-              <Field label="Fundraiser goal (USD, optional)">
-                <input value={goalDollars} onChange={(e) => setGoalDollars(e.target.value)} placeholder="5000" />
-              </Field>
-              <Field label="Sort position">
-                <input type="number" value={position} onChange={(e) => setPosition(e.target.value)} />
-              </Field>
             </FormGrid>
 
             <Field label="Description">
-              <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+              <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Short summary of the fundraiser, ticket price, or what to expect." />
             </Field>
 
             <div className="admin-event-flyer">
               <Field label={uploading ? 'Uploading flyer…' : flyerPreview ? 'Replace flyer image' : 'Upload flyer image'}>
-                <input type="file" accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading || saving} />
+                <input type="file" accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading || saving} />
               </Field>
               {flyerPreview && (
                 <div className="row-actions">
@@ -729,6 +708,33 @@ function HostYearEventsPanel({
                 </Field>
               </details>
             </div>
+
+            <details style={{ marginTop: '0.5rem' }}>
+              <summary>Ticketing links &amp; advanced options (optional)</summary>
+              <FormGrid>
+                <Field label="External URL (Golf / signup https://)">
+                  <input type="url" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} placeholder="https://..." />
+                </Field>
+                <Field label="CTA label override">
+                  <input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Get Tickets" />
+                </Field>
+                <Field label="HåfaPass Event ID (preferred match)">
+                  <input value={hafapassEventId} onChange={(e) => setHafapassEventId(e.target.value)} placeholder="hp_101" />
+                </Field>
+                <Field label="HåfaPass Event Slug (fallback)">
+                  <input value={hafapassEventSlug} onChange={(e) => setHafapassEventSlug(e.target.value)} placeholder="two-pints-2027" />
+                </Field>
+                <Field label="Per-event HåfaPass /go/:code">
+                  <input value={hafapassDistributionCode} onChange={(e) => setHafapassDistributionCode(e.target.value)} placeholder="co2017-antigu" />
+                </Field>
+                <Field label="Fundraiser goal (USD, optional)">
+                  <input value={goalDollars} onChange={(e) => setGoalDollars(e.target.value)} placeholder="5000" />
+                </Field>
+                <Field label="Sort position">
+                  <input type="number" value={position} onChange={(e) => setPosition(e.target.value)} />
+                </Field>
+              </FormGrid>
+            </details>
 
             <label className="checkbox-row" style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <input type="checkbox" checked={publicVisible} onChange={(e) => setPublicVisible(e.target.checked)} />
@@ -864,6 +870,9 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
       const added = results.flatMap((result) => result.status === 'fulfilled' ? [{ url: result.value }] : [])
       const failed = results.flatMap((result, index) => result.status === 'rejected' ? [files[index].name] : [])
       setPhotos((current) => [...current, ...added])
+      if (added.length) {
+        setMessage(`Uploaded ${added.length} ${added.length === 1 ? 'photo' : 'photos'} — tap Save recap below to publish.`)
+      }
       if (failed.length) setError(`Could not upload ${failed.join(', ')}. Choose those files again to retry.`)
     } finally {
       setUploading(false)
@@ -897,26 +906,29 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
     <AdminEditorDialog title={`Recap & photos for ${event.title}`} onClose={onClose} busy={uploading || saving} drawer>
       <form className="admin-event-recap" onSubmit={save} aria-label={`Recap for ${event.title}`}>
         <Field label="Amount raised">
-          <input value={raised} maxLength={80} disabled={saving} placeholder="$4,200 raised" onChange={(change) => setRaised(change.target.value)} />
+          <input value={raised} maxLength={80} disabled={saving} placeholder="$6,205+ raised" onChange={(change) => setRaised(change.target.value)} />
         </Field>
+        <p className="muted-note" style={{ marginTop: '-0.35rem' }}>
+          Optional badge shown on this event&apos;s recap card. Actual dollar totals on the public fundraising meter come from Board Finance.
+        </p>
         <Field label="Recap notes">
-          <textarea value={notes} rows={4} maxLength={5000} disabled={saving} onChange={(change) => setNotes(change.target.value)} />
+          <textarea value={notes} rows={4} maxLength={5000} disabled={saving} placeholder="Share how the fundraiser went, thank brothers and sponsors, or add turnout highlights…" onChange={(change) => setNotes(change.target.value)} />
         </Field>
         <Field label="Recap highlights">
-          <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} onChange={(change) => setHighlights(change.target.value)} />
+          <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} placeholder="Optional short highlights (e.g., raffle winners, custom brews, turnout)." onChange={(change) => setHighlights(change.target.value)} />
         </Field>
         <Field label={uploading ? 'Uploading recap photos…' : 'Upload recap photos'}>
-          <input type="file" multiple accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
+          <input type="file" multiple accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
             disabled={uploading || saving || photos.length >= recapPhotoLimit} />
         </Field>
-        <p className="muted-note">{photos.length} of {recapPhotoLimit} photos</p>
+        <p className="muted-note">Select one or more photos from your phone or computer ({photos.length} of {recapPhotoLimit} added).</p>
         {photos.length > 0 && (
           <div className="fundraiser-photo-grid admin-event-photos">
             {photos.map((photo, index) => (
               <div key={`${photo.url}-${index}`}>
                 <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
                 <Field label={`Caption for photo ${index + 1}`}>
-                  <input value={photo.caption || ''} maxLength={240} disabled={saving}
+                  <input value={photo.caption || ''} maxLength={240} disabled={saving} placeholder="Optional caption"
                     onChange={(change) => setPhotos((current) => current.map((item, photoIndex) =>
                       index === photoIndex ? { ...item, caption: change.target.value } : item))} />
                 </Field>
@@ -932,7 +944,14 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
           <button type="submit" className="btn primary" disabled={uploading || saving}>{saving ? 'Saving…' : 'Save recap'}</button>
           <button type="button" className="btn secondary" disabled={uploading || saving} onClick={onClose}>Close recap editor</button>
         </div>
-        {message && <p role="status">{message}</p>}
+        {message && (
+          <p role="status">
+            {message}{' '}
+            {message === 'Recap saved.' && (
+              <Link to={`/fundraisers/${event.id}`} target="_blank" rel="noreferrer">View public recap →</Link>
+            )}
+          </p>
+        )}
         {error && <p className="form-error" role="alert">{error}</p>}
       </form>
     </AdminEditorDialog>
@@ -1091,7 +1110,7 @@ function HostYearPostsPanel({
               </button>
               <label className="btn secondary small" style={{ cursor: 'pointer' }}>
                 {uploading ? 'Uploading image…' : 'Upload post image'}
-                <input type="file" accept={ADMIN_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading} style={{ display: 'none' }} />
+                <input type="file" accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading} style={{ display: 'none' }} />
               </label>
               <button className="btn primary" type="submit" disabled={saving || uploading}>
                 {saving ? 'Saving…' : editingId ? 'Save post' : 'Create post'}

@@ -2,6 +2,9 @@ import { api, type AdminImageUploadPresign } from './api'
 
 export const ADMIN_IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024
 export const ADMIN_IMAGE_UPLOAD_ACCEPT = 'image/*,.jpg,.jpeg,.png,.webp,.gif,.svg,.heic,.heif,.avif'
+// Omit .heic/.heif on public web photo pickers so iOS Safari auto-transcodes camera-roll HEIC photos to JPEG
+// for universal rendering across Chrome, Android, and desktop browsers.
+export const WEB_IMAGE_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif'
 export const RECEIPT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024
 export const RECEIPT_UPLOAD_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.pdf'
 
