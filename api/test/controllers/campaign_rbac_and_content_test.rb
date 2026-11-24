@@ -184,6 +184,44 @@ class CampaignRbacAndContentTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "recap updates use event permissions, preserve overrides, and create an audit record" do
+    event = @campaign.campaign_events.create!(kind: "fundraiser", title: "Alumni night", status: "open", starts_at: 1.day.ago, public_visible: true)
+    path = "/api/v1/campaign/#{@campaign.slug}/events/#{event.id}"
+    fields = { recapNotes: " A great night ", recap_highlights: " Reunion ", raisedDisplay: " $4,200 raised ",
+      recap_photos: [ { url: "https://example.com/photo.jpg", caption: " The team " } ] }
+
+    [ @board, @treasurer, @staff ].each do |user|
+      patch path, params: { event: fields }, headers: headers_for(user), as: :json
+      assert_response :forbidden
+    end
+    assert_nil event.reload.recap_notes
+
+    patch path, params: { event: fields }, headers: headers_for(@chair), as: :json
+    assert_response :success
+    saved = response.parsed_body.fetch("event")
+    assert_equal [ "A great night", "Reunion", "$4,200 raised", "completed", "open", true ],
+      saved.values_at("recapNotes", "recapHighlights", "raisedDisplay", "status", "storedStatus", "autoCompleted")
+    assert_equal [ { "url" => "https://example.com/photo.jpg", "caption" => "The team" } ], saved["recapPhotos"]
+    assert FinanceAuditEvent.exists?(host_campaign: @campaign, action: "update_event", record_id: event.id)
+    audit = AuditEvent.where(record_type: "CampaignEvent", record_id: event.id.to_s, action: "update").order(:id).last
+    assert_equal "A great night", audit.after_json["recap_notes"]
+
+    [ { url: "https://example.com/photo.jpg" }, [ "invalid" ], [ { url: "https://example.com/photo.jpg", caption: { invalid: true } } ] ].each do |photos|
+      patch path, params: { event: { recapPhotos: photos } }, headers: headers_for(@chair), as: :json
+      assert_response :unprocessable_entity
+      assert_equal saved["recapPhotos"], event.reload.recap_photos
+    end
+
+    patch path, params: { event: { recapPhotos: [], status: "cancelled" } }, headers: headers_for(@chair), as: :json
+    assert_response :success
+    assert_equal [], event.reload.recap_photos
+    assert_equal "cancelled", event.effective_status
+
+    @campaign.update!(featured: false, status: "archived")
+    patch path, params: { event: fields }, headers: headers_for(@chair), as: :json
+    assert_response :unprocessable_entity
+  end
+
   test "enforces archived campaign read-only for board and audited break-glass for admin" do
     @campaign.update!(featured: false, status: "archived")
 

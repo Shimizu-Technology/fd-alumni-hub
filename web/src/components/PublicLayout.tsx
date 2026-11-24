@@ -51,6 +51,7 @@ function PublicShell() {
   const { siteMode, alerts } = useSiteMode()
   const location = useLocation()
   const backend = useBackendAvailabilityContext()
+  const showLayoutAlerts = location.pathname !== '/' || siteMode.mode !== 'tournament_live'
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const menuPanelRef = useRef<HTMLDivElement | null>(null)
   const bottomNavItems = siteMode.mobileBottomNav.filter((item) => item.to !== null)
@@ -151,7 +152,7 @@ function PublicShell() {
             </button>
           </div>
         )}
-        {alerts.length > 0 && (
+        {showLayoutAlerts && alerts.length > 0 && (
           <section className="tournament-alert-stack" aria-label="Tournament alerts">
             {alerts.map((alert) => (
               <div

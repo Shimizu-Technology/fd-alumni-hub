@@ -11,6 +11,7 @@ Rails.application.routes.draw do
         resource :info, only: :show, controller: :info
         resource :today, only: :show, controller: :today
         get "host-year", to: "host_years#show"
+        get "fundraisers/:id", to: "fundraisers#show"
         resources :prediction_polls, path: "prediction-polls", only: [] do
           post :vote, to: "prediction_votes#create"
         end

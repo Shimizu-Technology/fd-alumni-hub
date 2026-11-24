@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_23_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -134,6 +134,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_23_000008) do
     t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "recap_notes"
+    t.text "recap_highlights"
+    t.string "raised_display"
+    t.jsonb "recap_photos", default: [], null: false
     t.index ["host_campaign_id", "archived_at", "public_visible", "starts_at", "position"], name: "index_campaign_events_on_public_listing"
     t.index ["host_campaign_id"], name: "index_campaign_events_on_host_campaign_id"
     t.check_constraint "goal_cents IS NULL OR goal_cents >= 0", name: "chk_campaign_events_goal_cents_non_negative"

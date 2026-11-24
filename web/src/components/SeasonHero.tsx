@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
 import { formatGuamDateTime } from '../lib/datetime'
-import { DEFAULT_GAME_VENUE, formatTournamentWindow } from '../lib/games'
+import { formatTournamentWindow } from '../lib/games'
 import type { SiteLink, SiteMode } from '../lib/siteMode'
-import type { Game, Tournament } from '../lib/types'
+import type { Tournament } from '../lib/types'
 
-export function SeasonHero({ siteMode, tournament = siteMode.tournament, nextGame }: {
+export function SeasonHero({ siteMode, tournament = siteMode.tournament }: {
   siteMode: SiteMode
   tournament?: Tournament | null
-  nextGame?: Game
 }) {
   const { mode, hostCampaign, recap, sections } = siteMode
   const history = { label: 'Explore History', to: '/history' }
@@ -23,13 +22,11 @@ export function SeasonHero({ siteMode, tournament = siteMode.tournament, nextGam
   if (mode === 'schedule_ready') {
     headline = tournament ? `${tournament.year} Tournament Schedule` : 'Tournament Schedule'
     description = tournament ? formatTournamentWindow(tournament) : 'Season dates will be posted here.'
-    actions = [{ label: 'See the schedule', to: '/schedule' }, { label: 'Teams & Rosters', to: '/teams' }, { label: 'Tickets', to: '/tickets' }]
-  } else if (mode === 'tournament_live') {
-    headline = 'Tonight at The Jungle'
-    description = nextGame
-      ? `Next tip-off ${formatGuamDateTime(nextGame.startTime)} · ${nextGame.venue || DEFAULT_GAME_VENUE}`
-      : DEFAULT_GAME_VENUE
-    actions = [{ label: headline, to: '/today' }, { label: 'Get tickets', to: '/tickets' }, { label: 'Schedule', to: '/schedule' }]
+    actions = [
+      ...(sections.schedule ? [{ label: 'See the schedule', to: '/schedule' }] : []),
+      ...(sections.teams ? [{ label: 'Teams & Rosters', to: '/teams' }] : []),
+      ...(sections.tickets ? [{ label: 'Tickets', to: '/tickets' }] : []),
+    ]
   } else if (mode === 'tournament_recap') {
     headline = (sections.recap && recap.headline) || (tournament ? `${tournament.year} Tournament Recap` : 'Tournament Recap')
     description = sections.recap ? recap.summary : null

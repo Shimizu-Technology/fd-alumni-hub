@@ -39,6 +39,7 @@ import type {
   InfoGuide,
   HomeHostCampaignSummary,
   HostYearResponse,
+  FundraiserDetailResponse,
   IngestItem,
   LedgerEntryRecord,
   MediaAsset,
@@ -202,12 +203,16 @@ export const api = {
     latestResultsTournament: Tournament | null
     activeHostCampaign?: HomeHostCampaignSummary | null
     alerts?: TournamentAlert[]
+    hostYear?: HostYearResponse
+    schedulePreview?: Game[]
     todayGames: Game[]
     liveGames: Game[]
     latestNews: Article[]
     gameDayNote: GameDayNote | null
     predictionPolls: PredictionPoll[]
   }>('/public/home', voterToken ? { headers: { 'X-FD-Voter-Token': voterToken } } : {}),
+  publicFundraiser: (id: string) =>
+    request<FundraiserDetailResponse>(`/public/fundraisers/${encodeURIComponent(id)}`),
   publicHostYear: (params: { slug?: string | null; year?: number | null } = {}) =>
     request<HostYearResponse>(`/public/host-year${query(params)}`),
   publicToday: (params: { tournamentId?: string | null; year?: number | null; date?: string | null } = {}, voterToken?: string | null) =>

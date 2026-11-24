@@ -641,7 +641,7 @@ module Hafapass
           dateLabel: hub_event.date_label,
           venueName: hub_event.venue || hafapass_event&.dig(:venueName),
           kind: hub_event.kind,
-          status: hub_event.status,
+          status: hub_event.effective_status,
           ticketState: hafapass_event&.dig(:ticketState),
           minAllInPriceCents: stale ? nil : hafapass_event&.dig(:minAllInPriceCents),
           ticketTypes: stale ? [] : Array(hafapass_event&.dig(:ticketTypes)),
