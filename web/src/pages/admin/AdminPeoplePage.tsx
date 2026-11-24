@@ -7,6 +7,7 @@ import { mutationErrorMessage } from '../../lib/errors'
 import { useAsync } from '../../lib/hooks'
 import type { CampaignRole } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
+import { AdminConfirmDialog, type ConfirmDialogRequest } from '../../components/admin/AdminConfirmDialog'
 
 const CAMPAIGN_ROLES: CampaignRole[] = ['chair', 'treasurer', 'board']
 
@@ -405,6 +406,7 @@ export function AdminPeoplePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
 
   if (query.loading && !query.data) return <LoadingState label="Loading access directory" />
   if (!query.data) return <ErrorState message={String(query.error || "Unable to load access.")} onRetry={query.reload} />
@@ -449,8 +451,13 @@ export function AdminPeoplePage() {
 
   function removeScope(scope: GrantScope) {
     const name = scopeName(scope.scopeType, scope.scopeId)
-    if (!window.confirm(`Remove ${scope.email}’s access for ${name}? Their account and access to other seasons or campaigns stay active.`)) return
-    void mutate(() => api.revokePermissionScope(scope), 'Scoped access removed.')
+    setConfirmRequest({
+      title: 'Remove scoped access?',
+      message: `Remove ${scope.email}’s access for ${name}? Their account and access to other seasons or campaigns stay active.`,
+      confirmLabel: 'Remove access',
+      destructive: true,
+      onConfirm: () => mutate(() => api.revokePermissionScope(scope), 'Scoped access removed.'),
+    })
   }
 
   function scopeGroups(personEmail: string, rows: PermissionGrant[], memberships: AccessDirectory['users'][number]['campaignMemberships'] = []) {
@@ -579,12 +586,22 @@ export function AdminPeoplePage() {
               {scopeGroups(person.email, person.grants, person.campaignMemberships)}
               {superAdmin && <div className="people-chip-row">
                 <button className="btn secondary small" disabled={busy || last} onClick={() => {
-                  if (!window.confirm(`${person.superAdmin ? 'Remove' : 'Grant'} Super Admin access for ${person.email}?`)) return
-                  void mutate(() => api.updateUserAccess(person.id, { superAdmin: !person.superAdmin }), 'Super Admin access updated.')
+                  setConfirmRequest({
+                    title: person.superAdmin ? 'Demote Super Admin?' : 'Promote to Super Admin?',
+                    message: `${person.superAdmin ? 'Remove' : 'Grant'} Super Admin access for ${person.email}?`,
+                    confirmLabel: person.superAdmin ? 'Remove Super Admin' : 'Grant Super Admin',
+                    destructive: person.superAdmin,
+                    onConfirm: () => mutate(() => api.updateUserAccess(person.id, { superAdmin: !person.superAdmin }), 'Super Admin access updated.'),
+                  })
                 }}>{person.superAdmin ? 'Demote Super Admin' : 'Promote to Super Admin'}</button>
                 <button className="btn secondary small" disabled={busy || last} onClick={() => {
-                  if (!window.confirm(person.active ? `Deactivate ${person.email}’s account? This blocks sign-in across all seasons and campaigns.` : `Reactivate ${person.email}’s account?`)) return
-                  void mutate(() => api.updateUserAccess(person.id, { active: !person.active }), 'Account status updated.')
+                  setConfirmRequest({
+                    title: person.active ? 'Deactivate account?' : 'Reactivate account?',
+                    message: person.active ? `Deactivate ${person.email}’s account? This blocks sign-in across all seasons and campaigns.` : `Reactivate ${person.email}’s account?`,
+                    confirmLabel: person.active ? 'Deactivate account' : 'Reactivate account',
+                    destructive: person.active,
+                    onConfirm: () => mutate(() => api.updateUserAccess(person.id, { active: !person.active }), 'Account status updated.'),
+                  })
                 }}>{person.active ? 'Deactivate account' : 'Reactivate account'}</button>
               </div>}
             </article>
@@ -601,6 +618,7 @@ export function AdminPeoplePage() {
         <summary>Legacy allowlist and campaign invitations</summary>
         {legacy && <LegacyPeopleAccess />}
       </details>}
+      <AdminConfirmDialog request={confirmRequest} busy={busy} onClose={() => setConfirmRequest(null)} />
     </div>
   )
 }

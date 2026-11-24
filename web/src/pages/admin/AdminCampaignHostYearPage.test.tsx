@@ -129,3 +129,25 @@ it('disables parent recap toggle and archive buttons while a recap upload is in 
   fireEvent.keyDown(document, { key: 'Escape' })
   expect(dialog).not.toBeInTheDocument()
 })
+
+it('defaults to Fundraiser Events, hides Prepare Next Year on active campaigns, and tucks HåfaPass slugs under Advanced', async () => {
+  render(<MemoryRouter initialEntries={['/admin/campaign/host-year']}><AdminCampaignHostYearPage /></MemoryRouter>)
+  expect(await screen.findByRole('heading', { name: /Campaign events/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Prepare Class of/ })).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('tab', { name: /Settings & Links/i }))
+  const advancedSummary = await screen.findByText(/Advanced · Countdown & HåfaPass ticketing setup/i)
+  expect(advancedSummary.closest('details')).not.toHaveAttribute('open')
+  fireEvent.click(advancedSummary)
+  expect(advancedSummary.closest('details')).toHaveAttribute('open')
+  expect(screen.getByLabelText(/HåfaPass host class organizer slug/i)).toBeInTheDocument()
+})
+
+it('uses the themed AdminConfirmDialog when archiving an event', async () => {
+  const archiveSpy = vi.spyOn(api, 'campaignArchiveEvent').mockResolvedValue({ event: { ...adminEvent, archivedAt: '2026-11-24T00:00:00Z' } })
+  await open()
+  fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+  const dialog = await screen.findByRole('alertdialog', { name: /Archive "Alumni night"\?/i })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Archive event' }))
+  await waitFor(() => expect(archiveSpy).toHaveBeenCalledWith(adminCampaign.slug, adminEvent.id))
+})

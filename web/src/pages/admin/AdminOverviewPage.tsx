@@ -40,21 +40,28 @@ export function AdminOverviewPage() {
   const canViewFinance = hasCampaignCapability(user, financeCapability)
   const canViewFundraisers = hasCampaignCapability(user, fundraiserCapability)
   const canViewSiteMode = hasCapability(user, 'site_mode_and_settings', 'view')
+  const hasTopStatus = Boolean(user && (canViewFinance || canViewFundraisers || canViewSiteMode))
+  const showTournamentOps = Boolean((user?.isSuperAdmin ?? user?.isAdmin) || (user?.isStaff && !user.capabilities))
+  const siteModeQuery = useAsync(
+    () => (canViewSiteMode ? api.publicSiteMode() : Promise.resolve(null)),
+    [canViewSiteMode],
+  )
+  const currentMode = siteModeQuery.data?.siteMode.mode ?? null
   const scopeKey = user ? `${user.id}:${JSON.stringify(user.capabilities ?? user.campaignMemberships ?? '')}` : ''
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader title={user?.firstName ? `Welcome, ${user.firstName}` : 'Workspace overview'} description="Check your work and jump back into the areas you manage." />
-      {user && (canViewFinance || canViewFundraisers || canViewSiteMode) && (
+      <PageHeader title={user?.firstName ? `Welcome, ${user.firstName}` : 'Overview'} description="Live status and priority actions for your workspace." />
+      {hasTopStatus && user && (
         <div className="admin-overview-grid">
           {canViewFinance && <FinanceStatus key={`finance:${scopeKey}`} user={user} />}
           {canViewFundraisers && <FundraiserStatus key={`fundraisers:${scopeKey}`} user={user} showPublicProgress={!canViewFinance} />}
-          {canViewSiteMode && <SiteModeStatus />}
+          {canViewSiteMode && <SiteModeStatus mode={currentMode} loading={siteModeQuery.loading} />}
         </div>
       )}
-      {modules.length > 0 && (
+      {!hasTopStatus && modules.length > 0 && (
         <section className="page-stack" aria-labelledby="workspace-quick-jump">
-          <h2 id="workspace-quick-jump" className="admin-section-title">Workspace quick-jump</h2>
+          <h2 id="workspace-quick-jump" className="admin-section-title">Your workspace</h2>
           <div className="admin-overview-grid">
             {modules.map(({ key, path, label, icon: Icon }) => (
               <Link key={key} className="panel admin-work-link" to={key === 'scorekeeper' && !hasCapability(user, 'scores_and_stats', 'view') ? '/admin/standings' : path}>
@@ -66,7 +73,7 @@ export function AdminOverviewPage() {
           </div>
         </section>
       )}
-      {Boolean((user?.isSuperAdmin ?? user?.isAdmin) || (user?.isStaff && !user.capabilities)) && <TournamentOverview />}
+      {showTournamentOps && <TournamentOverview siteMode={currentMode} />}
     </div>
   )
 }
@@ -138,21 +145,36 @@ function FundraiserStatus({ user, showPublicProgress }: { user: CurrentUser; sho
   </Panel>
 }
 
-function SiteModeStatus() {
-  const { data, loading } = useAsync(api.publicSiteMode)
+function SiteModeStatus({ mode, loading }: { mode: keyof typeof siteModes | null; loading: boolean }) {
   return <Panel className="admin-overview-status">
     <h2>Active site mode</h2>
-    <p>{data ? <span className="admin-live-badge">{siteModes[data.siteMode.mode]}</span> : <span className="muted">{loading ? 'Loading site mode…' : 'Site mode is unavailable.'}</span>}</p>
+    <p>{mode ? <span className="admin-live-badge">{siteModes[mode]}</span> : <span className="muted">{loading ? 'Loading site mode…' : 'Site mode is unavailable.'}</span>}</p>
     <Link className="btn primary" to="/admin/site-mode">Change site mode</Link>
   </Panel>
 }
 
-function TournamentOverview() {
+function TournamentOverview({ siteMode }: { siteMode: keyof typeof siteModes | null }) {
   const { data, loading, error, reload } = useAsync(() => api.adminDashboard(), [])
 
   if (loading) return <LoadingState label="Loading admin dashboard" />
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (!data) return <EmptyState title="Dashboard unavailable" />
+
+  const isOffSeasonEmpty = siteMode === 'fundraising' && (data.counts.games || 0) === 0 && (data.counts.teams || 0) === 0
+
+  if (isOffSeasonEmpty) {
+    return (
+      <Panel className="admin-offseason-ops">
+        <div className="section-heading" style={{ marginBottom: 0 }}>
+          <div>
+            <h2>{data.tournament ? `${data.tournament.year} tournament operations` : 'Tournament operations'}</h2>
+            <p className="muted" style={{ margin: '0.2rem 0 0' }}>Off-season fundraising mode — teams, schedule, and live game-night tools activate once tournament setup begins.</p>
+          </div>
+          <Link className="btn secondary small" to="/admin/tournaments">Open tournament setup →</Link>
+        </div>
+      </Panel>
+    )
+  }
 
   return (
     <section className="page-stack" aria-labelledby="tournament-operations">
@@ -183,16 +205,6 @@ function TournamentOverview() {
           )}
         </Panel>
       </div>
-
-      <Panel>
-        <div className="admin-shortcuts">
-          <Link to="/admin/tournaments">Start with tournament setup</Link>
-          <Link to="/admin/divisions">Add teams and divisions</Link>
-          <Link to="/admin/games">Build schedule and enter scores</Link>
-          <Link to="/admin/links">Add tickets and streams</Link>
-          <Link to="/admin/news">Attach coverage</Link>
-        </div>
-      </Panel>
     </section>
   )
 }

@@ -69,7 +69,7 @@ it('keeps the workspace accessible when campaign data fails', async () => {
 
 it('only offers the results workspace for a scorekeeper', () => {
   open(capability('scores_and_stats'))
-  expect(screen.getByRole('link', { name: /Results & Standings/ })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Scores & Standings/ })).toBeInTheDocument()
   expect(api.adminCampaignWorkspace).not.toHaveBeenCalled()
   expect(api.publicSiteMode).not.toHaveBeenCalled()
   expect(api.adminDashboard).not.toHaveBeenCalled()
@@ -80,6 +80,28 @@ it('skips campaign workspace lookup for a tournament-scoped sponsor lead', () =>
     { capability: 'fundraisers_and_sponsors', actions: ['view'], scopeType: 'tournament', scopeIds: ['t-1'], allScopes: false },
     capability('scores_and_stats'),
   )
-  expect(screen.getByRole('link', { name: /Results & Standings/ })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Scores & Standings/ })).toBeInTheDocument()
   expect(api.adminCampaignWorkspace).not.toHaveBeenCalled()
+})
+
+it('collapses zero-game tournament operations and hides redundant quick-jump wall for Super Admin in fundraising mode', async () => {
+  vi.mocked(api.campaignFinanceSummary).mockResolvedValue({
+    campaign: adminCampaign,
+    summary: { raisedCents: 620_500, goalCents: 3_000_000, pendingReimbursementsCount: 0 } as FinanceSummary,
+    roles: ['chair'],
+  })
+  vi.mocked(api.adminDashboard).mockResolvedValue({
+    tournament: { id: '2027', name: 'FD Alumni', year: 2027, startDate: '2027-06-25', endDate: '2027-07-16', status: 'upcoming' },
+    counts: { teams: 0, games: 0, finalGames: 0, articles: 0 },
+    missing: { scores: 0, streams: 0, tickets: 0 },
+    recentArticles: [],
+  })
+  auth.user = {
+    id: '1', fullName: 'Leon Admin', firstName: 'Leon', lastName: 'Admin', email: 'leon@example.test',
+    clerkId: null, role: 'admin', active: true, isAdmin: true, isSuperAdmin: true, isStaff: true,
+  }
+  render(<MemoryRouter><AdminOverviewPage /></MemoryRouter>)
+  expect(await screen.findByText(/Off-season fundraising mode/)).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Workspace quick-jump' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Data health' })).not.toBeInTheDocument()
 })

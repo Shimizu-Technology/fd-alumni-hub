@@ -1031,6 +1031,45 @@ textarea:focus {
   color: #fff;
 }
 
+.admin-advanced-details,
+.finance-breakdown-details {
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  background: rgba(12, 7, 9, 0.42);
+}
+
+.admin-advanced-details summary,
+.finance-breakdown-details summary {
+  cursor: pointer;
+  color: var(--fd-gold);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.admin-advanced-details summary:hover,
+.finance-breakdown-details summary:hover {
+  color: #fff;
+}
+
+.admin-confirm-dialog {
+  max-width: 28rem;
+}
+
+.admin-confirm-message {
+  margin: 0 0 1.15rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.admin-confirm-actions {
+  justify-content: flex-end;
+}
+
+.admin-offseason-ops {
+  border-color: var(--line);
+}
+
 .title-leaderboard-card {
   background: rgba(12, 7, 9, 0.6);
   border: 1px solid var(--fd-gold-line);
