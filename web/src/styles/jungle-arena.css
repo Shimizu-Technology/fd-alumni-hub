@@ -1855,6 +1855,7 @@ textarea:focus {
 }
 
 .admin-shell .coverage-filter-buttons button:hover,
+.admin-shell .coverage-filter-buttons button.selected,
 .admin-shell .coverage-filter-buttons button[aria-pressed='true'],
 .admin-shell .class-coverage-team-links a:hover {
   background: var(--fd-maroon);
