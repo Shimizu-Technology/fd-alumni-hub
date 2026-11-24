@@ -32,14 +32,29 @@ export function HardwoodCourtMeter({ meter }: { meter: Extract<HostCampaignMeter
       </div>
 
       <svg className="host-meter-court" viewBox="0 0 560 260" aria-hidden="true">
-        <rect className="host-meter-court-fill" width="560" height="260" fill="#c89b3c"
+        <defs>
+          <linearGradient id="arenaHardwood" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#3c261d" />
+            <stop offset="100%" stopColor="#261712" />
+          </linearGradient>
+          <linearGradient id="arenaCourtFill" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#981d3f" />
+            <stop offset="100%" stopColor="#e6b84c" />
+          </linearGradient>
+        </defs>
+        <rect width="560" height="260" fill="url(#arenaHardwood)" />
+        <rect className="host-meter-court-fill" width="560" height="260" fill="url(#arenaCourtFill)" fillOpacity="0.78"
           style={{ clipPath: `inset(0 ${100 - percent}% 0 0)` }} />
-        <g stroke="#6f1d35" strokeWidth="3" fill="none">
-          <rect x="13" y="13" width="534" height="234" rx="4" />
-          <path d="M13 34H72a96 96 0 0 1 0 192H13 M13 90H125v80H13 M125 90a40 40 0 0 1 0 80 M39 111v38 M547 79a51 51 0 0 0 0 102" />
-          <circle cx="53" cy="130" r="8" />
+        <g stroke="#f7e6c4" strokeOpacity="0.52" strokeWidth="2.5" fill="none">
+          <rect x="13" y="13" width="534" height="234" rx="6" />
+          <line x1="280" y1="13" x2="280" y2="247" strokeOpacity="0.38" />
+          <circle cx="280" cy="130" r="42" strokeOpacity="0.42" />
+          <path d="M13 34H72a96 96 0 0 1 0 192H13 M13 90H125v80H13 M125 90a40 40 0 0 1 0 80 M39 111v38" />
+          <path d="M547 34h-59a96 96 0 0 0 0 192h59 M547 90H435v80h112 M435 90a40 40 0 0 0 0 80 M521 111v38" strokeOpacity="0.35" />
+          <circle cx="53" cy="130" r="8" stroke="#e6b84c" strokeOpacity="0.9" />
+          <circle cx="507" cy="130" r="8" strokeOpacity="0.4" />
         </g>
-        <path d="M125 90a40 40 0 0 0 0 80" stroke="#6f1d35" strokeWidth="2" strokeDasharray="5 5" fill="none" />
+        <path d="M125 90a40 40 0 0 0 0 80" stroke="#f7e6c4" strokeOpacity="0.4" strokeWidth="2" strokeDasharray="5 5" fill="none" />
       </svg>
 
       <div className="host-meter-track" role="progressbar" aria-label="Fundraising goal progress"

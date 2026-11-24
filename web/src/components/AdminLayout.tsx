@@ -216,7 +216,7 @@ function SidebarContent({
     <nav className="admin-sidebar-inner" aria-label="Admin navigation">
       <div className="admin-sidebar-header">
         <Link to={homePath} className={`admin-brand ${collapsed ? 'collapsed' : ''}`} onClick={onNavigate} title={collapsed ? 'FD Hub Admin' : undefined}>
-          <span className="brand-mark">FD</span>
+          <span className="brand-crest admin-brand-crest" aria-hidden="true"><img src="/brand/fd-crest.png" alt="" /></span>
           {!collapsed && <span><strong>Hub Admin</strong><small>{subtitle}</small></span>}
         </Link>
         {onToggleCollapse && (

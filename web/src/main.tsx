@@ -5,6 +5,7 @@ import { App } from './App'
 import { SeoManager } from './components/SeoManager'
 import { PostHogPageView, PostHogProvider } from './providers/PostHogProvider'
 import './styles.css'
+import './styles/jungle-arena.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
