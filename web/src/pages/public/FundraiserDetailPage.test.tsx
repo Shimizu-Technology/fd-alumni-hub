@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
+import { SeoManager } from '../../components/SeoManager'
 import { api, ApiError } from '../../lib/api'
 import { offlineSiteMode, type SiteModeName } from '../../lib/siteMode'
 import { campaign, completedEvent, hafapass, upcomingEvent } from '../../test/fundraiserFixtures'
@@ -109,4 +110,23 @@ it('links back to the event campaign slug for archived campaigns even in fundrai
   open('/fundraisers/21')
   expect(await screen.findByRole('heading', { name: 'Alumni night' })).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /Back to fundraisers/ })).toHaveAttribute('href', '/host-year/2026-class-of-2016')
+})
+
+it('reapplies the event title when navigating between alternate routes for the same fundraiser ID', async () => {
+  vi.spyOn(api, 'publicFundraiser').mockResolvedValue({ event: upcomingEvent, campaign, hafapass })
+  render(
+    <MemoryRouter initialEntries={['/fundraisers/20']}>
+      <SeoManager />
+      <Link to="/host-year/events/20">Switch route</Link>
+      <Routes>
+        <Route path="/fundraisers/:id" element={<FundraiserDetailPage />} />
+        <Route path="/host-year/events/:id" element={<FundraiserDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+  expect(await screen.findByRole('heading', { name: 'Alumni dinner' })).toBeInTheDocument()
+  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
+
+  fireEvent.click(screen.getByRole('link', { name: 'Switch route' }))
+  expect(document.title).toBe('Alumni dinner | FD Alumni Basketball Hub')
 })
