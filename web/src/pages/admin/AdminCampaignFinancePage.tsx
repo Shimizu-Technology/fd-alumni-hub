@@ -4,6 +4,7 @@ import { LedgerTab } from './finance/LedgerTab'
 import { ReimbursementsTab } from './finance/ReimbursementsTab'
 import { centsToInput, formatUsd, parseDollarsToCents, todayIsoDate, useAccessibleModal } from './finance/financeFields'
 import { hasCapability } from '../../lib/adminModules'
+import { AdminConfirmDialog, type ConfirmDialogRequest } from '../../components/admin/AdminConfirmDialog'
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
@@ -316,7 +317,7 @@ export function AdminCampaignFinancePage() {
           {canWriteFinance && (
             <>
               <button type="button" className="btn primary" onClick={() => openEntry('income')}>Record money received</button>
-              <button type="button" className="btn primary" onClick={() => openEntry('expense')}>Record expense</button>
+              <button type="button" className="btn secondary" onClick={() => openEntry('expense')}>Record expense</button>
             </>
           )}
           <button type="button" className="btn secondary" onClick={() => setTab('reimbursements')}>
@@ -379,44 +380,52 @@ export function AdminCampaignFinancePage() {
         {summary.mixedNetEventIds.length > 0 && (
           <Panel>
             <p className="form-error" role="status" style={{ margin: 0 }}>
-              <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} mix a <code>*_net</code> income payout with separate <code>event_expense</code> entries. Review those entries so event costs are not double-counted.
+              <strong>Accounting check:</strong> Event(s) #{summary.mixedNetEventIds.join(', #')} combine a net payout entry with separate event expense entries. Review those rows so costs are not counted twice.
             </p>
           </Panel>
         )}
 
         <div className="stats-grid four">
-          <StatCard label="Goal" value={formatUsd(summary.goalCents)} detail={summary.publicMeterEnabled ? 'Public meter ON' : 'Public meter hidden'} tone="maroon" />
           <StatCard
-            label="Raised (Gross)"
+            label="Raised"
             value={formatUsd(summary.raisedCents)}
-            detail={`Excl. FDAA: ${formatUsd(summary.raisedExcludingFdaaCents)}`}
+            detail={`of ${formatUsd(summary.goalCents)} goal · ${summary.publicMeterEnabled ? 'Meter ON' : 'Meter hidden'}`}
             tone="gold"
           />
-          <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Net: ${formatUsd(summary.netCents)}`} />
+          <StatCard label="Spent" value={formatUsd(summary.spentCents)} detail={`Still needed: ${formatUsd(summary.stillNeededCents)}`} />
+          <StatCard label="Net balance" value={formatUsd(summary.netCents)} detail="Available campaign funds" tone="maroon" />
           <StatCard
-            label="Still Needed"
-            value={formatUsd(summary.stillNeededCents)}
-            detail={`Pending reimb: ${formatUsd(summary.pendingReimbursementsCents)} (${summary.pendingReimbursementsCount})`}
+            label="Pending reimbursements"
+            value={summary.pendingReimbursementsCount}
+            detail={summary.pendingReimbursementsCents > 0 ? `${formatUsd(summary.pendingReimbursementsCents)} awaiting payout` : 'All caught up'}
           />
         </div>
 
-        <div className="stats-grid three">
-          <StatCard
-            label="Cash Pledges Outstanding"
-            value={formatUsd(summary.outstandingPledgesCents)}
-            detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
-          />
-          <StatCard
-            label="In-Kind Pledges"
-            value={summary.inKindPledgesCount}
-            detail="Tracked separately from cash raised"
-          />
-          <StatCard
-            label="Public Meter Numerator"
-            value={formatUsd(summary.publicMeterRaisedCents)}
-            detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation/share' : 'Excludes FDAA allocation/share'}
-          />
-        </div>
+        <details className="panel finance-breakdown-details">
+          <summary>Meter, FDAA &amp; pledge breakdown</summary>
+          <div className="stats-grid four" style={{ marginTop: '0.85rem' }}>
+            <StatCard
+              label="Public meter total"
+              value={formatUsd(summary.publicMeterRaisedCents)}
+              detail={summary.includeFdaaInPublicMeter ? 'Includes FDAA allocation' : 'Excludes FDAA allocation'}
+            />
+            <StatCard
+              label="Raised (excl. FDAA)"
+              value={formatUsd(summary.raisedExcludingFdaaCents)}
+              detail="Direct class fundraising"
+            />
+            <StatCard
+              label="Open cash pledges"
+              value={formatUsd(summary.outstandingPledgesCents)}
+              detail={`Received ${formatUsd(summary.pledgedReceivedCents)} of ${formatUsd(summary.pledgedTotalCents)}`}
+            />
+            <StatCard
+              label="In-kind pledges"
+              value={summary.inKindPledgesCount}
+              detail="Tracked separately from cash"
+            />
+          </div>
+        </details>
 
         {canWriteFinance && (
           <FinanceSettingsPanel key={campaign.slug} campaign={campaign} summary={summary} onSaved={reloadAll} />
@@ -846,16 +855,24 @@ function BudgetTab({
 }) {
   const [editor, setEditor] = useState<BudgetLineRecord | null>()
   const [error, setError] = useState('')
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
 
-  const handleArchive = async (line: BudgetLineRecord) => {
-    if (!window.confirm(`Archive budget line "${line.category}"? Existing ledger history stays intact.`)) return
-    setError('')
-    try {
-      await api.campaignArchiveBudgetLine(campaign.slug, line.id)
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to archive budget line'))
-    }
+  const handleArchive = (line: BudgetLineRecord) => {
+    setConfirmRequest({
+      title: `Archive "${line.category}"?`,
+      message: 'This budget line will be archived. Existing ledger history stays intact.',
+      confirmLabel: 'Archive line',
+      destructive: true,
+      onConfirm: async () => {
+        setError('')
+        try {
+          await api.campaignArchiveBudgetLine(campaign.slug, line.id)
+          await onSaved()
+        } catch (err) {
+          setError(mutationErrorMessage(err, 'Unable to archive budget line'))
+        }
+      },
+    })
   }
 
   return (
@@ -909,6 +926,7 @@ function BudgetTab({
       {canWrite && editor !== undefined && (
         <BudgetLineDialog campaignSlug={campaign.slug} line={editor} onClose={() => setEditor(undefined)} onSaved={onSaved} />
       )}
+      <AdminConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
     </div>
   )
 }

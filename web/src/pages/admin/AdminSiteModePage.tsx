@@ -149,8 +149,12 @@ function SiteModeEditor({ configuration, initial, reload }: { configuration: Sit
 
       <Panel>
         <div className="section-heading">
-          <h2>Preview</h2>
+          <div>
+            <h2>Layout summary preview</h2>
+            <p className="muted" style={{ margin: '0.2rem 0 0' }}>Shows active navigation links and enabled sections for this mode.</p>
+          </div>
           <div className="section-actions">
+            <a className="btn secondary small" href="/" target="_blank" rel="noreferrer">Open live site ↗</a>
             <button type="button" className={`btn small ${phone ? 'primary' : 'secondary'}`} aria-pressed={phone} onClick={() => setPhone(true)}>Phone (390px)</button>
             <button type="button" className={`btn small ${phone ? 'secondary' : 'primary'}`} aria-pressed={!phone} onClick={() => setPhone(false)}>Desktop</button>
           </div>

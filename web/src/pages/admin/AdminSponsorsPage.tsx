@@ -8,6 +8,7 @@ import { normalizeSponsorTier, SPONSOR_TIER_OPTIONS } from '../../lib/sponsors'
 import { normalizeHttpsInput, safeHttpsHref } from '../../lib/urls'
 import type { Sponsor, SponsorTier, Tournament } from '../../lib/types'
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel } from '../../components/ui'
+import { AdminConfirmDialog, type ConfirmDialogRequest } from '../../components/admin/AdminConfirmDialog'
 import { ImageUrlUploadField } from '../../components/admin/ImageUrlUploadField'
 
 type SponsorForm = {
@@ -110,6 +111,7 @@ function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [mutationError, setMutationError] = useState('')
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
 
   useEffect(() => {
     setForm(sponsorToForm(sponsor))
@@ -133,18 +135,25 @@ function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: 
       setSaving(false)
     }
   }
-  const remove = async () => {
-    if (!confirm('Delete this sponsor?')) return
-    setDeleting(true)
-    setMutationError('')
-    try {
-      await api.adminDeleteSponsor(sponsor.id)
-      await onSaved()
-    } catch (err) {
-      setMutationError(mutationErrorMessage(err, 'Unable to delete sponsor'))
-    } finally {
-      setDeleting(false)
-    }
+  const remove = () => {
+    setConfirmRequest({
+      title: `Delete "${sponsor.name}"?`,
+      message: 'This sponsor will be removed from the public sponsors page and tournament listings.',
+      confirmLabel: 'Delete sponsor',
+      destructive: true,
+      onConfirm: async () => {
+        setDeleting(true)
+        setMutationError('')
+        try {
+          await api.adminDeleteSponsor(sponsor.id)
+          await onSaved()
+        } catch (err) {
+          setMutationError(mutationErrorMessage(err, 'Unable to delete sponsor'))
+        } finally {
+          setDeleting(false)
+        }
+      },
+    })
   }
 
   const previewLogo = safeHttpsHref(sponsor.logoUrl)
@@ -160,6 +169,7 @@ function SponsorRow({ sponsor, isAdmin, onSaved }: { sponsor: Sponsor; isAdmin: 
         <button className="btn secondary" onClick={save} disabled={saving || deleting}>{saving ? 'Saving' : 'Save'}</button>
         {isAdmin && <button className="btn danger" onClick={remove} disabled={saving || deleting}>{deleting ? 'Deleting' : 'Delete'}</button>}
       </div>
+      <AdminConfirmDialog request={confirmRequest} busy={deleting} onClose={() => setConfirmRequest(null)} />
     </article>
   )
 }

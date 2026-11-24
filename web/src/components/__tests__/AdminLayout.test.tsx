@@ -33,8 +33,8 @@ it('groups the admin modules and shows the current section and signed-in user in
 })
 
 it.each([
-  ['finance_and_reimbursements', 'campaign', 'Host Year', 'Money in & out', '/admin/campaign/finance'],
-  ['scores_and_stats', 'tournament', 'Tournament', 'Results & Standings', '/admin/scorekeeper'],
+  ['finance_and_reimbursements', 'campaign', 'Host Year', 'Board Finance', '/admin/campaign/finance'],
+  ['scores_and_stats', 'tournament', 'Tournament', 'Scores & Standings', '/admin/scorekeeper'],
 ])('renders only a populated group for a user with %s', (capability, scopeType, section, link, path) => {
   open({ ...organizer, capabilities: [{ capability, scopeType, scopeIds: ['1'], actions: ['view'], allScopes: false }] }, path)
   const navigation = screen.getByRole('navigation', { name: 'Admin navigation' })

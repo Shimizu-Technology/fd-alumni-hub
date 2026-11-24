@@ -25,6 +25,15 @@ describe('admin workspace access', () => {
     expect(hasCapability(user, 'finance_and_reimbursements', 'record')).toBe(false)
   })
 
+  it('lands a Host Class Chair directly in Host Year instead of Finance and hides All Campaigns tab', () => {
+    const chair = userWith(
+      { capability: 'fundraisers_and_sponsors', actions: ['view', 'edit'], scopeType: 'campaign', scopeIds: ['1'], allScopes: false },
+      { capability: 'finance_and_reimbursements', actions: ['view', 'approve'], scopeType: 'campaign', scopeIds: ['1'], allScopes: false },
+    )
+    expect(defaultWorkspaceHome(chair)).toBe('/admin/campaign/host-year')
+    expect(canOpenAdminRoute(chair, '/admin/campaigns')).toBe(false)
+  })
+
   it('gives mixed tournament duties and Super Admins a My work landing', () => {
     const mixed = userWith(duty('scores_and_stats', ['view', 'edit']), duty('tonights_menu_and_news'))
     expect(defaultWorkspaceHome(mixed)).toBe('/admin')

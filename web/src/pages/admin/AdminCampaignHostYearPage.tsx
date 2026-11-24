@@ -18,6 +18,7 @@ import type {
 import { EmptyState, ErrorState, Field, FormGrid, LoadingState, PageHeader, Panel, StatusBadge } from '../../components/ui'
 
 import { AdminEditorDialog } from './AdminEditorDialog'
+import { AdminConfirmDialog, type ConfirmDialogRequest } from '../../components/admin/AdminConfirmDialog'
 import { CampaignHandoff } from './handoff/CampaignHandoff'
 
 const WORKSPACE_TABS = ['settings', 'events', 'posts', 'handoff'] as const
@@ -76,7 +77,7 @@ export function AdminCampaignHostYearPage() {
   const hasScopedLookup = isAdmin || Boolean(hasCampaignAccess)
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab')
-  const tab = WORKSPACE_TABS.find((value) => value === requestedTab) ?? 'settings'
+  const tab = WORKSPACE_TABS.find((value) => value === requestedTab) ?? 'events'
 
   function setTab(next: WorkspaceTab, prepare = false) {
     setSearchParams({ campaign: selectedSlug, tab: next, ...(prepare ? { action: 'prepare' } : {}) })
@@ -209,7 +210,7 @@ export function AdminCampaignHostYearPage() {
                 </select>
               </label>
             )}
-            {isAdmin && (campaign.status === 'active' || campaign.status === 'closing') && (
+            {isAdmin && campaign.status === 'closing' && (
               <button className="btn primary" type="button" onClick={() => setTab('handoff', true)}>
                 Prepare {campaign.hostClass ? `Class of ${campaign.hostClass.graduationYear + 1}` : 'next year'}
               </button>
@@ -241,14 +242,14 @@ export function AdminCampaignHostYearPage() {
       )}
 
       <div className="row-actions" role="tablist" aria-label="Host Year workspace sections">
-        <button type="button" role="tab" aria-selected={tab === 'settings'} className={`btn ${tab === 'settings' ? 'primary' : 'secondary'}`} onClick={() => setTab('settings')}>
-          Settings &amp; Links
-        </button>
         <button type="button" role="tab" aria-selected={tab === 'events'} className={`btn ${tab === 'events' ? 'primary' : 'secondary'}`} onClick={() => setTab('events')}>
           Fundraiser Events ({events.length})
         </button>
         <button type="button" role="tab" aria-selected={tab === 'posts'} className={`btn ${tab === 'posts' ? 'primary' : 'secondary'}`} onClick={() => setTab('posts')}>
           Class News ({posts.length})
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'settings'} className={`btn ${tab === 'settings' ? 'primary' : 'secondary'}`} onClick={() => setTab('settings')}>
+          Settings &amp; Links
         </button>
         <button type="button" role="tab" aria-selected={tab === 'handoff'} className={`btn ${tab === 'handoff' ? 'primary' : 'secondary'}`} onClick={() => setTab('handoff')}>
           Closeout &amp; Handoff
@@ -403,45 +404,53 @@ function HostYearSettingsPanel({
           <Field label="Tagline">
             <input value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="Road to the 2027 FD Alumni Tournament" disabled={!canEdit} />
           </Field>
-          <Field label="Countdown target date & time (local browser time; leave unchanged to follow tournament start)">
-            <input
-              type="datetime-local"
-              value={countdownTargetAt}
-              onChange={(e) => {
-                setCountdownTargetAt(e.target.value)
-                setCountdownDirty(true)
-              }}
-              disabled={!canEdit}
-            />
-          </Field>
-          <Field label="Countdown label">
-            <input value={countdownLabel} onChange={(e) => setCountdownLabel(e.target.value)} placeholder="Tentative tip-off · Jun 25, 2027" disabled={!canEdit} />
+          <Field label="Golf site URL (https://)">
+            <input type="url" value={golfUrl} onChange={(e) => setGolfUrl(e.target.value)} placeholder="https://fd-golf.shimizu-technology.com" disabled={!canEdit} />
           </Field>
           {canManageDonationLinks && (
             <Field label="Donation URL (https://)">
               <input type="url" value={donationUrl} onChange={(event) => setDonationUrl(event.target.value)} />
             </Field>
           )}
-          <Field label="Golf site URL (https://)">
-            <input type="url" value={golfUrl} onChange={(e) => setGolfUrl(e.target.value)} placeholder="https://fd-golf.shimizu-technology.com" disabled={!canEdit} />
-          </Field>
           <Field label="Hero image URL (https://)">
             <input type="url" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="https://..." disabled={!canEdit} />
-          </Field>
-          <Field label="HåfaPass host class organizer slug">
-            <input value={hafapassOrganizerSlug} onChange={(e) => setHafapassOrganizerSlug(e.target.value)} placeholder="co2017" disabled={!canEdit} />
-          </Field>
-          <Field label="HåfaPass tournament organizer slug (optional)">
-            <input value={hafapassTournamentOrganizerSlug} onChange={(e) => setHafapassTournamentOrganizerSlug(e.target.value)} placeholder="fdaa" disabled={!canEdit} />
-          </Field>
-          <Field label="HåfaPass default distribution code">
-            <input value={hafapassDistributionCode} onChange={(e) => setHafapassDistributionCode(e.target.value)} placeholder="co2017-hub" disabled={!canEdit} />
           </Field>
         </FormGrid>
 
         <Field label="Campaign description">
           <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} disabled={!canEdit} />
         </Field>
+
+        <details className="admin-advanced-details" style={{ marginTop: '0.85rem' }}>
+          <summary>Advanced · Countdown &amp; HåfaPass ticketing setup</summary>
+          <div style={{ marginTop: '0.75rem' }}>
+            <FormGrid>
+              <Field label="Countdown label">
+                <input value={countdownLabel} onChange={(e) => setCountdownLabel(e.target.value)} placeholder="Tentative tip-off · Jun 25, 2027" disabled={!canEdit} />
+              </Field>
+              <Field label="Countdown target date & time (local browser time; leave unchanged to follow tournament start)">
+                <input
+                  type="datetime-local"
+                  value={countdownTargetAt}
+                  onChange={(e) => {
+                    setCountdownTargetAt(e.target.value)
+                    setCountdownDirty(true)
+                  }}
+                  disabled={!canEdit}
+                />
+              </Field>
+              <Field label="HåfaPass host class organizer slug">
+                <input value={hafapassOrganizerSlug} onChange={(e) => setHafapassOrganizerSlug(e.target.value)} placeholder="co2017" disabled={!canEdit} />
+              </Field>
+              <Field label="HåfaPass tournament organizer slug (optional)">
+                <input value={hafapassTournamentOrganizerSlug} onChange={(e) => setHafapassTournamentOrganizerSlug(e.target.value)} placeholder="fdaa" disabled={!canEdit} />
+              </Field>
+              <Field label="HåfaPass default distribution code">
+                <input value={hafapassDistributionCode} onChange={(e) => setHafapassDistributionCode(e.target.value)} placeholder="co2017-hub" disabled={!canEdit} />
+              </Field>
+            </FormGrid>
+          </div>
+        </details>
 
         {(canEdit || canManageDonationLinks) && (
           <div className="row-actions" style={{ marginTop: '0.75rem' }}>
@@ -619,19 +628,28 @@ function HostYearEventsPanel({
     }
   }
 
-  const handleArchive = async (ev: AdminCampaignEvent) => {
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
+
+  const handleArchive = (ev: AdminCampaignEvent) => {
     if (!canEdit) return
-    if (!window.confirm(`Archive "${ev.title}"? Archived events stay hidden from the public Host Year calendar while preserving finance links.`)) return
-    setError('')
-    setMessage('')
-    try {
-      await api.campaignArchiveEvent(campaign.slug, ev.id)
-      setMessage(`Archived "${ev.title}".`)
-      if (editingId === ev.id) resetForm()
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to archive event'))
-    }
+    setConfirmRequest({
+      title: `Archive "${ev.title}"?`,
+      message: 'Archived events stay hidden from the public Host Year calendar while preserving finance links.',
+      confirmLabel: 'Archive event',
+      destructive: true,
+      onConfirm: async () => {
+        setError('')
+        setMessage('')
+        try {
+          await api.campaignArchiveEvent(campaign.slug, ev.id)
+          setMessage(`Archived "${ev.title}".`)
+          if (editingId === ev.id) resetForm()
+          await onSaved()
+        } catch (err) {
+          setError(mutationErrorMessage(err, 'Unable to archive event'))
+        }
+      },
+    })
   }
 
   const flyerPreview = safeHttpsHref(imageUrl)
@@ -796,6 +814,7 @@ function HostYearEventsPanel({
           </div>
         )}
       </Panel>
+      <AdminConfirmDialog request={confirmRequest} busy={saving} onClose={() => setConfirmRequest(null)} />
     </div>
   )
 }
@@ -1008,19 +1027,28 @@ function HostYearPostsPanel({
     }
   }
 
-  const handleDelete = async (post: AdminCampaignPost) => {
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
+
+  const handleDelete = (post: AdminCampaignPost) => {
     if (!canEdit) return
-    if (!window.confirm(`Delete post "${post.title}"? This action is logged in the audit trail.`)) return
-    setError('')
-    setMessage('')
-    try {
-      await api.campaignDeletePost(campaign.slug, post.id)
-      setMessage(`Deleted "${post.title}".`)
-      if (editingId === post.id) resetForm()
-      await onSaved()
-    } catch (err) {
-      setError(mutationErrorMessage(err, 'Unable to delete post'))
-    }
+    setConfirmRequest({
+      title: `Delete "${post.title}"?`,
+      message: 'This post will be removed from the Host Year feed. This action is logged in the activity log.',
+      confirmLabel: 'Delete post',
+      destructive: true,
+      onConfirm: async () => {
+        setError('')
+        setMessage('')
+        try {
+          await api.campaignDeletePost(campaign.slug, post.id)
+          setMessage(`Deleted "${post.title}".`)
+          if (editingId === post.id) resetForm()
+          await onSaved()
+        } catch (err) {
+          setError(mutationErrorMessage(err, 'Unable to delete post'))
+        }
+      },
+    })
   }
 
   return (
@@ -1105,6 +1133,7 @@ function HostYearPostsPanel({
           </div>
         )}
       </Panel>
+      <AdminConfirmDialog request={confirmRequest} busy={saving} onClose={() => setConfirmRequest(null)} />
     </div>
   )
 }

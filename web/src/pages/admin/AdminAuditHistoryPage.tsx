@@ -135,19 +135,27 @@ function AuditHistory({ campaignId, area }: { campaignId?: string; area?: string
 
   return (
     <div className="page-stack admin-page audit-history">
-      <PageHeader title="Audit History" description="See what changed, who made the change, and when it happened. Times are in Guam." />
-      <Panel className="audit-filters">
-        <div className="audit-checkpoint">
-          {checkpoint && <span>
-            {checkpoint.createdAt
-              ? `Checkpoint #${checkpoint.latestCheckpointId} · ${formatGuamDate(checkpoint.createdAt)} · ${formatGuamTime(checkpoint.createdAt)} · ${checkpoint.coveredEventCount.toLocaleString()} covered`
-              : 'No checkpoint yet'}
-            {' · '}{checkpoint.uncheckpointedEventCount.toLocaleString()} awaiting checkpoint
-          </span>}
-          {canExport && <button type="button" className="btn secondary small" disabled={exporting} onClick={exportHistory}>
+      <PageHeader
+        title="Activity Log"
+        description="See what changed, who made the change, and when it happened. Times are in Guam."
+        actions={canExport ? (
+          <button type="button" className="btn secondary small" disabled={exporting} onClick={exportHistory}>
             {exporting ? 'Exporting…' : 'Export JSON'}
-          </button>}
-        </div>
+          </button>
+        ) : undefined}
+      />
+      <Panel className="audit-filters">
+        {checkpoint && (
+          <details className="admin-advanced-details" style={{ marginBottom: '0.75rem' }}>
+            <summary>Audit integrity &amp; verification</summary>
+            <p className="muted" style={{ margin: '0.5rem 0 0' }}>
+              {checkpoint.createdAt
+                ? `Checkpoint #${checkpoint.latestCheckpointId} · ${formatGuamDate(checkpoint.createdAt)} · ${formatGuamTime(checkpoint.createdAt)} · ${checkpoint.coveredEventCount.toLocaleString()} covered`
+                : 'No checkpoint yet'}
+              {' · '}{checkpoint.uncheckpointedEventCount.toLocaleString()} awaiting checkpoint
+            </p>
+          </details>
+        )}
         {exportError && <p role="alert">{exportError}</p>}
         {exportNotice && <p role="status">{exportNotice}</p>}
         <form className="audit-search" role="search" onSubmit={(event) => {
