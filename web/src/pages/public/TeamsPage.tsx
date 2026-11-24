@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { EmptyState, LoadingState, Panel, SectionUnavailable } from '../../components/ui'
+import { EmptyState, LoadingState, PageHeader, Panel, SectionUnavailable } from '../../components/ui'
+import { IconArrowRight } from '../../components/Icons'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 
@@ -18,10 +19,26 @@ export function TeamsPage() {
 
   return (
     <div className="page-stack">
-      <h1>{data?.tournament ? `${data.tournament.year} Teams & Rosters` : 'Teams & Rosters'}</h1>
+      <PageHeader
+        eyebrow={data?.tournament ? `${data.tournament.year} tournament` : 'Teams'}
+        title={data?.tournament ? `${data.tournament.year} Teams & Rosters` : 'Teams & Rosters'}
+        description="Official class entries, divisions, and tournament rosters once the season schedule is published."
+        actions={<Link className="btn secondary" to="/history">Tournament history <IconArrowRight size={15} /></Link>}
+      />
       {loading && !data && <LoadingState label="Loading teams" />}
       {error && <SectionUnavailable title="Teams are temporarily unavailable" onRetry={reload} />}
-      {!loading && !error && !data?.schedulePublished && <EmptyState title="The schedule hasn’t been published yet" description="Teams and rosters will appear here when the schedule is published." action={<Link to="/history">Explore past tournaments</Link>} />}
+      {!loading && !error && !data?.schedulePublished && (
+        <EmptyState
+          title="The schedule hasn’t been published yet"
+          description="Teams and rosters will appear here as soon as the 2027 tournament schedule is published."
+          action={
+            <div className="hero-actions">
+              <Link className="btn primary" to="/">Back to Host Year <IconArrowRight size={15} /></Link>
+              <Link className="btn secondary" to="/history">Explore past tournaments</Link>
+            </div>
+          }
+        />
+      )}
       {data?.schedulePublished && (
         <Panel>
           <div className="season-fields">

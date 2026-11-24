@@ -8,6 +8,7 @@ module SiteMode
     }.freeze
     LINKS = {
       home: [ "Home", "/" ], fundraisers: [ "Fundraisers", "/host-year" ], history: [ "History", "/history" ],
+      gallery: [ "Gallery", "/gallery" ], sponsors: [ "Sponsors", "/sponsors" ], info: [ "Info", "/info" ],
       schedule: [ "Schedule", "/schedule" ], teams: [ "Teams", "/teams" ], tickets: [ "Tickets", "/tickets" ],
       bracket: [ "Bracket", "/bracket" ], tonight: [ "Tonight", "/today" ], standings: [ "Standings", "/standings" ]
     }.freeze
@@ -123,7 +124,7 @@ module SiteMode
 
     def desktop_keys
       case mode
-      when "fundraising" then %i[home fundraisers history]
+      when "fundraising" then %i[home history gallery sponsors info]
       when "schedule_ready" then [ :home, :schedule, :teams, :tickets, (:bracket if sections["bracket"]), (:fundraisers if sections["fundraisers"]), :history ].compact
       when "tournament_live" then [ :tonight, :schedule, :standings, :bracket, :tickets, (:fundraisers if sections["fundraisers"]), :history ].compact
       when "tournament_recap" then [ :recap, :history, (:fundraisers if sections["fundraisers"]) ].compact
@@ -132,7 +133,7 @@ module SiteMode
 
     def mobile_keys
       case mode
-      when "fundraising" then %i[home fundraisers history]
+      when "fundraising" then %i[home history sponsors]
       when "schedule_ready" then [ :home, :schedule, :tickets, (:fundraisers if sections["fundraisers"]) ].compact
       when "tournament_live" then [ :tonight, :schedule, :tickets, (:fundraisers if sections["fundraisers"]) ].compact
       when "tournament_recap" then %i[recap history]

@@ -5,6 +5,7 @@ import { formatGuamDateTime } from '../../lib/datetime'
 import { useAsync } from '../../lib/hooks'
 import { safeHttpsHref } from '../../lib/urls'
 import type { HafapassEventSummary, HafapassTicketState, PublicTicketFundraiserItem, TicketsDoorInfo } from '../../lib/types'
+import { useSiteMode } from '../../contexts/SiteModeContext'
 import { LoadingState, PageHeader, Panel, SectionUnavailable, StatusBadge } from '../../components/ui'
 import { IconArrowRight, IconCalendar, IconExternal, IconTicket } from '../../components/Icons'
 
@@ -54,6 +55,7 @@ const MAX_COLD_SNAPSHOT_RETRIES = 2
 const COLD_SNAPSHOT_RETRY_DELAY_MS = 2_500
 
 export function TicketsPage() {
+  const { siteMode } = useSiteMode()
   const [searchParams] = useSearchParams()
   const campaignSlug = searchParams.get('campaignSlug')
   const rawYear = searchParams.get('year')
@@ -74,10 +76,17 @@ export function TicketsPage() {
   const passes = data?.passes || []
   const gameNights = data?.gameNights || []
   const otherEvents = data?.otherEvents || []
-  const fundraiserEvents = data?.fundraiserEvents || []
+  const rawFundraiserEvents = data?.fundraiserEvents || []
+  const fundraiserEvents = [...rawFundraiserEvents].sort((a, b) => {
+    const aClosed = a.status === 'completed' || a.status === 'cancelled' ? 1 : 0
+    const bClosed = b.status === 'completed' || b.status === 'cancelled' ? 1 : 0
+    return aClosed - bClosed
+  })
+  const hasTournamentListings = passes.length > 0 || gameNights.length > 0 || otherEvents.length > 0
+  const isFundraisingOnly = siteMode.mode === 'fundraising' && !hasTournamentListings
   const stale = Boolean(data?.hafapass.stale)
   const doorInfo = data?.doorInfo || FALLBACK_DOOR_INFO
-  const hasAnyListings = passes.length > 0 || gameNights.length > 0 || otherEvents.length > 0 || fundraiserEvents.length > 0
+  const hasAnyListings = hasTournamentListings || fundraiserEvents.length > 0
 
   useEffect(() => {
     retryCountRef.current = 0
@@ -99,13 +108,19 @@ export function TicketsPage() {
     <div className="page-stack tickets-page">
       <PageHeader
         eyebrow="Tickets & Passes"
-        title={data?.tournament ? `${data.tournament.year} Tournament Tickets` : 'Tournament Tickets'}
-        description="Official tournament passes, single-night Phoenix Center tickets, and host-class fundraiser events powered by HåfaPass."
+        title={isFundraisingOnly ? 'Fundraisers & 2027 Tickets' : data?.tournament ? `${data.tournament.year} Tournament Tickets` : 'Tournament Tickets'}
+        description={isFundraisingOnly
+          ? 'Host-class fundraiser events are underway now. Official 2027 tournament passes and single-night Phoenix Center tickets will post here via HåfaPass closer to tip-off.'
+          : 'Official tournament passes, single-night Phoenix Center tickets, and host-class fundraiser events powered by HåfaPass.'}
         actions={
           allTicketsHref ? (
             <a className="btn primary" href={allTicketsHref} target="_blank" rel="noreferrer">
               <IconTicket size={16} /> Buy on HåfaPass <IconExternal size={14} />
             </a>
+          ) : isFundraisingOnly ? (
+            <Link className="btn secondary" to="/">
+              Back to Host Year <IconArrowRight size={15} />
+            </Link>
           ) : (
             <Link className="btn secondary" to="/schedule">
               View schedule <IconArrowRight size={15} />
@@ -354,13 +369,16 @@ function FundraiserTicketCard({
 
       {item.shortDescription && <p className="ticket-card-description">{item.shortDescription}</p>}
 
-      {buyHref && (
-        <div className="ticket-card-actions">
-          <a className="btn secondary small" href={buyHref} target="_blank" rel="noreferrer">
+      <div className="ticket-card-actions">
+        {buyHref && (
+          <a className="btn primary small" href={buyHref} target="_blank" rel="noreferrer">
             {item.ctaLabel || 'Buy tickets'} <IconExternal size={14} />
           </a>
-        </div>
-      )}
+        )}
+        <Link className="btn secondary small" to={`/fundraisers/${item.id}`}>
+          {closed ? 'View recap' : 'Event details'} <IconArrowRight size={14} />
+        </Link>
+      </div>
     </article>
   )
 }

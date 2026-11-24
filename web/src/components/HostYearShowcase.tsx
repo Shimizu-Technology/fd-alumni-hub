@@ -103,6 +103,12 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
 
   const upcomingEvents = data.events.filter((event) => !isClosedFundraiser(event))
   const pastEvents = data.events.filter(isClosedFundraiser).reverse()
+  const shownEventImages = new Set(
+    data.events
+      .flatMap((event) => [event.imageUrl, event.recapPhotos?.[0]?.url])
+      .map((url) => safeHttpsHref(url))
+      .filter((href): href is string => Boolean(href)),
+  )
 
   const donateHref = safeHttpsHref(campaign.donationUrl)
   const golfHref = safeHttpsHref(campaign.golfUrl)
@@ -206,14 +212,16 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
           </div>
         )}
       </section>
-      <Panel className="host-donate-panel">
-        <div className="section-heading"><h2>Ways to donate &amp; sponsor</h2></div>
-        {campaign.donationInstructions && <p className="fundraiser-copy">{campaign.donationInstructions}</p>}
-        <div className="hero-actions">
-          {donateHref && <a className="btn primary small" href={donateHref} target="_blank" rel="noreferrer">Give online <IconExternal size={14} /></a>}
-          <Link className="btn secondary small" to="/sponsors">Explore sponsorship <IconArrowRight size={14} /></Link>
-        </div>
-      </Panel>
+      {(campaign.donationInstructions || donateHref) && (
+        <Panel className="host-donate-panel">
+          <div className="section-heading"><h2>Ways to donate &amp; sponsor</h2></div>
+          {campaign.donationInstructions && <p className="fundraiser-copy">{campaign.donationInstructions}</p>}
+          <div className="hero-actions">
+            {donateHref && <a className="btn primary small" href={donateHref} target="_blank" rel="noreferrer">Give online <IconExternal size={14} /></a>}
+            <Link className="btn secondary small" to="/sponsors">Explore sponsorship <IconArrowRight size={14} /></Link>
+          </div>
+        </Panel>
+      )}
 
       {hafapass.events.length > 0 && (
         <section className="host-section">
@@ -238,6 +246,7 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
           <div className="host-posts-list">
             {posts.map((post) => {
               const postImageHref = safeHttpsHref(post.imageUrl)
+              const showPostImage = Boolean(postImageHref && !shownEventImages.has(postImageHref))
               return (
                 <RevealOnScroll key={post.id}>
                   <Panel className="host-post-card">
@@ -251,7 +260,7 @@ export function HostYearShowcase({ data }: { data: HostYearResponse }) {
                         {post.authorName ? ` · ${post.authorName}` : ''}
                       </small>
                     </div>
-                    {postImageHref && (
+                    {showPostImage && postImageHref && (
                       <div className="host-post-media">
                         <img src={postImageHref} alt="" loading="lazy" />
                       </div>

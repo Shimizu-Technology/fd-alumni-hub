@@ -1,9 +1,17 @@
+import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAsync } from '../../lib/hooks'
 import { groupSponsorsByTier } from '../../lib/sponsors'
 import { safeHttpsHref } from '../../lib/urls'
 import { LoadingState, PageHeader, Panel, SectionUnavailable } from '../../components/ui'
-import { IconExternal } from '../../components/Icons'
+import { IconArrowRight, IconExternal } from '../../components/Icons'
+
+const sponsorPreviewTiers = [
+  { name: 'Title & Diamond', detail: 'Premier tournament naming, court banner, and digital hub spotlight.' },
+  { name: 'Presenting & Platinum', detail: 'Featured placement across game nights, broadcasts, and tournament signage.' },
+  { name: 'Court & Gold', detail: 'Phoenix Center recognition and alumni hub partner directory listing.' },
+  { name: 'Community Partner', detail: 'Direct support for host-class fundraising events and tournament operations.' },
+]
 
 export function SponsorsPage() {
   const { data, loading, error, reload } = useAsync(() => api.publicSponsors(), [])
@@ -28,8 +36,24 @@ export function SponsorsPage() {
         />
       ) : groups.length === 0 ? (
         <Panel className="sponsor-placeholder">
-          <h2>Sponsor announcements coming soon</h2>
-          <p>Approved tournament partners will appear here with logos and links as sponsor packages are confirmed.</p>
+          <div className="section-heading">
+            <div>
+              <h2>Partner with the FD Alumni Tournament</h2>
+              <p>Confirmed sponsors will appear here with logos and partner links as 2027 packages are finalized. Interested businesses and alumni families can connect with the host class board.</p>
+            </div>
+          </div>
+          <div className="sponsor-tiers-preview">
+            {sponsorPreviewTiers.map((tier) => (
+              <div key={tier.name} className="sponsor-tier-preview-card">
+                <strong>{tier.name}</strong>
+                <p>{tier.detail}</p>
+              </div>
+            ))}
+          </div>
+          <div className="hero-actions">
+            <Link className="btn primary" to="/">View Host Year Hub <IconArrowRight size={15} /></Link>
+            <Link className="btn secondary" to="/info">Tournament Info</Link>
+          </div>
         </Panel>
       ) : (
         groups.map((group) => (

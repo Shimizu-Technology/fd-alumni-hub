@@ -3,18 +3,30 @@ module Api
     module Public
       class ArticlesController < BaseController
         def index
-          tournament = current_tournament
-          return render json: { tournament: nil, articles: [] } unless tournament
+          archive = params[:archive] == "true" && params[:tournamentId].blank? && params[:year].blank?
+          tournament = current_tournament unless archive
+          return render json: { tournament: nil, articles: [] } unless archive || tournament
 
           limit = integer_param(:limit, default: 50, maximum: 200)
-          articles = tournament.article_links.includes(game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest.limit(limit)
-
-          articles = articles.where(game_id: nil) unless tournament.publicly_visible_schedule?
+          articles = archive ? archive_articles : tournament_articles(tournament)
+          articles = articles.includes(:tournament, game: [ :division_record, { home_team: :division_record, away_team: :division_record } ]).latest.limit(limit)
 
           render json: {
-            tournament: tournament.api_json,
+            tournament: tournament&.api_json,
             articles: articles.map(&:api_json)
           }
+        end
+
+        private
+
+        def tournament_articles(tournament)
+          tournament.publicly_visible_schedule? ? tournament.article_links : tournament.article_links.where(game_id: nil)
+        end
+
+        def archive_articles
+          public_tournaments = Tournament.with_public_schedule.or(Tournament.where(id: site_context.tournament&.id))
+          scoped = ArticleLink.where(tournament: public_tournaments)
+          scoped.where(game_id: nil).or(scoped.where(tournament: Tournament.with_public_schedule))
         end
       end
     end

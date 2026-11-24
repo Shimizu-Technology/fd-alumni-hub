@@ -269,6 +269,7 @@ export type ArticleKind = 'preview' | 'recap' | 'playoffs' | 'championship' | 'h
 export type Article = {
   id: string
   tournamentId: string
+  tournamentYear?: number | null
   gameId: string | null
   game?: RelatedGameSummary | null
   title: string

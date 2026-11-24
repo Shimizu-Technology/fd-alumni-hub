@@ -125,7 +125,7 @@ export function AdminLinksPage() {
 
   return (
     <div className="page-stack admin-page">
-      <PageHeader eyebrow="Admin" title="Ticket and stream links" description="Paste GuamTime ticket links and Clutch or partner stream links for each scheduled game." actions={<button className="btn primary" onClick={save}>Save changes</button>} />
+      <PageHeader eyebrow="Admin" title="Ticket and stream links" description="Paste HåfaPass ticket links and Clutch or partner stream links for each scheduled game." actions={<button className="btn primary" onClick={save}>Save changes</button>} />
       <TournamentFilter tournaments={data?.tournaments || []} value={tournament?.id || ''} onChange={setTournamentId} />
       <TicketBulkPanel value={commonTicketUrl} gamesCount={data?.games.length || 0} onChange={setCommonTicketUrl} onApply={applyCommonTicketUrl} />
       {message && (
@@ -182,18 +182,18 @@ function TicketBulkPanel({ value, gamesCount, onChange, onApply }: { value: stri
       <div className="section-heading compact-heading">
         <div>
           <h2>Common ticket link</h2>
-          <p className="muted">Most games can share the same GuamTime link. Championship sessions or special events can be overridden row-by-row after applying.</p>
+          <p className="muted">Most games can share the same HåfaPass link. Championship sessions or special events can be overridden row-by-row after applying.</p>
         </div>
         <span>{gamesCount} games</span>
       </div>
       <div className="bulk-ticket-actions">
-        <Field label="GuamTime ticket URL"><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://guamtime.net/..." /></Field>
+        <Field label="HåfaPass ticket URL"><input value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://hafapass.com/..." /></Field>
         <div className="row-actions">
           <button className="btn secondary" type="button" onClick={() => onApply('missing')}>Fill missing only</button>
           <button className="btn primary" type="button" onClick={() => onApply('all')}>Apply to all games</button>
         </div>
       </div>
-      <p className="field-help">Ticket prices can vary by listing or session, so GuamTime remains the source of truth for current pricing before purchase.</p>
+      <p className="field-help">Ticket prices can vary by listing or session, so HåfaPass remains the source of truth for current pricing before purchase.</p>
     </Panel>
   )
 }
@@ -213,7 +213,7 @@ function LinkRow({ game, value, dirty, onChange }: { game: Game; value: LinkDraf
     <article className="admin-row-card link-admin-row">
       <div className="admin-row-head"><div><strong>{gameMatchupLabel(game)}</strong><span>{formatGuamDateTime(game.startTime)}</span></div>{dirty && <span className="draft-badge">Unsaved changes</span>}</div>
       <FormGrid>
-        <Field label="GuamTime ticket URL"><input value={value.ticketUrl} onChange={(event) => onChange({ ...value, ticketUrl: event.target.value })} /></Field>
+        <Field label="HåfaPass ticket URL"><input value={value.ticketUrl} onChange={(event) => onChange({ ...value, ticketUrl: event.target.value })} /></Field>
         <Field label="Clutch / stream URL"><input value={value.streamUrl} onChange={(event) => onChange({ ...value, streamUrl: event.target.value })} /></Field>
       </FormGrid>
     </article>
