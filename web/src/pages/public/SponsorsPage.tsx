@@ -9,7 +9,7 @@ import { IconArrowRight, IconExternal } from '../../components/Icons'
 const sponsorPreviewTiers = [
   { name: 'Title & Diamond', detail: 'Premier tournament naming, court banner, and digital hub spotlight.' },
   { name: 'Presenting & Platinum', detail: 'Featured placement across game nights, broadcasts, and tournament signage.' },
-  { name: 'Court & Gold', detail: 'Phoenix Center recognition and alumni hub partner directory listing.' },
+  { name: 'Court & Gold', detail: 'Gym signage at The Jungle and alumni hub partner directory listing.' },
   { name: 'Community Partner', detail: 'Direct support for host-class fundraising events and tournament operations.' },
 ]
 

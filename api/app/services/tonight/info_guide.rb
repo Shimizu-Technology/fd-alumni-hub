@@ -1,7 +1,7 @@
 module Tonight
   module InfoGuide
     DEFAULTS = {
-      "venueName" => "Phoenix Center",
+      "venueName" => "The Jungle (FD Gym)",
       "venueAddress" => "",
       "ticketSourceName" => "HåfaPass",
       "ticketSourceUrl" => "/tickets",

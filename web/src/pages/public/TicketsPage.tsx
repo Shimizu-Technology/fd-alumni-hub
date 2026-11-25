@@ -17,7 +17,7 @@ const currencyPrecise = new Intl.NumberFormat('en-US', {
 })
 
 const FALLBACK_DOOR_INFO: TicketsDoorInfo = {
-  venue: 'Father Duenas Phoenix Center (Mangilao, Guam)',
+  venue: 'The Jungle — Father Dueñas Memorial School (Mangilao, Guam)',
   doorsOpenNote: 'Check the schedule and Today at The Jungle for nightly tip-off times and door-opening updates.',
   paymentNote: 'Advance digital tickets and tournament passes are sold online through HåfaPass. Check HåfaPass event listings or game-day notes for door admission details.',
   reentryNote: 'Keep your digital HåfaPass ticket ready at the entrance and follow FDAA staff guidance for re-entry.',
@@ -112,8 +112,8 @@ export function TicketsPage() {
           ? `${data.tournament ? `${data.tournament.year} ` : ''}Fundraisers & Tournament Tickets`
           : data?.tournament ? `${data.tournament.year} Tournament Tickets` : 'Tournament Tickets'}
         description={isFundraisingOnly && data
-          ? `Host-class fundraiser events are underway now. Official ${data.tournament ? `${data.tournament.year} ` : ''}tournament passes and single-night Phoenix Center tickets will post here via HåfaPass closer to tip-off.`
-          : 'Official tournament passes, single-night Phoenix Center tickets, and host-class fundraiser events powered by HåfaPass.'}
+          ? `Host-class fundraiser events are underway now. Official ${data.tournament ? `${data.tournament.year} ` : ''}tournament passes and single-night tickets at The Jungle will post here via HåfaPass closer to tip-off.`
+          : 'Official tournament passes, single-night tickets at The Jungle, and host-class fundraiser events powered by HåfaPass.'}
         actions={
           allTicketsHref ? (
             <a className="btn primary" href={allTicketsHref} target="_blank" rel="noreferrer">
@@ -249,7 +249,7 @@ export function TicketsPage() {
       <section className="panel door-info-panel" aria-labelledby="door-info-heading">
         <div className="section-heading">
           <h2 id="door-info-heading">Door & admission info</h2>
-          <span>Phoenix Center game-night guide</span>
+          <span>The Jungle game-night guide</span>
         </div>
         <div className="door-info-grid">
           <div>

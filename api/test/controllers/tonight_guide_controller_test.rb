@@ -254,7 +254,7 @@ class TonightGuideControllerTest < ActionDispatch::IntegrationTest
     assert_equal "/tickets", response.parsed_body.dig("infoGuide", "ticketSourceUrl")
     assert_equal "HåfaPass", response.parsed_body.dig("infoGuide", "ticketSourceName")
     get INFO, params: { tournamentId: other.id }
-    assert_equal "Phoenix Center", response.parsed_body.dig("infoGuide", "venueName")
+    assert_equal "The Jungle (FD Gym)", response.parsed_body.dig("infoGuide", "venueName")
   end
 
   test "migration down and up preserves legacy notes and restores update audit capture" do
