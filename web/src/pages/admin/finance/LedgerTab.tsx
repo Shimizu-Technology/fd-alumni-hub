@@ -91,6 +91,14 @@ export function LedgerTab({
           </div>
         </div>
 
+        {message && <p role="status" style={{ margin: '0.6rem 0' }}>{message}</p>}
+        {error && <p className="form-error" role="alert" style={{ margin: '0.6rem 0' }}>{error}</p>}
+        {canWrite && entries.length > 0 && (
+          <p className="muted" style={{ margin: '0.25rem 0 0.65rem', fontSize: '0.88rem' }}>
+            Made a typo? Click Void with a short note and re-enter the entry so the board audit trail stays intact.
+          </p>
+        )}
+
         {ledgerError ? (
           <ErrorState message={ledgerError} onRetry={onRetryLedger} />
         ) : loading ? (

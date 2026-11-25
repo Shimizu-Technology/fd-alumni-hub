@@ -831,6 +831,10 @@ function hasEventRecap(event: AdminCampaignEvent) {
   return Boolean(event.recapNotes || event.recapHighlights || event.raisedDisplay || event.recapPhotos?.length)
 }
 
+function normalizeRecapPhotos(list: RecapPhoto[]) {
+  return list.map(({ url, caption }) => ({ url, caption: caption?.trim() || '' }))
+}
+
 function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }: {
   campaignSlug: string
   event: AdminCampaignEvent
@@ -842,15 +846,58 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
   const [highlights, setHighlights] = useState(event.recapHighlights || '')
   const [raised, setRaised] = useState(event.raisedDisplay || '')
   const [photos, setPhotos] = useState<RecapPhoto[]>(event.recapPhotos || [])
+  const [savedBaseline, setSavedBaseline] = useState(() => JSON.stringify({
+    notes: (event.recapNotes || '').trim(),
+    highlights: (event.recapHighlights || '').trim(),
+    raised: (event.raisedDisplay || '').trim(),
+    photos: normalizeRecapPhotos(event.recapPhotos || []),
+  }))
+  const [confirmClose, setConfirmClose] = useState<ConfirmDialogRequest | null>(null)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
+  const currentSnapshot = JSON.stringify({
+    notes: notes.trim(),
+    highlights: highlights.trim(),
+    raised: raised.trim(),
+    photos: normalizeRecapPhotos(photos),
+  })
+  const isDirty = currentSnapshot !== savedBaseline
+
   useEffect(() => {
     onBusyChange(uploading || saving)
     return () => onBusyChange(false)
   }, [uploading, saving, onBusyChange])
+
+  const requestClose = () => {
+    if (uploading || saving) return
+    if (!isDirty) {
+      onClose()
+      return
+    }
+    setConfirmClose({
+      title: 'Discard unsaved recap changes?',
+      message: 'You have unsaved notes or uploaded photos. Close without saving?',
+      confirmLabel: 'Discard changes',
+      destructive: true,
+      onConfirm: () => {
+        setConfirmClose(null)
+        onClose()
+      },
+    })
+  }
+
+  const movePhoto = (fromIndex: number, toIndex: number) => {
+    setPhotos((current) => {
+      if (toIndex < 0 || toIndex >= current.length) return current
+      const next = [...current]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }
 
   const uploadPhotos = async (change: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(change.currentTarget.files || [])
@@ -887,12 +934,22 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
     setMessage('')
     setError('')
     try {
+      const cleanedNotes = notes.trim()
+      const cleanedHighlights = highlights.trim()
+      const cleanedRaised = raised.trim()
+      const cleanedPhotos = photos.map(({ url, caption }) => ({ url, caption: caption?.trim() || undefined }))
       await api.campaignUpdateEvent(campaignSlug, event.id, {
-        recapNotes: notes.trim() || null,
-        recapHighlights: highlights.trim() || null,
-        raisedDisplay: raised.trim() || null,
-        recapPhotos: photos.map(({ url, caption }) => ({ url, caption: caption?.trim() || undefined })),
+        recapNotes: cleanedNotes || null,
+        recapHighlights: cleanedHighlights || null,
+        raisedDisplay: cleanedRaised || null,
+        recapPhotos: cleanedPhotos,
       })
+      setSavedBaseline(JSON.stringify({
+        notes: cleanedNotes,
+        highlights: cleanedHighlights,
+        raised: cleanedRaised,
+        photos: normalizeRecapPhotos(photos),
+      }))
       setMessage('Recap saved.')
       await onSaved()
     } catch (err) {
@@ -903,58 +960,78 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
   }
 
   return (
-    <AdminEditorDialog title={`Recap & photos for ${event.title}`} onClose={onClose} busy={uploading || saving} drawer>
-      <form className="admin-event-recap" onSubmit={save} aria-label={`Recap for ${event.title}`}>
-        <Field label="Amount raised">
-          <input value={raised} maxLength={80} disabled={saving} placeholder="$6,205+ raised" onChange={(change) => setRaised(change.target.value)} />
-        </Field>
-        <p className="muted-note" style={{ marginTop: '-0.35rem' }}>
-          Optional badge shown on this event&apos;s recap card. Actual dollar totals on the public fundraising meter come from Board Finance.
-        </p>
-        <Field label="Recap notes">
-          <textarea value={notes} rows={4} maxLength={5000} disabled={saving} placeholder="Share how the fundraiser went, thank brothers and sponsors, or add turnout highlights…" onChange={(change) => setNotes(change.target.value)} />
-        </Field>
-        <Field label="Recap highlights">
-          <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} placeholder="Optional short highlights (e.g., raffle winners, custom brews, turnout)." onChange={(change) => setHighlights(change.target.value)} />
-        </Field>
-        <Field label={uploading ? 'Uploading recap photos…' : 'Upload recap photos'}>
-          <input type="file" multiple accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
-            disabled={uploading || saving || photos.length >= recapPhotoLimit} />
-        </Field>
-        <p className="muted-note">Select one or more photos from your phone or computer ({photos.length} of {recapPhotoLimit} added).</p>
-        {photos.length > 0 && (
-          <div className="fundraiser-photo-grid admin-event-photos">
-            {photos.map((photo, index) => (
-              <div key={`${photo.url}-${index}`}>
-                <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
-                <Field label={`Caption for photo ${index + 1}`}>
-                  <input value={photo.caption || ''} maxLength={240} disabled={saving} placeholder="Optional caption"
-                    onChange={(change) => setPhotos((current) => current.map((item, photoIndex) =>
-                      index === photoIndex ? { ...item, caption: change.target.value } : item))} />
-                </Field>
-                <button type="button" className="btn secondary small" disabled={saving}
-                  onClick={() => setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index))}>
-                  Remove photo {index + 1}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="row-actions">
-          <button type="submit" className="btn primary" disabled={uploading || saving}>{saving ? 'Saving…' : 'Save recap'}</button>
-          <button type="button" className="btn secondary" disabled={uploading || saving} onClick={onClose}>Close recap editor</button>
-        </div>
-        {message && (
-          <p role="status">
-            {message}{' '}
-            {message === 'Recap saved.' && (
-              <Link to={`/fundraisers/${event.id}`} target="_blank" rel="noreferrer">View public recap →</Link>
-            )}
+    <>
+      <AdminEditorDialog title={`Recap & photos for ${event.title}`} onClose={requestClose} busy={uploading || saving || Boolean(confirmClose)} drawer>
+        <form className="admin-event-recap" onSubmit={save} aria-label={`Recap for ${event.title}`}>
+          <Field label="Amount raised">
+            <input value={raised} maxLength={80} disabled={saving} placeholder="$6,205+ raised" onChange={(change) => setRaised(change.target.value)} />
+          </Field>
+          <p className="muted-note" style={{ marginTop: '-0.35rem' }}>
+            Optional badge shown on this event&apos;s recap card. Actual dollar totals on the public fundraising meter come from Board Finance.
           </p>
-        )}
-        {error && <p className="form-error" role="alert">{error}</p>}
-      </form>
-    </AdminEditorDialog>
+          <Field label="Recap notes">
+            <textarea value={notes} rows={4} maxLength={5000} disabled={saving} placeholder="Share how the fundraiser went, thank brothers and sponsors, or add turnout highlights…" onChange={(change) => setNotes(change.target.value)} />
+          </Field>
+          <Field label="Recap highlights">
+            <textarea value={highlights} rows={3} maxLength={1000} disabled={saving} placeholder="Optional short highlights (e.g., raffle winners, custom brews, turnout)." onChange={(change) => setHighlights(change.target.value)} />
+          </Field>
+          <Field label={uploading ? 'Uploading recap photos…' : 'Upload recap photos'}>
+            <input type="file" multiple accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={(change) => void uploadPhotos(change)}
+              disabled={uploading || saving || photos.length >= recapPhotoLimit} />
+          </Field>
+          <p className="muted-note">Select one or more photos from your phone or computer ({photos.length} of {recapPhotoLimit} added). The first photo leads the recap gallery.</p>
+          {photos.length > 0 && (
+            <div className="fundraiser-photo-grid admin-event-photos">
+              {photos.map((photo, index) => (
+                <div key={`${photo.url}-${index}`}>
+                  <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
+                  {index === 0 && <span className="pill" style={{ justifySelf: 'start' }}>Lead photo</span>}
+                  <Field label={`Caption for photo ${index + 1}`}>
+                    <input value={photo.caption || ''} maxLength={240} disabled={saving} placeholder="Optional caption"
+                      onChange={(change) => setPhotos((current) => current.map((item, photoIndex) =>
+                        index === photoIndex ? { ...item, caption: change.target.value } : item))} />
+                  </Field>
+                  <div className="row-actions">
+                    {photos.length > 1 && (
+                      <>
+                        <button type="button" className="btn secondary small" disabled={saving || index === 0}
+                          aria-label={`Move photo ${index + 1} earlier`}
+                          onClick={() => movePhoto(index, index - 1)}>
+                          ← Earlier
+                        </button>
+                        <button type="button" className="btn secondary small" disabled={saving || index === photos.length - 1}
+                          aria-label={`Move photo ${index + 1} later`}
+                          onClick={() => movePhoto(index, index + 1)}>
+                          Later →
+                        </button>
+                      </>
+                    )}
+                    <button type="button" className="btn secondary small" disabled={saving}
+                      onClick={() => setPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index))}>
+                      Remove photo {index + 1}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="row-actions">
+            <button type="submit" className="btn primary" disabled={uploading || saving}>{saving ? 'Saving…' : 'Save recap'}</button>
+            <button type="button" className="btn secondary" disabled={uploading || saving} onClick={requestClose}>Close recap editor</button>
+          </div>
+          {message && (
+            <p role="status">
+              {message}{' '}
+              {message === 'Recap saved.' && (
+                <Link to={`/fundraisers/${event.id}`} target="_blank" rel="noreferrer">View public recap →</Link>
+              )}
+            </p>
+          )}
+          {error && <p className="form-error" role="alert">{error}</p>}
+        </form>
+      </AdminEditorDialog>
+      <AdminConfirmDialog request={confirmClose} busy={saving} onClose={() => setConfirmClose(null)} />
+    </>
   )
 }
 
@@ -973,6 +1050,7 @@ function HostYearPostsPanel({
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [publishNow, setPublishNow] = useState(true)
   const [publishedAt, setPublishedAt] = useState('')
   const [pinned, setPinned] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -985,6 +1063,7 @@ function HostYearPostsPanel({
     setTitle('')
     setBody('')
     setImageUrl('')
+    setPublishNow(true)
     setPublishedAt('')
     setPinned(false)
   }
@@ -994,6 +1073,7 @@ function HostYearPostsPanel({
     setTitle(post.title)
     setBody(post.body)
     setImageUrl(post.imageUrl || '')
+    setPublishNow(false)
     setPublishedAt(toDatetimeLocalValue(post.publishedAt))
     setPinned(post.pinned)
     setMessage('')
@@ -1006,9 +1086,11 @@ function HostYearPostsPanel({
     if (!file) return
     setUploading(true)
     setError('')
+    setMessage('')
     try {
       const publicUrl = await uploadCampaignImage({ file, campaignSlug: campaign.slug })
       setImageUrl(publicUrl)
+      setMessage('Image uploaded — tap Create post or Save post to publish.')
     } catch (err) {
       setError(mutationErrorMessage(err, 'Unable to upload post image'))
     } finally {
@@ -1027,7 +1109,7 @@ function HostYearPostsPanel({
         title: title.trim(),
         body: body.trim(),
         imageUrl: imageUrl.trim() || null,
-        publishedAt: fromDatetimeLocalValue(publishedAt),
+        publishedAt: publishNow ? new Date().toISOString() : fromDatetimeLocalValue(publishedAt),
         pinned,
       }
       if (editingId) {
@@ -1035,7 +1117,7 @@ function HostYearPostsPanel({
         setMessage('Post updated.')
       } else {
         await api.campaignCreatePost(campaign.slug, payload)
-        setMessage('Post created.')
+        setMessage(publishNow ? 'Post published.' : 'Post saved.')
       }
       resetForm()
       await onSaved()
@@ -1047,6 +1129,7 @@ function HostYearPostsPanel({
   }
 
   const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
+  const postImagePreview = safeHttpsHref(imageUrl)
 
   const handleDelete = (post: AdminCampaignPost) => {
     if (!canEdit) return
@@ -1079,41 +1162,65 @@ function HostYearPostsPanel({
             {editingId && <button type="button" className="btn secondary small" onClick={resetForm}>Cancel edit</button>}
           </div>
           <form onSubmit={handleSubmit}>
-            <FormGrid>
-              <Field label="Headline">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={180} placeholder="Kickoff Night Recap" />
-              </Field>
-              <Field label="Publish date & time (leave blank for draft)">
-                <input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
-              </Field>
-              <Field label="Post image URL (https://)">
-                <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
-              </Field>
-            </FormGrid>
-
-            <Field label="Body (plain text, blank lines separate paragraphs)">
-              <textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)} required />
+            <Field label="Headline">
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={180} placeholder="Kickoff Night Recap" />
             </Field>
 
-            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
-              <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-              <span>Pin to top of Host Year updates</span>
-            </label>
+            <Field label="Body (plain text, blank lines separate paragraphs)">
+              <textarea rows={5} value={body} onChange={(e) => setBody(e.target.value)} required placeholder="Share a fundraiser recap, upcoming date, or shoutout to alumni and sponsors…" />
+            </Field>
+
+            <div className="admin-event-flyer">
+              <Field label={uploading ? 'Uploading image…' : postImagePreview ? 'Replace post image' : 'Upload post image (optional)'}>
+                <input type="file" accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading || saving} />
+              </Field>
+              {postImagePreview && (
+                <div className="row-actions">
+                  <img className="admin-event-thumbnail" src={postImagePreview} alt="Post image preview" />
+                  <button type="button" className="btn secondary small" disabled={uploading || saving} onClick={() => setImageUrl('')}>Remove image</button>
+                </div>
+              )}
+              <details>
+                <summary>Use an image URL</summary>
+                <Field label="Post image URL (https://)">
+                  <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." disabled={uploading || saving} />
+                </Field>
+              </details>
+            </div>
+
+            <div className="row-actions" style={{ marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <label className="admin-inline-check">
+                <input
+                  type="checkbox"
+                  checked={publishNow}
+                  onChange={(e) => setPublishNow(e.target.checked)}
+                />
+                <span>Publish immediately</span>
+              </label>
+              <label className="admin-inline-check">
+                <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+                <span>Pin to top of Host Year updates</span>
+              </label>
+            </div>
+
+            {!publishNow && (
+              <div className="row-actions" style={{ marginTop: '0.6rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <Field label="Publish date & time (leave blank to save as draft)">
+                  <input type="datetime-local" value={publishedAt} onChange={(e) => setPublishedAt(e.target.value)} />
+                </Field>
+                <button
+                  type="button"
+                  className="btn secondary small"
+                  onClick={() => setPublishedAt(toDatetimeLocalValue(new Date().toISOString()))}
+                >
+                  Set publish to now
+                </button>
+              </div>
+            )}
 
             <div className="row-actions" style={{ marginTop: '0.75rem' }}>
-              <button
-                type="button"
-                className="btn secondary small"
-                onClick={() => setPublishedAt(toDatetimeLocalValue(new Date().toISOString()))}
-              >
-                Set publish to now
-              </button>
-              <label className="btn secondary small" style={{ cursor: 'pointer' }}>
-                {uploading ? 'Uploading image…' : 'Upload post image'}
-                <input type="file" accept={WEB_IMAGE_UPLOAD_ACCEPT} onChange={handleImageUpload} disabled={uploading} style={{ display: 'none' }} />
-              </label>
               <button className="btn primary" type="submit" disabled={saving || uploading}>
-                {saving ? 'Saving…' : editingId ? 'Save post' : 'Create post'}
+                {saving ? 'Saving…' : editingId ? 'Save post' : publishNow ? 'Publish post' : 'Save draft / schedule'}
               </button>
             </div>
             {message && <p role="status" style={{ marginTop: '0.6rem' }}>{message}</p>}

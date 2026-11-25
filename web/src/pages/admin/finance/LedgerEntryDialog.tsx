@@ -178,8 +178,17 @@ export function LedgerEntryDialog({ campaignSlug, entryType, eventId, options, o
                 {PAYMENT_METHODS.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}
               </select>
             </Field>
+            <Field label="Fundraiser event">
+              <select value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)}>
+                <option value="">None / General</option>
+                {options.events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
+              </select>
+            </Field>
           </FormGrid>
-          {income && <p className="state-card">Gross sales are before fees. The deposited amount is what actually arrived after fees. Record one or the other for the same proceeds.</p>}
+          <Field label="Notes (optional)">
+            <textarea name="description" rows={2} placeholder={income ? 'e.g. Extra ticket cash turned in by Sean, or sponsor check note' : 'e.g. Flyers, ice, or venue deposit'} />
+          </Field>
+          {income && <p className="state-card">Gross sales are before fees. Fundraiser net payout is what actually arrived after fees (use this if you already have net cash or checks after venue costs). Record one or the other for the same proceeds.</p>}
           {linkedEvent && <p>Fundraiser event <strong>{linkedEvent.title}</strong></p>}
           {eventId && !options.events.some((event) => event.id === eventId) && <p role="status">This event is unavailable in the selected campaign.</p>}
 
@@ -214,12 +223,6 @@ export function LedgerEntryDialog({ campaignSlug, entryType, eventId, options, o
                   {budgetLines.map((line) => <option key={line.id} value={line.id}>{line.category}</option>)}
                 </select>
               </Field>
-              <Field label="Fundraiser event">
-                <select value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)}>
-                  <option value="">None</option>
-                  {options.events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
-                </select>
-              </Field>
               <Field label="Sponsor">
                 <select name="sponsorId">
                   <option value="">None</option>
@@ -233,7 +236,6 @@ export function LedgerEntryDialog({ campaignSlug, entryType, eventId, options, o
                 </select>
               </Field>}
               <Field label="Reference number"><input name="referenceNumber" placeholder="Check #, PayPal ID, or deposit note" /></Field>
-              <Field label="Notes"><textarea name="description" rows={2} /></Field>
             </FormGrid>
           </details>
 
