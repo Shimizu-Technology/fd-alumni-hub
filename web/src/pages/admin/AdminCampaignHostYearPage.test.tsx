@@ -39,6 +39,7 @@ it('uploads, previews, replaces and removes a flyer and uses the stored status f
   expect(screen.queryByLabelText('Title')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Add fundraiser' }))
   expect(screen.getByRole('dialog', { name: 'Add fundraiser' })).toBeInTheDocument()
+  expect(screen.getByText(/Ticketing links & advanced options/i).closest('details')).not.toHaveAttribute('open')
   fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'New fundraiser' } })
   const firstFlyer = new File(['flyer'], 'first.png', { type: 'image/png' })
   fireEvent.change(screen.getByLabelText('Upload flyer image'), { target: { files: [firstFlyer] } })
@@ -92,6 +93,7 @@ it('uploads multiple recap photos, preserves a successful partial upload, and sa
   fireEvent.change(recap.getByLabelText('Caption for photo 1'), { target: { value: 'The team' } })
   fireEvent.click(recap.getByRole('button', { name: 'Save recap' }))
   expect(await recap.findByRole('status')).toHaveTextContent('Recap saved.')
+  expect(recap.getByRole('link', { name: /View public recap/i })).toHaveAttribute('href', `/fundraisers/${adminEvent.id}`)
   expect(update).toHaveBeenCalledWith(adminCampaign.slug, adminEvent.id, {
     recapNotes: 'Thank you!', recapHighlights: 'Alumni scrimmage.', raisedDisplay: '$4,200 raised',
     recapPhotos: [{ url: 'https://images.example.com/first.jpg', caption: 'The team' }],

@@ -226,7 +226,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 
 .article-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .article-card { overflow: hidden; background: #fff; border: 1px solid var(--line); border-radius: 1.35rem; box-shadow: 0 14px 36px rgba(66,16,31,.07); }
-.article-card img, .article-card .image-placeholder { width: 100%; aspect-ratio: 16/10; object-fit: cover; background: linear-gradient(135deg, var(--fd-maroon), var(--fd-gold)); color: #fff; display: grid; place-items: center; font-size: 3rem; font-weight: 900; }
+.article-card img, .article-card .image-placeholder, .gallery-card .image-placeholder { width: 100%; aspect-ratio: 16/10; object-fit: cover; background: linear-gradient(135deg, var(--fd-maroon), var(--fd-gold)); color: #fff; display: grid; place-items: center; font-size: 3rem; font-weight: 900; padding: 0; }
 .article-card div { padding: 1rem; display: grid; gap: .45rem; }
 .article-card span, .gallery-card span { color: var(--fd-maroon); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 900; }
 .article-card h2, .gallery-card h2 { margin: 0; font-size: 1.12rem; line-height: 1.2; letter-spacing: -.03em; }
@@ -2992,6 +2992,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
   min-width: 0;
 }
 .admin-shell input, .admin-shell select, .admin-shell textarea, .admin-shell .btn { max-width: 100%; }
+.admin-shell :is(input, select, textarea) { min-width: 0; }
 .admin-shell .btn { border-radius: .55rem; font-weight: 700; text-align: center; }
 .admin-shell .btn.primary { background: var(--fd-maroon); color: #fff; box-shadow: none; }
 .admin-shell .btn.secondary { color: var(--ink); }
@@ -3110,7 +3111,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(200,155,60,.
 .admin-shell .admin-editor-backdrop { grid-template-columns: minmax(0, 1fr); background: rgb(19 25 35 / 54%); }
 .admin-shell .admin-editor-dialog { align-content: start; overscroll-behavior: contain; }
 .admin-shell .admin-editor-dialog > .section-heading { margin-bottom: 0; }
-.admin-shell .admin-editor-dialog .form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr)); }
+.admin-shell .admin-editor-dialog .form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.5rem), 1fr)); }
 .admin-shell .admin-editor-drawer { justify-items: end; padding: 0; }
 .admin-shell .admin-editor-drawer > .admin-editor-dialog { width: min(34rem, 100%); height: 100dvh; max-height: none; border-radius: 0; }
 .admin-shell .admin-event-recap { margin: 0; padding: 0; border: 0; }

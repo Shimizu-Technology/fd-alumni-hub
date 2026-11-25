@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { SITE_URL } from '../lib/site'
 
-const SITE_NAME = 'FD Alumni Basketball Hub'
+export const SITE_NAME = 'FD Alumni Basketball Hub'
 const DEFAULT_IMAGE = `${SITE_URL}/og-image.png`
 const DEFAULT_DESCRIPTION = 'Central hub for FD Alumni Basketball Tournament schedules, standings, HåfaPass tickets, Clutch streams, news, media, sponsors, and history.'
 
@@ -35,9 +35,21 @@ const routeSeo: Record<string, SeoRoute> = {
     title: `Tournament Schedule | ${SITE_NAME}`,
     description: 'View FD Alumni Basketball Tournament game times, matchups, divisions, ticket links, and stream links in Guam time.',
   },
+  '/bracket': {
+    title: `Playoff Bracket | ${SITE_NAME}`,
+    description: 'Follow FD Alumni Basketball Tournament playoff matchups, seeds, and championship bracket results.',
+  },
   '/standings': {
     title: `Standings | ${SITE_NAME}`,
     description: 'Follow FD Alumni Basketball Tournament standings, records, point differential, and score coverage by division.',
+  },
+  '/tickets': {
+    title: `Tickets & Fundraisers | ${SITE_NAME}`,
+    description: 'Find official HåfaPass ticket links for FD Alumni Basketball Tournament games, passes, and host-class fundraisers.',
+  },
+  '/teams': {
+    title: `Tournament Teams | ${SITE_NAME}`,
+    description: 'Browse FD Alumni Basketball Tournament class teams, rosters, schedules, and division standings.',
   },
   '/watch': {
     title: `Watch & Tickets | ${SITE_NAME}`,
@@ -65,12 +77,19 @@ const routeSeo: Record<string, SeoRoute> = {
   },
 }
 
-function seoForPath(pathname: string): SeoRoute {
+export function seoForPath(pathname: string): SeoRoute {
   if (pathname.startsWith('/admin')) {
     return {
       title: `Admin | ${SITE_NAME}`,
       description: 'Secure admin workspace for FD Alumni Basketball Hub staff.',
       robots: 'noindex,nofollow',
+    }
+  }
+
+  if (pathname.startsWith('/fundraisers/') || pathname.startsWith('/host-year/events/')) {
+    return {
+      title: `Host Year Fundraiser | ${SITE_NAME}`,
+      description: 'Details, flyers, recaps, and ticket links for FD Alumni Basketball Tournament host-class fundraisers.',
     }
   }
 
