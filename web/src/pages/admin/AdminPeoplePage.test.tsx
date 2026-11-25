@@ -72,3 +72,29 @@ it('uses distinct actions and themed confirmation dialogs for removal and deacti
   await screen.findByText('Account status updated.')
   expect(api.updateUserAccess).toHaveBeenCalledWith('2', { active: false })
 })
+
+it('auto-selects a single campaign on preset click and copies WhatsApp invite instructions for pending users', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+  vi.mocked(api.adminPermissionGrants).mockResolvedValue({
+    ...directory,
+    presets: [
+      { key: 'class_chair', label: 'Class Chair', scopeTypes: ['campaign'], grants: [{ capability: 'fundraisers_and_sponsors', actions: ['view', 'edit', 'publish'] }] },
+    ],
+    campaigns: [{ id: '7', title: 'Class of 2017 Host Year' }],
+    pendingInvites: [{
+      id: '9', email: 'jhulian@example.test', scopeType: 'campaign', scopeId: '7',
+      capability: 'fundraisers_and_sponsors', actions: ['view', 'edit', 'publish'], acceptedAt: null,
+    }],
+  })
+  render(<AdminPeoplePage />)
+  fireEvent.click(await screen.findByRole('button', { name: /^Host Class Chair/ }))
+  expect(screen.getByLabelText('Season or campaign')).toHaveValue('7')
+  fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'rico@example.test' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save access' }))
+  expect(await screen.findByRole('status')).toHaveTextContent(/No email is sent automatically/i)
+  const copyButtons = screen.getAllByRole('button', { name: 'Copy WhatsApp invite' })
+  fireEvent.click(copyButtons[0])
+  await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('rico@example.test')))
+  expect(await screen.findByRole('button', { name: 'Copied invite!' })).toBeInTheDocument()
+})

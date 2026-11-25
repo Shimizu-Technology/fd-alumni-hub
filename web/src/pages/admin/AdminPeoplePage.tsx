@@ -406,6 +406,8 @@ export function AdminPeoplePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
   const [confirmRequest, setConfirmRequest] = useState<ConfirmDialogRequest | null>(null)
 
   if (query.loading && !query.data) return <LoadingState label="Loading access directory" />
@@ -421,18 +423,50 @@ export function AdminPeoplePage() {
   const canEdit = (type: string, id: string | null) =>
     superAdmin || Boolean(type !== 'site' && id && hasCapability(user, 'manage_admins', 'edit', { type, id }))
   const canEditAny = superAdmin || hasCapability(user, 'manage_admins', 'edit')
+  const editableChoicesFor = (type: string) => {
+    const raw = type === 'campaign'
+      ? directory.campaigns.map((campaign) => ({ id: campaign.id, name: campaign.title }))
+      : type === 'tournament'
+        ? directory.tournaments.map((tournament) => ({ id: tournament.id, name: `${tournament.year} · ${tournament.name}` }))
+        : []
+    return raw.filter((choice) => canEdit(type, choice.id))
+  }
+  const defaultScopeIdFor = (type: string) => {
+    const choices = editableChoicesFor(type)
+    return choices.length === 1 ? choices[0].id : ''
+  }
   const scopeChoices = scopeType === 'campaign'
     ? directory.campaigns.map((campaign) => ({ id: campaign.id, name: campaign.title }))
     : directory.tournaments.map((tournament) => ({ id: tournament.id, name: `${tournament.year} · ${tournament.name}` }))
   const subject = directory.users.find((person) => person.email === email.trim().toLowerCase())?.fullName ?? (email.trim() || 'This person')
 
-  const mutate = async (operation: () => Promise<unknown>, notice: string) => {
+  const adminSignInUrl = typeof window !== 'undefined' && window.location?.origin
+    ? `${window.location.origin}/admin`
+    : 'https://fd-alumni.shimizu-technology.com/admin'
+
+  const inviteMessageFor = (targetEmail: string) =>
+    `Hey! I added ${targetEmail} to the FD Alumni Hub admin. Go to ${adminSignInUrl} and sign in with that email (Google or email code) — your access is ready right away.`
+
+  const copyInvite = async (targetEmail: string) => {
+    setError('')
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable')
+      await navigator.clipboard.writeText(inviteMessageFor(targetEmail))
+      setCopiedEmail(targetEmail)
+    } catch {
+      setError(`Could not copy automatically. Share ${adminSignInUrl} and tell ${targetEmail} to sign in with that email.`)
+    }
+  }
+
+  const mutate = async (operation: () => Promise<unknown>, notice: string, invitedEmail: string | null = null) => {
     setBusy(true)
     setMessage('')
     setError('')
+    setCopiedEmail(null)
     try {
       await operation()
       await query.reload()
+      setLastInvitedEmail(invitedEmail)
       setMessage(notice)
     } catch (cause) {
       setError(mutationErrorMessage(cause, 'Unable to update access.'))
@@ -497,7 +531,16 @@ export function AdminPeoplePage() {
   return (
     <div className="page-stack">
       <PageHeader title="People & access" description="Give people the access they need for their season or campaign." />
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <div role="status" className="row-actions" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+          <span>{message}</span>
+          {lastInvitedEmail && (
+            <button type="button" className="btn secondary small" onClick={() => void copyInvite(lastInvitedEmail)}>
+              {copiedEmail === lastInvitedEmail ? 'Copied invite!' : 'Copy WhatsApp invite'}
+            </button>
+          )}
+        </div>
+      )}
       {error && <p role="alert" className="form-error">{error}</p>}
       {canEditAny && (
         <Panel>
@@ -505,14 +548,24 @@ export function AdminPeoplePage() {
           <form onSubmit={(event) => {
             event.preventDefault()
             if (!canEdit(scopeType, scopeId || null)) return
-            void mutate(() => api.assignPermissionGrants({ email: email.trim(), scopeType, scopeId: scopeId || null, presetKey, grants }), 'Access saved.')
+            const normalizedEmail = email.trim().toLowerCase()
+            const alreadyActive = directory.users.some((person) => person.email.toLowerCase() === normalizedEmail)
+            const notice = alreadyActive
+              ? 'Access saved.'
+              : `Access saved for ${normalizedEmail}. No email is sent automatically — copy and text them the sign-in link.`
+            void mutate(
+              () => api.assignPermissionGrants({ email: email.trim(), scopeType, scopeId: scopeId || null, presetKey, grants }),
+              notice,
+              alreadyActive ? null : normalizedEmail,
+            )
           }}>
             <FormGrid>
               <Field label="Email address"><input id="grant-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></Field>
               <Field label="Scope">
                 <select value={scopeType} onChange={(event) => {
-                  setScopeType(event.target.value)
-                  setScopeId('')
+                  const nextType = event.target.value
+                  setScopeType(nextType)
+                  setScopeId(defaultScopeIdFor(nextType))
                   setPresetKey(undefined)
                   setGrants([])
                 }}>
@@ -536,9 +589,12 @@ export function AdminPeoplePage() {
                 {directory.presets.map((preset) => (
                   <button type="button" className="admin-choice-card" key={preset.key} aria-pressed={presetKey === preset.key}
                     onClick={() => {
-                      if (!preset.scopeTypes.includes(scopeType)) {
-                        setScopeType(preset.scopeTypes[0])
-                        setScopeId('')
+                      const nextType = preset.scopeTypes.includes(scopeType) ? scopeType : preset.scopeTypes[0]
+                      if (nextType !== scopeType) {
+                        setScopeType(nextType)
+                        setScopeId(defaultScopeIdFor(nextType))
+                      } else if (!scopeId && nextType !== 'site') {
+                        setScopeId(defaultScopeIdFor(nextType))
                       }
                       setPresetKey(preset.key)
                       setGrants(preset.grants)
@@ -610,6 +666,14 @@ export function AdminPeoplePage() {
         {[...new Set(directory.pendingInvites.map((grant) => grant.email))].map((pendingEmail) => (
           <article key={pendingEmail} className="people-person-card">
             <h3>{pendingEmail} · Pending</h3>
+            <p className="muted" style={{ margin: '0.2rem 0 0.5rem' }}>
+              No email is sent automatically — text them the link so they can sign in with this email.
+            </p>
+            <div className="people-chip-row" style={{ marginBottom: '0.5rem' }}>
+              <button type="button" className="btn secondary small" onClick={() => void copyInvite(pendingEmail)}>
+                {copiedEmail === pendingEmail ? 'Copied invite!' : 'Copy WhatsApp invite'}
+              </button>
+            </div>
             {scopeGroups(pendingEmail, directory.pendingInvites.filter((grant) => grant.email === pendingEmail))}
           </article>
         ))}

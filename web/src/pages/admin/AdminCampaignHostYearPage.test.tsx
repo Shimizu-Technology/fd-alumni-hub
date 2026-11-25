@@ -89,7 +89,9 @@ it('uploads multiple recap photos, preserves a successful partial upload, and sa
   expect(recap.getByRole('img', { name: 'Recap photo 1 preview' })).toHaveAttribute('src', 'https://images.example.com/second.jpg')
   fireEvent.change(picker, { target: { files: [first] } })
   expect(await recap.findByRole('img', { name: 'Recap photo 2 preview' })).toHaveAttribute('src', 'https://images.example.com/first.jpg')
-  fireEvent.click(recap.getByRole('button', { name: 'Remove photo 1' }))
+  fireEvent.click(recap.getByRole('button', { name: 'Move photo 2 earlier' }))
+  expect(recap.getByRole('img', { name: 'Recap photo 1 preview' })).toHaveAttribute('src', 'https://images.example.com/first.jpg')
+  fireEvent.click(recap.getByRole('button', { name: 'Remove photo 2' }))
   fireEvent.change(recap.getByLabelText('Caption for photo 1'), { target: { value: 'The team' } })
   fireEvent.click(recap.getByRole('button', { name: 'Save recap' }))
   expect(await recap.findByRole('status')).toHaveTextContent('Recap saved.')
@@ -103,7 +105,7 @@ it('uploads multiple recap photos, preserves a successful partial upload, and sa
   expect(screen.getByLabelText('Caption for photo 1')).toHaveValue('The team')
 })
 
-it('disables parent recap toggle and archive buttons while a recap upload is in flight', async () => {
+it('disables parent recap toggle and archive buttons while a recap upload is in flight and guards unsaved recap changes', async () => {
   let resolveUpload!: (url: string) => void
   vi.mocked(uploadCampaignImage).mockImplementationOnce(() => new Promise<string>((resolve) => { resolveUpload = resolve }))
   await open()
@@ -129,7 +131,52 @@ it('disables parent recap toggle and archive buttons while a recap upload is in 
   await waitFor(() => expect(toggle).not.toBeDisabled())
   expect(archive).not.toBeDisabled()
   fireEvent.keyDown(document, { key: 'Escape' })
+  const discardDialog = await screen.findByRole('alertdialog', { name: /Discard unsaved recap changes\?/i })
+  fireEvent.click(within(discardDialog).getByRole('button', { name: 'Discard changes' }))
   expect(dialog).not.toBeInTheDocument()
+})
+
+it('publishes new class news posts immediately by default and previews uploaded post images', async () => {
+  const createPost = vi.spyOn(api, 'campaignCreatePost').mockResolvedValue({
+    post: { id: '9', hostCampaignId: adminCampaign.id, authorId: '1', title: 'Antigu Update', body: 'Huge turnout!', imageUrl: 'https://images.example.com/post.jpg', published: true, publishedAt: '2026-11-25T00:00:00Z', pinned: false, authorName: 'Leon' },
+  })
+  render(<MemoryRouter initialEntries={['/admin/campaign/host-year?tab=posts']}><AdminCampaignHostYearPage /></MemoryRouter>)
+  await screen.findByRole('heading', { name: /New class news post/i })
+  expect(screen.getByLabelText('Publish immediately')).toBeChecked()
+  fireEvent.change(screen.getByLabelText('Headline'), { target: { value: 'Antigu Update' } })
+  fireEvent.change(screen.getByLabelText(/Body/), { target: { value: 'Huge turnout!' } })
+  const photo = new File(['img'], 'post.jpg', { type: 'image/jpeg' })
+  fireEvent.change(screen.getByLabelText(/Upload post image/i), { target: { files: [photo] } })
+  expect(await screen.findByRole('img', { name: 'Post image preview' })).toHaveAttribute('src', 'https://images.example.com/post.jpg')
+  fireEvent.click(screen.getByRole('button', { name: 'Publish post' }))
+  await waitFor(() => expect(createPost).toHaveBeenCalledWith(adminCampaign.slug, expect.objectContaining({
+    title: 'Antigu Update',
+    body: 'Huge turnout!',
+    imageUrl: 'https://images.example.com/post.jpg',
+    publishedAt: expect.any(String),
+  })))
+})
+
+it('preserves keyboard focus on the move control when reordering recap photos', async () => {
+  vi.mocked(api.campaignEvents).mockResolvedValue({
+    events: [{
+      ...adminEvent,
+      recapPhotos: [
+        { url: 'https://images.example.com/one.jpg', caption: 'One' },
+        { url: 'https://images.example.com/two.jpg', caption: 'Two' },
+        { url: 'https://images.example.com/three.jpg', caption: 'Three' },
+      ],
+    }],
+  })
+  await open()
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Recap & Photos' }))
+  const dialog = screen.getByRole('dialog', { name: 'Recap & photos for Alumni night' })
+  const moveThirdEarlier = within(dialog).getByRole('button', { name: 'Move photo 3 earlier' })
+  moveThirdEarlier.focus()
+  expect(document.activeElement).toBe(moveThirdEarlier)
+  fireEvent.click(moveThirdEarlier)
+  expect(within(dialog).getByRole('img', { name: 'Recap photo 2 preview' })).toHaveAttribute('src', 'https://images.example.com/three.jpg')
+  expect(document.activeElement).toBe(moveThirdEarlier)
 })
 
 it('defaults to Fundraiser Events, hides Prepare Next Year on active campaigns, and tucks HåfaPass slugs under Advanced', async () => {

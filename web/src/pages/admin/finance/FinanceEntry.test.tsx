@@ -67,15 +67,16 @@ describe('finance quick entry', () => {
     expect(dialog.getByText(/enter a valid dollar amount/i)).toBeInTheDocument()
     fireEvent.change(amount, { target: { value: '1,250.50' } })
     fireEvent.change(dialog.getByLabelText('Who paid'), { target: { value: 'Golf proceeds' } })
+    expect(dialog.getByLabelText('Fundraiser event')).toHaveValue('32')
+    fireEvent.change(dialog.getByLabelText('Notes (optional)'), { target: { value: 'Cash turned in by Sean' } })
     fireEvent.click(details)
     expect(details.closest('details')).toHaveAttribute('open')
-    expect(dialog.getByLabelText('Fundraiser event')).toHaveValue('32')
     fireEvent.change(dialog.getByLabelText('Reference number'), { target: { value: 'Deposit 1' } })
     fireEvent.click(dialog.getByRole('button', { name: 'Record money received' }))
 
     await waitFor(() => expect(api.campaignCreateLedgerEntry).toHaveBeenCalledWith('class-2017', expect.objectContaining({
       entryType: 'income', amountCents: 125_050, source: 'fundraiser_net', campaignEventId: '32',
-      budgetLineId: 'income-line', counterparty: 'Golf proceeds', referenceNumber: 'Deposit 1',
+      budgetLineId: 'income-line', counterparty: 'Golf proceeds', referenceNumber: 'Deposit 1', description: 'Cash turned in by Sean',
     })))
     expect(await screen.findByText('Money received recorded.')).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -127,6 +128,42 @@ describe('finance quick entry', () => {
     expect(await screen.findByText('Archived campaign (read-only)')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Record money received' })).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows visible error and success feedback when attaching a receipt to an existing ledger row', async () => {
+    vi.mocked(uploadCampaignReceipt).mockRejectedValueOnce(new Error('Receipt must be 15MB or smaller'))
+    vi.mocked(uploadCampaignReceipt).mockResolvedValueOnce('receipt-token-2')
+    const updateEntry = vi.spyOn(api, 'campaignUpdateLedgerEntry').mockResolvedValue({ ledgerEntry: expenses[0] })
+    open()
+    await screen.findByRole('heading', { name: /Ledger entries/ })
+    const fileInputs = screen.getAllByLabelText('Add receipt')
+    const badFile = new File(['big'], 'huge.pdf', { type: 'application/pdf' })
+    fireEvent.change(fileInputs[0], { target: { files: [badFile] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Receipt must be 15MB or smaller')
+
+    const goodFile = new File(['ok'], 'receipt.jpg', { type: 'image/jpeg' })
+    fireEvent.change(fileInputs[0], { target: { files: [goodFile] } })
+    expect(await screen.findByRole('status')).toHaveTextContent('Receipt attached.')
+    expect(updateEntry).toHaveBeenCalledWith('class-2017', 'own', { receiptUploadToken: 'receipt-token-2' })
+  })
+
+  it('clears a stale receipt upload error when starting and completing a void', async () => {
+    vi.mocked(uploadCampaignReceipt).mockRejectedValueOnce(new Error('Receipt must be 15MB or smaller'))
+    const voidEntry = vi.spyOn(api, 'campaignVoidLedgerEntry').mockResolvedValue({ ledgerEntry: { ...expenses[0], voided: true } })
+    open()
+    await screen.findByRole('heading', { name: /Ledger entries/ })
+    const fileInputs = screen.getAllByLabelText('Add receipt')
+    fireEvent.change(fileInputs[0], { target: { files: [new File(['big'], 'huge.pdf', { type: 'application/pdf' })] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Receipt must be 15MB or smaller')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Void' })[0])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    const modal = within(screen.getByRole('dialog', { name: 'Void ledger entry own' }))
+    fireEvent.change(modal.getByLabelText('Reason for void (required)'), { target: { value: 'Duplicate entry' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Confirm void' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Ledger entry voided and logged in audit trail.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(voidEntry).toHaveBeenCalledWith('class-2017', 'own', 'Duplicate entry')
   })
 
   it('does not open a different ledger when a deep-linked campaign is inaccessible', async () => {
