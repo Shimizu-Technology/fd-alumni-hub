@@ -147,6 +147,25 @@ describe('finance quick entry', () => {
     expect(updateEntry).toHaveBeenCalledWith('class-2017', 'own', { receiptUploadToken: 'receipt-token-2' })
   })
 
+  it('clears a stale receipt upload error when starting and completing a void', async () => {
+    vi.mocked(uploadCampaignReceipt).mockRejectedValueOnce(new Error('Receipt must be 15MB or smaller'))
+    const voidEntry = vi.spyOn(api, 'campaignVoidLedgerEntry').mockResolvedValue({ ledgerEntry: { ...expenses[0], voided: true } })
+    open()
+    await screen.findByRole('heading', { name: /Ledger entries/ })
+    const fileInputs = screen.getAllByLabelText('Add receipt')
+    fireEvent.change(fileInputs[0], { target: { files: [new File(['big'], 'huge.pdf', { type: 'application/pdf' })] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Receipt must be 15MB or smaller')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Void' })[0])
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    const modal = within(screen.getByRole('dialog', { name: 'Void ledger entry own' }))
+    fireEvent.change(modal.getByLabelText('Reason for void (required)'), { target: { value: 'Duplicate entry' } })
+    fireEvent.click(modal.getByRole('button', { name: 'Confirm void' }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Ledger entry voided and logged in audit trail.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(voidEntry).toHaveBeenCalledWith('class-2017', 'own', 'Duplicate entry')
+  })
+
   it('does not open a different ledger when a deep-linked campaign is inaccessible', async () => {
     open('/admin/campaign/finance?campaign=class-of-2018&action=income')
     expect(await screen.findByText('Finance access unavailable')).toBeInTheDocument()

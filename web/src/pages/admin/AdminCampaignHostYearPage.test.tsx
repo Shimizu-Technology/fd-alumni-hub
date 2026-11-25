@@ -157,6 +157,28 @@ it('publishes new class news posts immediately by default and previews uploaded 
   })))
 })
 
+it('preserves keyboard focus on the move control when reordering recap photos', async () => {
+  vi.mocked(api.campaignEvents).mockResolvedValue({
+    events: [{
+      ...adminEvent,
+      recapPhotos: [
+        { url: 'https://images.example.com/one.jpg', caption: 'One' },
+        { url: 'https://images.example.com/two.jpg', caption: 'Two' },
+        { url: 'https://images.example.com/three.jpg', caption: 'Three' },
+      ],
+    }],
+  })
+  await open()
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Recap & Photos' }))
+  const dialog = screen.getByRole('dialog', { name: 'Recap & photos for Alumni night' })
+  const moveThirdEarlier = within(dialog).getByRole('button', { name: 'Move photo 3 earlier' })
+  moveThirdEarlier.focus()
+  expect(document.activeElement).toBe(moveThirdEarlier)
+  fireEvent.click(moveThirdEarlier)
+  expect(within(dialog).getByRole('img', { name: 'Recap photo 2 preview' })).toHaveAttribute('src', 'https://images.example.com/three.jpg')
+  expect(document.activeElement).toBe(moveThirdEarlier)
+})
+
 it('defaults to Fundraiser Events, hides Prepare Next Year on active campaigns, and tucks HåfaPass slugs under Advanced', async () => {
   render(<MemoryRouter initialEntries={['/admin/campaign/host-year']}><AdminCampaignHostYearPage /></MemoryRouter>)
   expect(await screen.findByRole('heading', { name: /Campaign events/ })).toBeInTheDocument()

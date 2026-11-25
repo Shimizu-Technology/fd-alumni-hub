@@ -69,6 +69,7 @@ export function LedgerTab({
           onVoided={async () => {
             const targetId = voidingEntry.id
             setVoidingEntry((prev) => (prev?.id === targetId ? null : prev))
+            setError('')
             setMessage('Ledger entry voided and logged in audit trail.')
             await onSaved()
           }}
@@ -167,7 +168,15 @@ export function LedgerTab({
                     )
                   )}
                   {canWrite && !entry.voided && (
-                    <button type="button" className="btn secondary small" onClick={() => setVoidingEntry(entry)}>
+                    <button
+                      type="button"
+                      className="btn secondary small"
+                      onClick={() => {
+                        setError('')
+                        setMessage('')
+                        setVoidingEntry(entry)
+                      }}
+                    >
                       Void
                     </button>
                   )}

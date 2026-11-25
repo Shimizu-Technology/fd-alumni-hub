@@ -1,5 +1,5 @@
 import { hasCapability } from '../../lib/adminModules'
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { useAuthContext } from '../../contexts/AuthContext'
@@ -831,6 +831,8 @@ function hasEventRecap(event: AdminCampaignEvent) {
   return Boolean(event.recapNotes || event.recapHighlights || event.raisedDisplay || event.recapPhotos?.length)
 }
 
+type DraftRecapPhoto = RecapPhoto & { clientId: string }
+
 function normalizeRecapPhotos(list: RecapPhoto[]) {
   return list.map(({ url, caption }) => ({ url, caption: caption?.trim() || '' }))
 }
@@ -842,10 +844,14 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
   onBusyChange: (busy: boolean) => void
   onClose: () => void
 }) {
+  const nextPhotoIdRef = useRef(0)
+  const makePhotoId = () => `recap-photo-${++nextPhotoIdRef.current}`
   const [notes, setNotes] = useState(event.recapNotes || '')
   const [highlights, setHighlights] = useState(event.recapHighlights || '')
   const [raised, setRaised] = useState(event.raisedDisplay || '')
-  const [photos, setPhotos] = useState<RecapPhoto[]>(event.recapPhotos || [])
+  const [photos, setPhotos] = useState<DraftRecapPhoto[]>(() =>
+    (event.recapPhotos || []).map((photo, index) => ({ ...photo, clientId: `recap-init-${index}` })),
+  )
   const [savedBaseline, setSavedBaseline] = useState(() => JSON.stringify({
     notes: (event.recapNotes || '').trim(),
     highlights: (event.recapHighlights || '').trim(),
@@ -914,7 +920,9 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
     setUploading(true)
     try {
       const results = await Promise.allSettled(files.map((file) => uploadCampaignImage({ file, campaignSlug })))
-      const added = results.flatMap((result) => result.status === 'fulfilled' ? [{ url: result.value }] : [])
+      const added: DraftRecapPhoto[] = results.flatMap((result) =>
+        result.status === 'fulfilled' ? [{ url: result.value, clientId: makePhotoId() }] : [],
+      )
       const failed = results.flatMap((result, index) => result.status === 'rejected' ? [files[index].name] : [])
       setPhotos((current) => [...current, ...added])
       if (added.length) {
@@ -983,7 +991,7 @@ function EventRecapForm({ campaignSlug, event, onSaved, onBusyChange, onClose }:
           {photos.length > 0 && (
             <div className="fundraiser-photo-grid admin-event-photos">
               {photos.map((photo, index) => (
-                <div key={`${photo.url}-${index}`}>
+                <div key={photo.clientId}>
                   <img className="admin-event-thumbnail" src={safeHttpsHref(photo.url) || undefined} alt={`Recap photo ${index + 1} preview`} />
                   {index === 0 && <span className="pill" style={{ justifySelf: 'start' }}>Lead photo</span>}
                   <Field label={`Caption for photo ${index + 1}`}>
