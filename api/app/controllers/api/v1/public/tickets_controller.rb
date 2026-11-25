@@ -58,7 +58,7 @@ module Api
 
         def default_door_info(tournament)
           {
-            venue: "Father Duenas Phoenix Center (Mangilao, Guam)",
+            venue: "The Jungle — Father Dueñas Memorial School (Mangilao, Guam)",
             doorsOpenNote: "Check the schedule and Today at The Jungle for nightly tip-off times and door-opening updates.",
             paymentNote: "Advance digital tickets and tournament passes are sold online through HåfaPass. Check HåfaPass event listings or game-day notes for door admission details.",
             reentryNote: "Keep your digital HåfaPass ticket ready at the entrance and follow FDAA staff guidance for re-entry.",

@@ -315,7 +315,7 @@ function TournamentAlertsAdminPanel({ tournament, canPublish, canAlertSiteWide }
             <input type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} />
           </Field>
           <Field label="Message">
-            <textarea rows={2} maxLength={1000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Check back at 6:00 PM for updated tip-off times at the Phoenix Center." required />
+            <textarea rows={2} maxLength={1000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Check back at 6:00 PM for updated tip-off times at The Jungle." required />
           </Field>
         </FormGrid>
         {formError && <p className="form-error" role="alert">{formError}</p>}

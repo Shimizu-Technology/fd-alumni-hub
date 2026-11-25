@@ -207,7 +207,7 @@ class PublicSponsorsAndTicketsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ "hp_team_reg" ], body.fetch("otherEvents").map { |e| e["id"] }
     assert_equal [ "CO2017 Golf Tournament" ], body.fetch("fundraiserEvents").map { |e| e["title"] }
     assert_equal 15000, body.fetch("fundraiserEvents").first["minAllInPriceCents"]
-    assert_includes body.dig("doorInfo", "venue"), "Phoenix Center"
+    assert_includes body.dig("doorInfo", "venue"), "The Jungle"
   end
 
   test "public tickets never exposes draft campaigns and clears stale prices" do

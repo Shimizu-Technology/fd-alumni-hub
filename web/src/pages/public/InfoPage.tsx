@@ -8,7 +8,7 @@ import { IconArrowRight, IconExternal } from '../../components/Icons'
 import type { InfoGuide } from '../../lib/types'
 
 const fallback: InfoGuide = {
-  venueName: 'Phoenix Center',
+  venueName: 'The Jungle (FD Gym)',
   venueAddress: '',
   ticketSourceName: 'HåfaPass',
   ticketSourceUrl: '/tickets',
